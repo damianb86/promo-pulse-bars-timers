@@ -1,0 +1,106 @@
+{% if product %}
+  <div
+    class="pp-root pp-product-timer"
+    data-shop="{{ shop.permanent_domain | escape }}"
+    data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
+    data-country="{{ localization.country.iso_code | default: '' | escape }}"
+    data-product-id="gid://shopify/Product/{{ product.id }}"
+    data-product-tags="{{ product.tags | join: ',' | escape }}"
+    data-selected-variant-id="{{ product.selected_or_first_available_variant.id }}"
+    data-inventory-quantity="{{ product.selected_or_first_available_variant.inventory_quantity }}"
+    data-variants-script-id="counterpulse-variants-{{ block.id }}"
+    data-campaign-id="{{ block.settings.campaignId | escape }}"
+    data-fallback-mode="{{ block.settings.fallbackMode | escape }}"
+    data-alignment="{{ block.settings.alignment | escape }}"
+    data-compact="{{ block.settings.compactMode }}"
+    data-show-icon="{{ block.settings.showIcon }}"
+    data-debug="{{ block.settings.debugMode }}"
+    {{ block.shopify_attributes }}
+  ></div>
+  <script id="counterpulse-variants-{{ block.id }}" type="application/json">
+    [
+      {%- for variant in product.variants -%}
+        {
+          "id": "gid://shopify/ProductVariant/{{ variant.id }}",
+          "legacyId": "{{ variant.id }}",
+          "inventoryQuantity": {% if variant.inventory_quantity != blank %}{{ variant.inventory_quantity | json }}{% else %}null{% endif %},
+          "available": {{ variant.available | json }}
+        }{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}
+    ]
+  </script>
+{% endif %}
+<script src="{{ 'discount-code.js' | asset_url }}" defer></script>
+<script src="{{ 'delivery-cutoff.js' | asset_url }}" defer></script>
+<script src="{{ 'low-stock.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Promo Pulse product timer",
+  "target": "section",
+  "stylesheet": "promo-pilot.css",
+  "javascript": "product-timer.js",
+  "templates": ["product"],
+  "settings": [
+    {
+      "type": "text",
+      "id": "campaignId",
+      "label": "Campaign ID"
+    },
+    {
+      "type": "select",
+      "id": "fallbackMode",
+      "label": "Campaign selection",
+      "default": "AUTO_ELIGIBLE",
+      "options": [
+        {
+          "value": "AUTO_ELIGIBLE",
+          "label": "Auto eligible"
+        },
+        {
+          "value": "SPECIFIC_CAMPAIGN",
+          "label": "Specific campaign"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Alignment",
+      "default": "CENTER",
+      "options": [
+        {
+          "value": "LEFT",
+          "label": "Left"
+        },
+        {
+          "value": "CENTER",
+          "label": "Center"
+        },
+        {
+          "value": "RIGHT",
+          "label": "Right"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "compactMode",
+      "label": "Compact mode",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "showIcon",
+      "label": "Show icon",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "debugMode",
+      "label": "Debug mode",
+      "default": false
+    }
+  ]
+}
+{% endschema %}

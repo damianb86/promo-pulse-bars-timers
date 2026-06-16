@@ -1,0 +1,13 @@
+node_modules
+build
+public/build
+*/*.yml
+.shopify
+extensions/counterpulse-theme/assets/promo-pilot.js
+extensions/counterpulse-theme/assets/product-timer.js
+extensions/counterpulse-theme/assets/cart-timer.js
+extensions/counterpulse-theme/assets/free-shipping.js
+extensions/counterpulse-theme/assets/delivery-cutoff.js
+extensions/counterpulse-theme/assets/low-stock.js
+extensions/counterpulse-theme/assets/product-badge.js
+extensions/counterpulse-theme/assets/discount-code.js

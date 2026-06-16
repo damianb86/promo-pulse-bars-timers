@@ -1,0 +1,81 @@
+import {
+  campaignTranslationFields,
+  createEmptyCampaignTranslationsByLocale,
+  storefrontLocales,
+  translationInputName,
+  type CampaignTextField,
+  type CampaignTranslationFormErrors,
+  type CampaignTranslationValues,
+  type CampaignTranslationsByLocale,
+  type StorefrontLocale,
+} from "../types/localization";
+
+export type ParsedCampaignTranslationsForm = {
+  values: CampaignTranslationsByLocale;
+  errors: CampaignTranslationFormErrors;
+  translations: Array<CampaignTranslationValues & { locale: StorefrontLocale }>;
+};
+
+const maxTextLength = 500;
+
+export function parseCampaignTranslationsFormData(
+  formData: FormData,
+): ParsedCampaignTranslationsForm {
+  const values = createEmptyCampaignTranslationsByLocale();
+  const errors: CampaignTranslationFormErrors = {};
+
+  for (const localeOption of storefrontLocales) {
+    for (const field of campaignTranslationFields) {
+      const value = readString(
+        formData,
+        translationInputName(localeOption.locale, field.key),
+      );
+      values[localeOption.locale][field.key] = value;
+
+      if (value.length > maxTextLength) {
+        addFieldError(
+          errors,
+          localeOption.locale,
+          field.key,
+          `Keep ${field.label.toLowerCase()} under ${maxTextLength} characters.`,
+        );
+      }
+    }
+  }
+
+  return {
+    values,
+    errors,
+    translations: storefrontLocales.map(({ locale }) => ({
+      locale,
+      ...values[locale],
+    })),
+  };
+}
+
+export function hasCampaignTranslationErrors(
+  errors: CampaignTranslationFormErrors,
+) {
+  return Boolean(
+    errors.form ||
+    Object.values(errors.locales ?? {}).some(
+      (localeErrors) => Object.keys(localeErrors ?? {}).length > 0,
+    ),
+  );
+}
+
+function readString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function addFieldError(
+  errors: CampaignTranslationFormErrors,
+  locale: StorefrontLocale,
+  field: CampaignTextField,
+  message: string,
+) {
+  errors.locales ??= {};
+  errors.locales[locale] ??= {};
+  errors.locales[locale][field] = message;
+}

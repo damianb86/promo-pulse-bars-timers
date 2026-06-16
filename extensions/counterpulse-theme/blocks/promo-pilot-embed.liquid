@@ -1,0 +1,76 @@
+{% if block.settings.enabled %}
+  <div
+    id="counterpulse-app-embed"
+    class="pp-root"
+    data-shop="{{ shop.permanent_domain | escape }}"
+    data-default-locale="{{ block.settings.defaultLocale | escape }}"
+    data-locale="{{ request.locale.iso_code | default: block.settings.defaultLocale | escape }}"
+    data-country="{{ localization.country.iso_code | default: '' | escape }}"
+    data-cart-total-cents="{{ cart.total_price | default: 0 }}"
+    data-cart-currency="{{ cart.currency.iso_code | default: shop.currency | escape }}"
+    data-cart-token="{{ cart.token | default: '' | escape }}"
+    data-cart-timer-src="{{ 'cart-timer.js' | asset_url }}"
+    data-analytics-path="/apps/counterpulse-campaigns"
+    data-debug="{{ block.settings.debugMode }}"
+    {{ block.shopify_attributes }}
+  ></div>
+  <script>
+    window.CounterPulseCartSubtotal = {{ cart.total_price | default: 0 | divided_by: 100.0 }};
+    window.CounterPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";
+  </script>
+  <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
+  <script src="{{ 'free-shipping.js' | asset_url }}" defer></script>
+  <script src="{{ 'delivery-cutoff.js' | asset_url }}" defer></script>
+  <script src="{{ 'cart-timer.js' | asset_url }}" defer></script>
+  <script src="{{ 'promo-pilot.js' | asset_url }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Promo Pulse embed",
+  "target": "body",
+  "stylesheet": "promo-pilot.css",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Enabled",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "debugMode",
+      "label": "Debug mode",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "defaultLocale",
+      "label": "Default locale",
+      "default": "en",
+      "options": [
+        {
+          "value": "en",
+          "label": "English"
+        },
+        {
+          "value": "es",
+          "label": "Spanish"
+        },
+        {
+          "value": "pt-BR",
+          "label": "Portuguese BR"
+        },
+        {
+          "value": "fr",
+          "label": "French"
+        },
+        {
+          "value": "de",
+          "label": "German"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

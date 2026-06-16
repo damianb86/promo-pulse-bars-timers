@@ -1,0 +1,71 @@
+{% if product %}
+  <div
+    class="pp-root pp-product-badge"
+    data-shop="{{ shop.permanent_domain | escape }}"
+    data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
+    data-country="{{ localization.country.iso_code | default: '' | escape }}"
+    data-product-id="gid://shopify/Product/{{ product.id }}"
+    data-product-tags="{{ product.tags | join: ',' | escape }}"
+    data-campaign-id="{{ block.settings.campaignId | escape }}"
+    data-fallback-mode="{{ block.settings.fallbackMode | escape }}"
+    data-placement="{{ block.settings.placement | escape }}"
+    data-debug="{{ block.settings.debugMode }}"
+    {{ block.shopify_attributes }}
+  ></div>
+{% endif %}
+<script src="{{ 'discount-code.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Promo Pulse badge",
+  "target": "section",
+  "stylesheet": "promo-pilot.css",
+  "javascript": "product-badge.js",
+  "templates": ["product", "collection"],
+  "settings": [
+    {
+      "type": "text",
+      "id": "campaignId",
+      "label": "Campaign ID"
+    },
+    {
+      "type": "select",
+      "id": "fallbackMode",
+      "label": "Campaign selection",
+      "default": "AUTO_ELIGIBLE",
+      "options": [
+        {
+          "value": "AUTO_ELIGIBLE",
+          "label": "Auto eligible"
+        },
+        {
+          "value": "SPECIFIC_CAMPAIGN",
+          "label": "Specific campaign"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "placement",
+      "label": "Campaign placement",
+      "default": "COLLECTION_CARD",
+      "options": [
+        {
+          "value": "COLLECTION_CARD",
+          "label": "Collection card"
+        },
+        {
+          "value": "PRODUCT_PAGE",
+          "label": "Product page"
+        }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "debugMode",
+      "label": "Debug mode",
+      "default": false
+    }
+  ]
+}
+{% endschema %}

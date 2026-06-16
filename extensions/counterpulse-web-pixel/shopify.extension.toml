@@ -1,0 +1,25 @@
+name = "Promo Pulse Web Pixel"
+type = "web_pixel_extension"
+uid = "b5f313b6-a42e-42b4-a3e1-9a8999ac7220"
+runtime_context = "strict"
+
+[customer_privacy]
+analytics = true
+marketing = false
+preferences = false
+sale_of_data = "disabled"
+
+[settings]
+type = "object"
+
+[settings.fields.shop]
+name = "Shop domain"
+description = "The merchant myshopify.com domain used for Promo Pulse analytics attribution."
+type = "single_line_text_field"
+validations = [{ name = "min", value = "1" }]
+
+[settings.fields.appEndpoint]
+name = "App endpoint"
+description = "Absolute Promo Pulse app endpoint ending in /api/analytics/pixel."
+type = "single_line_text_field"
+validations = [{ name = "min", value = "1" }]

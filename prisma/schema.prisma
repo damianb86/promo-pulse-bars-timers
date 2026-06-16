@@ -1,0 +1,409 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model Shop {
+  id            String    @id @default(cuid())
+  shopifyDomain String    @unique
+  plan          ShopPlan  @default(FREE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  campaigns           Campaign[]
+  analyticsEvents     AnalyticsEvent[]
+  onboardingChecklist ShopOnboardingChecklist?
+  settings            ShopSettings?
+}
+
+model ShopSettings {
+  shopId                    String      @id
+  defaultLocale             String      @default("en")
+  enabledLocales            Json
+  defaultTimezone           String      @default("UTC")
+  defaultCurrency           String      @default("USD")
+  enableDebugMode           Boolean     @default(false)
+  brandName                 String?
+  supportEmail              String?
+  defaultCountry            String?
+  customCartDrawerSelector  String?
+  customCartPageSelector    String?
+  customProductFormSelector String?
+  analyticsEnabled          Boolean     @default(true)
+  respectDoNotTrack         Boolean     @default(true)
+  consentMode               ConsentMode @default(BASIC)
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model ShopOnboardingChecklist {
+  shopId                  String   @id
+  firstCampaignCreated    Boolean  @default(false)
+  appEmbedEnabled         Boolean  @default(false)
+  productBlockAdded       Boolean  @default(false)
+  cartBlockAdded          Boolean  @default(false)
+  firstImpressionReceived Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id        String         @id @default(cuid())
+  shopId    String
+  name      String
+  status    CampaignStatus @default(DRAFT)
+  type      CampaignType
+  goal      CampaignGoal
+  startsAt  DateTime?
+  endsAt    DateTime?
+  timezone  String         @default("UTC")
+  priority  Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  shop                    Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  placements              CampaignPlacement[]
+  targeting               CampaignTargeting?
+  design                  CampaignDesign?
+  timerSettings           TimerSettings?
+  freeShippingSettings    FreeShippingSettings?
+  deliveryCutoffSettings  DeliveryCutoffSettings?
+  lowStockSettings        LowStockSettings?
+  badgeSettings           BadgeSettings?
+  discountSync            DiscountSync?
+  translations            CampaignTranslation[]
+  analyticsEvents         AnalyticsEvent[]
+
+  @@index([shopId, status])
+  @@index([shopId, type])
+  @@index([shopId, priority])
+  @@index([startsAt, endsAt])
+}
+
+model CampaignPlacement {
+  id            String        @id @default(cuid())
+  campaignId    String
+  placementType PlacementType
+  customSelector String?
+  enabled       Boolean       @default(true)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([placementType])
+}
+
+model CampaignTargeting {
+  campaignId           String @id
+  countries            Json
+  markets              Json
+  locales              Json
+  productIds           Json
+  collectionIds        Json
+  productTags          Json
+  customerTags         Json
+  urlContains          Json
+  utmSources           Json
+  devices              Json
+  excludeProductIds    Json
+  excludeCollectionIds Json
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CampaignDesign {
+  campaignId      String             @id
+  templateKey     String             @default("clean-minimal")
+  backgroundColor String             @default("#111827")
+  textColor       String             @default("#FFFFFF")
+  accentColor     String             @default("#22C55E")
+  buttonColor     String             @default("#FFFFFF")
+  buttonTextColor String             @default("#111827")
+  fontSize        Int                @default(14)
+  borderRadius    Int                @default(0)
+  positionSticky  Boolean            @default(true)
+  customCss       String?
+  mobileEnabled   Boolean            @default(true)
+  alignment       DesignAlignment    @default(CENTER)
+  showCloseButton Boolean            @default(true)
+  showIcon        Boolean            @default(true)
+  icon            CampaignDesignIcon @default(NONE)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model TimerSettings {
+  campaignId      String             @id
+  mode            TimerMode
+  durationMinutes Int?
+  recurringDays   Json
+  resetBehavior   TimerResetBehavior @default(NEVER)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model FreeShippingSettings {
+  campaignId                String                    @id
+  thresholdAmount           Decimal
+  currencyCode              String
+  includeDiscountedSubtotal Boolean                   @default(true)
+  emptyCartMessage          String?
+  successMessage            String?
+  progressStyle             FreeShippingProgressStyle @default(BAR)
+  thresholdRules            Json?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryCutoffSettings {
+  campaignId          String                      @id
+  cutoffHour          Int
+  cutoffMinute        Int                         @default(0)
+  processingDays      Int                         @default(0)
+  minDeliveryDays     Int
+  maxDeliveryDays     Int
+  workingDays         Json
+  holidays            Json
+  countryRules        Json
+  afterCutoffBehavior DeliveryAfterCutoffBehavior @default(SHOW_NEXT_WINDOW)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model LowStockSettings {
+  campaignId        String  @id
+  threshold         Int
+  showExactQuantity Boolean @default(false)
+  fallbackMessage   String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model BadgeSettings {
+  campaignId    String        @id
+  badgeText     String
+  badgeShape    BadgeShape    @default(PILL)
+  badgePosition BadgePosition @default(TOP_RIGHT)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model DiscountSync {
+  campaignId        String             @id
+  shopifyDiscountId String?
+  discountCode      String?
+  method            DiscountSyncMethod
+  syncStartEnd      Boolean            @default(true)
+  lastSyncedAt      DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopifyDiscountId])
+  @@index([discountCode])
+}
+
+model CampaignTranslation {
+  id                          String  @id @default(cuid())
+  campaignId                  String
+  locale                      String
+  headline                    String?
+  subheadline                 String?
+  ctaText                     String?
+  ctaUrl                      String?
+  expiredText                 String?
+  freeShippingEmptyText       String?
+  freeShippingProgressText    String?
+  freeShippingSuccessText     String?
+  deliveryBeforeCutoffText    String?
+  deliveryAfterCutoffText     String?
+  lowStockText                String?
+  badgeText                   String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, locale])
+  @@index([locale])
+}
+
+model AnalyticsEvent {
+  id            String             @id @default(cuid())
+  shopId        String
+  campaignId    String?
+  eventType     AnalyticsEventType
+  placementType PlacementType?
+  sessionId     String?
+  cartToken     String?
+  orderId       String?
+  revenueAmount Decimal?
+  currencyCode  String?
+  country       String?
+  locale        String?
+  path          String?
+  userAgent     String?
+  occurredAt    DateTime           @default(now())
+
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, occurredAt])
+  @@index([campaignId, eventType, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([orderId])
+  @@index([sessionId])
+}
+
+enum ShopPlan {
+  FREE
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum ConsentMode {
+  BASIC
+  STRICT
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+enum CampaignType {
+  COUNTDOWN_BAR
+  PRODUCT_TIMER
+  CART_TIMER
+  FREE_SHIPPING_GOAL
+  DELIVERY_CUTOFF
+  LOW_STOCK
+  PRODUCT_BADGE
+}
+
+enum CampaignGoal {
+  FLASH_SALE
+  FREE_SHIPPING
+  CART_RESCUE
+  SHIPPING_PROMISE
+  LOW_STOCK_URGENCY
+  DELIVERY_CUTOFF
+  PRODUCT_BADGE
+  ANNOUNCEMENT
+  LAUNCH
+  PREORDER
+}
+
+enum PlacementType {
+  TOP_BAR
+  BOTTOM_BAR
+  PRODUCT_PAGE
+  COLLECTION_CARD
+  CART_PAGE
+  CART_DRAWER
+  PASSWORD_PAGE
+  CUSTOM_SELECTOR
+}
+
+enum TimerMode {
+  FIXED_DATE
+  EVERGREEN_SESSION
+  RECURRING_DAILY
+  RECURRING_WEEKLY
+}
+
+enum TimerResetBehavior {
+  NEVER
+  ON_SESSION_END
+  DAILY
+  WEEKLY
+}
+
+enum FreeShippingProgressStyle {
+  BAR
+  COMPACT
+  CIRCULAR
+}
+
+enum DeliveryAfterCutoffBehavior {
+  SHOW_NEXT_WINDOW
+  SHOW_AFTER_CUTOFF_MESSAGE
+  HIDE
+}
+
+enum BadgeShape {
+  PILL
+  ROUNDED
+  SQUARE
+}
+
+enum BadgePosition {
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+  INLINE
+}
+
+enum DiscountSyncMethod {
+  CODE
+  AUTOMATIC
+}
+
+enum AnalyticsEventType {
+  IMPRESSION
+  CLICK
+  COPY_CODE
+  ADD_TO_CART
+  CHECKOUT_STARTED
+  ORDER_ATTRIBUTED
+}
+
+enum DesignAlignment {
+  LEFT
+  CENTER
+  RIGHT
+}
+
+enum CampaignDesignIcon {
+  FIRE
+  CLOCK
+  TRUCK
+  GIFT
+  TAG
+  NONE
+}

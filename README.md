@@ -46,10 +46,13 @@ npm run config:link
 npm run dev
 ```
 
-`npm run dev` debe mostrar una URL HTTPS publica de Shopify CLI y actualizar la
-app vinculada. Si en Shopify Admin ves `default-app-home` o el mensaje
-`Find this app in the pages where you work`, la app todavia esta apuntando al
-placeholder de Shopify y no al servidor local. Vuelve a ejecutar:
+`npm run dev` debe mostrar una linea similar a
+`app_home └ Using URL: https://...trycloudflare.com`. El archivo
+`shopify.app.toml` puede seguir mostrando `default-app-home` en desarrollo; lo
+importante es la URL generada que aparece en el output de Shopify CLI. Si en
+Shopify Admin ves `default-app-home` o el mensaje
+`Find this app in the pages where you work`, la app todavia no esta usando el
+preview local. Vuelve a ejecutar:
 
 ```bash
 npm run config:link
@@ -82,7 +85,7 @@ configura `DATABASE_URL` con la URL administrada y genera una migracion dedicada
 
 ```bash
 npm run dev          # Shopify CLI + React Router dev server
-npm run config:check # verifica que Shopify no siga en default-app-home
+npm run config:check # verifica web config, scopes y callback OAuth
 npm run build        # build de Theme assets + React Router
 npm run start        # sirve el build
 npm run lint         # ESLint

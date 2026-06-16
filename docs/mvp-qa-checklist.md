@@ -10,14 +10,18 @@ Stage 1 MVP ready for broader merchant testing.
 - Link the app with `npm run config:link`.
 - Confirm `shopify.app.toml` shows `Promo Pulse: Bars & Timers`.
 - Run `npm run dev`.
-- Confirm Shopify CLI updates the linked app home away from
-  `https://shopify.dev/apps/default-app-home`.
-- Run `npm run config:check`; it must pass before testing the embedded admin.
+- Confirm Shopify CLI detects the `React Router` web process.
+- Confirm the `npm run dev` output shows
+  `app_home └ Using URL: https://...` with a generated tunnel URL, not
+  `default-app-home`.
+- Run `npm run config:check`; it must have no blocking issues before testing the
+  embedded admin. Placeholder warnings are acceptable for local development.
 - Install the app on a dev store through Shopify CLI.
 - Confirm the embedded admin opens without auth loops.
 - If Shopify Admin shows `Find this app in the pages where you work`, the app
-  is still using the placeholder app home URL. Re-run `npm run config:link` and
-  `npm run dev`, then reinstall/open the app from the CLI URL.
+  is still using the placeholder app home URL. Stop old `shopify app dev`
+  processes, ensure `.env` has `DATABASE_URL`, re-run `npm run dev`, then open
+  the CLI Preview URL.
 
 ## 2. Run Migrations
 

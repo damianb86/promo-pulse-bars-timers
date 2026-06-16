@@ -3,18 +3,27 @@ import path from "node:path";
 
 const configPath = path.resolve("shopify.app.toml");
 const config = fs.readFileSync(configPath, "utf8");
+const webConfigPath = path.resolve("shopify.web.toml");
+const strict = process.argv.includes("--strict");
 
 const applicationUrl = readTomlString(config, "application_url");
 const redirectUrls = readTomlStringArray(config, "redirect_urls");
 const errors = [];
+const warnings = [];
 
 if (!applicationUrl) {
   errors.push("shopify.app.toml is missing application_url.");
 }
 
 if (applicationUrl?.includes("shopify.dev/apps/default-app-home")) {
+  const message =
+    "application_url points to Shopify's default-app-home placeholder. This is acceptable for `shopify app dev` only if the dev output shows a generated HTTPS app_home URL.";
+  (strict ? errors : warnings).push(message);
+}
+
+if (!fs.existsSync(webConfigPath)) {
   errors.push(
-    "application_url still points to Shopify's default-app-home placeholder.",
+    "shopify.web.toml is missing, so Shopify CLI cannot start and tunnel the React Router web app.",
   );
 }
 
@@ -28,8 +37,13 @@ if (redirectUrls.length === 0) {
 
 for (const redirectUrl of redirectUrls) {
   if (redirectUrl.includes("shopify.dev/apps/default-app-home")) {
+    const message = `redirect_urls contains Shopify's default placeholder: ${redirectUrl}`;
+    (strict ? errors : warnings).push(message);
+  }
+
+  if (redirectUrl.endsWith("/api/auth")) {
     errors.push(
-      `redirect_urls contains Shopify's default placeholder: ${redirectUrl}`,
+      `redirect URL uses the old /api/auth path; this React Router template expects /auth/callback: ${redirectUrl}`,
     );
   }
 
@@ -41,15 +55,23 @@ for (const redirectUrl of redirectUrls) {
 }
 
 if (errors.length > 0) {
-  console.error("Shopify app config is not ready for dev store testing:\n");
+  console.error("Shopify app config has blocking issues:\n");
   errors.forEach((error) => console.error(`- ${error}`));
   console.error(
-    "\nRun `npm run config:link` and then `npm run dev` so Shopify CLI can write the current HTTPS tunnel URL to the linked app config.",
+    "\nFix these issues, then run `npm run dev`. The dev output must show `app_home └ Using URL: https://...` with a generated tunnel URL.",
   );
   process.exit(1);
 }
 
-console.log("Shopify app config points to a non-placeholder app home URL.");
+if (warnings.length > 0) {
+  console.warn("Shopify app config warnings:\n");
+  warnings.forEach((warning) => console.warn(`- ${warning}`));
+  console.warn(
+    "\nFor local development, run `npm run dev` and verify the output shows a generated HTTPS app_home URL. For production/release validation, run `npm run config:check -- --strict`.",
+  );
+}
+
+console.log("Shopify app config has no blocking local development issues.");
 
 function readTomlString(source, key) {
   const match = source.match(new RegExp(`^${key}\\s*=\\s*"([^"]*)"`, "m"));

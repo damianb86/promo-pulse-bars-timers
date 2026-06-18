@@ -35,11 +35,9 @@ export type InternalStage2FeatureFlag =
 
 export const experimentStatuses = [
   "DRAFT",
-  "SCHEDULED",
   "RUNNING",
   "PAUSED",
   "COMPLETED",
-  "ARCHIVED",
 ] as const;
 
 export type ExperimentStatus = (typeof experimentStatuses)[number];
@@ -67,8 +65,9 @@ export const attributionModels = [
 export type AttributionModel = (typeof attributionModels)[number];
 
 export const uniqueCodeStatuses = [
-  "ISSUED",
-  "REDEEMED",
+  "AVAILABLE",
+  "ASSIGNED",
+  "USED",
   "EXPIRED",
   "REVOKED",
 ] as const;

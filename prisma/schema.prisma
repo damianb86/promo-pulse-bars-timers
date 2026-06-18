@@ -43,6 +43,16 @@ model Shop {
   campaigns           Campaign[]
   analyticsEvents     AnalyticsEvent[]
   discountCodeGrants  DiscountCodeGrant[]
+  uniqueDiscountCodes UniqueDiscountCode[]
+  discountCodePools   DiscountCodePool[]
+  experiments         Experiment[]
+  attributionTouches  AttributionTouch[]
+  conversions         AttributionConversion[]
+  emailTimers         EmailTimer[]
+  advancedBadgeRules  AdvancedBadgeRule[]
+  marketCampaignRules MarketCampaignRule[]
+  recommendations     CampaignRecommendation[]
+  agencyShopAccesses  AgencyShopAccess[]
   onboardingChecklist ShopOnboardingChecklist?
   settings            ShopSettings?
 }
@@ -96,7 +106,7 @@ model Campaign {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  shop                   Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop                   Shop                     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   placements             CampaignPlacement[]
   targeting              CampaignTargeting?
   design                 CampaignDesign?
@@ -107,6 +117,16 @@ model Campaign {
   badgeSettings          BadgeSettings?
   discountSync           DiscountSync?
   discountCodeGrants     DiscountCodeGrant[]
+  uniqueDiscountCodes    UniqueDiscountCode[]
+  discountCodePools      DiscountCodePool[]
+  experiments            Experiment[]
+  experimentVariants     ExperimentVariant[]
+  attributionTouches     AttributionTouch[]
+  conversions            AttributionConversion[]
+  emailTimers            EmailTimer[]
+  advancedBadgeRules     AdvancedBadgeRule[]
+  marketCampaignRules    MarketCampaignRule[]
+  recommendations        CampaignRecommendation[]
   translations           CampaignTranslation[]
   analyticsEvents        AnalyticsEvent[]
 
@@ -323,6 +343,287 @@ model AnalyticsEvent {
   @@index([sessionId])
 }
 
+model UniqueDiscountCode {
+  id                String                   @id @default(cuid())
+  shopId            String
+  campaignId        String
+  visitorId         String?
+  sessionId         String?
+  code              String
+  shopifyDiscountId String?
+  status            UniqueDiscountCodeStatus @default(AVAILABLE)
+  assignedAt        DateTime?
+  expiresAt         DateTime?
+  usedAt            DateTime?
+  orderId           String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, code])
+  @@index([campaignId, status])
+  @@index([campaignId, visitorId])
+  @@index([sessionId])
+  @@index([orderId])
+  @@index([expiresAt])
+}
+
+model DiscountCodePool {
+  id             String                 @id @default(cuid())
+  shopId         String
+  campaignId     String
+  prefix         String
+  discountType   DiscountCodeValueType
+  value          Decimal?
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  totalGenerated Int                    @default(0)
+  totalAssigned  Int                    @default(0)
+  totalUsed      Int                    @default(0)
+  status         DiscountCodePoolStatus @default(DRAFT)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+  @@index([campaignId, status])
+  @@index([prefix])
+}
+
+model Experiment {
+  id                   String                  @id @default(cuid())
+  shopId               String
+  campaignId           String
+  name                 String
+  status               ExperimentStatus        @default(DRAFT)
+  trafficSplitStrategy String                  @default("WEIGHTED")
+  primaryMetric        ExperimentPrimaryMetric
+  startsAt             DateTime?
+  endsAt               DateTime?
+  winnerVariantId      String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  shop        Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variants    ExperimentVariant[]
+  touches     AttributionTouch[]
+  conversions AttributionConversion[]
+
+  @@index([shopId, status])
+  @@index([campaignId, status])
+  @@index([winnerVariantId])
+}
+
+model ExperimentVariant {
+  id                String                  @id @default(cuid())
+  experimentId      String
+  campaignId        String
+  name              String
+  weight            Int                     @default(0)
+  status            ExperimentVariantStatus @default(DRAFT)
+  designOverride    Json?
+  textOverride      Json?
+  discountOverride  Json?
+  placementOverride Json?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  experiment  Experiment              @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  touches     AttributionTouch[]
+  conversions AttributionConversion[]
+
+  @@index([experimentId, status])
+  @@index([campaignId])
+}
+
+model AttributionTouch {
+  id            String             @id @default(cuid())
+  shopId        String
+  campaignId    String
+  experimentId  String?
+  variantId     String?
+  visitorId     String?
+  sessionId     String?
+  eventType     AnalyticsEventType
+  placementType PlacementType?
+  path          String?
+  country       String?
+  locale        String?
+  occurredAt    DateTime           @default(now())
+
+  shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  experiment Experiment?        @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  variant    ExperimentVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, occurredAt])
+  @@index([campaignId, occurredAt])
+  @@index([experimentId, variantId])
+  @@index([visitorId])
+  @@index([sessionId])
+}
+
+model AttributionConversion {
+  id               String           @id @default(cuid())
+  shopId           String
+  campaignId       String
+  experimentId     String?
+  variantId        String?
+  visitorId        String?
+  sessionId        String?
+  orderId          String
+  revenueAmount    Decimal?
+  currencyCode     String?
+  attributionModel AttributionModel
+  occurredAt       DateTime         @default(now())
+
+  shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  experiment Experiment?        @relation(fields: [experimentId], references: [id], onDelete: SetNull)
+  variant    ExperimentVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, occurredAt])
+  @@index([campaignId, occurredAt])
+  @@index([experimentId, variantId])
+  @@index([orderId])
+  @@index([visitorId])
+}
+
+model EmailTimer {
+  id              String                    @id @default(cuid())
+  shopId          String
+  campaignId      String
+  publicToken     String                    @unique
+  mode            EmailTimerMode
+  startsAt        DateTime?
+  endsAt          DateTime?
+  timezone        String                    @default("UTC")
+  expiredBehavior EmailTimerExpiredBehavior @default(SHOW_EXPIRED)
+  design          Json?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([campaignId])
+  @@index([endsAt])
+}
+
+model AdvancedBadgeRule {
+  id         String           @id @default(cuid())
+  shopId     String
+  campaignId String
+  priority   Int              @default(0)
+  conditions Json
+  design     Json
+  status     Stage2RuleStatus @default(DRAFT)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+  @@index([campaignId, priority])
+}
+
+model MarketCampaignRule {
+  id               String   @id @default(cuid())
+  shopId           String
+  campaignId       String
+  marketId         String?
+  countryCode      String?
+  locale           String?
+  currencyCode     String?
+  thresholdAmount  Decimal?
+  deliverySettings Json?
+  textOverrides    Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([campaignId])
+  @@index([marketId])
+  @@index([countryCode, locale])
+}
+
+model CampaignRecommendation {
+  id          String                       @id @default(cuid())
+  shopId      String
+  campaignId  String?
+  type        CampaignRecommendationType
+  title       String
+  description String
+  impact      String?
+  confidence  Float                        @default(0)
+  status      CampaignRecommendationStatus @default(NEW)
+  payload     Json?
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+  @@index([campaignId, status])
+  @@index([type])
+}
+
+model CampaignTemplate {
+  id              String                   @id @default(cuid())
+  key             String                   @unique
+  category        CampaignTemplateCategory
+  countryCode     String?
+  locale          String                   @default("en")
+  eventName       String
+  goal            CampaignGoal
+  type            CampaignType
+  defaultTexts    Json
+  defaultDesign   Json
+  defaultSettings Json
+  isSystem        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([category])
+  @@index([countryCode, locale])
+  @@index([goal, type])
+}
+
+model AgencyAccount {
+  id        String   @id @default(cuid())
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shopAccesses AgencyShopAccess[]
+}
+
+model AgencyShopAccess {
+  agencyId  String
+  shopId    String
+  role      AgencyShopRole
+  createdAt DateTime       @default(now())
+
+  agency AgencyAccount @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  shop   Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@id([agencyId, shopId])
+  @@index([shopId])
+  @@index([role])
+}
+
 enum ShopPlan {
   FREE
   STARTER
@@ -433,6 +734,106 @@ enum DiscountCodeGrantStatus {
   REDEEMED
   EXPIRED
   REVOKED
+}
+
+enum UniqueDiscountCodeStatus {
+  AVAILABLE
+  ASSIGNED
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum DiscountCodePoolStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXHAUSTED
+  EXPIRED
+  ARCHIVED
+}
+
+enum ExperimentStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+enum ExperimentVariantStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  WINNER
+  LOSER
+  ARCHIVED
+}
+
+enum ExperimentPrimaryMetric {
+  CLICK_RATE
+  ADD_TO_CART_RATE
+  CHECKOUT_RATE
+  REVENUE_PER_VISITOR
+}
+
+enum AttributionModel {
+  LAST_CLICK
+  FIRST_CLICK
+  LINEAR
+  POSITION_BASED
+  TIME_DECAY
+}
+
+enum EmailTimerMode {
+  FIXED_DATE
+  EVERGREEN
+}
+
+enum EmailTimerExpiredBehavior {
+  SHOW_EXPIRED
+  SHOW_ZERO
+  HIDE
+}
+
+enum Stage2RuleStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum CampaignRecommendationType {
+  CAMPAIGN_TEMPLATE
+  PLACEMENT
+  DISCOUNT_VALUE
+  MESSAGE
+  TARGETING
+  TIMING
+  MARKET_LOCALIZATION
+}
+
+enum CampaignRecommendationStatus {
+  NEW
+  VIEWED
+  APPLIED
+  DISMISSED
+}
+
+enum CampaignTemplateCategory {
+  HOLIDAY
+  SEASONAL
+  COUNTRY_EVENT
+  FLASH_SALE
+  FREE_SHIPPING
+  PRODUCT_LAUNCH
+  CART_RECOVERY
+  BFCM
+}
+
+enum AgencyShopRole {
+  OWNER
+  ADMIN
+  ANALYST
 }
 
 enum AnalyticsEventType {

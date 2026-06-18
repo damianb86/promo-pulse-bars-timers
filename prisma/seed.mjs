@@ -1,17 +1,29 @@
 /* eslint-env node */
 import {
   AnalyticsEventType,
+  AttributionModel,
   CampaignGoal,
+  CampaignRecommendationStatus,
+  CampaignRecommendationType,
   CampaignStatus,
+  CampaignTemplateCategory,
   CampaignType,
   DeliveryAfterCutoffBehavior,
+  DiscountCodePoolStatus,
   DiscountSyncMethod,
+  EmailTimerExpiredBehavior,
+  EmailTimerMode,
+  ExperimentPrimaryMetric,
+  ExperimentStatus,
+  ExperimentVariantStatus,
   FreeShippingProgressStyle,
   PlacementType,
   PrismaClient,
   ShopPlan,
+  Stage2RuleStatus,
   TimerMode,
   TimerResetBehavior,
+  UniqueDiscountCodeStatus,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -21,6 +33,13 @@ const demoCampaignIds = [
   "demo-flash-sale-countdown-bar",
   "demo-free-shipping-goal",
   "demo-delivery-cutoff",
+];
+const demoTemplateKeys = [
+  "us-bfcm-flash-sale",
+  "us-free-shipping-weekend",
+  "ca-winter-delivery-cutoff",
+  "ar-hot-sale-countdown",
+  "global-product-launch-badge",
 ];
 
 const emptyTargeting = {
@@ -249,6 +268,37 @@ async function main() {
 
   await prisma.analyticsEvent.deleteMany({
     where: { shopId: shop.id },
+  });
+
+  await prisma.campaignRecommendation.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.attributionConversion.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.attributionTouch.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.uniqueDiscountCode.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.discountCodePool.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.experiment.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.emailTimer.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.advancedBadgeRule.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.marketCampaignRule.deleteMany({
+    where: { shopId: shop.id },
+  });
+  await prisma.campaignTemplate.deleteMany({
+    where: { key: { in: demoTemplateKeys } },
   });
 
   await prisma.campaign.deleteMany({
@@ -532,9 +582,421 @@ async function main() {
     ],
   });
 
+  await seedStage2DemoData({
+    shop,
+    flashSaleCampaign,
+    freeShippingCampaign,
+    deliveryCutoffCampaign,
+  });
+
   console.log(
-    `Seeded ${demoCampaignIds.length} demo campaigns for ${shop.shopifyDomain}`,
+    `Seeded ${demoCampaignIds.length} demo campaigns and Stage 2 demo data for ${shop.shopifyDomain}`,
   );
+}
+
+async function seedStage2DemoData({
+  shop,
+  flashSaleCampaign,
+  freeShippingCampaign,
+  deliveryCutoffCampaign,
+}) {
+  await prisma.discountCodePool.create({
+    data: {
+      id: "demo-code-pool-flash-sale",
+      shopId: shop.id,
+      campaignId: flashSaleCampaign.id,
+      prefix: "VIP",
+      discountType: "PERCENTAGE",
+      value: "20",
+      startsAt: daysFromNow(-1),
+      expiresAt: daysFromNow(7),
+      totalGenerated: 100,
+      totalAssigned: 12,
+      totalUsed: 3,
+      status: DiscountCodePoolStatus.ACTIVE,
+    },
+  });
+
+  await prisma.uniqueDiscountCode.createMany({
+    data: [
+      {
+        shopId: shop.id,
+        campaignId: flashSaleCampaign.id,
+        visitorId: "demo-visitor-1",
+        sessionId: "demo-session-1",
+        code: "VIP-DEMO-001",
+        shopifyDiscountId: "gid://shopify/DiscountCodeNode/demo-vip-001",
+        status: UniqueDiscountCodeStatus.USED,
+        assignedAt: daysFromNow(-2),
+        expiresAt: daysFromNow(5),
+        usedAt: daysFromNow(-1),
+        orderId: "demo-order-1001",
+      },
+      {
+        shopId: shop.id,
+        campaignId: flashSaleCampaign.id,
+        visitorId: "demo-visitor-2",
+        sessionId: "demo-session-2",
+        code: "VIP-DEMO-002",
+        shopifyDiscountId: "gid://shopify/DiscountCodeNode/demo-vip-002",
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+        assignedAt: daysFromNow(-1),
+        expiresAt: daysFromNow(5),
+      },
+    ],
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "demo-experiment-countdown-copy",
+      shopId: shop.id,
+      campaignId: flashSaleCampaign.id,
+      name: "Countdown copy test",
+      status: ExperimentStatus.RUNNING,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
+      startsAt: daysFromNow(-3),
+      endsAt: daysFromNow(4),
+      variants: {
+        create: [
+          {
+            id: "demo-variant-countdown-control",
+            campaignId: flashSaleCampaign.id,
+            name: "Control",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Flash sale ends soon",
+              subheadline: "Save today before the timer runs out.",
+            },
+          },
+          {
+            id: "demo-variant-countdown-urgency",
+            campaignId: flashSaleCampaign.id,
+            name: "Urgency copy",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Last chance for 20% off",
+              subheadline: "Your private flash-sale window is closing.",
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "demo-experiment-free-shipping-placement",
+      shopId: shop.id,
+      campaignId: freeShippingCampaign.id,
+      name: "Free shipping placement test",
+      status: ExperimentStatus.DRAFT,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.ADD_TO_CART_RATE,
+      startsAt: daysFromNow(1),
+      endsAt: daysFromNow(14),
+      variants: {
+        create: [
+          {
+            id: "demo-variant-free-shipping-cart",
+            campaignId: freeShippingCampaign.id,
+            name: "Cart page",
+            weight: 50,
+            status: ExperimentVariantStatus.DRAFT,
+            placementOverride: { placementType: "CART_PAGE" },
+          },
+          {
+            id: "demo-variant-free-shipping-drawer",
+            campaignId: freeShippingCampaign.id,
+            name: "Cart drawer",
+            weight: 50,
+            status: ExperimentVariantStatus.DRAFT,
+            placementOverride: { placementType: "CART_DRAWER" },
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.attributionTouch.createMany({
+    data: [
+      {
+        shopId: shop.id,
+        campaignId: flashSaleCampaign.id,
+        experimentId: "demo-experiment-countdown-copy",
+        variantId: "demo-variant-countdown-control",
+        visitorId: "demo-visitor-1",
+        sessionId: "demo-session-1",
+        eventType: AnalyticsEventType.IMPRESSION,
+        placementType: PlacementType.TOP_BAR,
+        path: "/collections/sale",
+        country: "US",
+        locale: "en",
+        occurredAt: daysFromNow(-1),
+      },
+      {
+        shopId: shop.id,
+        campaignId: flashSaleCampaign.id,
+        experimentId: "demo-experiment-countdown-copy",
+        variantId: "demo-variant-countdown-urgency",
+        visitorId: "demo-visitor-2",
+        sessionId: "demo-session-2",
+        eventType: AnalyticsEventType.CLICK,
+        placementType: PlacementType.TOP_BAR,
+        path: "/collections/sale",
+        country: "US",
+        locale: "en",
+        occurredAt: daysFromNow(-1),
+      },
+    ],
+  });
+
+  await prisma.attributionConversion.create({
+    data: {
+      shopId: shop.id,
+      campaignId: flashSaleCampaign.id,
+      experimentId: "demo-experiment-countdown-copy",
+      variantId: "demo-variant-countdown-control",
+      visitorId: "demo-visitor-1",
+      sessionId: "demo-session-1",
+      orderId: "demo-order-1001",
+      revenueAmount: "128.50",
+      currencyCode: "USD",
+      attributionModel: AttributionModel.LAST_CLICK,
+      occurredAt: daysFromNow(-1),
+    },
+  });
+
+  await prisma.emailTimer.create({
+    data: {
+      id: "demo-email-timer-flash-sale",
+      shopId: shop.id,
+      campaignId: flashSaleCampaign.id,
+      publicToken: "demo-flash-sale-email-token",
+      mode: EmailTimerMode.FIXED_DATE,
+      startsAt: daysFromNow(-1),
+      endsAt: daysFromNow(7),
+      timezone: "America/New_York",
+      expiredBehavior: EmailTimerExpiredBehavior.SHOW_EXPIRED,
+      design: {
+        backgroundColor: "#111827",
+        textColor: "#FFFFFF",
+        accentColor: "#F97316",
+      },
+    },
+  });
+
+  await prisma.advancedBadgeRule.create({
+    data: {
+      id: "demo-badge-rule-low-inventory",
+      shopId: shop.id,
+      campaignId: flashSaleCampaign.id,
+      priority: 10,
+      status: Stage2RuleStatus.ACTIVE,
+      conditions: {
+        productTags: ["sale"],
+        inventoryBelow: 10,
+      },
+      design: {
+        text: "Limited sale",
+        shape: "PILL",
+        position: "TOP_RIGHT",
+      },
+    },
+  });
+
+  await prisma.marketCampaignRule.create({
+    data: {
+      id: "demo-market-rule-canada-free-shipping",
+      shopId: shop.id,
+      campaignId: freeShippingCampaign.id,
+      marketId: "gid://shopify/Market/demo-ca",
+      countryCode: "CA",
+      locale: "en",
+      currencyCode: "CAD",
+      thresholdAmount: "100",
+      deliverySettings: {
+        minDeliveryDays: 3,
+        maxDeliveryDays: 7,
+      },
+      textOverrides: {
+        headline: "Free shipping for Canada",
+      },
+    },
+  });
+
+  await seedCampaignTemplates();
+
+  await prisma.campaignRecommendation.createMany({
+    data: [
+      {
+        shopId: shop.id,
+        campaignId: flashSaleCampaign.id,
+        type: CampaignRecommendationType.MESSAGE,
+        title: "Test a more specific flash-sale headline",
+        description:
+          "Run an A/B test that compares the current headline with a discount-specific headline.",
+        impact: "May improve click-through rate on top-bar campaigns.",
+        confidence: 0.72,
+        status: CampaignRecommendationStatus.NEW,
+        payload: {
+          experimentType: "message",
+          suggestedHeadline: "Last chance for 20% off",
+        },
+      },
+      {
+        shopId: shop.id,
+        campaignId: freeShippingCampaign.id,
+        type: CampaignRecommendationType.TARGETING,
+        title: "Localize free-shipping threshold for Canada",
+        description:
+          "Canada traffic is eligible for a separate threshold and localized progress copy.",
+        impact: "Keeps free shipping claims aligned with market economics.",
+        confidence: 0.68,
+        status: CampaignRecommendationStatus.VIEWED,
+        payload: {
+          countryCode: "CA",
+          thresholdAmount: 100,
+          currencyCode: "CAD",
+        },
+      },
+      {
+        shopId: shop.id,
+        campaignId: deliveryCutoffCampaign.id,
+        type: CampaignRecommendationType.TIMING,
+        title: "Create an email countdown timer for delivery cutoff",
+        description:
+          "Use the delivery cutoff campaign in email to keep the shipping promise consistent.",
+        impact: "May increase urgency in owned channels without fake timers.",
+        confidence: 0.61,
+        status: CampaignRecommendationStatus.NEW,
+        payload: {
+          channel: "email",
+          timerMode: "FIXED_DATE",
+        },
+      },
+    ],
+  });
+}
+
+async function seedCampaignTemplates() {
+  const templates = [
+    {
+      key: "us-bfcm-flash-sale",
+      category: CampaignTemplateCategory.BFCM,
+      countryCode: "US",
+      locale: "en",
+      eventName: "Black Friday Cyber Monday",
+      goal: CampaignGoal.FLASH_SALE,
+      type: CampaignType.COUNTDOWN_BAR,
+      defaultTexts: {
+        headline: "BFCM sale ends soon",
+        subheadline: "Shop verified offers before the event closes.",
+        ctaText: "Shop BFCM",
+      },
+      defaultDesign: {
+        templateKey: "flash-sale-bold",
+        icon: "FIRE",
+      },
+      defaultSettings: {
+        suggestedDurationHours: 48,
+      },
+    },
+    {
+      key: "us-free-shipping-weekend",
+      category: CampaignTemplateCategory.FREE_SHIPPING,
+      countryCode: "US",
+      locale: "en",
+      eventName: "Free Shipping Weekend",
+      goal: CampaignGoal.FREE_SHIPPING,
+      type: CampaignType.FREE_SHIPPING_GOAL,
+      defaultTexts: {
+        headline: "You are close to free shipping",
+        freeShippingProgressText: "You're {{amount}} away from free shipping",
+      },
+      defaultDesign: {
+        templateKey: "free-shipping-progress",
+        icon: "TRUCK",
+      },
+      defaultSettings: {
+        thresholdAmount: 75,
+        currencyCode: "USD",
+      },
+    },
+    {
+      key: "ca-winter-delivery-cutoff",
+      category: CampaignTemplateCategory.SEASONAL,
+      countryCode: "CA",
+      locale: "en",
+      eventName: "Winter Delivery Cutoff",
+      goal: CampaignGoal.DELIVERY_CUTOFF,
+      type: CampaignType.DELIVERY_CUTOFF,
+      defaultTexts: {
+        headline: "Order before the winter shipping cutoff",
+        deliveryBeforeCutoffText:
+          "Order within {{time_left}} for the current delivery window.",
+      },
+      defaultDesign: {
+        templateKey: "delivery-cutoff-clean",
+        icon: "CLOCK",
+      },
+      defaultSettings: {
+        cutoffHour: 14,
+        workingDays: [1, 2, 3, 4, 5],
+      },
+    },
+    {
+      key: "ar-hot-sale-countdown",
+      category: CampaignTemplateCategory.COUNTRY_EVENT,
+      countryCode: "AR",
+      locale: "es",
+      eventName: "Hot Sale",
+      goal: CampaignGoal.FLASH_SALE,
+      type: CampaignType.COUNTDOWN_BAR,
+      defaultTexts: {
+        headline: "Hot Sale termina pronto",
+        subheadline: "Aprovecha ofertas verificadas antes del cierre.",
+        ctaText: "Comprar Hot Sale",
+      },
+      defaultDesign: {
+        templateKey: "flash-sale-bold",
+        icon: "FIRE",
+      },
+      defaultSettings: {
+        suggestedDurationHours: 72,
+      },
+    },
+    {
+      key: "global-product-launch-badge",
+      category: CampaignTemplateCategory.PRODUCT_LAUNCH,
+      countryCode: null,
+      locale: "en",
+      eventName: "Product Launch",
+      goal: CampaignGoal.PRODUCT_BADGE,
+      type: CampaignType.PRODUCT_BADGE,
+      defaultTexts: {
+        headline: "New arrival",
+        badgeText: "New",
+      },
+      defaultDesign: {
+        badgeShape: "PILL",
+        badgePosition: "TOP_RIGHT",
+      },
+      defaultSettings: {
+        recommendedPlacement: "COLLECTION_CARD",
+      },
+    },
+  ];
+
+  for (const template of templates) {
+    await prisma.campaignTemplate.upsert({
+      where: { key: template.key },
+      update: template,
+      create: template,
+    });
+  }
 }
 
 main()

@@ -1,0 +1,5 @@
+{
+  "timerLabel": "Se termine dans {{time}}",
+  "discountCode": "Code : {{code}}",
+  "goalProgress": "{{percent}} % de l'objectif atteint"
+}

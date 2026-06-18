@@ -57,7 +57,8 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
    control.
 6. Advanced discounts: Shopify Functions con fixtures, versionado y fallback
    claro si la funcion no esta instalada.
-7. Checkout/thank-you/order-status: extensiones UI y atribucion de conversion.
+7. Checkout/thank-you/order-status: Checkout UI block base implementado;
+   quedan thank-you, order-status y atribucion de conversion especifica.
 8. Reporting avanzado: cohortes, revenue, funnel, export y confidence labels.
 9. Product badges avanzados y Markets avanzado: reglas por pais, mercado,
    currency, idioma y coleccion.
@@ -97,10 +98,10 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
   1.
 - `STARTER`: sin premium Stage 2 por defecto. Puede recibir mejoras menores de
   templates existentes si no requieren datos avanzados.
-- `GROWTH`: conserva Stage 1 avanzado. Candidato para biblioteca de campanas y
-  reporting parcial, sujeto a pricing final.
+- `GROWTH`: conserva Stage 1 avanzado. Incluye Checkout UI Extension base para
+  mensajes promocionales en checkout.
 - `PRO`: plan inicial para unique codes, A/B testing, auto-winner, advanced
-  discounts, checkout extensions, email timers, advanced badges, Markets
+  discounts, email timers, advanced badges, Markets
   avanzado, AI, recommendations y agency dashboard.
 
 ## Feature Flags Internos
@@ -112,7 +113,7 @@ Los flags tipados viven en `app/types/stage2.ts` y los defaults en
 - `AB_TESTING`: enabled.
 - `AUTO_WINNER`: disabled.
 - `ADVANCED_DISCOUNTS`: enabled para la base de Shopify Functions.
-- `CHECKOUT_EXTENSIONS`: disabled.
+- `CHECKOUT_EXTENSIONS`: enabled para el bloque checkout base.
 - `EMAIL_TIMERS`: disabled.
 - `ADVANCED_BADGES`: disabled.
 - `MARKETS_ADVANCED`: disabled.

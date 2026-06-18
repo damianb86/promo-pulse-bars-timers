@@ -50,6 +50,8 @@ Las extensiones actuales se mantienen bajo `extensions/`:
 - Theme App Extension para countdown bars, timers, goal bars, badges y mensajes.
 - App Embed para scripts globales y configuracion comun de storefront.
 - Web Pixel Extension para capturar eventos analytics permitidos por Shopify.
+- Checkout UI Extension para mensajes promocionales en checkout mediante el
+  bloque `purchase.checkout.block.render`.
 
 Los archivos generados deben vivir bajo `extensions/` para conservar el flujo
 estandar de `shopify app dev`, `shopify app generate` y `shopify app deploy`.
@@ -83,8 +85,9 @@ Tipos y flags:
   categorias de templates.
 - `app/services/premiumFeatures.server.ts` define los defaults de flags
   internos y el helper `canUsePremiumFeature(shop, featureKey)`.
-- `UNIQUE_CODES` queda habilitado porque ya existe la primera base backend.
-  Los demas flags Stage 2 quedan deshabilitados hasta su implementacion.
+- `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS` y `CHECKOUT_EXTENSIONS`
+  quedan habilitados porque ya tienen base implementada. Los demas flags Stage
+  2 quedan deshabilitados hasta su implementacion.
 
 Servicios reservados para Stage 2:
 
@@ -96,6 +99,8 @@ Servicios reservados para Stage 2:
 - `app/services/markets`: reglas avanzadas de pais, mercado, idioma y moneda.
 - `app/services/email-timers`: render dinamico de countdown timers para email.
 - `app/services/agency`: multi-store y agency dashboard.
+- `app/services/checkout`: seleccion segura de campanas elegibles para checkout
+  y view models sin PII para Checkout UI Extension.
 - `app/components/stage2`: slots/componentes admin para features premium.
 
 Reglas de integracion:
@@ -107,6 +112,8 @@ Reglas de integracion:
   payloads storefront.
 - No simular urgencia: timers, stock y descuentos deben venir de datos reales o
   quedar ocultos.
+- No bloquear progreso de checkout desde Promo Pulse; la extension de checkout
+  solo renderiza mensajes y debe fallar cerrada si el backend no responde.
 - Mantener payloads storefront backwards-compatible para no romper Theme App
   Extension ni Web Pixel Extension.
 

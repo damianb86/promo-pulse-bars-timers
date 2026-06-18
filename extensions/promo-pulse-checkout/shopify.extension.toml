@@ -1,0 +1,57 @@
+# Learn more about configuring your checkout UI extension:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/configuration
+
+# The version of APIs your extension will receive. Learn more:
+# https://shopify.dev/docs/api/usage/versioning
+api_version = "2026-04"
+
+[[extensions]]
+name = "promo-pulse-checkout"
+handle = "promo-pulse-checkout"
+type = "ui_extension"
+uid = "7c677ea7-f873-b315-6317-40aee9b69fa9a7363f29"
+
+# Controls where in Shopify your extension will be injected,
+# and the file that contains your extension’s source code. Learn more:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/extension-targets-overview
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+# Gives your extension access to make external network calls, using the
+# JavaScript `fetch()` API. Learn more:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/configuration#network-access
+network_access = true
+
+# Defines settings that will be collected from merchants installing
+# your extension. Learn more:
+# https://shopify.dev/docs/api/checkout-ui-extensions/latest/configuration#settings-definition
+
+[settings]
+
+[[settings.fields]]
+key = "campaignId"
+type = "single_line_text_field"
+name = "Campaign ID"
+description = "Optional. Required only when the block mode is Specific campaign."
+
+[[settings.fields]]
+key = "mode"
+type = "single_line_text_field"
+name = "Mode"
+description = "Use AUTO_ELIGIBLE to let Promo Pulse pick a checkout-safe campaign, or SPECIFIC_CAMPAIGN to use the Campaign ID above."
+validations = [{ name = "choices", value = "[\"AUTO_ELIGIBLE\", \"SPECIFIC_CAMPAIGN\"]" }]
+
+[[settings.fields]]
+key = "compactMode"
+type = "boolean"
+name = "Compact mode"
+description = "Render a denser checkout message."
+
+[[settings.fields]]
+key = "showTimer"
+type = "boolean"
+name = "Show timer"
+description = "Show a countdown only when the eligible campaign has a real future end time."

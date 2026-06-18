@@ -11,9 +11,11 @@ describe("premium Stage 2 feature gates", () => {
     expect(defaultStage2FeatureFlags.UNIQUE_CODES).toBe(true);
     expect(defaultStage2FeatureFlags.AB_TESTING).toBe(true);
     expect(defaultStage2FeatureFlags.ADVANCED_DISCOUNTS).toBe(true);
+    expect(defaultStage2FeatureFlags.CHECKOUT_EXTENSIONS).toBe(true);
     expect(defaultStage2FeatureFlags.AUTO_WINNER).toBe(false);
     expect(isPremiumFeatureFlagEnabled("AB_TESTING")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("ADVANCED_DISCOUNTS")).toBe(true);
+    expect(isPremiumFeatureFlagEnabled("CHECKOUT_EXTENSIONS")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("AUTO_WINNER")).toBe(false);
   });
 
@@ -41,6 +43,23 @@ describe("premium Stage 2 feature gates", () => {
   it("allows unflagged planning-only premium features by plan", () => {
     expect(
       canUsePremiumFeature({ plan: "GROWTH" }, "CAMPAIGN_LIBRARY"),
+    ).toEqual({
+      allowed: true,
+      enabled: true,
+      reason: "",
+    });
+  });
+
+  it("allows checkout extensions on Growth and blocks Starter", () => {
+    expect(
+      canUsePremiumFeature({ plan: "STARTER" }, "CHECKOUT_EXTENSIONS"),
+    ).toMatchObject({
+      allowed: false,
+      enabled: true,
+      requiredPlan: "GROWTH",
+    });
+    expect(
+      canUsePremiumFeature({ plan: "GROWTH" }, "CHECKOUT_EXTENSIONS"),
     ).toEqual({
       allowed: true,
       enabled: true,

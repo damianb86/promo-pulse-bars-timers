@@ -1,0 +1,77 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "discount": {
+        "discountClasses": ["ORDER", "PRODUCT"],
+        "metafield": {
+          "jsonValue": {
+            "ruleType": "TIERED_DISCOUNT",
+            "title": "Tiered VIP discount",
+            "status": "ACTIVE",
+            "discountValue": 5,
+            "thresholds": [
+              { "minimumSubtotal": 50, "discountValue": 10 },
+              { "minimumSubtotal": 100, "discountValue": 15 }
+            ],
+            "productIds": [],
+            "collectionIds": []
+          },
+          "value": ""
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "120.00"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/0",
+            "quantity": 2,
+            "cost": {
+              "subtotalAmount": {
+                "amount": "120.00"
+              }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/111",
+              "product": {
+                "id": "gid://shopify/Product/111"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "orderDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Tiered VIP discount",
+                "targets": [
+                  {
+                    "orderSubtotal": {
+                      "excludedCartLineIds": []
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 15.0
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

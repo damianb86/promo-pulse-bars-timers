@@ -1,0 +1,80 @@
+{
+  "payload": {
+    "export": "cart-delivery-options-discounts-generate-run",
+    "target": "cart.delivery-options.discounts.generate.run",
+    "input": {
+      "discount": {
+        "discountClasses": ["SHIPPING"],
+        "metafield": {
+          "jsonValue": {
+            "ruleType": "PRODUCT_SHIPPING_COMBO",
+            "title": "Product and shipping bundle",
+            "status": "ACTIVE",
+            "discountValue": 10,
+            "shippingDiscountValue": 100,
+            "thresholds": [{ "minimumSubtotal": 50 }],
+            "productIds": ["gid://shopify/Product/444"],
+            "collectionIds": []
+          },
+          "value": ""
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "65.00"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/0",
+            "quantity": 1,
+            "cost": {
+              "subtotalAmount": {
+                "amount": "65.00"
+              }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/444",
+              "product": {
+                "id": "gid://shopify/Product/444"
+              }
+            }
+          }
+        ],
+        "deliveryGroups": [
+          {
+            "id": "gid://shopify/CartDeliveryGroup/1"
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "deliveryDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Product and shipping bundle",
+                "targets": [
+                  {
+                    "deliveryGroup": {
+                      "id": "gid://shopify/CartDeliveryGroup/1"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 100.0
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "ALL"
+          }
+        }
+      ]
+    }
+  }
+}

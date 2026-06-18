@@ -321,6 +321,56 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
   expectNoFailedRequests(page);
 });
 
+test("advanced discount rules can be created from the campaign editor", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app");
+
+  await createCampaignViaUI({
+    headline: "Advanced deal",
+    name: "E2E Advanced Discount Rule",
+  });
+
+  const form = page.locator(
+    'form:has(input[name="_action"][value="saveAdvancedDiscountRule"])',
+  );
+
+  await expect(form.getByLabel("Rule title")).toBeVisible();
+  await form.getByLabel("Rule title").fill("E2E Tiered Advanced");
+  await form.getByLabel("Rule type").selectOption("TIERED_DISCOUNT");
+  await form.getByLabel("Status").selectOption("ACTIVE");
+  await form.getByLabel("Discount value (%)").fill("10");
+  await form
+    .getByLabel("Thresholds JSON")
+    .fill('[{"minimumSubtotal":100,"discountValue":15}]');
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    form.getByRole("button", { name: "Save advanced rule" }).click(),
+  ]);
+  await page.reload();
+
+  await expect(
+    page.getByRole("cell", { name: "E2E Tiered Advanced" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Tiered Discount" }),
+  ).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Active" })).toBeVisible();
+  await expect(page.getByText(/e2e:\/\/advanced-discount\//)).toBeVisible();
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 function toLocalDateTime(date: Date) {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
 

@@ -10,8 +10,10 @@ describe("premium Stage 2 feature gates", () => {
   it("enables implemented Stage 2 flags and keeps future flags disabled", () => {
     expect(defaultStage2FeatureFlags.UNIQUE_CODES).toBe(true);
     expect(defaultStage2FeatureFlags.AB_TESTING).toBe(true);
+    expect(defaultStage2FeatureFlags.ADVANCED_DISCOUNTS).toBe(true);
     expect(defaultStage2FeatureFlags.AUTO_WINNER).toBe(false);
     expect(isPremiumFeatureFlagEnabled("AB_TESTING")).toBe(true);
+    expect(isPremiumFeatureFlagEnabled("ADVANCED_DISCOUNTS")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("AUTO_WINNER")).toBe(false);
   });
 

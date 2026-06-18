@@ -21,7 +21,7 @@ export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   UNIQUE_CODES: true,
   AB_TESTING: true,
   AUTO_WINNER: false,
-  ADVANCED_DISCOUNTS: false,
+  ADVANCED_DISCOUNTS: true,
   CHECKOUT_EXTENSIONS: false,
   EMAIL_TIMERS: false,
   ADVANCED_BADGES: false,

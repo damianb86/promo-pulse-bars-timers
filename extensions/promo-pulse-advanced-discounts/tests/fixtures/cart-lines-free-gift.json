@@ -1,0 +1,73 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "discount": {
+        "discountClasses": ["PRODUCT"],
+        "metafield": {
+          "jsonValue": {
+            "ruleType": "FREE_GIFT",
+            "title": "Free gift with purchase",
+            "status": "ACTIVE",
+            "thresholds": [{ "minimumSubtotal": 25 }],
+            "productIds": ["gid://shopify/ProductVariant/333"],
+            "collectionIds": []
+          },
+          "value": ""
+        }
+      },
+      "cart": {
+        "cost": {
+          "subtotalAmount": {
+            "amount": "80.00"
+          }
+        },
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/gift",
+            "quantity": 1,
+            "cost": {
+              "subtotalAmount": {
+                "amount": "12.00"
+              }
+            },
+            "merchandise": {
+              "__typename": "ProductVariant",
+              "id": "gid://shopify/ProductVariant/333",
+              "product": {
+                "id": "gid://shopify/Product/333"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "productDiscountsAdd": {
+            "candidates": [
+              {
+                "message": "Free gift with purchase",
+                "targets": [
+                  {
+                    "cartLine": {
+                      "id": "gid://shopify/CartLine/gift"
+                    }
+                  }
+                ],
+                "value": {
+                  "percentage": {
+                    "value": 100.0
+                  }
+                }
+              }
+            ],
+            "selectionStrategy": "FIRST"
+          }
+        }
+      ]
+    }
+  }
+}

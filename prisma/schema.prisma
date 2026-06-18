@@ -40,21 +40,22 @@ model Shop {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  campaigns           Campaign[]
-  analyticsEvents     AnalyticsEvent[]
-  discountCodeGrants  DiscountCodeGrant[]
-  uniqueDiscountCodes UniqueDiscountCode[]
-  discountCodePools   DiscountCodePool[]
-  experiments         Experiment[]
-  attributionTouches  AttributionTouch[]
-  conversions         AttributionConversion[]
-  emailTimers         EmailTimer[]
-  advancedBadgeRules  AdvancedBadgeRule[]
-  marketCampaignRules MarketCampaignRule[]
-  recommendations     CampaignRecommendation[]
-  agencyShopAccesses  AgencyShopAccess[]
-  onboardingChecklist ShopOnboardingChecklist?
-  settings            ShopSettings?
+  campaigns             Campaign[]
+  analyticsEvents       AnalyticsEvent[]
+  discountCodeGrants    DiscountCodeGrant[]
+  uniqueDiscountCodes   UniqueDiscountCode[]
+  discountCodePools     DiscountCodePool[]
+  experiments           Experiment[]
+  attributionTouches    AttributionTouch[]
+  conversions           AttributionConversion[]
+  emailTimers           EmailTimer[]
+  advancedDiscountRules AdvancedDiscountRule[]
+  advancedBadgeRules    AdvancedBadgeRule[]
+  marketCampaignRules   MarketCampaignRule[]
+  recommendations       CampaignRecommendation[]
+  agencyShopAccesses    AgencyShopAccess[]
+  onboardingChecklist   ShopOnboardingChecklist?
+  settings              ShopSettings?
 }
 
 model ShopSettings {
@@ -124,6 +125,7 @@ model Campaign {
   attributionTouches     AttributionTouch[]
   conversions            AttributionConversion[]
   emailTimers            EmailTimer[]
+  advancedDiscountRules  AdvancedDiscountRule[]
   advancedBadgeRules     AdvancedBadgeRule[]
   marketCampaignRules    MarketCampaignRule[]
   recommendations        CampaignRecommendation[]
@@ -522,6 +524,33 @@ model EmailTimer {
   @@index([endsAt])
 }
 
+model AdvancedDiscountRule {
+  id                    String                     @id @default(cuid())
+  shopId                String
+  campaignId            String?
+  title                 String
+  ruleType              AdvancedDiscountRuleType
+  thresholds            Json?
+  productIds            Json?
+  collectionIds         Json?
+  discountValue         Decimal?
+  shippingDiscountValue Decimal?
+  status                AdvancedDiscountRuleStatus @default(DRAFT)
+  functionId            String?
+  shopifyDiscountId     String?
+  startsAt              DateTime?
+  endsAt                DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+  @@index([campaignId, status])
+  @@index([shopifyDiscountId])
+}
+
 model AdvancedBadgeRule {
   id         String           @id @default(cuid())
   shopId     String
@@ -804,6 +833,21 @@ enum EmailTimerExpiredBehavior {
 }
 
 enum Stage2RuleStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum AdvancedDiscountRuleType {
+  SPEND_X_GET_Y
+  TIERED_DISCOUNT
+  FREE_GIFT
+  PRODUCT_SHIPPING_COMBO
+  CART_CONTENTS
+}
+
+enum AdvancedDiscountRuleStatus {
   DRAFT
   ACTIVE
   PAUSED

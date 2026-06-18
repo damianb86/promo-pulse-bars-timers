@@ -168,7 +168,9 @@ function toDateTimeLocal(date: Date) {
 }
 
 function isIgnoredConsoleError(message: string) {
-  return message.includes(
-    "App Bridge Next: missing required configuration fields: shop",
+  return (
+    message.includes(
+      "App Bridge Next: missing required configuration fields: shop",
+    ) || message.includes("Outdated Optimize Dep")
   );
 }

@@ -109,9 +109,9 @@ Los flags tipados viven en `app/types/stage2.ts` y los defaults en
 `app/services/premiumFeatures.server.ts`.
 
 - `UNIQUE_CODES`: enabled, porque ya existe la primera base backend.
-- `AB_TESTING`: disabled.
+- `AB_TESTING`: enabled.
 - `AUTO_WINNER`: disabled.
-- `ADVANCED_DISCOUNTS`: disabled.
+- `ADVANCED_DISCOUNTS`: enabled para la base de Shopify Functions.
 - `CHECKOUT_EXTENSIONS`: disabled.
 - `EMAIL_TIMERS`: disabled.
 - `ADVANCED_BADGES`: disabled.

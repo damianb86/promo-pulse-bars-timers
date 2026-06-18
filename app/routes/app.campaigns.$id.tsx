@@ -1,11 +1,18 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
 import {
+  AdvancedDiscountRuleStatus,
+  AdvancedDiscountRuleType,
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
 } from "@prisma/client";
 
+import {
+  AdvancedDiscountRulesEditor,
+  type AdvancedDiscountRuleErrors,
+  type AdvancedDiscountRuleRow,
+} from "../components/AdvancedDiscountRulesEditor";
 import { BadgeSettingsEditor } from "../components/BadgeSettingsEditor";
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
@@ -66,6 +73,14 @@ import {
   hasDiscountSettingsErrors,
   parseDiscountSettingsFormData,
 } from "../services/discount-settings-form.server";
+import {
+  AdvancedDiscountsError,
+  createAppDiscount,
+  deleteAppDiscount,
+  listAdvancedDiscountRulesForCampaign,
+  updateAppDiscount,
+  type AdvancedDiscountRuleInput,
+} from "../services/discounts/advancedDiscounts.server";
 import {
   createDiscountCodePool,
   generateCodeBatch,
@@ -198,10 +213,12 @@ type LoaderData = {
     customCss: string;
     deliveryCutoff: string;
     discountSync: string;
+    advancedDiscounts: string;
     experiments: string;
     multiLanguage: string;
     uniqueCodes: string;
   };
+  advancedDiscountRules: AdvancedDiscountRuleRow[];
   experiments: ExperimentRow[];
   uniqueCodePools: UniqueCodePoolRow[];
   uniqueCodeStats: UniqueCodeStats;
@@ -220,6 +237,8 @@ type ActionData = {
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
+  advancedDiscountErrors?: AdvancedDiscountRuleErrors;
+  advancedDiscountNotice?: string;
   experimentErrors?: ExperimentErrors;
   experimentNotice?: string;
   uniqueCodeErrors?: UniqueCodeErrors;
@@ -270,6 +289,7 @@ export const loader = async ({
     customCss: getLockedFeatureReason(shop, "custom_css"),
     deliveryCutoff: getLockedFeatureReason(shop, "delivery_cutoff"),
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
+    advancedDiscounts: canUsePremiumFeature(shop, "ADVANCED_DISCOUNTS").reason,
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
@@ -277,13 +297,19 @@ export const loader = async ({
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
-  const [uniqueCodePools, uniqueCodes, uniqueCodeStats, experiments] =
-    await Promise.all([
-      listDiscountCodePoolsForCampaign(shop.id, campaign.id),
-      listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
-      getUniqueCodeStatsForCampaign(shop.id, campaign.id),
-      listExperimentsForCampaign(shop.id, campaign.id),
-    ]);
+  const [
+    uniqueCodePools,
+    uniqueCodes,
+    uniqueCodeStats,
+    experiments,
+    advancedDiscountRules,
+  ] = await Promise.all([
+    listDiscountCodePoolsForCampaign(shop.id, campaign.id),
+    listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
+    getUniqueCodeStatsForCampaign(shop.id, campaign.id),
+    listExperimentsForCampaign(shop.id, campaign.id),
+    listAdvancedDiscountRulesForCampaign(shop.id, campaign.id),
+  ]);
   const experimentResults = await Promise.all(
     experiments.map((experiment) =>
       calculateExperimentResults({
@@ -354,6 +380,7 @@ export const loader = async ({
     }),
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
+    advancedDiscountRules: advancedDiscountRules.map(toAdvancedDiscountRuleRow),
     experiments: experiments.map((experiment) =>
       toExperimentRow(
         experiment,
@@ -720,6 +747,88 @@ export const action = async ({
   }
 
   if (
+    intent === "saveAdvancedDiscountRule" ||
+    intent === "deleteAdvancedDiscountRule"
+  ) {
+    const advancedDiscountGate = canUsePremiumFeature(
+      shop,
+      "ADVANCED_DISCOUNTS",
+    );
+
+    if (!advancedDiscountGate.allowed) {
+      return {
+        advancedDiscountErrors: {
+          form: advancedDiscountGate.reason,
+        },
+      };
+    }
+
+    try {
+      if (intent === "deleteAdvancedDiscountRule") {
+        const ruleId = String(formData.get("ruleId") ?? "").trim();
+
+        if (!ruleId) {
+          return {
+            advancedDiscountErrors: {
+              form: "Advanced discount rule id is required.",
+            },
+          };
+        }
+
+        await deleteAppDiscount({
+          admin,
+          ruleId,
+          shopId: shop.id,
+        });
+
+        return redirect(`/app/campaigns/${id}`);
+      }
+
+      const parsed = parseAdvancedDiscountRuleFormData(formData);
+
+      if (parsed.errors.form) {
+        return {
+          advancedDiscountErrors: parsed.errors,
+        };
+      }
+
+      const ruleId = String(formData.get("ruleId") ?? "").trim();
+      const result = ruleId
+        ? await updateAppDiscount({
+            admin,
+            input: parsed.input,
+            ruleId,
+            shopId: shop.id,
+          })
+        : await createAppDiscount({
+            admin,
+            campaignId: id,
+            input: parsed.input,
+            shopId: shop.id,
+          });
+
+      if (result.warning) {
+        return {
+          advancedDiscountNotice: result.warning,
+        };
+      }
+
+      return redirect(`/app/campaigns/${id}`);
+    } catch (error) {
+      console.error("Failed to update advanced discount rule", error);
+
+      return {
+        advancedDiscountErrors: {
+          form:
+            error instanceof AdvancedDiscountsError || error instanceof Error
+              ? error.message
+              : "Advanced discount rule could not be saved.",
+        },
+      };
+    }
+  }
+
+  if (
     intent === "createExperiment" ||
     intent === "updateExperiment" ||
     intent === "startExperiment" ||
@@ -1020,6 +1129,7 @@ export default function EditCampaignPage() {
     discountApiError,
     discountOptions,
     discountValues,
+    advancedDiscountRules,
     experiments,
     freeShippingValues,
     lowStockValues,
@@ -1070,6 +1180,12 @@ export default function EditCampaignPage() {
                 actionData?.discountValues ??
                 discountValues
               }
+            />
+            <AdvancedDiscountRulesEditor
+              errors={actionData?.advancedDiscountErrors}
+              lockedReason={lockedFeatures.advancedDiscounts}
+              notice={actionData?.advancedDiscountNotice}
+              rules={advancedDiscountRules}
             />
             <ExperimentsEditor
               errors={actionData?.experimentErrors}
@@ -1165,6 +1281,141 @@ function parseTotalCodesToGenerate(
 
 function isFormCheckboxChecked(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
+}
+
+function parseAdvancedDiscountRuleFormData(formData: FormData): {
+  errors: AdvancedDiscountRuleErrors;
+  input: AdvancedDiscountRuleInput;
+} {
+  const errors: AdvancedDiscountRuleErrors = {};
+  const title = String(formData.get("title") ?? "").trim();
+  const ruleType = readAdvancedDiscountRuleType(
+    String(formData.get("ruleType") ?? ""),
+  );
+  const status = readAdvancedDiscountRuleStatus(
+    String(formData.get("ruleStatus") ?? ""),
+  );
+  const thresholds = parseAdvancedDiscountThresholds(
+    String(formData.get("thresholdsJson") ?? ""),
+    errors,
+  );
+  const discountValue = parseOptionalPercentage(
+    formData.get("discountValue"),
+    "discountValue",
+    errors,
+  );
+  const shippingDiscountValue = parseOptionalPercentage(
+    formData.get("shippingDiscountValue"),
+    "shippingDiscountValue",
+    errors,
+  );
+
+  if (!title) {
+    errors.form = "Rule title is required.";
+  }
+
+  if (!ruleType) {
+    errors.form = "Rule type is invalid.";
+  }
+
+  if (!status) {
+    errors.form = "Rule status is invalid.";
+  }
+
+  return {
+    errors,
+    input: {
+      title,
+      ruleType: ruleType ?? AdvancedDiscountRuleType.TIERED_DISCOUNT,
+      status: status ?? AdvancedDiscountRuleStatus.DRAFT,
+      thresholds,
+      productIds: parseMultilineIds(formData.get("productIds")),
+      collectionIds: parseMultilineIds(formData.get("collectionIds")),
+      discountValue,
+      shippingDiscountValue,
+      startsAt: String(formData.get("startsAt") ?? "").trim() || null,
+      endsAt: String(formData.get("endsAt") ?? "").trim() || null,
+    },
+  };
+}
+
+function parseAdvancedDiscountThresholds(
+  value: string,
+  errors: AdvancedDiscountRuleErrors,
+) {
+  const rawValue = value.trim();
+
+  if (!rawValue) return [];
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      errors.thresholdsJson = "Thresholds must be a JSON array.";
+      errors.form = errors.thresholdsJson;
+      return [];
+    }
+
+    return parsed;
+  } catch {
+    errors.thresholdsJson = "Thresholds JSON is invalid.";
+    errors.form = errors.thresholdsJson;
+    return [];
+  }
+}
+
+function parseOptionalPercentage(
+  value: FormDataEntryValue | null,
+  key: "discountValue" | "shippingDiscountValue",
+  errors: AdvancedDiscountRuleErrors,
+) {
+  const rawValue = String(value ?? "").trim();
+
+  if (!rawValue) return null;
+
+  const number = Number(rawValue);
+
+  if (!Number.isFinite(number) || number <= 0 || number > 100) {
+    errors[key] = "Enter a percentage between 0.01 and 100.";
+    errors.form = errors[key];
+    return null;
+  }
+
+  return number;
+}
+
+function parseMultilineIds(value: FormDataEntryValue | null) {
+  return String(value ?? "")
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function readAdvancedDiscountRuleType(value: string) {
+  if (
+    value === AdvancedDiscountRuleType.SPEND_X_GET_Y ||
+    value === AdvancedDiscountRuleType.TIERED_DISCOUNT ||
+    value === AdvancedDiscountRuleType.FREE_GIFT ||
+    value === AdvancedDiscountRuleType.PRODUCT_SHIPPING_COMBO ||
+    value === AdvancedDiscountRuleType.CART_CONTENTS
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function readAdvancedDiscountRuleStatus(value: string) {
+  if (
+    value === AdvancedDiscountRuleStatus.DRAFT ||
+    value === AdvancedDiscountRuleStatus.ACTIVE ||
+    value === AdvancedDiscountRuleStatus.PAUSED ||
+    value === AdvancedDiscountRuleStatus.ARCHIVED
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function parseExperimentFormData(formData: FormData): {
@@ -1503,6 +1754,40 @@ function toUniqueCodeRow(code: {
     expiresAt: toShortDateTime(code.expiresAt),
     usedAt: toShortDateTime(code.usedAt),
   };
+}
+
+function toAdvancedDiscountRuleRow(rule: {
+  id: string;
+  title: string;
+  ruleType: string;
+  status: string;
+  thresholds: unknown;
+  productIds: unknown;
+  collectionIds: unknown;
+  discountValue: { toString(): string } | null;
+  shippingDiscountValue: { toString(): string } | null;
+  startsAt: Date | string | null;
+  endsAt: Date | string | null;
+  shopifyDiscountId: string | null;
+}): AdvancedDiscountRuleRow {
+  return {
+    id: rule.id,
+    title: rule.title,
+    ruleType: rule.ruleType,
+    status: rule.status,
+    thresholdsJson: jsonTextareaValue(rule.thresholds),
+    productIds: jsonListText(rule.productIds),
+    collectionIds: jsonListText(rule.collectionIds),
+    discountValue: rule.discountValue?.toString() ?? "",
+    shippingDiscountValue: rule.shippingDiscountValue?.toString() ?? "",
+    startsAt: toShortDateTime(rule.startsAt),
+    endsAt: toShortDateTime(rule.endsAt),
+    shopifyDiscountId: rule.shopifyDiscountId ?? "",
+  };
+}
+
+function jsonListText(value: unknown) {
+  return Array.isArray(value) ? value.join("\n") : "";
 }
 
 function toShortDateTime(date: Date | string | null) {

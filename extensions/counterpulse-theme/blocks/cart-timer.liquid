@@ -1,5 +1,5 @@
 <div
-  class="pp-root pp-cart-timer"
+  class="pp-root pp-cart-timer{% if block.settings.debugMode %} pp-root--debug{% endif %}"
   data-shop="{{ shop.permanent_domain | escape }}"
   data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
   data-country="{{ localization.country.iso_code | default: '' | escape }}"
@@ -12,8 +12,46 @@
   data-compact="{{ block.settings.compactMode }}"
   data-show-icon="{{ block.settings.showIcon }}"
   data-debug="{{ block.settings.debugMode }}"
+  data-debug-block="Promo Pulse cart timer"
   {{ block.shopify_attributes }}
-></div>
+>
+  {% if block.settings.debugMode %}
+    <aside class="pp-debug" role="status" aria-live="polite">
+      <strong>Promo Pulse cart timer renderizado</strong>
+      <p>
+        Este bloque busca campanas elegibles para la pagina de carrito.
+      </p>
+      <dl>
+        <dt>Bloque</dt>
+        <dd>Promo Pulse cart timer</dd>
+        <dt>Placement</dt>
+        <dd>CART_PAGE</dd>
+        <dt>Selection</dt>
+        <dd>{{ block.settings.fallbackMode | escape }}</dd>
+        <dt>Campaign ID</dt>
+        <dd>{% if block.settings.campaignId != blank %}{{ block.settings.campaignId | escape }}{% else %}auto{% endif %}</dd>
+        <dt>Cart subtotal</dt>
+        <dd>{{ cart.total_price | default: 0 | divided_by: 100.0 }} {{ cart.currency.iso_code | default: shop.currency | escape }}</dd>
+        <dt>Cart token</dt>
+        <dd>{% if cart.token != blank %}{{ cart.token | escape }}{% else %}not exposed{% endif %}</dd>
+        <dt>Locale</dt>
+        <dd>{{ request.locale.iso_code | default: 'en' | escape }}</dd>
+        <dt>Country</dt>
+        <dd>{{ localization.country.iso_code | default: 'unknown' | escape }}</dd>
+        <dt>API ejemplo</dt>
+        <dd>
+          <code data-pp-debug-url>/apps/counterpulse-campaigns?shop={{ shop.permanent_domain | escape }}&amp;placement=CART_PAGE&amp;cartSubtotal={{ cart.total_price | default: 0 | divided_by: 100.0 }}&amp;currency={{ cart.currency.iso_code | default: shop.currency | escape }}</code>
+        </dd>
+      </dl>
+      <p class="pp-debug__status" data-pp-debug-status>
+        Bloque Liquid renderizado. Esperando que cart-timer.js consulte la API.
+      </p>
+      <p class="pp-debug__hint">
+        Usa este bloque solo en el template de carrito. El cart drawer se inserta automaticamente desde el App Embed, sin bloque manual.
+      </p>
+    </aside>
+  {% endif %}
+</div>
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
 <script src="{{ 'cart-timer.js' | asset_url }}" defer></script>
 

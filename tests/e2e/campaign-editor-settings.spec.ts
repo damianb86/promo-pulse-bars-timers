@@ -1,0 +1,209 @@
+import {
+  expect,
+  expectNoConsoleErrors,
+  expectNoFailedRequests,
+  test,
+} from "./fixtures";
+
+test("free shipping settings persist from the campaign editor", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("free-shipping");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Free Shipping Goal" }).click();
+  const form = page.locator(
+    'form:has(input[name="_action"][value="saveFreeShippingSettings"])',
+  );
+
+  await form.getByLabel("Threshold amount").fill("150");
+  await form.getByLabel("Currency code").fill("eur");
+  await form.getByLabel("Progress style").selectOption("COMPACT");
+  await form
+    .getByLabel("Empty cart fallback message")
+    .fill("Add items for free EU shipping");
+  await form
+    .getByLabel("Success fallback message")
+    .fill("EU free shipping unlocked");
+  await form.getByLabel("Country/market threshold JSON").fill('{"DE":150}');
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    form.getByRole("button", { name: "Save free shipping settings" }).click(),
+  ]);
+  await page.reload();
+
+  await expect(form.getByLabel("Threshold amount")).toHaveValue("150");
+  await expect(form.getByLabel("Currency code")).toHaveValue("EUR");
+  await expect(form.getByLabel("Progress style")).toHaveValue("COMPACT");
+  await expect(form.getByLabel("Empty cart fallback message")).toHaveValue(
+    "Add items for free EU shipping",
+  );
+  await expect(form.getByLabel("Success fallback message")).toHaveValue(
+    "EU free shipping unlocked",
+  );
+  await expect
+    .poll(async () =>
+      JSON.parse(
+        await form.getByLabel("Country/market threshold JSON").inputValue(),
+      ),
+    )
+    .toEqual({ DE: 150 });
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("delivery cutoff settings persist from the campaign editor", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("delivery-cutoff");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Delivery Cutoff" }).click();
+  const form = page.locator(
+    'form:has(input[name="_action"][value="saveDeliveryCutoffSettings"])',
+  );
+
+  await form.getByLabel("Cutoff hour").fill("16");
+  await form.getByLabel("Cutoff minute").fill("30");
+  await form.getByLabel("Timezone").fill("America/New_York");
+  await form
+    .getByLabel("After cutoff behavior")
+    .selectOption("SHOW_AFTER_CUTOFF_MESSAGE");
+  await form.getByLabel("Processing days").fill("2");
+  await form.getByLabel("Minimum delivery days").fill("3");
+  await form.getByLabel("Maximum delivery days").fill("6");
+  await form.getByLabel("Working days JSON").fill("[1,2,3,4,5]");
+  await form.getByLabel("Holidays JSON").fill('["2026-12-25"]');
+  await form.getByLabel("Country rules JSON").fill('{"US":{"cutoffHour":15}}');
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    form.getByRole("button", { name: "Save delivery cutoff settings" }).click(),
+  ]);
+  await page.reload();
+
+  await expect(form.getByLabel("Cutoff hour")).toHaveValue("16");
+  await expect(form.getByLabel("Cutoff minute")).toHaveValue("30");
+  await expect(form.getByLabel("After cutoff behavior")).toHaveValue(
+    "SHOW_AFTER_CUTOFF_MESSAGE",
+  );
+  await expect(form.getByLabel("Processing days")).toHaveValue("2");
+  await expect(form.getByLabel("Minimum delivery days")).toHaveValue("3");
+  await expect(form.getByLabel("Maximum delivery days")).toHaveValue("6");
+  await expect
+    .poll(async () =>
+      JSON.parse(await form.getByLabel("Holidays JSON").inputValue()),
+    )
+    .toEqual(["2026-12-25"]);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("low stock, badge, and manual discount settings can be saved", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app");
+
+  await createCampaignViaUI({
+    goal: "Low stock urgency",
+    headline: "Only a few left",
+    name: "E2E Low Stock Settings",
+    placement: "PRODUCT_PAGE",
+    type: "LOW_STOCK",
+  });
+
+  const lowStockForm = page.locator(
+    'form:has(input[name="_action"][value="saveLowStockSettings"])',
+  );
+  await lowStockForm.getByLabel("Inventory threshold").fill("7");
+  await lowStockForm.getByLabel("Show exact quantity").check();
+  await lowStockForm.getByLabel("Fallback message").fill("Low stock E2E");
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    lowStockForm
+      .getByRole("button", { name: "Save low stock settings" })
+      .click(),
+  ]);
+  await page.reload();
+
+  await expect(lowStockForm.getByLabel("Inventory threshold")).toHaveValue("7");
+  await expect(lowStockForm.getByLabel("Show exact quantity")).toBeChecked();
+  await expect(lowStockForm.getByLabel("Fallback message")).toHaveValue(
+    "Low stock E2E",
+  );
+
+  const discountForm = page.locator(
+    'form:has(input[name="_action"][value="saveDiscount"])',
+  );
+  await discountForm.getByLabel("Discount mode").selectOption("LINK_EXISTING");
+  await discountForm.getByLabel("Existing discount code or ID").fill("SAVE10");
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    discountForm.getByRole("button", { name: "Save discount" }).click(),
+  ]);
+  await expect(
+    page.getByText(/manual discount reference was saved without date sync/i),
+  ).toBeVisible();
+
+  await page.goto("/app/campaigns");
+  await createCampaignViaUI({
+    goal: "Product badge",
+    headline: "Limited offer",
+    name: "E2E Badge Settings",
+    placement: "COLLECTION_CARD",
+    type: "PRODUCT_BADGE",
+  });
+
+  const badgeForm = page.locator(
+    'form:has(input[name="_action"][value="saveBadgeSettings"])',
+  );
+  await badgeForm.getByLabel("Badge text").fill("New drop");
+  await badgeForm.getByLabel("Badge shape").selectOption("SQUARE");
+  await badgeForm.getByLabel("Badge position").selectOption("BOTTOM_LEFT");
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    badgeForm.getByRole("button", { name: "Save badge settings" }).click(),
+  ]);
+  await page.reload();
+
+  await expect(badgeForm.getByLabel("Badge text")).toHaveValue("New drop");
+  await expect(badgeForm.getByLabel("Badge shape")).toHaveValue("SQUARE");
+  await expect(badgeForm.getByLabel("Badge position")).toHaveValue(
+    "BOTTOM_LEFT",
+  );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});

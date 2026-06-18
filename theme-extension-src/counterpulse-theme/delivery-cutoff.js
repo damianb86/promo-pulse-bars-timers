@@ -31,9 +31,20 @@
         window.location.hostname,
     };
 
-    if (!config.shop) return;
+    if (!config.shop) {
+      updateDebug(root, "Delivery cutoff detenido: falta el shop domain.");
+      return;
+    }
     ["TOP_BAR", "BOTTOM_BAR"].forEach(function (placement) {
-      fetchCampaigns(config, placement).then(function (campaigns) {
+      fetchCampaigns(config, placement, root).then(function (campaigns) {
+        if (!campaigns.length) {
+          updateDebug(
+            root,
+            "API OK: 0 campanas DELIVERY_CUTOFF elegibles para " +
+              placement +
+              ".",
+          );
+        }
         campaigns.forEach(function (campaign) {
           renderGlobal(campaign, config);
         });
@@ -54,16 +65,38 @@
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
     };
 
-    if (!config.shop || !config.productId) return;
-    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId)
+    if (!config.shop) {
+      updateDebug(root, "Delivery cutoff detenido: falta el shop domain.");
       return;
+    }
+    if (!config.productId) {
+      updateDebug(
+        root,
+        "Delivery cutoff detenido: Shopify no expuso productId en este contexto.",
+      );
+      return;
+    }
+    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId) {
+      updateDebug(
+        root,
+        "Delivery cutoff detenido: Specific campaign requiere un Campaign ID.",
+      );
+      return;
+    }
 
-    fetchCampaigns(config, "PRODUCT_PAGE").then(function (campaigns) {
-      if (campaigns[0]) renderProduct(root, campaigns[0], config);
+    fetchCampaigns(config, "PRODUCT_PAGE", root).then(function (campaigns) {
+      if (campaigns[0]) {
+        renderProduct(root, campaigns[0], config);
+      } else {
+        updateDebug(
+          root,
+          "API OK: 0 campanas DELIVERY_CUTOFF elegibles para PRODUCT_PAGE.",
+        );
+      }
     });
   }
 
-  function fetchCampaigns(config, placement) {
+  function buildUrl(config, placement) {
     var params = new URLSearchParams({
       locale: config.locale,
       path: config.path,
@@ -80,7 +113,19 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return fetch(api + "?" + params.toString(), {
+    return api + "?" + params.toString();
+  }
+
+  function fetchCampaigns(config, placement, debugRoot) {
+    var url = buildUrl(config, placement);
+
+    updateDebug(
+      debugRoot,
+      "Consultando DELIVERY_CUTOFF " + placement + ".",
+      url,
+    );
+
+    return fetch(url, {
       credentials: "omit",
       headers: { Accept: "application/json" },
     })
@@ -96,7 +141,24 @@
           return campaign.type === "DELIVERY_CUTOFF";
         });
       })
+      .then(function (campaigns) {
+        updateDebug(
+          debugRoot,
+          "API OK: " +
+            campaigns.length +
+            " campana(s) DELIVERY_CUTOFF para " +
+            placement +
+            ".",
+          url,
+        );
+        return campaigns;
+      })
       .catch(function (error) {
+        updateDebug(
+          debugRoot,
+          "Error DELIVERY_CUTOFF " + placement + ": " + error.message,
+          url,
+        );
         if (config.debug && window.console) console.log("[CP delivery]", error);
         return [];
       });
@@ -116,6 +178,10 @@
 
     if (!shouldRender(campaign, promise)) {
       if (existing) existing.remove();
+      updateDebug(
+        embed,
+        "Delivery cutoff recibido, pero oculto por mobileEnabled=false o afterCutoffBehavior=HIDE.",
+      );
       return;
     }
 
@@ -151,7 +217,11 @@
     var card;
 
     if (!shouldRender(campaign, promise)) {
-      root.replaceChildren();
+      updateDebug(
+        root,
+        "Delivery cutoff recibido, pero oculto por mobileEnabled=false o afterCutoffBehavior=HIDE.",
+      );
+      if (!config.debug) root.replaceChildren();
       return;
     }
 
@@ -161,6 +231,19 @@
       renderProduct(root, campaign, config);
     });
     emit(campaign);
+  }
+
+  function updateDebug(root, message, url) {
+    var status;
+    var endpoint;
+
+    if (!root || root.dataset.debug !== "true") return;
+
+    status = root.querySelector("[data-pp-debug-status]");
+    endpoint = root.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
   }
 
   function buildSurface(className, campaign, promise) {

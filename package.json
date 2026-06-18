@@ -18,7 +18,14 @@
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run --passWithNoTests",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:web": "node scripts/e2e-web-server.mjs",
     "seed": "node prisma/seed.mjs",
     "shopify": "shopify",
     "prisma": "prisma",
@@ -48,6 +55,7 @@
     "vite-tsconfig-paths": "^6.0.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@shopify/api-codegen-preset": "^2.0.0",
     "@shopify/polaris-types": "1.0.1",
     "@shopify/web-pixels-extension": "^2.18.0",

@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { redirect, useActionData, useLoaderData } from "react-router";
+import { Link, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { CampaignStatusBadge } from "../components/CampaignStatusBadge";
@@ -20,7 +20,7 @@ import {
   OnboardingError,
   updateManualOnboardingChecklistField,
 } from "../services/onboarding.server";
-import { authenticate } from "../shopify.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import type { OnboardingChecklistField } from "../types/onboarding";
 
 type LoaderData = {
@@ -36,14 +36,10 @@ type ActionData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
 
   try {
     const dashboard = await getDashboardSummary(session.shop);
-
-    if (dashboard.dataSource === "shop" && dashboard.campaigns.length === 0) {
-      throw redirect("/app/onboarding");
-    }
 
     return {
       dashboard,
@@ -67,7 +63,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const formData = await request.formData();
 
   if (String(formData.get("intent")) !== "updateChecklist") {
@@ -113,9 +109,13 @@ export default function Dashboard() {
 
   return (
     <s-page heading="Promo Pulse: Bars & Timers">
-      <s-button slot="primary-action" href="/app/campaigns/new">
+      <Link
+        className="counterpulse-button"
+        slot="primary-action"
+        to="/app/campaigns/new"
+      >
         Create campaign
-      </s-button>
+      </Link>
 
       {error && (
         <s-banner tone="warning" heading="Dashboard data needs attention">
@@ -216,9 +216,9 @@ export default function Dashboard() {
         {dashboard.campaigns.length === 0 ? (
           <EmptyStateCard
             title="No campaigns yet"
-            message="Create a campaign to start showing promotional messages on your storefront."
-            actionLabel="Create campaign"
-            actionHref="/app/campaigns/new"
+            message="Use guided setup or create a campaign manually to start showing promotional messages on your storefront."
+            actionLabel="Start guided setup"
+            actionHref="/app/onboarding"
           />
         ) : (
           <div className="counterpulse-campaign-list">

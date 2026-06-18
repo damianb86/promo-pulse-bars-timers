@@ -25,14 +25,55 @@
       : "desktop",
     debugMode: root.dataset.debug === "true",
   };
+  var refreshTimer = 0;
+  var refreshInFlight = false;
+  var lastRefreshAt = 0;
+  var minimumRefreshGapMs = 2000;
+  var proxyPauseMs = 60000;
+  var cartPauseMs = 30000;
 
-  if (!config.shop) return;
+  if (!config.shop) {
+    updateDebug(root, "Free shipping detenido: falta el shop domain.");
+    return;
+  }
 
-  refresh();
-  document.addEventListener("cart:updated", refresh);
-  document.addEventListener("shopify:section:load", refresh);
+  scheduleRefresh(true);
+  document.addEventListener("cart:updated", function () {
+    scheduleRefresh(true);
+  });
+  document.addEventListener("shopify:section:load", function () {
+    scheduleRefresh(false);
+  });
 
-  function refresh() {
+  function scheduleRefresh(force) {
+    if (refreshInFlight) return;
+
+    window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(
+      function () {
+        refresh(!!force);
+      },
+      force ? 80 : 300,
+    );
+  }
+
+  function refresh(force) {
+    var now = Date.now();
+
+    if (refreshInFlight) return;
+    if (!force && now - lastRefreshAt < minimumRefreshGapMs) return;
+    if (force && now - lastRefreshAt < 500) return;
+    if (isPaused("CounterPulseProxyPausedUntil")) {
+      updateDebug(
+        root,
+        "Free shipping pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
+      );
+      return;
+    }
+
+    refreshInFlight = true;
+    lastRefreshAt = now;
+
     readAjaxCartState()
       .then(function (cartState) {
         config.cartSubtotal =
@@ -43,10 +84,20 @@
         return Promise.all(["TOP_BAR", "BOTTOM_BAR"].map(fetchCampaigns));
       })
       .then(function (responses) {
+        updateDebug(
+          root,
+          "Free shipping API OK: " +
+            responses.flat().length +
+            " campana(s) globales recibidas.",
+        );
         responses.flat().forEach(renderCampaign);
       })
       .catch(function (error) {
+        updateDebug(root, "Error global FREE_SHIPPING_GOAL: " + error.message);
         debug(error);
+      })
+      .finally(function () {
+        refreshInFlight = false;
       });
   }
 
@@ -64,14 +115,27 @@
     if (config.cartSubtotal !== null) {
       params.set("cartSubtotal", String(config.cartSubtotal));
     }
+    var url = "/apps/counterpulse-campaigns?" + params.toString();
+
+    if (isPaused("CounterPulseProxyPausedUntil")) {
+      updateDebug(
+        root,
+        "App Proxy pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
+        url,
+      );
+      return Promise.resolve([]);
+    }
+
+    updateDebug(root, "Consultando FREE_SHIPPING_GOAL " + placement + ".", url);
 
     return window
-      .fetch("/apps/counterpulse-campaigns?" + params.toString(), {
+      .fetch(url, {
         credentials: "omit",
         headers: { Accept: "application/json" },
       })
       .then(function (response) {
         if (!response.ok) throw new Error(response.status);
+        assertJsonResponse(response, url);
         return response.json();
       })
       .then(function (payload) {
@@ -82,10 +146,51 @@
           return campaign.type === "FREE_SHIPPING_GOAL";
         });
       })
+      .then(function (campaigns) {
+        updateDebug(
+          root,
+          "API OK: " +
+            campaigns.length +
+            " FREE_SHIPPING_GOAL para " +
+            placement +
+            ".",
+          url,
+        );
+        return campaigns;
+      })
       .catch(function (error) {
+        updateDebug(
+          root,
+          "Error FREE_SHIPPING_GOAL " + placement + ": " + error.message,
+          url,
+        );
         debug(placement, error);
         return [];
       });
+  }
+
+  function assertJsonResponse(response, url) {
+    var contentType = response.headers.get("content-type") || "";
+    var redirectedTo = response.redirected
+      ? " Redirected to " + response.url
+      : "";
+
+    if (
+      response.redirected ||
+      response.url.indexOf("/password") !== -1 ||
+      contentType.indexOf("application/json") === -1
+    ) {
+      pauseRequests("CounterPulseProxyPausedUntil", proxyPauseMs);
+      throw new Error(
+        "Expected JSON from app proxy but received " +
+          (contentType || "unknown content-type") +
+          "." +
+          redirectedTo +
+          " Check Shopify app_proxy config for " +
+          url +
+          ".",
+      );
+    }
   }
 
   function renderCampaign(campaign) {
@@ -95,7 +200,13 @@
     var container;
     var bar;
 
-    if (design.mobileEnabled === false && config.device === "mobile") return;
+    if (design.mobileEnabled === false && config.device === "mobile") {
+      updateDebug(
+        root,
+        "FREE_SHIPPING_GOAL recibido, pero mobileEnabled=false y el dispositivo detectado es mobile.",
+      );
+      return;
+    }
 
     container = getPlacementContainer(campaign.placement);
     bar = buildBar(campaign);
@@ -108,6 +219,19 @@
     }
 
     emitImpression(campaign);
+  }
+
+  function updateDebug(element, message, url) {
+    var status;
+    var endpoint;
+
+    if (!element || element.dataset.debug !== "true") return;
+
+    status = element.querySelector("[data-pp-debug-status]");
+    endpoint = element.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
   }
 
   function buildBar(campaign) {
@@ -263,6 +387,10 @@
   }
 
   function readAjaxCartState() {
+    if (isPaused("CounterPulseCartPausedUntil")) {
+      return Promise.resolve({ subtotal: null, currency: "" });
+    }
+
     return window
       .fetch("/cart.js", {
         credentials: "same-origin",
@@ -270,6 +398,7 @@
       })
       .then(function (response) {
         if (!response.ok) throw new Error(response.status);
+        assertCartJsonResponse(response);
         return response.json();
       })
       .then(function (cart) {
@@ -284,6 +413,21 @@
       .catch(function () {
         return { subtotal: null, currency: "" };
       });
+  }
+
+  function assertCartJsonResponse(response) {
+    var contentType = response.headers.get("content-type") || "";
+
+    if (
+      response.redirected ||
+      response.url.indexOf("/password") !== -1 ||
+      contentType.indexOf("application/json") === -1
+    ) {
+      pauseRequests("CounterPulseCartPausedUntil", cartPauseMs);
+      throw new Error(
+        "Expected JSON from /cart.js but received storefront HTML.",
+      );
+    }
   }
 
   function readCartSubtotal(element) {
@@ -408,6 +552,14 @@
 
   function isSafeUrl(url) {
     return url ? url.charAt(0) === "/" || /^https?:\/\//i.test(url) : false;
+  }
+
+  function isPaused(key) {
+    return Number(window[key] || 0) > Date.now();
+  }
+
+  function pauseRequests(key, ms) {
+    window[key] = Math.max(Number(window[key] || 0), Date.now() + ms);
   }
 
   function debug() {

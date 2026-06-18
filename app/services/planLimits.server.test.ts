@@ -67,6 +67,14 @@ describe("plan limits", () => {
     });
   });
 
+  it("treats local development as Pro when no override is configured", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(canUseFeature({ plan: "FREE" }, "product_badges")).toMatchObject({
+      allowed: true,
+    });
+  });
+
   it("reports campaign feature gates", async () => {
     await expect(
       validateCampaignPlanAccess(

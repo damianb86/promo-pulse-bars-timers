@@ -41,8 +41,85 @@ non-blocking analytics bridge used by the embed.
 The Theme Editor shows `Promo Pulse embed` with:
 
 - `Enabled`: renders the embed root when active.
-- `Debug mode`: logs API failures and fetch behavior to the browser console.
+- `Debug mode`: shows a visible storefront diagnostic panel and logs API
+  failures/fetch behavior to the browser console.
 - `Default locale`: fallback storefront locale when Shopify does not expose one.
+
+## Debug Mode
+
+Turn on `Debug mode` in the App Embed or in an individual App Block when a
+campaign does not appear on the storefront. In debug mode, Promo Pulse renders a
+namespaced diagnostic wrapper before any API result is available.
+
+The panel shows:
+
+- the exact block name Shopify rendered;
+- the expected placement;
+- shop, locale, country, product, cart, and selection context when available;
+- an example App Proxy API URL;
+- the latest JavaScript status, such as API OK, zero eligible campaigns, missing
+  product context, missing Campaign ID, missing drawer selector, or API error.
+
+If the debug panel appears, the Theme App Extension block is mounted correctly.
+If the status says `0 campanas elegibles`, check campaign status, schedule,
+placement, campaign type, targeting, locale/country/product/cart context, and
+plan gating. If the debug panel does not appear, the block or App Embed is not
+enabled in the active theme/template.
+
+If Network shows `302 Found` for `/apps/counterpulse-campaigns` and redirects
+to `/password`, Shopify is not proxying that request to the app. Check that
+`shopify.app.toml` has:
+
+```toml
+[app_proxy]
+url = "https://shopify.dev/apps/default-app-home/apps/counterpulse-campaigns"
+subpath = "counterpulse-campaigns"
+prefix = "apps"
+```
+
+Then restart `npm run dev` so Shopify CLI applies the generated tunnel URL to
+the development store app configuration. The API response must be JSON, not the
+storefront password HTML page.
+
+The cart drawer runtime uses a debounced `MutationObserver`. It intentionally
+ignores Promo Pulse debug panel updates and existing Promo Pulse drawer slots so
+debug text changes do not create repeated `/cart.js` or app proxy calls.
+
+## Which Block To Use
+
+Exact Theme Editor names:
+
+- App Embed: `Promo Pulse embed`
+- Product page app block: `Promo Pulse product timer`
+- Cart page app block: `Promo Pulse cart timer`
+- Product badge app block: `Promo Pulse badge`
+
+Campaign placement mapping:
+
+| Campaign type        | Placement                           | What to add in Theme Editor                                                         |
+| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `COUNTDOWN_BAR`      | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
+| `PRODUCT_TIMER`      | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
+| `CART_TIMER`         | `CART_PAGE`                         | Add `Promo Pulse cart timer` to the cart template.                                  |
+| `CART_TIMER`         | `CART_DRAWER`                       | Enable `Promo Pulse embed`. No block is needed; JavaScript inserts into the drawer. |
+| `FREE_SHIPPING_GOAL` | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
+| `FREE_SHIPPING_GOAL` | `CART_PAGE`                         | Add `Promo Pulse cart timer` to the cart template.                                  |
+| `FREE_SHIPPING_GOAL` | `CART_DRAWER`                       | Enable `Promo Pulse embed`. No block is needed.                                     |
+| `FREE_SHIPPING_GOAL` | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
+| `DELIVERY_CUTOFF`    | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
+| `DELIVERY_CUTOFF`    | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
+| `LOW_STOCK`          | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
+| `PRODUCT_BADGE`      | `PRODUCT_PAGE` or `COLLECTION_CARD` | Add `Promo Pulse badge` where the theme exposes product context.                    |
+
+Yes: cart drawer rendering is intentionally automatic through the App Embed.
+The merchant should not add a drawer block manually. The runtime tries default
+selectors (`cart-drawer`, `#CartDrawer`, `.drawer__contents`,
+`form[action="/cart"]`) and then the custom drawer selector saved in app
+settings.
+
+Yes: top and bottom countdown/announcement bars are also automatic through the
+App Embed. The merchant only enables `Promo Pulse embed` and creates an active
+campaign with `TOP_BAR` or `BOTTOM_BAR` placement.
 
 ## Activation In A Dev Store
 

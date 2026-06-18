@@ -15,9 +15,9 @@ import {
   OnboardingError,
   updateManualOnboardingChecklistField,
 } from "../services/onboarding.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import { getEffectiveShopPlan } from "../services/planLimits.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
-import { authenticate } from "../shopify.server";
 import { campaignDesignTemplates } from "../types/campaign-design";
 import type {
   OnboardingChecklistField,
@@ -50,7 +50,7 @@ const allowedTemplates = new Set(
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const [campaignCount, impressionCount] = await Promise.all([
     prisma.campaign.count({ where: { shopId: shop.id } }),
@@ -79,7 +79,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<OnboardingWizardActionData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");

@@ -16,20 +16,50 @@
       debug: root.dataset.debug === "true",
     };
 
-    if (!config.shop || !config.productId) return;
-    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId)
+    if (!config.shop) {
+      updateDebug(root, "Detenido: falta el shop domain en el bloque.");
       return;
+    }
+    if (!config.productId) {
+      updateDebug(
+        root,
+        "Detenido: Shopify no expuso productId. Coloca el bloque en un contexto de producto.",
+      );
+      return;
+    }
+    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId) {
+      updateDebug(
+        root,
+        "Detenido: el modo Specific campaign requiere un Campaign ID.",
+      );
+      return;
+    }
+
+    updateDebug(
+      root,
+      "Consultando campanas PRODUCT_BADGE elegibles.",
+      buildUrl(config),
+    );
 
     fetchCampaign(config)
       .then(function (campaign) {
-        if (campaign) render(root, campaign);
+        if (campaign) {
+          updateDebug(root, "API OK: renderizando badge " + campaign.id + ".");
+          render(root, campaign);
+        } else {
+          updateDebug(
+            root,
+            "API OK: 0 badges elegibles. Revisa tipo PRODUCT_BADGE, placement, status ACTIVE, targeting y fechas.",
+          );
+        }
       })
       .catch(function (error) {
+        updateDebug(root, "Error consultando la API: " + error.message);
         if (config.debug && window.console) console.log("[CP badge]", error);
       });
   }
 
-  function fetchCampaign(config) {
+  function buildUrl(config) {
     var params = new URLSearchParams({
       shop: config.shop,
       path: window.location.pathname,
@@ -45,7 +75,11 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return fetch("/apps/counterpulse-campaigns?" + params.toString(), {
+    return "/apps/counterpulse-campaigns?" + params.toString();
+  }
+
+  function fetchCampaign(config) {
+    return fetch(buildUrl(config), {
       credentials: "omit",
       headers: { Accept: "application/json" },
     })
@@ -85,6 +119,19 @@
     setDesign(element, campaign.design || {});
     root.replaceChildren(element);
     emitImpression(campaign);
+  }
+
+  function updateDebug(root, message, url) {
+    var status;
+    var endpoint;
+
+    if (!root || root.dataset.debug !== "true") return;
+
+    status = root.querySelector("[data-pp-debug-status]");
+    endpoint = root.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
   }
 
   function setDesign(element, design) {

@@ -20,13 +20,28 @@
   var renderedCampaigns = {};
   var cacheTtlMs = 30000;
 
-  if (!config.shop) return;
+  if (!config.shop) {
+    updateDebug(root, "Embed detenido: falta el shop domain.");
+    return;
+  }
+
+  updateDebug(
+    root,
+    "Embed JS cargado. Consultando TOP_BAR y BOTTOM_BAR; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
+  );
 
   Promise.all(["TOP_BAR", "BOTTOM_BAR"].map(fetchCampaigns))
     .then(function (responses) {
+      updateDebug(
+        root,
+        "API global OK: " +
+          responses.flat().length +
+          " campana(s) recibidas para TOP_BAR/BOTTOM_BAR.",
+      );
       responses.flat().forEach(renderCampaign);
     })
     .catch(function (error) {
+      updateDebug(root, "Error global del embed: " + error.message);
       debug(error);
     });
 
@@ -35,7 +50,18 @@
     var cached = campaignCache[url];
     var now = Date.now();
 
+    updateDebug(root, "Consultando " + placement + ".", url);
+
     if (cached && cached.expiresAt > now) {
+      updateDebug(
+        root,
+        "Usando cache local para " +
+          placement +
+          ": " +
+          cached.campaigns.length +
+          " campana(s).",
+        url,
+      );
       return Promise.resolve(cached.campaigns);
     }
 
@@ -65,9 +91,19 @@
           campaigns: campaigns,
           expiresAt: Date.now() + cacheTtlMs,
         };
+        updateDebug(
+          root,
+          "API OK para " + placement + ": " + campaigns.length + " campana(s).",
+          url,
+        );
         return campaigns;
       })
       .catch(function (error) {
+        updateDebug(
+          root,
+          "Error consultando " + placement + ": " + error.message,
+          url,
+        );
         debug(placement, error);
         return [];
       })
@@ -161,6 +197,19 @@
     renderedCampaigns[campaign.placement + ":" + campaign.id] = true;
     startCountdown(bar, campaign);
     emitImpression(campaign);
+  }
+
+  function updateDebug(element, message, url) {
+    var status;
+    var endpoint;
+
+    if (!element || element.dataset.debug !== "true") return;
+
+    status = element.querySelector("[data-pp-debug-status]");
+    endpoint = element.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
   }
 
   function setDesignProperties(bar, design) {

@@ -481,7 +481,9 @@ function readDevPlanOverride() {
 
   return Object.values(ShopPlan).includes(value as ShopPlan)
     ? (value as ShopPlan)
-    : null;
+    : process.env.NODE_ENV === "development"
+      ? ShopPlan.PRO
+      : null;
 }
 
 function getMonthStart(now: Date) {

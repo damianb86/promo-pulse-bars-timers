@@ -24,12 +24,35 @@
       showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
     };
+    var requestUrl;
 
-    if (!config.shop || !config.productId) return;
-    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId)
+    if (!config.shop) {
+      updateDebug(root, "Detenido: falta el shop domain en el bloque.");
       return;
+    }
+    if (!config.productId) {
+      updateDebug(
+        root,
+        "Detenido: Shopify no expuso productId. Coloca el bloque en un template de producto.",
+      );
+      return;
+    }
+    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId) {
+      updateDebug(
+        root,
+        "Detenido: el modo Specific campaign requiere un Campaign ID.",
+      );
+      return;
+    }
 
-    fetch(buildUrl(config), {
+    requestUrl = buildUrl(config);
+    updateDebug(
+      root,
+      "Consultando campanas PRODUCT_PAGE elegibles.",
+      requestUrl,
+    );
+
+    fetch(requestUrl, {
       credentials: "omit",
       headers: { Accept: "application/json" },
     })
@@ -39,12 +62,35 @@
       })
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
-        var campaign = Array.isArray(payload.campaigns)
-          ? payload.campaigns[0]
-          : null;
-        if (campaign) render(root, campaign, config);
+        var campaigns = Array.isArray(payload.campaigns)
+          ? payload.campaigns
+          : [];
+        var campaign = campaigns[0] || null;
+        if (campaign) {
+          updateDebug(
+            root,
+            "API OK: se recibio la campana " +
+              campaign.id +
+              " (" +
+              campaign.type +
+              ").",
+            requestUrl,
+          );
+          render(root, campaign, config);
+        } else {
+          updateDebug(
+            root,
+            "API OK: 0 campanas elegibles. Revisa status ACTIVE, placement PRODUCT_PAGE, targeting, locale/country/producto y fechas.",
+            requestUrl,
+          );
+        }
       })
       .catch(function (error) {
+        updateDebug(
+          root,
+          "Error consultando la API: " + error.message,
+          requestUrl,
+        );
         if (config.debugMode && window.console)
           console.log("[CP product]", error);
       });
@@ -74,12 +120,27 @@
 
   function render(root, campaign, config) {
     var design = campaign.design || {};
-    var timerState = calculateTimerState(campaign, new Date());
+    var timerState;
     var card = document.createElement("section");
 
-    if (campaign.type === "DELIVERY_CUTOFF" || campaign.type === "LOW_STOCK")
+    if (campaign.type === "DELIVERY_CUTOFF" || campaign.type === "LOW_STOCK") {
+      updateDebug(
+        root,
+        "Campana recibida, pero " +
+          campaign.type +
+          " la renderiza un asset dedicado en este mismo bloque.",
+      );
       return;
-    if (timerState.isExpired && !(campaign.texts || {}).expiredText) return;
+    }
+
+    timerState = calculateTimerState(campaign, new Date());
+    if (timerState.isExpired && !(campaign.texts || {}).expiredText) {
+      updateDebug(
+        root,
+        "Campana recibida, pero esta expirada y no tiene expiredText para mostrar.",
+      );
+      return;
+    }
 
     card.className =
       "pp-product-card" +
@@ -130,6 +191,19 @@
     emitImpression(campaign);
   }
 
+  function updateDebug(root, message, url) {
+    var status;
+    var endpoint;
+
+    if (!root || root.dataset.debug !== "true") return;
+
+    status = root.querySelector("[data-pp-debug-status]");
+    endpoint = root.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
+  }
+
   function renderMessage(campaign, timerState, config) {
     var texts = campaign.texts || {};
     var message = document.createElement("div");
@@ -138,21 +212,11 @@
 
     message.className = "pp-message";
 
-    if (campaign.type === "DELIVERY_CUTOFF") {
-      detail = timerState.isExpired
-        ? texts.deliveryAfterCutoffText || texts.expiredText || detail
-        : texts.deliveryBeforeCutoffText || detail;
-    }
-
     if (campaign.type === "FREE_SHIPPING_GOAL") {
       detail = buildFreeShippingText(campaign, config) || detail;
     }
 
-    if (
-      timerState.isExpired &&
-      texts.expiredText &&
-      campaign.type !== "DELIVERY_CUTOFF"
-    ) {
+    if (timerState.isExpired && texts.expiredText) {
       detail = texts.expiredText;
     }
 
@@ -292,11 +356,6 @@
 
     if (mode === "RECURRING_WEEKLY") {
       endsAt = weeklyDeadline(timer, campaign.timezone, now);
-      return timerState(now, endsAt);
-    }
-
-    if (campaign.type === "DELIVERY_CUTOFF" && campaign.deliveryCutoff) {
-      endsAt = dailyDeadline(campaign.deliveryCutoff, campaign.timezone, now);
       return timerState(now, endsAt);
     }
 

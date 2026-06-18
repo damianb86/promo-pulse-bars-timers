@@ -10,7 +10,11 @@ import {
   ShopPlan,
   TimerMode,
 } from "@prisma/client";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import {
+  RouterContextProvider,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { calculateDeliveryPromise } from "../lib/delivery-promise";
@@ -77,7 +81,7 @@ function createLoaderArgs(request: Request): LoaderFunctionArgs {
     url: new URL(request.url),
     pattern: storefrontRoutePattern,
     params: {},
-    context: {},
+    context: new RouterContextProvider(),
   };
 }
 
@@ -87,7 +91,7 @@ function createActionArgs(request: Request): ActionFunctionArgs {
     url: new URL(request.url),
     pattern: storefrontRoutePattern,
     params: {},
-    context: {},
+    context: new RouterContextProvider(),
   };
 }
 

@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 type EmptyStateCardProps = {
   title: string;
   message: string;
@@ -19,7 +21,9 @@ export function EmptyStateCard({
           <div className="counterpulse-empty-state__message">{message}</div>
         </div>
         {actionLabel && actionHref && (
-          <s-button href={actionHref}>{actionLabel}</s-button>
+          <Link className="counterpulse-button" to={actionHref}>
+            {actionLabel}
+          </Link>
         )}
       </div>
     </s-box>

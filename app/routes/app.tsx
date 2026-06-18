@@ -3,10 +3,10 @@ import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { AppShell } from "../components/AppShell";
-import { authenticate } from "../shopify.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  await authenticateAdmin(request);
 
   // eslint-disable-next-line no-undef
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };

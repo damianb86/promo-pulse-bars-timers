@@ -16,12 +16,19 @@
   var drawerObserverStarted = false;
   var drawerInternalUpdate = false;
   var drawerRenderTimer = 0;
+  var drawerRequestInFlight = false;
+  var drawerLastRequestAt = 0;
+  var drawerMinimumRequestGapMs = 2000;
+  var proxyPauseMs = 60000;
+  var cartPauseMs = 30000;
 
   window.CounterPulseCartTimer = { init: init };
 
   init();
   document.addEventListener("shopify:section:load", init);
-  document.addEventListener("cart:updated", scheduleDrawerRender);
+  document.addEventListener("cart:updated", function () {
+    scheduleDrawerRender(true);
+  });
 
   function init() {
     initCartPageBlocks();
@@ -41,16 +48,31 @@
   function initCartPageBlock(root) {
     var config = readBlockConfig(root, "CART_PAGE");
 
-    if (!config.shop) return;
+    if (!config.shop) {
+      updateDebug(root, "Detenido: falta el shop domain en el bloque.");
+      return;
+    }
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId) {
+      updateDebug(
+        root,
+        "Detenido: el modo Specific campaign requiere un Campaign ID.",
+      );
       return;
     }
 
-    fetchCampaigns(config)
+    fetchCampaigns(config, root)
       .then(function (campaigns) {
-        if (campaigns[0]) renderCartCampaign(root, campaigns[0], config, false);
+        if (campaigns[0]) {
+          renderCartCampaign(root, campaigns[0], config, false);
+        } else {
+          updateDebug(
+            root,
+            "API OK: 0 campanas elegibles para CART_PAGE. Revisa placement, status ACTIVE, targeting, fechas y tipo CART_TIMER/FREE_SHIPPING_GOAL.",
+          );
+        }
       })
       .catch(function (error) {
+        updateDebug(root, "Error consultando la API: " + error.message);
         debug(config, "[CP cart]", error);
       });
   }
@@ -61,53 +83,96 @@
 
     drawerObserverStarted = true;
     scheduleDrawerRender();
+    updateDebug(
+      document.getElementById("counterpulse-app-embed"),
+      "Soporte CART_DRAWER activo. Observando apertura/cambios del drawer.",
+    );
 
-    new MutationObserver(function () {
-      if (!drawerInternalUpdate) scheduleDrawerRender();
+    new MutationObserver(function (mutations) {
+      if (drawerInternalUpdate || !hasExternalDrawerMutation(mutations)) return;
+      scheduleDrawerRender(false);
     }).observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
   }
 
-  function scheduleDrawerRender() {
+  function scheduleDrawerRender(force) {
     if (!drawerObserverStarted) return;
+    if (!force && drawerRequestInFlight) return;
+
     window.clearTimeout(drawerRenderTimer);
-    drawerRenderTimer = window.setTimeout(renderDrawerCampaign, 150);
+    drawerRenderTimer = window.setTimeout(
+      function () {
+        renderDrawerCampaign(!!force);
+      },
+      force ? 80 : 300,
+    );
   }
 
-  function renderDrawerCampaign() {
+  function renderDrawerCampaign(force) {
     var embed = document.getElementById("counterpulse-app-embed");
     var config;
+    var now = Date.now();
 
     if (!embed) return;
+    if (!force && now - drawerLastRequestAt < drawerMinimumRequestGapMs) return;
+    if (drawerRequestInFlight) return;
 
     config = readEmbedConfig(embed, "CART_DRAWER");
-    if (!config.shop) return;
+    if (!config.shop) {
+      updateDebug(embed, "Cart drawer detenido: falta el shop domain.");
+      return;
+    }
+
+    drawerRequestInFlight = true;
+    drawerLastRequestAt = now;
 
     readAjaxCartState()
       .then(function (cartState) {
         config.cartSubtotal = cartState.subtotal;
         config.currency = cartState.currency || config.currency;
         config.cartToken = cartState.token || config.cartToken;
-        return fetchCampaigns(config);
+        return fetchCampaigns(config, embed);
       })
       .then(function (campaigns) {
         var campaign = campaigns[0];
         var target = campaign ? findDrawerTarget(campaign, config) : null;
         var slot;
 
-        if (!campaign || !target) return;
+        if (!campaign) {
+          updateDebug(
+            embed,
+            "API OK: 0 campanas elegibles para CART_DRAWER. Crea una campana activa con placement CART_DRAWER.",
+          );
+          return;
+        }
+        if (!target) {
+          updateDebug(
+            embed,
+            "Campana CART_DRAWER recibida, pero no se encontro ningun selector de drawer. Configura customCartDrawerSelector en Settings.",
+          );
+          return;
+        }
 
         drawerInternalUpdate = true;
         slot = ensureDrawerSlot(target);
         renderCartCampaign(slot, campaign, config, true);
+        updateDebug(
+          embed,
+          "CART_DRAWER renderizado en selector compatible. Campaign ID: " +
+            campaign.id,
+        );
         window.setTimeout(function () {
           drawerInternalUpdate = false;
         }, 0);
       })
       .catch(function (error) {
+        updateDebug(embed, "Error en CART_DRAWER: " + error.message);
         debug(config, "[CP drawer]", error);
+      })
+      .finally(function () {
+        drawerRequestInFlight = false;
       });
   }
 
@@ -154,20 +219,82 @@
     };
   }
 
-  function fetchCampaigns(config) {
+  function fetchCampaigns(config, debugRoot) {
+    var url = buildCampaignUrl(config);
+
+    if (isPaused("CounterPulseProxyPausedUntil")) {
+      updateDebug(
+        debugRoot,
+        "App Proxy pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
+        url,
+      );
+      return Promise.resolve([]);
+    }
+
+    updateDebug(
+      debugRoot,
+      "Consultando campanas " + config.placement + " elegibles.",
+      url,
+    );
+
     return window
-      .fetch(buildCampaignUrl(config), {
+      .fetch(url, {
         credentials: "omit",
         headers: { Accept: "application/json" },
       })
       .then(function (response) {
         if (!response.ok) throw new Error(response.status);
+        assertJsonResponse(response, url);
         return response.json();
       })
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
-        return Array.isArray(payload.campaigns) ? payload.campaigns : [];
+        var campaigns = Array.isArray(payload.campaigns)
+          ? payload.campaigns
+          : [];
+        updateDebug(
+          debugRoot,
+          "API OK: " +
+            campaigns.length +
+            " campana(s) elegibles para " +
+            config.placement +
+            ".",
+          url,
+        );
+        return campaigns;
+      })
+      .catch(function (error) {
+        updateDebug(
+          debugRoot,
+          "Error consultando " + config.placement + ": " + error.message,
+          url,
+        );
+        throw error;
       });
+  }
+
+  function assertJsonResponse(response, url) {
+    var contentType = response.headers.get("content-type") || "";
+    var redirectedTo = response.redirected
+      ? " Redirected to " + response.url
+      : "";
+
+    if (
+      response.redirected ||
+      response.url.indexOf("/password") !== -1 ||
+      contentType.indexOf("application/json") === -1
+    ) {
+      pauseRequests("CounterPulseProxyPausedUntil", proxyPauseMs);
+      throw new Error(
+        "Expected JSON from app proxy but received " +
+          (contentType || "unknown content-type") +
+          "." +
+          redirectedTo +
+          " Check Shopify app_proxy config for " +
+          url +
+          ".",
+      );
+    }
   }
 
   function buildCampaignUrl(config) {
@@ -195,12 +322,22 @@
     var texts = campaign.texts || {};
     var card;
 
-    if (timerState.isExpired && !texts.expiredText) return;
+    if (timerState.isExpired && !texts.expiredText) {
+      updateDebug(
+        root,
+        "Campana recibida, pero esta expirada y no tiene expiredText para mostrar.",
+      );
+      return;
+    }
     if (
       campaign.design &&
       campaign.design.mobileEnabled === false &&
       detectDevice() === "mobile"
     ) {
+      updateDebug(
+        root,
+        "Campana recibida, pero mobileEnabled=false y el dispositivo detectado es mobile.",
+      );
       return;
     }
 
@@ -248,6 +385,52 @@
     root.replaceChildren(card);
     tick(card, campaign, config);
     emitImpression(campaign);
+  }
+
+  function updateDebug(root, message, url) {
+    var status;
+    var endpoint;
+
+    if (!root || root.dataset.debug !== "true") return;
+
+    drawerInternalUpdate = true;
+    status = root.querySelector("[data-pp-debug-status]");
+    endpoint = root.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
+    window.setTimeout(function () {
+      drawerInternalUpdate = false;
+    }, 0);
+  }
+
+  function hasExternalDrawerMutation(mutations) {
+    return mutations.some(function (mutation) {
+      if (!isInternalNode(mutation.target)) return true;
+
+      return [].slice.call(mutation.addedNodes).some(function (node) {
+        return !isInternalNode(node);
+      });
+    });
+  }
+
+  function isInternalNode(node) {
+    var element;
+
+    if (!node) return true;
+    if (node.nodeType === 3) {
+      element = node.parentElement;
+    } else if (node.nodeType === 1) {
+      element = node;
+    } else {
+      return true;
+    }
+
+    if (!element || !element.closest) return true;
+
+    return !!element.closest(
+      "#counterpulse-app-embed, .pp-debug, #counterpulse-cart-drawer-slot, .pp-cart-drawer-slot, .pp-container, .pp-cart-card",
+    );
   }
 
   function renderMessage(campaign, timerState, config) {
@@ -449,6 +632,14 @@
   }
 
   function readAjaxCartState() {
+    if (isPaused("CounterPulseCartPausedUntil")) {
+      return Promise.resolve({
+        subtotal: detectWindowCartSubtotal(),
+        currency: window.CounterPulseCartCurrency || "",
+        token: "",
+      });
+    }
+
     return window
       .fetch("/cart.js", {
         credentials: "same-origin",
@@ -456,6 +647,7 @@
       })
       .then(function (response) {
         if (!response.ok) throw new Error(response.status);
+        assertCartJsonResponse(response);
         return response.json();
       })
       .then(function (cart) {
@@ -475,6 +667,21 @@
           token: "",
         };
       });
+  }
+
+  function assertCartJsonResponse(response) {
+    var contentType = response.headers.get("content-type") || "";
+
+    if (
+      response.redirected ||
+      response.url.indexOf("/password") !== -1 ||
+      contentType.indexOf("application/json") === -1
+    ) {
+      pauseRequests("CounterPulseCartPausedUntil", cartPauseMs);
+      throw new Error(
+        "Expected JSON from /cart.js but received storefront HTML.",
+      );
+    }
   }
 
   function buildFreeShippingText(campaign, config) {
@@ -662,6 +869,14 @@
     } catch {
       return null;
     }
+  }
+
+  function isPaused(key) {
+    return Number(window[key] || 0) > Date.now();
+  }
+
+  function pauseRequests(key, ms) {
+    window[key] = Math.max(Number(window[key] || 0), Date.now() + ms);
   }
 
   function safeColor(value, fallback) {

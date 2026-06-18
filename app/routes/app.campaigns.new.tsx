@@ -4,6 +4,7 @@ import { useActionData, useLoaderData } from "react-router";
 import { CampaignForm } from "../components/CampaignForm";
 import { createCampaign } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import {
   hasCampaignFormErrors,
   parseCampaignFormData,
@@ -13,7 +14,6 @@ import {
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
-import { authenticate } from "../shopify.server";
 import {
   defaultCampaignFormValues,
   type CampaignFormErrors,
@@ -37,7 +37,7 @@ type LoaderData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const settings = await getShopSettingsOrDefaults(shop.id);
 
@@ -52,7 +52,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
-  const { session, redirect } = await authenticate.admin(request);
+  const { session, redirect } = await authenticateAdmin(request);
   const formData = await request.formData();
   const parsed = parseCampaignFormData(formData);
 

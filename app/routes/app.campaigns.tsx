@@ -1,8 +1,11 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   Form,
+  Link,
+  Outlet,
   useActionData,
   useLoaderData,
+  useLocation,
   useNavigation,
 } from "react-router";
 
@@ -16,9 +19,9 @@ import {
   pauseCampaign,
 } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import { CampaignRuleError } from "../services/campaign-rules";
 import { canActivateCampaign } from "../services/planLimits.server";
-import { authenticate } from "../shopify.server";
 import {
   campaignListStatusOptions,
   campaignTypeOptions,
@@ -53,7 +56,7 @@ type ActionData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "";
   const type = url.searchParams.get("type") ?? "";
@@ -96,7 +99,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
-  const { session, redirect } = await authenticate.admin(request);
+  const { session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const intent = String(formData.get("_action") ?? "");
@@ -139,14 +142,25 @@ export const action = async ({
 export default function CampaignsPage() {
   const { campaigns, filters, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionData | undefined;
+  const location = useLocation();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const isCampaignsIndexRoute =
+    location.pathname.replace(/\/+$/, "") === "/app/campaigns";
+
+  if (!isCampaignsIndexRoute) {
+    return <Outlet />;
+  }
 
   return (
     <s-page heading="Campaigns">
-      <s-button slot="primary-action" href="/app/campaigns/new">
+      <Link
+        className="counterpulse-button"
+        slot="primary-action"
+        to="/app/campaigns/new"
+      >
         Create campaign
-      </s-button>
+      </Link>
 
       {(error || actionData?.error) && (
         <s-banner tone="critical" heading="Campaigns need attention">
@@ -211,9 +225,9 @@ export default function CampaignsPage() {
               {campaigns.map((campaign) => (
                 <tr key={campaign.id}>
                   <td>
-                    <s-link href={`/app/campaigns/${campaign.id}`}>
+                    <Link to={`/app/campaigns/${campaign.id}`}>
                       {campaign.name}
-                    </s-link>
+                    </Link>
                   </td>
                   <td>
                     <CampaignStatusBadge status={campaign.status} />
@@ -223,9 +237,12 @@ export default function CampaignsPage() {
                   <td>{new Date(campaign.updatedAt).toLocaleDateString()}</td>
                   <td>
                     <div className="counterpulse-row-actions">
-                      <s-button href={`/app/campaigns/${campaign.id}`}>
+                      <Link
+                        className="counterpulse-button-secondary"
+                        to={`/app/campaigns/${campaign.id}`}
+                      >
                         Edit
-                      </s-button>
+                      </Link>
                       <CampaignActionButton
                         action="duplicate"
                         campaignId={campaign.id}

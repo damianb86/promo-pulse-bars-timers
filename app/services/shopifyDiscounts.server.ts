@@ -47,10 +47,7 @@ export type SyncedCampaignDates = {
 export const SHOPIFY_DISCOUNT_SCOPE_MESSAGE =
   "Promo Pulse needs read_discounts and write_discounts scopes. Update SCOPES and reinstall or reauthorize the app.";
 
-const DISCOUNT_NODE_FRAGMENT = `#graphql
-  fragment CounterPulseCodeDiscountFields on DiscountCodeNode {
-    id
-    codeDiscount {
+const DISCOUNT_FIELDS = `#graphql
       __typename
       ... on DiscountCodeBasic {
         title
@@ -85,6 +82,22 @@ const DISCOUNT_NODE_FRAGMENT = `#graphql
           }
         }
       }
+`;
+
+const DISCOUNT_CODE_NODE_FRAGMENT = `#graphql
+  fragment CounterPulseCodeDiscountFields on DiscountCodeNode {
+    id
+    codeDiscount {
+${DISCOUNT_FIELDS}
+    }
+  }
+`;
+
+const DISCOUNT_NODE_FRAGMENT = `#graphql
+  fragment CounterPulseDiscountNodeFields on DiscountNode {
+    id
+    discount {
+${DISCOUNT_FIELDS}
     }
   }
 `;
@@ -103,7 +116,7 @@ export async function listCodeDiscounts(
     query CounterPulseListCodeDiscounts($first: Int!, $query: String) {
       discountNodes(first: $first, query: $query) {
         nodes {
-          ...CounterPulseCodeDiscountFields
+          ...CounterPulseDiscountNodeFields
         }
       }
     }`,
@@ -133,11 +146,15 @@ export async function getDiscountByCodeOrId(
       node?: DiscountNodeRecord | null;
     }>(
       admin,
-      `${DISCOUNT_NODE_FRAGMENT}
+      `${DISCOUNT_CODE_NODE_FRAGMENT}
+      ${DISCOUNT_NODE_FRAGMENT}
       query CounterPulseDiscountById($id: ID!) {
         node(id: $id) {
           ... on DiscountCodeNode {
             ...CounterPulseCodeDiscountFields
+          }
+          ... on DiscountNode {
+            ...CounterPulseDiscountNodeFields
           }
         }
       }`,
@@ -151,7 +168,7 @@ export async function getDiscountByCodeOrId(
     codeDiscountNodeByCode?: DiscountNodeRecord | null;
   }>(
     admin,
-    `${DISCOUNT_NODE_FRAGMENT}
+    `${DISCOUNT_CODE_NODE_FRAGMENT}
     query CounterPulseDiscountByCode($code: String!) {
       codeDiscountNodeByCode(code: $code) {
         ...CounterPulseCodeDiscountFields
@@ -180,7 +197,7 @@ export async function createBasicCodeDiscount(
     discountCodeBasicCreate?: DiscountMutationPayload;
   }>(
     admin,
-    `${DISCOUNT_NODE_FRAGMENT}
+    `${DISCOUNT_CODE_NODE_FRAGMENT}
     mutation CounterPulseCreateBasicDiscount($input: DiscountCodeBasicInput!) {
       discountCodeBasicCreate(basicCodeDiscount: $input) {
         codeDiscountNode {
@@ -237,7 +254,7 @@ export async function createFreeShippingCodeDiscount(
     discountCodeFreeShippingCreate?: DiscountMutationPayload;
   }>(
     admin,
-    `${DISCOUNT_NODE_FRAGMENT}
+    `${DISCOUNT_CODE_NODE_FRAGMENT}
     mutation CounterPulseCreateFreeShippingDiscount($input: DiscountCodeFreeShippingInput!) {
       discountCodeFreeShippingCreate(freeShippingCodeDiscount: $input) {
         codeDiscountNode {
@@ -272,16 +289,19 @@ export function syncCampaignDatesFromDiscount(
 
 type DiscountNodeRecord = {
   id?: string | null;
-  codeDiscount?: {
-    __typename?: string;
-    title?: string | null;
-    status?: string | null;
-    startsAt?: string | null;
-    endsAt?: string | null;
-    codes?: {
-      nodes?: Array<{ code?: string | null }>;
-    };
-  } | null;
+  discount?: DiscountCodeRecord | null;
+  codeDiscount?: DiscountCodeRecord | null;
+};
+
+type DiscountCodeRecord = {
+  __typename?: string;
+  title?: string | null;
+  status?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  codes?: {
+    nodes?: Array<{ code?: string | null }>;
+  };
 };
 
 type DiscountMutationPayload = {
@@ -341,9 +361,10 @@ function parseMutationPayload(payload: DiscountMutationPayload | undefined) {
 function normalizeDiscountNode(
   node: DiscountNodeRecord | null,
 ): ShopifyDiscountSummary | null {
-  if (!node?.id || !node.codeDiscount) return null;
+  const discount = node?.codeDiscount ?? node?.discount;
 
-  const discount = node.codeDiscount;
+  if (!node?.id || !discount) return null;
+
   const code = discount.codes?.nodes?.[0]?.code ?? "";
 
   return {

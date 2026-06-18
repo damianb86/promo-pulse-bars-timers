@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { NavMenu } from "@shopify/app-bridge-react";
 
 import "./dashboard.css";
 
@@ -21,13 +22,17 @@ const navigationItems = [
 export function AppShell({ apiKey, children }: AppShellProps) {
   return (
     <AppProvider embedded apiKey={apiKey}>
-      <s-app-nav>
+      <NavMenu>
         {navigationItems.map((item) => (
-          <s-link key={item.href} href={item.href}>
+          <a
+            href={item.href}
+            key={item.href}
+            rel={item.href === "/app" ? "home" : undefined}
+          >
             {item.label}
-          </s-link>
+          </a>
         ))}
-      </s-app-nav>
+      </NavMenu>
       {children}
     </AppProvider>
   );

@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 type PlanUpgradeCalloutProps = {
   title?: string;
   message: string;
@@ -18,7 +20,9 @@ export function PlanUpgradeCallout({
           <div className="counterpulse-empty-state__title">{title}</div>
           <div className="counterpulse-empty-state__message">{message}</div>
         </div>
-        <s-button href={actionHref}>{actionLabel}</s-button>
+        <Link className="counterpulse-button" to={actionHref}>
+          {actionLabel}
+        </Link>
       </div>
     </s-box>
   );

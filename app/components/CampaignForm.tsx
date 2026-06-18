@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Form, useNavigation } from "react-router";
+import { Form, Link, useNavigation } from "react-router";
 
 import {
   campaignGoalOptions,
@@ -150,9 +150,9 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                 ? "Save campaign"
                 : "Update campaign"}
           </button>
-          <s-button href="/app/campaigns" variant="secondary">
+          <Link className="counterpulse-button-secondary" to="/app/campaigns">
             Cancel
-          </s-button>
+          </Link>
         </div>
       </s-section>
     </Form>

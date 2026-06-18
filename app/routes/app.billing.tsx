@@ -17,7 +17,7 @@ import {
   getPlanLimits,
 } from "../services/planLimits.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
-import { authenticate } from "../shopify.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 
 type PlanCard = {
   plan: "FREE" | BillingPlanKey;
@@ -46,7 +46,7 @@ const planOrder: Array<PlanCard["plan"]> = ["FREE", "STARTER", "GROWTH", "PRO"];
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const sync = await syncSubscriptionStatus(shop);
 
@@ -62,7 +62,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const plan = String(formData.get("plan") ?? "") as BillingPlanKey;

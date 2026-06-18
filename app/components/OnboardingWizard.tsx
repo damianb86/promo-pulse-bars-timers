@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Form } from "react-router";
+import { type CSSProperties, useMemo, useState } from "react";
+import { Form, Link } from "react-router";
 
 import { campaignDesignTemplates } from "../types/campaign-design";
 import type {
@@ -69,7 +69,7 @@ export function OnboardingWizard({
     initialGoal,
     initialLocation,
   );
-  const [step, setStep] = useState(hasCampaigns ? 1 : 0);
+  const [step, setStep] = useState(0);
   const [goal, setGoal] = useState<OnboardingGoalValue>(initialGoal);
   const [location, setLocation] =
     useState<OnboardingLocationValue>(initialLocation);
@@ -93,6 +93,7 @@ export function OnboardingWizard({
     campaignDesignTemplates.find(
       (template) => template.templateKey === templateKey,
     ) ?? campaignDesignTemplates[0];
+  const previewStyle = getPreviewStyle(selectedTemplate);
   const activeChecklist = actionData?.checklist ?? checklist;
 
   if (actionData?.success) {
@@ -108,17 +109,22 @@ export function OnboardingWizard({
             </div>
             <div className="counterpulse-actions">
               {actionData.campaignEditUrl && (
-                <s-button href={actionData.campaignEditUrl}>
+                <Link
+                  className="counterpulse-button"
+                  to={actionData.campaignEditUrl}
+                >
                   Edit campaign
-                </s-button>
+                </Link>
               )}
               {(actionData.themeEditorUrl || themeEditorUrl) && (
-                <s-button
+                <a
+                  className="counterpulse-button-secondary"
                   href={actionData.themeEditorUrl || themeEditorUrl}
+                  rel="noreferrer"
                   target="_blank"
                 >
                   Open theme editor
-                </s-button>
+                </a>
               )}
             </div>
           </div>
@@ -151,8 +157,15 @@ export function OnboardingWizard({
           event.preventDefault();
         }
       }}
+      onSubmit={(event) => {
+        if (step !== 5) {
+          event.preventDefault();
+        }
+      }}
     >
-      <input name="intent" type="hidden" value="createStarterCampaign" />
+      {step === 5 && (
+        <input name="intent" type="hidden" value="createStarterCampaign" />
+      )}
       <input name="goal" type="hidden" value={goal} />
       <input name="templateKey" type="hidden" value={templateKey} />
       <input name="location" type="hidden" value={location} />
@@ -179,8 +192,9 @@ export function OnboardingWizard({
             <div>
               <s-heading>Welcome to Promo Pulse</s-heading>
               <s-paragraph>
-                Create your first promotion, activate it, and finish the theme
-                setup from one guided flow.
+                {hasCampaigns
+                  ? "Create another starter promotion and finish the theme setup from one guided flow."
+                  : "Create your first promotion, activate it, and finish the theme setup from one guided flow."}
               </s-paragraph>
               <div className="counterpulse-muted">
                 Current plan: {formatPlan(currentPlan)}
@@ -357,7 +371,16 @@ export function OnboardingWizard({
                   <strong>{selectedTemplate.label}</strong>
                 </div>
               </div>
-              <div className="counterpulse-preview-promo counterpulse-onboarding-preview">
+              <div
+                className="counterpulse-preview-promo counterpulse-onboarding-preview"
+                style={previewStyle}
+              >
+                {selectedTemplate.showIcon &&
+                  selectedTemplate.icon !== "NONE" && (
+                    <span className="counterpulse-preview-icon">
+                      {formatEnum(selectedTemplate.icon)}
+                    </span>
+                  )}
                 <div className="counterpulse-preview-message">
                   <strong>{headline}</strong>
                   <span>{subheadline}</span>
@@ -388,7 +411,12 @@ export function OnboardingWizard({
                   Continue
                 </button>
               ) : (
-                <button className="counterpulse-button" type="submit">
+                <button
+                  className="counterpulse-button"
+                  name="intent"
+                  type="submit"
+                  value="createStarterCampaign"
+                >
                   Activate campaign
                 </button>
               )}
@@ -453,4 +481,29 @@ function formatEnum(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function getPreviewStyle(
+  template: (typeof campaignDesignTemplates)[number],
+): CSSProperties {
+  const alignment = template.alignment.toLowerCase();
+
+  return {
+    "--cp-align": alignment,
+    "--cp-bg": template.backgroundColor,
+    "--cp-text": template.textColor,
+    "--cp-accent": template.accentColor,
+    "--cp-button": template.buttonColor,
+    "--cp-button-text": template.buttonTextColor,
+    "--cp-font-size": `${template.fontSize}px`,
+    "--cp-justify": getPreviewJustify(template.alignment),
+    "--cp-radius": `${template.borderRadius}px`,
+  } as CSSProperties;
+}
+
+function getPreviewJustify(alignment: string) {
+  if (alignment === "LEFT") return "flex-start";
+  if (alignment === "RIGHT") return "flex-end";
+
+  return "center";
 }

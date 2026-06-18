@@ -23,23 +23,54 @@
       variants: readVariants(root.dataset.variantsScriptId),
       customProductFormSelector: root.dataset.customProductFormSelector || "",
     };
+    var requestUrl;
 
-    if (!config.shop || !config.productId) return;
-    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId)
+    if (!config.shop) {
+      updateDebug(root, "Low stock detenido: falta el shop domain.");
       return;
+    }
+    if (!config.productId) {
+      updateDebug(
+        root,
+        "Low stock detenido: Shopify no expuso productId en este contexto.",
+      );
+      return;
+    }
+    if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && !config.campaignId) {
+      updateDebug(
+        root,
+        "Low stock detenido: Specific campaign requiere un Campaign ID.",
+      );
+      return;
+    }
+
+    requestUrl = buildUrl(config);
+    updateDebug(root, "Consultando campanas LOW_STOCK.", requestUrl);
 
     fetchCampaign(config)
       .then(function (campaign) {
-        if (!campaign) return;
+        if (!campaign) {
+          updateDebug(
+            root,
+            "API OK: 0 campanas LOW_STOCK elegibles para PRODUCT_PAGE.",
+            requestUrl,
+          );
+          return;
+        }
+        updateDebug(
+          root,
+          "API OK: campana LOW_STOCK recibida " + campaign.id + ".",
+        );
         render(root, campaign, config);
         bindVariantChanges(root, campaign, config);
       })
       .catch(function (error) {
+        updateDebug(root, "Error LOW_STOCK: " + error.message, requestUrl);
         if (config.debug && window.console) console.log("[CP stock]", error);
       });
   }
 
-  function fetchCampaign(config) {
+  function buildUrl(config) {
     var params = new URLSearchParams({
       shop: config.shop,
       path: window.location.pathname,
@@ -55,7 +86,11 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return fetch("/apps/counterpulse-campaigns?" + params.toString(), {
+    return "/apps/counterpulse-campaigns?" + params.toString();
+  }
+
+  function fetchCampaign(config) {
+    return fetch(buildUrl(config), {
       credentials: "omit",
       headers: { Accept: "application/json" },
     })
@@ -85,7 +120,11 @@
     var design = campaign.design || {};
 
     if (!message) {
-      root.replaceChildren();
+      updateDebug(
+        root,
+        "Campana LOW_STOCK recibida, pero no se muestra: no hay inventario real bajo el threshold ni fallback configurado.",
+      );
+      if (!config.debug) root.replaceChildren();
       return;
     }
 
@@ -112,6 +151,19 @@
     card.appendChild(renderMessage(campaign, message));
     root.replaceChildren(card);
     emitImpression(campaign);
+  }
+
+  function updateDebug(root, message, url) {
+    var status;
+    var endpoint;
+
+    if (!root || root.dataset.debug !== "true") return;
+
+    status = root.querySelector("[data-pp-debug-status]");
+    endpoint = root.querySelector("[data-pp-debug-url]");
+
+    if (status) status.textContent = message;
+    if (endpoint && url) endpoint.textContent = url;
   }
 
   function renderMessage(campaign, detail) {

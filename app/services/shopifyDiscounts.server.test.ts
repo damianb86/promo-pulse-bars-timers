@@ -14,19 +14,25 @@ describe("shopifyDiscounts service", () => {
     const admin = mockAdmin({
       data: {
         discountNodes: {
-          nodes: [discountNode({ code: "FLASH20" })],
+          nodes: [discountAdminNode({ code: "FLASH20" })],
         },
       },
     });
 
     await expect(listCodeDiscounts(admin)).resolves.toMatchObject([
-      { code: "FLASH20", id: "gid://shopify/DiscountCodeNode/1" },
+      { code: "FLASH20", id: "gid://shopify/DiscountNode/1" },
     ]);
     expect(admin.graphql).toHaveBeenCalledWith(
       expect.stringContaining("discountNodes"),
       expect.objectContaining({
         variables: expect.objectContaining({ query: "method:code" }),
       }),
+    );
+    expect(firstGraphqlQuery(admin)).toContain(
+      "fragment CounterPulseDiscountNodeFields on DiscountNode",
+    );
+    expect(firstGraphqlQuery(admin)).toContain(
+      "...CounterPulseDiscountNodeFields",
     );
   });
 
@@ -42,6 +48,23 @@ describe("shopifyDiscounts service", () => {
         code: "SAVE10",
       },
     );
+  });
+
+  it("gets a discount by DiscountNode id", async () => {
+    const admin = mockAdmin({
+      data: {
+        node: discountAdminNode({ code: "NODE10" }),
+      },
+    });
+
+    await expect(
+      getDiscountByCodeOrId(admin, "gid://shopify/DiscountNode/1"),
+    ).resolves.toMatchObject({
+      code: "NODE10",
+      id: "gid://shopify/DiscountNode/1",
+    });
+    expect(firstGraphqlQuery(admin)).toContain("... on DiscountNode");
+    expect(firstGraphqlQuery(admin)).toContain("... on DiscountCodeNode");
   });
 
   it("creates a percentage discount with normalized percentage value", async () => {
@@ -214,4 +237,28 @@ function discountNode({
       codes: { nodes: [{ code }] },
     },
   };
+}
+
+function discountAdminNode({
+  code,
+  type = "DiscountCodeBasic",
+}: {
+  code: string;
+  type?: string;
+}) {
+  return {
+    id: "gid://shopify/DiscountNode/1",
+    discount: {
+      __typename: type,
+      title: code,
+      status: "ACTIVE",
+      startsAt: "2026-01-01T00:00:00Z",
+      endsAt: null,
+      codes: { nodes: [{ code }] },
+    },
+  };
+}
+
+function firstGraphqlQuery(admin: ShopifyGraphqlClient) {
+  return vi.mocked(admin.graphql).mock.calls[0]?.[0] ?? "";
 }

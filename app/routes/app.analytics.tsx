@@ -16,8 +16,8 @@ import {
   type AnalyticsSummary,
 } from "../models/analytics.server";
 import { getShopByDomain } from "../models/shop.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import { getLockedFeatureReason } from "../services/planLimits.server";
-import { authenticate } from "../shopify.server";
 
 const demoShopDomain = "counterpulse-demo.myshopify.com";
 
@@ -35,7 +35,7 @@ type LoaderData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const url = new URL(request.url);
   const rangeDays = url.searchParams.get("range") === "30" ? 30 : 7;
 

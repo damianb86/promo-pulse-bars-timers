@@ -7,6 +7,7 @@ import {
 } from "react-router";
 
 import { getOrCreateShopByDomain } from "../models/shop.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import {
   getOrCreateShopSettings,
   hasShopSettingsErrors,
@@ -16,7 +17,6 @@ import {
   type ShopSettingsErrors,
   type ShopSettingsValues,
 } from "../services/shopSettings.server";
-import { authenticate } from "../shopify.server";
 import {
   storefrontLocaleLabels,
   supportedStorefrontLocales,
@@ -36,7 +36,7 @@ type ActionData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const settings = await getOrCreateShopSettings(shop.id);
 
@@ -49,7 +49,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData> => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const parsed = parseShopSettingsFormData(formData);

@@ -24,6 +24,7 @@ import {
   updateLowStockSettingsForShop,
 } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
+import { authenticateAdmin } from "../services/admin-auth.server";
 import {
   hasCampaignDesignErrors,
   parseCampaignDesignFormData,
@@ -72,7 +73,6 @@ import {
   getLockedFeatureReason,
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
-import { authenticate } from "../shopify.server";
 import {
   defaultBadgeSettingsValues,
   toBadgePosition,
@@ -186,7 +186,7 @@ export const loader = async ({
   params,
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const id = params.id;
 
@@ -290,7 +290,7 @@ export const action = async ({
   params,
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
-  const { admin, session, redirect } = await authenticate.admin(request);
+  const { admin, session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const id = params.id;
 

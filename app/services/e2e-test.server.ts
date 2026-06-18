@@ -1,0 +1,452 @@
+import {
+  CampaignDesignIcon,
+  CampaignGoal,
+  CampaignStatus,
+  CampaignType,
+  DeliveryAfterCutoffBehavior,
+  DesignAlignment,
+  DiscountSyncMethod,
+  PlacementType,
+  Prisma,
+  ShopPlan,
+  TimerMode,
+  TimerResetBehavior,
+} from "@prisma/client";
+
+import prisma from "../db.server";
+
+export const E2E_DEMO_SHOP_DOMAIN = "demo-shop.myshopify.com";
+export const E2E_AUTH_COOKIE = "counterpulse_e2e_shop";
+
+export type E2ETestScenario =
+  | "empty"
+  | "countdown"
+  | "targeting"
+  | "free-shipping"
+  | "delivery-cutoff"
+  | "delivery-cutoff-after"
+  | "cart-drawer"
+  | "analytics";
+
+export function isE2ETestMode() {
+  return (
+    process.env.E2E_TEST_MODE === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
+}
+
+export function requireE2ETestMode() {
+  if (!isE2ETestMode()) {
+    throw new Response("Not found", { status: 404 });
+  }
+}
+
+export function hasE2EAuthCookie(request: Request) {
+  const cookies = parseCookieHeader(request.headers.get("cookie") ?? "");
+
+  return cookies[E2E_AUTH_COOKIE] === E2E_DEMO_SHOP_DOMAIN;
+}
+
+export function buildE2ELoginCookie() {
+  return `${E2E_AUTH_COOKIE}=${E2E_DEMO_SHOP_DOMAIN}; Path=/; HttpOnly; SameSite=Lax`;
+}
+
+export function buildE2ELogoutCookie() {
+  return `${E2E_AUTH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+export async function ensureE2EShop() {
+  requireE2ETestMode();
+
+  const shop = await prisma.shop.upsert({
+    where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
+    update: { plan: ShopPlan.PRO },
+    create: {
+      shopifyDomain: E2E_DEMO_SHOP_DOMAIN,
+      plan: ShopPlan.PRO,
+    },
+  });
+
+  await prisma.shopSettings.upsert({
+    where: { shopId: shop.id },
+    update: {},
+    create: {
+      shopId: shop.id,
+      analyticsEnabled: true,
+      consentMode: "BASIC",
+      defaultCountry: "US",
+      defaultCurrency: "USD",
+      defaultLocale: "en",
+      defaultTimezone: "America/New_York",
+      enableDebugMode: true,
+      enabledLocales: ["en", "es", "pt-BR", "fr", "de"],
+      respectDoNotTrack: false,
+    },
+  });
+
+  await prisma.shopOnboardingChecklist.upsert({
+    where: { shopId: shop.id },
+    update: {},
+    create: { shopId: shop.id },
+  });
+
+  return shop;
+}
+
+export async function resetE2ETestDatabase(
+  scenario: E2ETestScenario = "empty",
+) {
+  requireE2ETestMode();
+
+  await prisma.$transaction([
+    prisma.analyticsEvent.deleteMany({}),
+    prisma.campaign.deleteMany({}),
+    prisma.shopOnboardingChecklist.deleteMany({}),
+    prisma.shopSettings.deleteMany({}),
+    prisma.session.deleteMany({}),
+    prisma.shop.deleteMany({}),
+  ]);
+
+  const shop = await ensureE2EShop();
+
+  if (scenario !== "empty") {
+    await seedScenario(shop.id, scenario);
+  }
+
+  const campaignCount = await prisma.campaign.count({
+    where: { shopId: shop.id },
+  });
+
+  await prisma.shopOnboardingChecklist.update({
+    where: { shopId: shop.id },
+    data: {
+      firstCampaignCreated: campaignCount > 0,
+      appEmbedEnabled: true,
+      productBlockAdded: true,
+      cartBlockAdded: true,
+    },
+  });
+
+  return { shop, campaignCount, scenario };
+}
+
+function parseCookieHeader(header: string) {
+  return header.split(";").reduce<Record<string, string>>((cookies, part) => {
+    const [rawKey, ...rawValue] = part.trim().split("=");
+    if (!rawKey) return cookies;
+    cookies[rawKey] = decodeURIComponent(rawValue.join("="));
+    return cookies;
+  }, {});
+}
+
+async function seedScenario(shopId: string, scenario: E2ETestScenario) {
+  if (scenario === "countdown") {
+    await createCountdownCampaign(shopId, {});
+    return;
+  }
+
+  if (scenario === "targeting") {
+    await createCountdownCampaign(shopId, {
+      targeting: {
+        countries: ["AR"],
+        locales: ["es"],
+      },
+      translations: [
+        englishTranslation("Sale ends soon"),
+        {
+          locale: "es",
+          headline: "La oferta termina pronto",
+          subheadline: "Ahorra antes de medianoche.",
+          ctaText: "Comprar oferta",
+          ctaUrl: "/collections/sale",
+          expiredText: "Esta oferta termino.",
+        },
+      ],
+    });
+    return;
+  }
+
+  if (scenario === "free-shipping") {
+    await createFreeShippingCampaign(shopId, [
+      PlacementType.CART_PAGE,
+      PlacementType.CART_DRAWER,
+    ]);
+    return;
+  }
+
+  if (scenario === "delivery-cutoff") {
+    await createDeliveryCutoffCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "delivery-cutoff-after") {
+    await createDeliveryCutoffCampaign(shopId, {
+      afterCutoffBehavior: "SHOW_AFTER_CUTOFF_MESSAGE",
+    });
+    return;
+  }
+
+  if (scenario === "cart-drawer") {
+    await createCartTimerCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "analytics") {
+    await createCountdownCampaign(shopId, {
+      discountCode: "SAVE20",
+    });
+  }
+}
+
+async function createCountdownCampaign(
+  shopId: string,
+  options: {
+    targeting?: {
+      countries?: string[];
+      locales?: string[];
+    };
+    discountCode?: string;
+    translations?: Array<{
+      locale: string;
+      headline: string;
+      subheadline?: string;
+      ctaText?: string;
+      ctaUrl?: string;
+      expiredText?: string;
+    }>;
+  },
+) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Flash Sale Countdown",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.TOP_BAR, enabled: true }],
+      },
+      targeting: options.targeting
+        ? {
+            create: {
+              countries: options.targeting.countries ?? [],
+              markets: [],
+              locales: options.targeting.locales ?? [],
+              productIds: [],
+              collectionIds: [],
+              productTags: [],
+              customerTags: [],
+              urlContains: [],
+              utmSources: [],
+              devices: [],
+              excludeProductIds: [],
+              excludeCollectionIds: [],
+            },
+          }
+        : undefined,
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+        },
+      },
+      discountSync: options.discountCode
+        ? {
+            create: {
+              discountCode: options.discountCode,
+              method: DiscountSyncMethod.CODE,
+              syncStartEnd: false,
+            },
+          }
+        : undefined,
+      translations: {
+        create: options.translations ?? [englishTranslation("Sale ends soon")],
+      },
+    },
+  });
+}
+
+async function createFreeShippingCampaign(
+  shopId: string,
+  placements: PlacementType[],
+) {
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Free Shipping Goal",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.FREE_SHIPPING_GOAL,
+      goal: CampaignGoal.FREE_SHIPPING,
+      timezone: "America/New_York",
+      placements: {
+        create: placements.map((placementType) => ({
+          placementType,
+          enabled: true,
+        })),
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "free-shipping",
+          backgroundColor: "#ECFDF5",
+          textColor: "#064E3B",
+          accentColor: "#10B981",
+          buttonColor: "#047857",
+          buttonTextColor: "#FFFFFF",
+          icon: CampaignDesignIcon.TRUCK,
+        },
+      },
+      freeShippingSettings: {
+        create: {
+          thresholdAmount: new Prisma.Decimal(100),
+          currencyCode: "USD",
+          includeDiscountedSubtotal: true,
+          emptyCartMessage: "Add items to unlock free shipping",
+          progressStyle: "BAR",
+          successMessage: "You've unlocked free shipping!",
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Free shipping"),
+            freeShippingProgressText:
+              "You're {{amount}} away from free shipping",
+            freeShippingSuccessText: "You've unlocked free shipping!",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createDeliveryCutoffCampaign(
+  shopId: string,
+  options: { afterCutoffBehavior?: DeliveryAfterCutoffBehavior } = {},
+) {
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Delivery Cutoff",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.DELIVERY_CUTOFF,
+      goal: CampaignGoal.DELIVERY_CUTOFF,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.PRODUCT_PAGE, enabled: true }],
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "delivery-cutoff",
+          backgroundColor: "#EFF6FF",
+          textColor: "#1E3A8A",
+          accentColor: "#2563EB",
+          icon: CampaignDesignIcon.CLOCK,
+        },
+      },
+      deliveryCutoffSettings: {
+        create: {
+          cutoffHour: 23,
+          cutoffMinute: 59,
+          processingDays: 1,
+          minDeliveryDays: 2,
+          maxDeliveryDays: 4,
+          workingDays: [1, 2, 3, 4, 5],
+          holidays: [],
+          countryRules: {},
+          afterCutoffBehavior:
+            options.afterCutoffBehavior ?? "SHOW_NEXT_WINDOW",
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Fast delivery"),
+            deliveryBeforeCutoffText:
+              "Order within {{timeRemaining}} to get it by {{minDeliveryDate}}",
+            deliveryAfterCutoffText: "Orders placed now ship {{shipsDate}}",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createCartTimerCampaign(shopId: string) {
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Cart Reserve Timer",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.CART_TIMER,
+      goal: CampaignGoal.CART_RESCUE,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.CART_DRAWER, enabled: true }],
+      },
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.EVERGREEN_SESSION,
+          durationMinutes: 10,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.ON_SESSION_END,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Your cart is reserved"),
+            subheadline: "Complete checkout before the timer ends.",
+            ctaText: "Checkout",
+            ctaUrl: "/checkout",
+          },
+        ],
+      },
+    },
+  });
+}
+
+function flashSaleDesign() {
+  return {
+    templateKey: "flash-sale",
+    backgroundColor: "#7F1D1D",
+    textColor: "#FFFFFF",
+    accentColor: "#FDE047",
+    buttonColor: "#FFFFFF",
+    buttonTextColor: "#7F1D1D",
+    fontSize: 15,
+    borderRadius: 6,
+    positionSticky: true,
+    mobileEnabled: true,
+    alignment: DesignAlignment.CENTER,
+    showCloseButton: true,
+    showIcon: true,
+    icon: CampaignDesignIcon.FIRE,
+  };
+}
+
+function englishTranslation(headline: string) {
+  return {
+    locale: "en",
+    headline,
+    subheadline: "Save before midnight.",
+    ctaText: "Shop sale",
+    ctaUrl: "/collections/sale",
+    expiredText: "This offer has ended.",
+  };
+}

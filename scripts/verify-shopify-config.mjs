@@ -8,6 +8,9 @@ const strict = process.argv.includes("--strict");
 
 const applicationUrl = readTomlString(config, "application_url");
 const redirectUrls = readTomlStringArray(config, "redirect_urls");
+const appProxyUrl = readTomlSectionString(config, "app_proxy", "url");
+const appProxySubpath = readTomlSectionString(config, "app_proxy", "subpath");
+const appProxyPrefix = readTomlSectionString(config, "app_proxy", "prefix");
 const errors = [];
 const warnings = [];
 
@@ -33,6 +36,31 @@ if (!applicationUrl?.startsWith("https://")) {
 
 if (redirectUrls.length === 0) {
   errors.push("shopify.app.toml is missing auth.redirect_urls.");
+}
+
+if (!appProxyUrl || !appProxySubpath || !appProxyPrefix) {
+  errors.push(
+    "shopify.app.toml is missing [app_proxy] url, subpath, or prefix. Storefront calls to /apps/counterpulse-campaigns will redirect to storefront pages instead of the app.",
+  );
+}
+
+if (appProxyUrl?.includes("shopify.dev/apps/default-app-home")) {
+  const message =
+    "app_proxy.url points to Shopify's default-app-home placeholder. This is acceptable for `shopify app dev` only if the dev output applies a generated HTTPS tunnel URL to the app proxy.";
+  (strict ? errors : warnings).push(message);
+}
+
+if (
+  appProxyPrefix &&
+  !["a", "apps", "community", "tools"].includes(appProxyPrefix)
+) {
+  errors.push("app_proxy.prefix must be one of: a, apps, community, tools.");
+}
+
+if (appProxySubpath && appProxySubpath !== "counterpulse-campaigns") {
+  warnings.push(
+    `app_proxy.subpath is ${appProxySubpath}; storefront assets currently request /apps/counterpulse-campaigns.`,
+  );
 }
 
 for (const redirectUrl of redirectUrls) {
@@ -85,4 +113,18 @@ function readTomlStringArray(source, key) {
   if (!match) return [];
 
   return Array.from(match[1].matchAll(/"([^"]*)"/g)).map((item) => item[1]);
+}
+
+function readTomlSectionString(source, section, key) {
+  const sectionMatch = source.match(
+    new RegExp(`(?:^|\\n)\\[${section}\\]\\s*([\\s\\S]*?)(?=\\n\\[|$)`),
+  );
+
+  if (!sectionMatch) return "";
+
+  const valueMatch = sectionMatch[1].match(
+    new RegExp(`^${key}\\s*=\\s*"([^"]*)"`, "m"),
+  );
+
+  return valueMatch?.[1] ?? "";
 }

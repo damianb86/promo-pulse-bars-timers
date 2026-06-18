@@ -15,6 +15,10 @@ scopes = "read_products,read_discounts,write_discounts,write_pixels,read_custome
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/auth/callback" ]
 
+[app_proxy]
+url = "https://shopify.dev/apps/default-app-home/apps/counterpulse-campaigns"
+subpath = "counterpulse-campaigns"
+prefix = "apps"
+
 [build]
-include_config_on_deploy = true
 automatically_update_urls_on_dev = true

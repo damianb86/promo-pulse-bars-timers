@@ -89,9 +89,10 @@ Tipos y flags:
   categorias de templates.
 - `app/services/premiumFeatures.server.ts` define los defaults de flags
   internos y el helper `canUsePremiumFeature(shop, featureKey)`.
-- `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS`, `CHECKOUT_EXTENSIONS` y
-  `EMAIL_TIMERS` quedan habilitados porque ya tienen base implementada. Los
-  demas flags Stage 2 quedan deshabilitados hasta su implementacion.
+- `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS`, `CHECKOUT_EXTENSIONS`,
+  `EMAIL_TIMERS` y `ADVANCED_BADGES` quedan habilitados porque ya tienen base
+  implementada. Los demas flags Stage 2 quedan deshabilitados hasta su
+  implementacion.
 
 Servicios reservados para Stage 2:
 
@@ -102,6 +103,8 @@ Servicios reservados para Stage 2:
 - `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion.
 - `app/services/markets`: reglas avanzadas de pais, mercado, idioma y moneda.
 - `app/services/email-timers`: render dinamico de countdown timers para email.
+- `app/services/badges`: reglas avanzadas de merchandising para product badges,
+  endpoint storefront y engine puro de evaluacion.
 - `app/services/agency`: multi-store y agency dashboard.
 - `app/services/checkout`: seleccion segura de campanas elegibles para checkout
   y view models sin PII para Checkout UI Extension.

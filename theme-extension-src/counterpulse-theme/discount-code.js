@@ -89,6 +89,17 @@
     document.addEventListener("counterpulse:copy-code", function (event) {
       window.CounterPulseTrackEvent("COPY_CODE", event.detail || {});
     });
+
+    document.addEventListener(
+      "counterpulse:badge-impression",
+      function (event) {
+        window.CounterPulseTrackEvent("BADGE_IMPRESSION", event.detail || {});
+      },
+    );
+
+    document.addEventListener("counterpulse:badge-click", function (event) {
+      window.CounterPulseTrackEvent("BADGE_CLICK", event.detail || {});
+    });
   }
 
   window.CounterPulseCopyCode = function (code, campaign) {

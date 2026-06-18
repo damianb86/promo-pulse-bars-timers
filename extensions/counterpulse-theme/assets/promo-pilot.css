@@ -264,6 +264,8 @@
 
 .pp-product-badge {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -286,11 +288,11 @@
 }
 
 .pp-badge--pill {
-  border-radius: 999px;
+  border-radius: var(--pp-radius, 999px);
 }
 
 .pp-badge--rounded {
-  border-radius: 8px;
+  border-radius: var(--pp-radius, 8px);
 }
 
 .pp-badge--square {

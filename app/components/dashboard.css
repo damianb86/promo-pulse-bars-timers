@@ -169,6 +169,20 @@
   background: #ffffff;
 }
 
+.counterpulse-badge-rule-preview {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  border: 1px solid var(--cp-accent, #22c55e);
+  border-radius: var(--cp-radius, 999px);
+  padding: 6px 9px;
+  background: var(--cp-bg, #111827);
+  color: var(--cp-text, #ffffff);
+  font-size: var(--cp-font-size, 13px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
 .counterpulse-row-actions {
   display: flex;
   flex-wrap: wrap;

@@ -8,8 +8,16 @@
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       locale: root.dataset.locale || document.documentElement.lang || "en",
       country: root.dataset.country || "",
+      market: root.dataset.market || "",
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
+      collectionIds: split(root.dataset.collectionIds),
+      vendor: root.dataset.productVendor || "",
+      inventoryQuantity: root.dataset.inventoryQuantity || "",
+      price: root.dataset.price || "",
+      compareAtPrice: root.dataset.compareAtPrice || "",
+      discountActive: root.dataset.discountActive || "",
+      metafields: root.dataset.metafields || "",
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       placement: root.dataset.placement || "COLLECTION_CARD",
@@ -40,19 +48,32 @@
     updateDebug(
       root,
       "Consultando campanas PRODUCT_BADGE elegibles.",
-      buildUrl(config),
+      buildBadgesUrl(config),
     );
 
-    fetchCampaign(config)
-      .then(function (campaign) {
-        if (campaign) {
-          updateDebug(root, "API OK: renderizando badge " + campaign.id + ".");
-          render(root, campaign);
-        } else {
+    fetchBadges(config)
+      .then(function (badges) {
+        if (badges.length > 0) {
           updateDebug(
             root,
-            "API OK: 0 badges elegibles. Revisa tipo PRODUCT_BADGE, placement, status ACTIVE, targeting y fechas.",
+            "API OK: renderizando " + badges.length + " badge(s).",
           );
+          renderBadges(root, badges);
+        } else {
+          return fetchCampaign(config).then(function (campaign) {
+            if (campaign) {
+              updateDebug(
+                root,
+                "Fallback simple: renderizando badge " + campaign.id + ".",
+              );
+              renderBadges(root, [badgeFromCampaign(campaign)]);
+            } else {
+              updateDebug(
+                root,
+                "API OK: 0 badges elegibles. Revisa tipo PRODUCT_BADGE, placement, status ACTIVE, targeting, reglas y fechas.",
+              );
+            }
+          });
         }
       })
       .catch(function (error) {
@@ -61,7 +82,7 @@
       });
   }
 
-  function buildUrl(config) {
+  function buildCommonParams(config) {
     var params = new URLSearchParams({
       shop: config.shop,
       path: window.location.pathname,
@@ -71,13 +92,41 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
+    if (config.collectionIds.length)
+      params.set("collectionIds", config.collectionIds.join(","));
+    if (config.vendor) params.set("vendor", config.vendor);
+    if (config.inventoryQuantity)
+      params.set("inventoryQuantity", config.inventoryQuantity);
+    if (config.price) params.set("price", config.price);
+    if (config.compareAtPrice)
+      params.set("compareAtPrice", config.compareAtPrice);
+    if (config.discountActive)
+      params.set("discountActive", config.discountActive);
+    if (config.metafields) params.set("metafields", config.metafields);
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
     }
 
-    return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+    return params;
+  }
+
+  function buildCampaignUrl(config) {
+    return (
+      getCampaignsEndpoint(config.apiBaseUrl) +
+      "?" +
+      buildCommonParams(config).toString()
+    );
+  }
+
+  function buildBadgesUrl(config) {
+    return (
+      getBadgesEndpoint(config.apiBaseUrl) +
+      "?" +
+      buildCommonParams(config).toString()
+    );
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {
@@ -91,8 +140,36 @@
     return value + "/api/storefront/campaigns";
   }
 
+  function getBadgesEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) {
+      return "/apps/counterpulse-campaigns/api/storefront/badges";
+    }
+    if (/\/api\/storefront\/badges$/i.test(value)) return value;
+
+    return value + "/api/storefront/badges";
+  }
+
+  function fetchBadges(config) {
+    return fetch(buildBadgesUrl(config), {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        applyStorefrontSettings(config, payload.settings);
+        return Array.isArray(payload.badges) ? payload.badges : [];
+      });
+  }
+
   function fetchCampaign(config) {
-    return fetch(buildUrl(config), {
+    return fetch(buildCampaignUrl(config), {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
@@ -121,10 +198,49 @@
     return campaign;
   }
 
-  function render(root, campaign) {
+  function badgeFromCampaign(campaign) {
     var badge = campaign.badge || {};
     var texts = campaign.texts || {};
-    var element = document.createElement("span");
+
+    return {
+      id: campaign.id,
+      campaignId: campaign.id,
+      ruleId: null,
+      text:
+        badge.badgeText || texts.badgeText || texts.headline || "Limited offer",
+      placement: campaign.placement,
+      badge: {
+        badgeText:
+          badge.badgeText ||
+          texts.badgeText ||
+          texts.headline ||
+          "Limited offer",
+        badgeShape: badge.badgeShape,
+        badgePosition: badge.badgePosition,
+        url: "",
+      },
+      design: campaign.design || {},
+      startsAt: campaign.startsAt,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+    };
+  }
+
+  function renderBadges(root, badges) {
+    root.replaceChildren();
+    badges.forEach(function (badge) {
+      root.appendChild(renderBadge(badge));
+      emitBadgeImpression(badge);
+    });
+  }
+
+  function renderBadge(badgePayload) {
+    var badge = badgePayload.badge || {};
+    var text = badge.badgeText || badgePayload.text || "Limited offer";
+    var href = badge.url || "";
+    var element = href
+      ? document.createElement("a")
+      : document.createElement("span");
 
     element.className = [
       "pp-badge",
@@ -132,14 +248,20 @@
       "pp-badge--" +
         position(badge.badgePosition).toLowerCase().replace("_", "-"),
     ].join(" ");
-    element.dataset.campaignId = campaign.id;
-    element.textContent =
-      badge.badgeText || texts.badgeText || texts.headline || "Limited offer";
+    element.dataset.campaignId = badgePayload.campaignId || badgePayload.id;
+    if (badgePayload.ruleId) element.dataset.badgeRuleId = badgePayload.ruleId;
+    element.textContent = text;
     element.setAttribute("role", "note");
     element.setAttribute("aria-label", element.textContent);
-    setDesign(element, campaign.design || {});
-    root.replaceChildren(element);
-    emitImpression(campaign);
+    if (href) {
+      element.href = href;
+      element.addEventListener("click", function () {
+        emitBadgeClick(badgePayload);
+      });
+    }
+    setDesign(element, badgePayload.design || {});
+
+    return element;
   }
 
   function updateDebug(root, message, url) {
@@ -169,6 +291,10 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 13) + "px",
     );
+    element.style.setProperty(
+      "--pp-radius",
+      clamp(design.borderRadius, 0, 999, 999) + "px",
+    );
   }
 
   function shape(value) {
@@ -183,20 +309,25 @@
       : "TOP_RIGHT";
   }
 
-  function emitImpression(campaign) {
+  function emitBadgeImpression(badge) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("counterpulse:badge-impression", {
         detail: {
-          campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
-          placement: campaign.placement,
+          campaignId: badge.campaignId || badge.id,
+          badgeRuleId: badge.ruleId || null,
+          placement: badge.placement,
+        },
+      }),
+    );
+  }
+
+  function emitBadgeClick(badge) {
+    document.dispatchEvent(
+      new CustomEvent("counterpulse:badge-click", {
+        detail: {
+          campaignId: badge.campaignId || badge.id,
+          badgeRuleId: badge.ruleId || null,
+          placement: badge.placement,
         },
       }),
     );

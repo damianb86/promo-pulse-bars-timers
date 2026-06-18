@@ -7,6 +7,8 @@ import {
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
+  Prisma,
+  Stage2RuleStatus,
 } from "@prisma/client";
 
 import {
@@ -14,6 +16,11 @@ import {
   type AdvancedDiscountRuleErrors,
   type AdvancedDiscountRuleRow,
 } from "../components/AdvancedDiscountRulesEditor";
+import {
+  AdvancedBadgeRulesEditor,
+  type AdvancedBadgeRuleErrors,
+  type AdvancedBadgeRuleRow,
+} from "../components/AdvancedBadgeRulesEditor";
 import { BadgeSettingsEditor } from "../components/BadgeSettingsEditor";
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
@@ -71,6 +78,16 @@ import {
   hasBadgeSettingsErrors,
   parseBadgeSettingsFormData,
 } from "../services/badge-settings-form.server";
+import {
+  deleteAdvancedBadgeRule,
+  listAdvancedBadgeRulesForCampaign,
+  saveAdvancedBadgeRule,
+  type AdvancedBadgeRuleInput,
+} from "../services/badges/advancedBadgeRules.server";
+import {
+  readConditions as readAdvancedBadgeConditions,
+  readDesign as readAdvancedBadgeDesign,
+} from "../services/badges/badgeRuleEngine";
 import {
   hasDeliveryCutoffSettingsErrors,
   parseDeliveryCutoffSettingsFormData,
@@ -225,12 +242,14 @@ type LoaderData = {
     customCss: string;
     deliveryCutoff: string;
     discountSync: string;
+    advancedBadges: string;
     advancedDiscounts: string;
     experiments: string;
     emailTimers: string;
     multiLanguage: string;
     uniqueCodes: string;
   };
+  advancedBadgeRules: AdvancedBadgeRuleRow[];
   advancedDiscountRules: AdvancedDiscountRuleRow[];
   emailTimers: EmailTimerRow[];
   experiments: ExperimentRow[];
@@ -251,6 +270,8 @@ type ActionData = {
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
+  advancedBadgeErrors?: AdvancedBadgeRuleErrors;
+  advancedBadgeNotice?: string;
   advancedDiscountErrors?: AdvancedDiscountRuleErrors;
   advancedDiscountNotice?: string;
   emailTimerErrors?: EmailTimerErrors;
@@ -304,6 +325,7 @@ export const loader = async ({
     customCss: getLockedFeatureReason(shop, "custom_css"),
     deliveryCutoff: getLockedFeatureReason(shop, "delivery_cutoff"),
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
+    advancedBadges: canUsePremiumFeature(shop, "ADVANCED_BADGES").reason,
     advancedDiscounts: canUsePremiumFeature(shop, "ADVANCED_DISCOUNTS").reason,
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
     emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
@@ -320,6 +342,7 @@ export const loader = async ({
     experiments,
     advancedDiscountRules,
     emailTimers,
+    advancedBadgeRules,
   ] = await Promise.all([
     listDiscountCodePoolsForCampaign(shop.id, campaign.id),
     listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
@@ -327,6 +350,7 @@ export const loader = async ({
     listExperimentsForCampaign(shop.id, campaign.id),
     listAdvancedDiscountRulesForCampaign(shop.id, campaign.id),
     listEmailTimersForCampaign(shop.id, campaign.id),
+    listAdvancedBadgeRulesForCampaign(shop.id, campaign.id),
   ]);
   const experimentResults = await Promise.all(
     experiments.map((experiment) =>
@@ -398,6 +422,7 @@ export const loader = async ({
     }),
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
+    advancedBadgeRules: advancedBadgeRules.map(toAdvancedBadgeRuleRow),
     advancedDiscountRules: advancedDiscountRules.map(toAdvancedDiscountRuleRow),
     emailTimers: emailTimers.map((timer) => toEmailTimerRow(timer, request)),
     experiments: experiments.map((experiment) =>
@@ -809,6 +834,71 @@ export const action = async ({
   }
 
   if (
+    intent === "saveAdvancedBadgeRule" ||
+    intent === "deleteAdvancedBadgeRule"
+  ) {
+    const advancedBadgeGate = canUsePremiumFeature(shop, "ADVANCED_BADGES");
+
+    if (!advancedBadgeGate.allowed) {
+      return {
+        advancedBadgeErrors: {
+          form: advancedBadgeGate.reason,
+        },
+      };
+    }
+
+    try {
+      if (intent === "deleteAdvancedBadgeRule") {
+        const ruleId = String(formData.get("badgeRuleId") ?? "").trim();
+
+        if (!ruleId) {
+          return {
+            advancedBadgeErrors: {
+              form: "Badge rule id is required.",
+            },
+          };
+        }
+
+        await deleteAdvancedBadgeRule({
+          campaignId: id,
+          ruleId,
+          shopId: shop.id,
+        });
+
+        return redirect(`/app/campaigns/${id}`);
+      }
+
+      const parsed = parseAdvancedBadgeRuleFormData(formData);
+
+      if (parsed.errors.form) {
+        return {
+          advancedBadgeErrors: parsed.errors,
+        };
+      }
+
+      await saveAdvancedBadgeRule({
+        campaignId: id,
+        input: parsed.input,
+        ruleId: String(formData.get("badgeRuleId") ?? "").trim() || undefined,
+        shopId: shop.id,
+      });
+
+      return redirect(`/app/campaigns/${id}`);
+    } catch (error) {
+      console.error("Failed to save advanced badge rule", error);
+
+      return {
+        advancedBadgeErrors: {
+          form:
+            error instanceof Error
+              ? error.message
+              : "Badge rule could not be saved.",
+        },
+      };
+    }
+  }
+
+  if (
     intent === "saveAdvancedDiscountRule" ||
     intent === "deleteAdvancedDiscountRule"
   ) {
@@ -1191,6 +1281,7 @@ export default function EditCampaignPage() {
     discountApiError,
     discountOptions,
     discountValues,
+    advancedBadgeRules,
     advancedDiscountRules,
     emailTimers,
     experiments,
@@ -1277,6 +1368,14 @@ export default function EditCampaignPage() {
                   lockedReason={lockedFeatures.badge}
                   values={actionData?.badgeValues ?? badgeValues}
                 />
+                {hasBadge && (
+                  <AdvancedBadgeRulesEditor
+                    errors={actionData?.advancedBadgeErrors}
+                    lockedReason={lockedFeatures.advancedBadges}
+                    notice={actionData?.advancedBadgeNotice}
+                    rules={advancedBadgeRules}
+                  />
+                )}
                 <DeliveryCutoffSettingsEditor
                   enabled={hasDeliveryCutoff}
                   errors={actionData?.deliveryCutoffErrors}
@@ -1390,6 +1489,188 @@ function readEmailTimerExpiredBehavior(value: string) {
   }
 
   return null;
+}
+
+function parseAdvancedBadgeRuleFormData(formData: FormData): {
+  errors: AdvancedBadgeRuleErrors;
+  input: AdvancedBadgeRuleInput;
+} {
+  const errors: AdvancedBadgeRuleErrors = {};
+  const priority = Number(formData.get("badgeRulePriority"));
+  const status = readStage2RuleStatus(
+    String(formData.get("badgeRuleStatus") ?? ""),
+  );
+  const badgeText = String(formData.get("badgeRuleText") ?? "").trim();
+  const textByLocale = parseTextByLocaleJson(
+    String(formData.get("badgeRuleTextByLocaleJson") ?? ""),
+    errors,
+  );
+  const metafield = readMetafieldRule(formData, errors);
+
+  if (!badgeText) {
+    errors.badgeText = "Badge text is required.";
+    errors.form = errors.badgeText;
+  }
+
+  if (!Number.isInteger(priority) || priority < 0 || priority > 1000) {
+    errors.priority = "Priority must be an integer from 0 to 1000.";
+    errors.form = errors.priority;
+  }
+
+  if (!status) {
+    errors.form = "Badge rule status is invalid.";
+  }
+
+  const conditions = removeEmptyJsonValues({
+    productTags: parseMultilineIds(formData.get("badgeRuleProductTags")),
+    collectionIds: parseMultilineIds(formData.get("badgeRuleCollectionIds")),
+    vendors: parseMultilineIds(formData.get("badgeRuleVendor")),
+    inventoryBelow: parseOptionalInteger(
+      formData.get("badgeRuleInventoryBelow"),
+    ),
+    discountActive: isFormCheckboxChecked(formData, "badgeRuleDiscountActive")
+      ? true
+      : null,
+    compareAtPriceRequired: isFormCheckboxChecked(
+      formData,
+      "badgeRuleCompareAtPrice",
+    ),
+    metafields: metafield ? [metafield] : [],
+    markets: parseMultilineIds(formData.get("badgeRuleMarkets")),
+    locales: parseMultilineIds(formData.get("badgeRuleLocales")),
+    startsAt: toIsoDateString(formData.get("badgeRuleStartsAt")),
+    endsAt: toIsoDateString(formData.get("badgeRuleEndsAt")),
+  });
+  const design = removeEmptyJsonValues({
+    text: badgeText,
+    textByLocale,
+    shape: String(formData.get("badgeRuleShape") ?? "PILL"),
+    position: String(formData.get("badgeRulePosition") ?? "TOP_RIGHT"),
+    backgroundColor: String(
+      formData.get("badgeRuleBackgroundColor") ?? "#111827",
+    ),
+    textColor: String(formData.get("badgeRuleTextColor") ?? "#ffffff"),
+    accentColor: String(formData.get("badgeRuleAccentColor") ?? "#22c55e"),
+    fontSize: parseOptionalInteger(formData.get("badgeRuleFontSize")) ?? 13,
+    url: String(formData.get("badgeRuleUrl") ?? "").trim(),
+  });
+
+  return {
+    errors,
+    input: {
+      priority: Number.isInteger(priority) ? priority : 0,
+      status: status ?? Stage2RuleStatus.DRAFT,
+      conditions,
+      design,
+    },
+  };
+}
+
+function readStage2RuleStatus(value: string) {
+  if (
+    value === Stage2RuleStatus.DRAFT ||
+    value === Stage2RuleStatus.ACTIVE ||
+    value === Stage2RuleStatus.PAUSED ||
+    value === Stage2RuleStatus.ARCHIVED
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseTextByLocaleJson(value: string, errors: AdvancedBadgeRuleErrors) {
+  const rawValue = value.trim();
+
+  if (!rawValue) return {};
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      errors.textByLocaleJson = "Translations JSON must be an object.";
+      errors.form = errors.textByLocaleJson;
+      return {};
+    }
+
+    return Object.entries(parsed).reduce<Record<string, string>>(
+      (translations, [locale, text]) => {
+        if (typeof text === "string" && text.trim()) {
+          translations[locale.trim()] = text.trim();
+        }
+
+        return translations;
+      },
+      {},
+    );
+  } catch {
+    errors.textByLocaleJson = "Translations JSON is invalid.";
+    errors.form = errors.textByLocaleJson;
+    return {};
+  }
+}
+
+function readMetafieldRule(
+  formData: FormData,
+  errors: AdvancedBadgeRuleErrors,
+) {
+  const namespace = String(
+    formData.get("badgeRuleMetafieldNamespace") ?? "",
+  ).trim();
+  const key = String(formData.get("badgeRuleMetafieldKey") ?? "").trim();
+  const value = String(formData.get("badgeRuleMetafieldValue") ?? "").trim();
+
+  if (!namespace && !key && !value) return null;
+
+  if (!namespace || !key) {
+    errors.metafield =
+      "Metafield namespace and key are required when using metafield matching.";
+    errors.form = errors.metafield;
+    return null;
+  }
+
+  return removeEmptyJsonValues({ namespace, key, value });
+}
+
+function parseOptionalInteger(value: FormDataEntryValue | null) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) return null;
+
+  const number = Number(rawValue);
+
+  return Number.isInteger(number) ? number : null;
+}
+
+function toIsoDateString(value: FormDataEntryValue | null) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) return null;
+
+  const date = new Date(rawValue);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function removeEmptyJsonValues(
+  value: Record<string, unknown>,
+): Prisma.InputJsonObject {
+  const result = Object.entries(value).reduce<
+    Record<string, Prisma.InputJsonValue>
+  >((result, [key, item]) => {
+    if (item == null || item === "") return result;
+    if (Array.isArray(item) && item.length === 0) return result;
+    if (
+      typeof item === "object" &&
+      !Array.isArray(item) &&
+      Object.keys(item).length === 0
+    ) {
+      return result;
+    }
+
+    result[key] = item as Prisma.InputJsonValue;
+    return result;
+  }, {});
+
+  return result as Prisma.InputJsonObject;
 }
 
 function isFormCheckboxChecked(formData: FormData, key: string) {
@@ -1899,6 +2180,43 @@ function toEmailTimerRow(
   };
 }
 
+function toAdvancedBadgeRuleRow(rule: {
+  id: string;
+  priority: number;
+  status: string;
+  conditions: unknown;
+  design: unknown;
+}): AdvancedBadgeRuleRow {
+  const conditions = readAdvancedBadgeConditions(rule.conditions);
+  const design = readAdvancedBadgeDesign(rule.design);
+  const backgroundColor = design.backgroundColor ?? "#111827";
+  const textColor = design.textColor ?? "#FFFFFF";
+  const accentColor = design.accentColor ?? "#22C55E";
+
+  return {
+    id: rule.id,
+    priority: rule.priority,
+    status: formatEnum(rule.status),
+    text: design.text || design.textByLocale?.en || "Limited offer",
+    shape: formatEnum(design.shape ?? "PILL"),
+    position: formatEnum(design.position ?? "TOP_RIGHT"),
+    conditionsSummary: summarizeAdvancedBadgeConditions(conditions),
+    scheduleSummary: summarizeAdvancedBadgeSchedule(conditions),
+    previewStyle: {
+      backgroundColor,
+      borderColor: accentColor,
+      borderRadius:
+        design.shape === "SQUARE"
+          ? "0"
+          : design.shape === "ROUNDED"
+            ? "8px"
+            : "999px",
+      color: textColor,
+      fontSize: `${design.fontSize ?? 13}px`,
+    },
+  };
+}
+
 function toAdvancedDiscountRuleRow(rule: {
   id: string;
   title: string;
@@ -1927,6 +2245,49 @@ function toAdvancedDiscountRuleRow(rule: {
     endsAt: toShortDateTime(rule.endsAt),
     shopifyDiscountId: rule.shopifyDiscountId ?? "",
   };
+}
+
+function summarizeAdvancedBadgeConditions(
+  conditions: ReturnType<typeof readAdvancedBadgeConditions>,
+) {
+  const parts = [
+    conditions.productTags?.length
+      ? `tags: ${conditions.productTags.join(", ")}`
+      : "",
+    conditions.collectionIds?.length
+      ? `collections: ${conditions.collectionIds.length}`
+      : "",
+    conditions.vendors?.length
+      ? `vendor: ${conditions.vendors.join(", ")}`
+      : "",
+    conditions.inventoryBelow != null
+      ? `inventory < ${conditions.inventoryBelow}`
+      : "",
+    conditions.discountActive === true ? "active discount" : "",
+    conditions.compareAtPriceRequired ? "compare-at price" : "",
+    conditions.metafields?.length ? "metafield" : "",
+    conditions.markets?.length
+      ? `markets: ${conditions.markets.join(", ")}`
+      : "",
+    conditions.locales?.length
+      ? `locales: ${conditions.locales.join(", ")}`
+      : "",
+  ].filter(Boolean);
+
+  return parts.join(" | ");
+}
+
+function summarizeAdvancedBadgeSchedule(
+  conditions: ReturnType<typeof readAdvancedBadgeConditions>,
+) {
+  const startsAt = toShortDateTime(conditions.startsAt ?? null);
+  const endsAt = toShortDateTime(conditions.endsAt ?? null);
+
+  if (startsAt && endsAt) return `${startsAt} to ${endsAt}`;
+  if (startsAt) return `from ${startsAt}`;
+  if (endsAt) return `until ${endsAt}`;
+
+  return "";
 }
 
 function jsonListText(value: unknown) {

@@ -268,7 +268,10 @@ export async function recordAnalyticsEvent(
     occurredAt: now,
   });
 
-  if (payload.eventType === AnalyticsEventType.IMPRESSION) {
+  if (
+    payload.eventType === AnalyticsEventType.IMPRESSION ||
+    payload.eventType === AnalyticsEventType.BADGE_IMPRESSION
+  ) {
     await markFirstImpressionReceived(shop.id);
   }
 
@@ -521,7 +524,8 @@ function shouldCheckImpressionDedupe(
   >,
 ) {
   return Boolean(
-    payload.eventType === AnalyticsEventType.IMPRESSION &&
+    (payload.eventType === AnalyticsEventType.IMPRESSION ||
+      payload.eventType === AnalyticsEventType.BADGE_IMPRESSION) &&
     payload.placementType &&
     payload.sessionId,
   );
@@ -545,11 +549,17 @@ function incrementSummary(
   summary: AnalyticsSummary,
   event: AnalyticsSummaryEvent,
 ) {
-  if (event.eventType === AnalyticsEventType.IMPRESSION) {
+  if (
+    event.eventType === AnalyticsEventType.IMPRESSION ||
+    event.eventType === AnalyticsEventType.BADGE_IMPRESSION
+  ) {
     summary.impressions += 1;
   }
 
-  if (event.eventType === AnalyticsEventType.CLICK) {
+  if (
+    event.eventType === AnalyticsEventType.CLICK ||
+    event.eventType === AnalyticsEventType.BADGE_CLICK
+  ) {
     summary.clicks += 1;
   }
 

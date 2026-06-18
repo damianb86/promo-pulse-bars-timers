@@ -1,0 +1,4 @@
+{
+  "postPurchaseTimerLabel": "Reorder offer ends in {{time}}",
+  "discountCode": "Code: {{code}}"
+}

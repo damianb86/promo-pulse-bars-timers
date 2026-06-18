@@ -1,5 +1,6 @@
 {
   "timerLabel": "Se termine dans {{time}}",
+  "postPurchaseTimerLabel": "L'offre de réachat se termine dans {{time}}",
   "discountCode": "Code : {{code}}",
   "goalProgress": "{{percent}} % de l'objectif atteint"
 }

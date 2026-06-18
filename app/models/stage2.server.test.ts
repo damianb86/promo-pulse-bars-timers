@@ -214,6 +214,8 @@ describe("Stage 2 data helpers", () => {
             "APPLY_CODE_CLICKED",
             "ADD_TO_CART",
             "CHECKOUT_STARTED",
+            "POST_PURCHASE_IMPRESSION",
+            "REORDER_OFFER_CLICK",
           ],
         },
         occurredAt: {

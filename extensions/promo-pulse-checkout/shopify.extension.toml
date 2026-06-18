@@ -19,6 +19,10 @@ uid = "7c677ea7-f873-b315-6317-40aee9b69fa9a7363f29"
 module = "./src/Checkout.jsx"
 target = "purchase.checkout.block.render"
 
+[[extensions.targeting]]
+module = "./src/ThankYou.jsx"
+target = "purchase.thank-you.block.render"
+
 [extensions.capabilities]
 # Gives your extension access to make external network calls, using the
 # JavaScript `fetch()` API. Learn more:

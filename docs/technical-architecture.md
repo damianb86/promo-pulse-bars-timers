@@ -52,6 +52,10 @@ Las extensiones actuales se mantienen bajo `extensions/`:
 - Web Pixel Extension para capturar eventos analytics permitidos por Shopify.
 - Checkout UI Extension para mensajes promocionales en checkout mediante el
   bloque `purchase.checkout.block.render`.
+- Thank-you extension target para mensajes post-compra mediante
+  `purchase.thank-you.block.render`.
+- Customer Account UI Extension para order-status mediante
+  `customer-account.order-status.block.render`.
 
 Los archivos generados deben vivir bajo `extensions/` para conservar el flujo
 estandar de `shopify app dev`, `shopify app generate` y `shopify app deploy`.
@@ -101,6 +105,8 @@ Servicios reservados para Stage 2:
 - `app/services/agency`: multi-store y agency dashboard.
 - `app/services/checkout`: seleccion segura de campanas elegibles para checkout
   y view models sin PII para Checkout UI Extension.
+- `app/services/post-purchase`: seleccion segura de campanas elegibles para
+  thank-you/order-status y view models sin PII para extensiones post-compra.
 - `app/components/stage2`: slots/componentes admin para features premium.
 
 Reglas de integracion:
@@ -114,6 +120,8 @@ Reglas de integracion:
   quedar ocultos.
 - No bloquear progreso de checkout desde Promo Pulse; la extension de checkout
   solo renderiza mensajes y debe fallar cerrada si el backend no responde.
+- No afirmar que una oferta fue usada en post-compra salvo que Shopify reporte
+  un codigo aplicado que coincida con la campana.
 - Mantener payloads storefront backwards-compatible para no romper Theme App
   Extension ni Web Pixel Extension.
 

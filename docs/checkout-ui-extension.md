@@ -4,6 +4,11 @@ Promo Pulse incluye una Checkout UI Extension en
 `extensions/promo-pulse-checkout` para mostrar mensajes promocionales de baja
 friccion cuando el merchant agrega el bloque desde el checkout editor.
 
+La misma extension tambien registra el target
+`purchase.thank-you.block.render` para mensajes post-compra en thank-you. El
+target de order-status vive en `extensions/promo-pulse-order-status`; ver
+`docs/post-purchase-extensions.md`.
+
 ## Que Muestra
 
 El bloque consume `/api/checkout/campaign` o, por defecto, el App Proxy:

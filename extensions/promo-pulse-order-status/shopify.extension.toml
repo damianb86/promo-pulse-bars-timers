@@ -1,0 +1,43 @@
+# Learn more about configuring Customer Account UI extensions:
+# https://shopify.dev/docs/api/customer-account-ui-extensions/latest/configuration
+
+api_version = "2026-04"
+
+[[extensions]]
+name = "promo-pulse-order-status"
+handle = "promo-pulse-order-status"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/OrderStatus.jsx"
+target = "customer-account.order-status.block.render"
+
+[extensions.capabilities]
+network_access = true
+
+[settings]
+
+[[settings.fields]]
+key = "campaignId"
+type = "single_line_text_field"
+name = "Campaign ID"
+description = "Optional. Required only when the block mode is Specific campaign."
+
+[[settings.fields]]
+key = "mode"
+type = "single_line_text_field"
+name = "Mode"
+description = "Use AUTO_ELIGIBLE to let Promo Pulse pick an order-status campaign, or SPECIFIC_CAMPAIGN to use the Campaign ID above."
+validations = [{ name = "choices", value = "[\"AUTO_ELIGIBLE\", \"SPECIFIC_CAMPAIGN\"]" }]
+
+[[settings.fields]]
+key = "compactMode"
+type = "boolean"
+name = "Compact mode"
+description = "Render a denser order-status message."
+
+[[settings.fields]]
+key = "showTimer"
+type = "boolean"
+name = "Show timer"
+description = "Show a countdown only when the eligible campaign has a real future end time."

@@ -110,7 +110,9 @@ export const test = base.extend<E2EFixtures>({
       await page.getByLabel("Campaign type").selectOption(values.type);
       await page.getByLabel("Primary placement").selectOption(values.placement);
       await page.getByLabel("Campaign name").fill(values.name);
-      await page.getByLabel("Status").selectOption(values.status);
+      await page
+        .getByRole("combobox", { name: /^Status$/ })
+        .selectOption(values.status);
       await page
         .getByLabel("End date/time")
         .fill(toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)));

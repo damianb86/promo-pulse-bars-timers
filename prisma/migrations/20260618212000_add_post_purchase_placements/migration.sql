@@ -1,0 +1,4 @@
+-- SQLite stores Prisma enums as TEXT. Adding post-purchase placement and
+-- analytics enum values does not require a table rewrite; this migration
+-- records the schema change for THANK_YOU_PAGE, ORDER_STATUS_PAGE,
+-- POST_PURCHASE_IMPRESSION, and REORDER_OFFER_CLICK.

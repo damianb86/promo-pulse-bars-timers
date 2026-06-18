@@ -1,5 +1,6 @@
 {
   "timerLabel": "Ends in {{time}}",
+  "postPurchaseTimerLabel": "Reorder offer ends in {{time}}",
   "discountCode": "Code: {{code}}",
   "goalProgress": "{{percent}}% of the goal reached"
 }

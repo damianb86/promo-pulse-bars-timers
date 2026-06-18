@@ -35,7 +35,8 @@ export type E2ETestScenario =
   | "analytics"
   | "ab-test"
   | "unique-discount"
-  | "unique-discount-expired";
+  | "unique-discount-expired"
+  | "post-purchase";
 
 export function isE2ETestMode() {
   return (
@@ -219,6 +220,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "unique-discount-expired") {
     await createUniqueDiscountCampaign(shopId, { codes: [] });
+    return;
+  }
+
+  if (scenario === "post-purchase") {
+    await createPostPurchaseCampaigns(shopId);
   }
 }
 
@@ -457,6 +463,101 @@ async function createUniqueDiscountCampaign(
   }
 
   return campaign;
+}
+
+async function createPostPurchaseCampaigns(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  await prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Thank You Offer",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.THANK_YOU_PAGE, enabled: true }],
+      },
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+        },
+      },
+      discountSync: {
+        create: {
+          discountCode: "SAVE20",
+          method: DiscountSyncMethod.CODE,
+          syncStartEnd: false,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Thank you offer"),
+            subheadline: "Your checkout offer was detected.",
+            ctaText: "Shop again",
+            ctaUrl: "/collections/sale",
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Order Status Reorder",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [
+          { placementType: PlacementType.ORDER_STATUS_PAGE, enabled: true },
+        ],
+      },
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+        },
+      },
+      discountSync: {
+        create: {
+          discountCode: "REORDER10",
+          method: DiscountSyncMethod.CODE,
+          syncStartEnd: false,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Come back soon"),
+            subheadline: "Use this code on a limited-time reorder.",
+            ctaText: "Reorder now",
+            ctaUrl: "/collections/bestsellers",
+          },
+        ],
+      },
+    },
+  });
 }
 
 async function createFreeShippingCampaign(

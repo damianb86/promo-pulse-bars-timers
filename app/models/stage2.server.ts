@@ -212,6 +212,8 @@ const defaultAttributableEventTypes = [
   AnalyticsEventType.APPLY_CODE_CLICKED,
   AnalyticsEventType.ADD_TO_CART,
   AnalyticsEventType.CHECKOUT_STARTED,
+  AnalyticsEventType.POST_PURCHASE_IMPRESSION,
+  AnalyticsEventType.REORDER_OFFER_CLICK,
 ] satisfies AnalyticsEventType[];
 
 function buildAttributionIdentityFilters(

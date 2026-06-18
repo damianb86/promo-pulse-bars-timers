@@ -45,6 +45,8 @@ export const placementTypeOptions = [
   { value: "COLLECTION_CARD", label: "Collection card" },
   { value: "CART_PAGE", label: "Cart page" },
   { value: "CART_DRAWER", label: "Cart drawer" },
+  { value: "THANK_YOU_PAGE", label: "Thank you page" },
+  { value: "ORDER_STATUS_PAGE", label: "Order status page" },
   { value: "PASSWORD_PAGE", label: "Password page" },
   { value: "CUSTOM_SELECTOR", label: "Custom selector" },
 ] as const;

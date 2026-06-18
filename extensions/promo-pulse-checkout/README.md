@@ -5,6 +5,7 @@ Checkout UI Extension for Promo Pulse promotional messages.
 Target:
 
 - `purchase.checkout.block.render`
+- `purchase.thank-you.block.render`
 
 Behavior:
 

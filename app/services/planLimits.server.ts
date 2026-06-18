@@ -13,6 +13,7 @@ export type PlanFeatureKey =
   | "basic_targeting"
   | "cart_drawer"
   | "cart_timer"
+  | "checkout_extensions"
   | "countdown_bar"
   | "custom_css"
   | "delivery_cutoff"
@@ -58,6 +59,7 @@ const allFeatures: Record<PlanFeatureKey, boolean> = {
   basic_targeting: false,
   cart_drawer: false,
   cart_timer: false,
+  checkout_extensions: false,
   countdown_bar: false,
   custom_css: false,
   delivery_cutoff: false,
@@ -117,6 +119,7 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
       basic_targeting: true,
       cart_drawer: true,
       cart_timer: true,
+      checkout_extensions: true,
       countdown_bar: true,
       delivery_cutoff: true,
       discount_sync: true,
@@ -143,6 +146,7 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
       basic_targeting: true,
       cart_drawer: true,
       cart_timer: true,
+      checkout_extensions: true,
       countdown_bar: true,
       custom_css: true,
       delivery_cutoff: true,
@@ -455,6 +459,12 @@ export function getRequiredCampaignFeatures(campaign: {
   if (campaign.type === "PRODUCT_BADGE") features.add("product_badges");
 
   if (campaign.placementType === "CART_DRAWER") features.add("cart_drawer");
+  if (
+    campaign.placementType === "THANK_YOU_PAGE" ||
+    campaign.placementType === "ORDER_STATUS_PAGE"
+  ) {
+    features.add("checkout_extensions");
+  }
   if (campaign.placementType === "CUSTOM_SELECTOR") {
     features.add("advanced_targeting");
   }

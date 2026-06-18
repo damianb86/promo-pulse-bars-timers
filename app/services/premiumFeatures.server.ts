@@ -23,7 +23,7 @@ export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   AUTO_WINNER: false,
   ADVANCED_DISCOUNTS: true,
   CHECKOUT_EXTENSIONS: true,
-  EMAIL_TIMERS: false,
+  EMAIL_TIMERS: true,
   ADVANCED_BADGES: false,
   MARKETS_ADVANCED: false,
   AI_CAMPAIGN_BUILDER: false,

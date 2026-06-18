@@ -36,6 +36,7 @@ test("storefront events are saved and visible in analytics admin", async ({
       copyCode: 1,
     });
 
+  await page.waitForTimeout(500);
   await loginAsDemoShop("/app/analytics");
   await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
   await expect(page.getByText("Campaign performance")).toBeVisible();

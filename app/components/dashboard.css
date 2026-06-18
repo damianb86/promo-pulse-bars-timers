@@ -157,6 +157,18 @@
   font-weight: 650;
 }
 
+.counterpulse-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-card {
+  padding: 12px;
+  border: 1px solid #ebebeb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .counterpulse-row-actions {
   display: flex;
   flex-wrap: wrap;

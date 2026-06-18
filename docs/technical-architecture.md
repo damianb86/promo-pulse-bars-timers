@@ -89,9 +89,9 @@ Tipos y flags:
   categorias de templates.
 - `app/services/premiumFeatures.server.ts` define los defaults de flags
   internos y el helper `canUsePremiumFeature(shop, featureKey)`.
-- `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS` y `CHECKOUT_EXTENSIONS`
-  quedan habilitados porque ya tienen base implementada. Los demas flags Stage
-  2 quedan deshabilitados hasta su implementacion.
+- `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS`, `CHECKOUT_EXTENSIONS` y
+  `EMAIL_TIMERS` quedan habilitados porque ya tienen base implementada. Los
+  demas flags Stage 2 quedan deshabilitados hasta su implementacion.
 
 Servicios reservados para Stage 2:
 
@@ -107,6 +107,8 @@ Servicios reservados para Stage 2:
   y view models sin PII para Checkout UI Extension.
 - `app/services/post-purchase`: seleccion segura de campanas elegibles para
   thank-you/order-status y view models sin PII para extensiones post-compra.
+- `app/routes/api.email-timer.$publicToken.ts`: endpoint publico de imagen
+  `GET /api/email-timer/:publicToken.png` para countdown timers de email.
 - `app/components/stage2`: slots/componentes admin para features premium.
 
 Reglas de integracion:

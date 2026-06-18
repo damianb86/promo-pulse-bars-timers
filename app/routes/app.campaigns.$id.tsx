@@ -3,6 +3,7 @@ import { useActionData, useLoaderData } from "react-router";
 import {
   AdvancedDiscountRuleStatus,
   AdvancedDiscountRuleType,
+  EmailTimerExpiredBehavior,
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
@@ -20,6 +21,11 @@ import { CampaignForm } from "../components/CampaignForm";
 import { CampaignTranslationsEditor } from "../components/CampaignTranslationsEditor";
 import { DeliveryCutoffSettingsEditor } from "../components/DeliveryCutoffSettingsEditor";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
+import {
+  EmailTimerEditor,
+  type EmailTimerErrors,
+  type EmailTimerRow,
+} from "../components/EmailTimerEditor";
 import {
   ExperimentsEditor,
   type ExperimentErrors,
@@ -103,6 +109,12 @@ import {
   type ExperimentResults,
   type ExperimentVariantInput,
 } from "../services/experiments";
+import {
+  buildEmailTimerImageUrl,
+  buildEmailTimerSnippet,
+  createEmailTimerForCampaign,
+  listEmailTimersForCampaign,
+} from "../services/email-timers/emailTimers.server";
 import {
   hasFreeShippingSettingsErrors,
   parseFreeShippingSettingsFormData,
@@ -215,10 +227,12 @@ type LoaderData = {
     discountSync: string;
     advancedDiscounts: string;
     experiments: string;
+    emailTimers: string;
     multiLanguage: string;
     uniqueCodes: string;
   };
   advancedDiscountRules: AdvancedDiscountRuleRow[];
+  emailTimers: EmailTimerRow[];
   experiments: ExperimentRow[];
   uniqueCodePools: UniqueCodePoolRow[];
   uniqueCodeStats: UniqueCodeStats;
@@ -239,6 +253,7 @@ type ActionData = {
   discountValues?: DiscountSettingsValues;
   advancedDiscountErrors?: AdvancedDiscountRuleErrors;
   advancedDiscountNotice?: string;
+  emailTimerErrors?: EmailTimerErrors;
   experimentErrors?: ExperimentErrors;
   experimentNotice?: string;
   uniqueCodeErrors?: UniqueCodeErrors;
@@ -291,6 +306,7 @@ export const loader = async ({
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
     advancedDiscounts: canUsePremiumFeature(shop, "ADVANCED_DISCOUNTS").reason,
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
+    emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
   };
@@ -303,12 +319,14 @@ export const loader = async ({
     uniqueCodeStats,
     experiments,
     advancedDiscountRules,
+    emailTimers,
   ] = await Promise.all([
     listDiscountCodePoolsForCampaign(shop.id, campaign.id),
     listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
     getUniqueCodeStatsForCampaign(shop.id, campaign.id),
     listExperimentsForCampaign(shop.id, campaign.id),
     listAdvancedDiscountRulesForCampaign(shop.id, campaign.id),
+    listEmailTimersForCampaign(shop.id, campaign.id),
   ]);
   const experimentResults = await Promise.all(
     experiments.map((experiment) =>
@@ -381,6 +399,7 @@ export const loader = async ({
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
     advancedDiscountRules: advancedDiscountRules.map(toAdvancedDiscountRuleRow),
+    emailTimers: emailTimers.map((timer) => toEmailTimerRow(timer, request)),
     experiments: experiments.map((experiment) =>
       toExperimentRow(
         experiment,
@@ -742,6 +761,49 @@ export const action = async ({
               : "Unique codes could not be generated.",
         },
         uniqueCodeValues: parsed.values,
+      };
+    }
+  }
+
+  if (intent === "createEmailTimer") {
+    const emailTimerGate = canUsePremiumFeature(shop, "EMAIL_TIMERS");
+
+    if (!emailTimerGate.allowed) {
+      return {
+        emailTimerErrors: {
+          form: emailTimerGate.reason,
+        },
+      };
+    }
+
+    const parsed = parseEmailTimerFormData(formData);
+
+    if (parsed.errors.form || parsed.errors.width || parsed.errors.height) {
+      return {
+        emailTimerErrors: parsed.errors,
+      };
+    }
+
+    try {
+      await createEmailTimerForCampaign({
+        shopId: shop.id,
+        campaignId: id,
+        width: parsed.width,
+        height: parsed.height,
+        expiredBehavior: parsed.expiredBehavior,
+      });
+
+      return redirect(`/app/campaigns/${id}`);
+    } catch (error) {
+      console.error("Failed to create email timer", error);
+
+      return {
+        emailTimerErrors: {
+          form:
+            error instanceof Error
+              ? error.message
+              : "Email timer could not be created.",
+        },
       };
     }
   }
@@ -1130,6 +1192,7 @@ export default function EditCampaignPage() {
     discountOptions,
     discountValues,
     advancedDiscountRules,
+    emailTimers,
     experiments,
     freeShippingValues,
     lowStockValues,
@@ -1186,6 +1249,11 @@ export default function EditCampaignPage() {
               lockedReason={lockedFeatures.advancedDiscounts}
               notice={actionData?.advancedDiscountNotice}
               rules={advancedDiscountRules}
+            />
+            <EmailTimerEditor
+              errors={actionData?.emailTimerErrors}
+              lockedReason={lockedFeatures.emailTimers}
+              timers={emailTimers}
             />
             <ExperimentsEditor
               errors={actionData?.experimentErrors}
@@ -1277,6 +1345,51 @@ function parseTotalCodesToGenerate(
   }
 
   return { ok: true, value };
+}
+
+function parseEmailTimerFormData(formData: FormData): {
+  errors: EmailTimerErrors;
+  width: number;
+  height: number;
+  expiredBehavior: EmailTimerExpiredBehavior;
+} {
+  const errors: EmailTimerErrors = {};
+  const width = Number(formData.get("emailTimerWidth"));
+  const height = Number(formData.get("emailTimerHeight"));
+  const expiredBehavior = readEmailTimerExpiredBehavior(
+    String(formData.get("emailTimerExpiredBehavior") ?? ""),
+  );
+
+  if (!Number.isInteger(width) || width < 240 || width > 1200) {
+    errors.width = "Enter a width from 240 to 1200 pixels.";
+  }
+
+  if (!Number.isInteger(height) || height < 80 || height > 400) {
+    errors.height = "Enter a height from 80 to 400 pixels.";
+  }
+
+  if (!expiredBehavior) {
+    errors.form = "Expired behavior is invalid.";
+  }
+
+  return {
+    errors,
+    width: Number.isInteger(width) ? width : 600,
+    height: Number.isInteger(height) ? height : 180,
+    expiredBehavior: expiredBehavior ?? EmailTimerExpiredBehavior.SHOW_EXPIRED,
+  };
+}
+
+function readEmailTimerExpiredBehavior(value: string) {
+  if (
+    value === EmailTimerExpiredBehavior.SHOW_EXPIRED ||
+    value === EmailTimerExpiredBehavior.SHOW_ZERO ||
+    value === EmailTimerExpiredBehavior.HIDE
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function isFormCheckboxChecked(formData: FormData, key: string) {
@@ -1756,6 +1869,36 @@ function toUniqueCodeRow(code: {
   };
 }
 
+function toEmailTimerRow(
+  timer: {
+    id: string;
+    publicToken: string;
+    mode: string;
+    endsAt: Date | string | null;
+    expiredBehavior: string;
+    design: unknown;
+    createdAt: Date | string;
+  },
+  request: Request,
+): EmailTimerRow {
+  const design = readJsonObject(timer.design);
+  const width = clampIntegerValue(design.width, 240, 1200, 600);
+  const height = clampIntegerValue(design.height, 80, 400, 180);
+  const imageUrl = buildEmailTimerImageUrl(request, timer.publicToken);
+
+  return {
+    id: timer.id,
+    imageUrl,
+    snippet: buildEmailTimerSnippet(imageUrl, width),
+    width,
+    height,
+    mode: formatEnum(timer.mode),
+    expiredBehavior: formatEnum(timer.expiredBehavior),
+    endsAt: toShortDateTime(timer.endsAt),
+    createdAt: toShortDateTime(timer.createdAt),
+  };
+}
+
 function toAdvancedDiscountRuleRow(rule: {
   id: string;
   title: string;
@@ -1788,6 +1931,24 @@ function toAdvancedDiscountRuleRow(rule: {
 
 function jsonListText(value: unknown) {
   return Array.isArray(value) ? value.join("\n") : "";
+}
+
+function readJsonObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function clampIntegerValue(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return fallback;
+
+  return Math.max(min, Math.min(max, parsed));
 }
 
 function toShortDateTime(date: Date | string | null) {

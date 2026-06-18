@@ -13,7 +13,9 @@ test("campaign creation shows server validation errors", async ({
   await resetDb();
   await loginAsDemoShop("/app/campaigns/new");
 
-  await page.getByLabel("Status").selectOption("ACTIVE");
+  await page
+    .getByRole("combobox", { name: /^Status$/ })
+    .selectOption("ACTIVE");
   await page.getByLabel("CTA URL").fill("ftp://example.com");
   await page.getByRole("button", { name: "Save campaign" }).click();
 
@@ -65,7 +67,9 @@ test("campaign list filters by search, status, and type", async ({
   ).toHaveCount(0);
 
   await page.getByLabel("Search by name").fill("");
-  await page.getByLabel("Status").selectOption("ACTIVE");
+  await page
+    .getByRole("combobox", { name: /^Status$/ })
+    .selectOption("ACTIVE");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(
     page.getByRole("row", { name: /E2E Filter Countdown/ }),
@@ -74,7 +78,7 @@ test("campaign list filters by search, status, and type", async ({
     page.getByRole("row", { name: /E2E Filter Shipping/ }),
   ).toHaveCount(0);
 
-  await page.getByLabel("Status").selectOption("");
+  await page.getByRole("combobox", { name: /^Status$/ }).selectOption("");
   await page.getByLabel("Type").selectOption("FREE_SHIPPING_GOAL");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(

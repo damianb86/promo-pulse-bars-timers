@@ -1,4 +1,5 @@
 import {
+  AnalyticsEventType,
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
@@ -8,7 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   assignVariantToVisitor,
+  applyWinningVariantToCampaign,
+  calculateExperimentResults,
   createExperiment,
+  detectWinningVariant,
   pauseExperiment,
   selectWeightedVariant,
   startExperiment,
@@ -16,6 +20,13 @@ import {
 } from "./experiments.server";
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
+  attributionConversion: {
+    findMany: vi.fn(),
+  },
+  attributionTouch: {
+    findMany: vi.fn(),
+  },
   campaign: {
     findFirst: vi.fn(),
   },
@@ -26,6 +37,31 @@ const prismaMock = vi.hoisted(() => ({
   },
   experimentVariant: {
     create: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+  },
+}));
+
+const txMock = vi.hoisted(() => ({
+  campaignDesign: {
+    upsert: vi.fn(),
+  },
+  campaignPlacement: {
+    create: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  campaignTranslation: {
+    upsert: vi.fn(),
+  },
+  discountSync: {
+    upsert: vi.fn(),
+  },
+  experiment: {
+    update: vi.fn(),
+  },
+  experimentVariant: {
+    update: vi.fn(),
     updateMany: vi.fn(),
   },
 }));
@@ -37,6 +73,7 @@ vi.mock("../../db.server", () => ({
 describe("experiment service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.$transaction.mockImplementation((callback) => callback(txMock));
   });
 
   it("creates an experiment with variants", async () => {
@@ -143,14 +180,141 @@ describe("experiment service", () => {
       }),
     ).resolves.toBeNull();
   });
+
+  it("detects a CTR winner with sufficient runtime and sample", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture({
+        startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-a", AnalyticsEventType.CLICK, 25),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-b", AnalyticsEventType.CLICK, 5),
+      ],
+      conversions: [],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    expect(
+      detectWinningVariant(results, {
+        confidenceThreshold: 0.8,
+        minRuntimeHours: 1,
+        minSampleSize: 50,
+      }),
+    ).toMatchObject({
+      variantId: "variant-a",
+      runnerUpVariantId: "variant-b",
+    });
+  });
+
+  it("detects a revenue per visitor winner", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture({
+        primaryMetric: ExperimentPrimaryMetric.REVENUE_PER_VISITOR,
+        startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 100),
+      ],
+      conversions: [
+        conversion("variant-a", "order-a", "1000.00"),
+        conversion("variant-b", "order-b", "200.00"),
+      ],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    expect(
+      detectWinningVariant(results, {
+        confidenceThreshold: 0.8,
+        minRuntimeHours: 1,
+        minSampleSize: 50,
+      })?.variantId,
+    ).toBe("variant-a");
+  });
+
+  it("does not detect a winner with insufficient sample", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture(),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 10),
+        ...touches("variant-a", AnalyticsEventType.CLICK, 5),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 10),
+        ...touches("variant-b", AnalyticsEventType.CLICK, 1),
+      ],
+      conversions: [],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    expect(
+      detectWinningVariant(results, {
+        confidenceThreshold: 0.8,
+        minRuntimeHours: 0,
+        minSampleSize: 100,
+      }),
+    ).toBeNull();
+  });
+
+  it("applies winner overrides to the campaign base", async () => {
+    prismaMock.experiment.findFirst.mockResolvedValue(
+      experimentFixture({
+        winnerVariantId: "variant-a",
+        variants: [
+          variantFixture({
+            id: "variant-a",
+            textOverride: { headline: "Winning headline" },
+            designOverride: { backgroundColor: "#064E3B" },
+            discountOverride: {
+              discountCode: "WINNER20",
+              valueType: "PERCENTAGE",
+              value: 20,
+            },
+            placementOverride: { placementType: "BOTTOM_BAR" },
+          }),
+          variantFixture({ id: "variant-b" }),
+        ],
+      }),
+    );
+    txMock.campaignPlacement.updateMany.mockResolvedValue({ count: 1 });
+    txMock.experiment.update.mockResolvedValue({ id: "experiment-1" });
+
+    await applyWinningVariantToCampaign({
+      shopId: "shop-1",
+      experimentId: "experiment-1",
+    });
+
+    expect(txMock.campaignTranslation.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: { headline: "Winning headline" },
+      }),
+    );
+    expect(txMock.campaignDesign.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: { backgroundColor: "#064E3B" },
+      }),
+    );
+    expect(txMock.discountSync.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ discountCode: "WINNER20" }),
+      }),
+    );
+    expect(txMock.campaignPlacement.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { placementType: "BOTTOM_BAR" },
+      }),
+    );
+  });
 });
 
 function experimentFixture(
   overrides: Partial<{
     id: string;
+    primaryMetric: ExperimentPrimaryMetric;
     status: ExperimentStatus;
     startsAt: Date | null;
     endsAt: Date | null;
+    winnerVariantId: string | null;
     variants: ExperimentVariant[];
   }> = {},
 ) {
@@ -161,10 +325,16 @@ function experimentFixture(
     name: "Experiment",
     status: overrides.status ?? ExperimentStatus.RUNNING,
     trafficSplitStrategy: "WEIGHTED",
-    primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
+    primaryMetric:
+      overrides.primaryMetric ?? ExperimentPrimaryMetric.CLICK_RATE,
     startsAt: overrides.startsAt ?? new Date(Date.now() - 60_000),
     endsAt: overrides.endsAt ?? null,
-    winnerVariantId: null,
+    winnerVariantId: overrides.winnerVariantId ?? null,
+    winnerDeclaredAt: null,
+    autoWinnerEnabled: false,
+    autoWinnerMinSampleSize: 100,
+    autoWinnerMinRuntimeHours: 24,
+    autoWinnerConfidenceThreshold: 0.95,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     variants: overrides.variants ?? [
@@ -190,5 +360,29 @@ function variantFixture(
     placementOverride: overrides.placementOverride ?? null,
     createdAt: overrides.createdAt ?? new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: overrides.updatedAt ?? new Date("2026-01-01T00:00:00.000Z"),
+  };
+}
+
+function touches(
+  variantId: string,
+  eventType: AnalyticsEventType,
+  count: number,
+) {
+  return Array.from({ length: count }, (_, index) => ({
+    variantId,
+    visitorId: `${variantId}-visitor-${index}`,
+    sessionId: `${variantId}-session-${index}`,
+    eventType,
+  }));
+}
+
+function conversion(variantId: string, orderId: string, revenueAmount: string) {
+  return {
+    variantId,
+    visitorId: `${variantId}-buyer`,
+    sessionId: `${variantId}-buyer-session`,
+    orderId,
+    revenueAmount,
+    currencyCode: "USD",
   };
 }

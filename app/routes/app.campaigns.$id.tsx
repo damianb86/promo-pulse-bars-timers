@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
 import {
   ExperimentPrimaryMetric,
+  ExperimentStatus,
   ExperimentVariantStatus,
 } from "@prisma/client";
 
@@ -73,12 +74,18 @@ import {
   listUniqueCodesForCampaign,
 } from "../services/discounts/uniqueCodes.server";
 import {
+  applyWinningVariantToCampaign,
+  autoDeclareWinningVariant,
+  calculateExperimentResults,
   createExperiment,
+  declareWinningVariant,
   listExperimentsForCampaign,
   pauseExperiment,
   startExperiment,
   stopExperiment,
   updateExperiment,
+  updateExperimentAutoWinner,
+  type ExperimentResults,
   type ExperimentVariantInput,
 } from "../services/experiments";
 import {
@@ -277,6 +284,17 @@ export const loader = async ({
       getUniqueCodeStatsForCampaign(shop.id, campaign.id),
       listExperimentsForCampaign(shop.id, campaign.id),
     ]);
+  const experimentResults = await Promise.all(
+    experiments.map((experiment) =>
+      calculateExperimentResults({
+        shopId: shop.id,
+        experimentId: experiment.id,
+      }),
+    ),
+  );
+  const experimentResultsById = new Map(
+    experimentResults.map((results) => [results.experimentId, results]),
+  );
 
   return {
     id: campaign.id,
@@ -336,7 +354,13 @@ export const loader = async ({
     }),
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
-    experiments: experiments.map(toExperimentRow),
+    experiments: experiments.map((experiment) =>
+      toExperimentRow(
+        experiment,
+        experimentResultsById.get(experiment.id) ??
+          emptyExperimentResults(experiment),
+      ),
+    ),
     uniqueCodePools: uniqueCodePools.map(toUniqueCodePoolRow),
     uniqueCodeStats,
     uniqueCodes: uniqueCodes.map(toUniqueCodeRow),
@@ -700,7 +724,11 @@ export const action = async ({
     intent === "updateExperiment" ||
     intent === "startExperiment" ||
     intent === "pauseExperiment" ||
-    intent === "stopExperiment"
+    intent === "stopExperiment" ||
+    intent === "saveExperimentAutoWinner" ||
+    intent === "declareExperimentWinner" ||
+    intent === "detectExperimentWinner" ||
+    intent === "applyExperimentWinner"
   ) {
     const experimentGate = canUsePremiumFeature(shop, "AB_TESTING");
 
@@ -754,6 +782,46 @@ export const action = async ({
           name: parsed.name,
           primaryMetric: parsed.primaryMetric,
           variants: parsed.variants,
+        });
+      } else if (intent === "saveExperimentAutoWinner") {
+        await updateExperimentAutoWinner({
+          shopId: shop.id,
+          experimentId,
+          settings: parseAutoWinnerSettingsFormData(formData),
+        });
+      } else if (intent === "declareExperimentWinner") {
+        const variantId = String(formData.get("variantId") ?? "").trim();
+
+        if (!variantId) {
+          return {
+            experimentErrors: {
+              form: "Variant id is required.",
+            },
+          };
+        }
+
+        await declareWinningVariant({
+          shopId: shop.id,
+          experimentId,
+          variantId,
+        });
+      } else if (intent === "detectExperimentWinner") {
+        const result = await autoDeclareWinningVariant({
+          shopId: shop.id,
+          experimentId,
+        });
+
+        if (!result.declared) {
+          return {
+            experimentErrors: {
+              form: "No winner met the configured sample, runtime, and confidence rules.",
+            },
+          };
+        }
+      } else if (intent === "applyExperimentWinner") {
+        await applyWinningVariantToCampaign({
+          shopId: shop.id,
+          experimentId,
         });
       } else if (intent === "startExperiment") {
         await startExperiment({ shopId: shop.id, experimentId });
@@ -1200,6 +1268,15 @@ function parseExperimentFormData(formData: FormData): {
   };
 }
 
+function parseAutoWinnerSettingsFormData(formData: FormData) {
+  return {
+    enabled: isFormCheckboxChecked(formData, "autoWinnerEnabled"),
+    minSampleSize: Number(formData.get("autoWinnerMinSampleSize")),
+    minRuntimeHours: Number(formData.get("autoWinnerMinRuntimeHours")),
+    confidenceThreshold: Number(formData.get("autoWinnerConfidenceThreshold")),
+  };
+}
+
 function parseJsonOverride(
   value: FormDataEntryValue | undefined,
   label: string,
@@ -1255,25 +1332,33 @@ function readExperimentVariantStatus(value: string) {
   return null;
 }
 
-function toExperimentRow(experiment: {
-  id: string;
-  name: string;
-  status: string;
-  primaryMetric: string;
-  trafficSplitStrategy: string;
-  startsAt: Date | string | null;
-  endsAt: Date | string | null;
-  variants: Array<{
+function toExperimentRow(
+  experiment: {
     id: string;
     name: string;
-    weight: number;
     status: string;
-    designOverride: unknown;
-    textOverride: unknown;
-    discountOverride: unknown;
-    placementOverride: unknown;
-  }>;
-}): ExperimentRow {
+    primaryMetric: string;
+    trafficSplitStrategy: string;
+    startsAt: Date | string | null;
+    endsAt: Date | string | null;
+    winnerVariantId: string | null;
+    autoWinnerEnabled: boolean;
+    autoWinnerMinSampleSize: number;
+    autoWinnerMinRuntimeHours: number;
+    autoWinnerConfidenceThreshold: number;
+    variants: Array<{
+      id: string;
+      name: string;
+      weight: number;
+      status: string;
+      designOverride: unknown;
+      textOverride: unknown;
+      discountOverride: unknown;
+      placementOverride: unknown;
+    }>;
+  },
+  results: ExperimentResults,
+): ExperimentRow {
   return {
     id: experiment.id,
     name: experiment.name,
@@ -1282,6 +1367,11 @@ function toExperimentRow(experiment: {
     trafficSplitStrategy: experiment.trafficSplitStrategy,
     startsAt: toShortDateTime(experiment.startsAt),
     endsAt: toShortDateTime(experiment.endsAt),
+    winnerVariantId: experiment.winnerVariantId ?? "",
+    autoWinnerEnabled: experiment.autoWinnerEnabled,
+    autoWinnerMinSampleSize: experiment.autoWinnerMinSampleSize,
+    autoWinnerMinRuntimeHours: experiment.autoWinnerMinRuntimeHours,
+    autoWinnerConfidenceThreshold: experiment.autoWinnerConfidenceThreshold,
     variants: experiment.variants.map((variant) => ({
       id: variant.id,
       name: variant.name,
@@ -1291,6 +1381,76 @@ function toExperimentRow(experiment: {
       textOverrideJson: jsonTextareaValue(variant.textOverride),
       discountOverrideJson: jsonTextareaValue(variant.discountOverride),
       placementOverrideJson: jsonTextareaValue(variant.placementOverride),
+    })),
+    results: {
+      runtimeHours: results.runtimeHours,
+      currencyCode: results.currencyCode,
+      variants: results.variants.map((variant) => ({
+        variantId: variant.variantId,
+        variantName: variant.variantName,
+        impressions: variant.impressions,
+        clicks: variant.clicks,
+        ctr: variant.ctr,
+        addToCart: variant.addToCart,
+        checkoutStarted: variant.checkoutStarted,
+        orders: variant.orders,
+        revenue: variant.revenue,
+        revenuePerVisitor: variant.revenuePerVisitor,
+        conversionRate: variant.conversionRate,
+        visitors: variant.visitors,
+        primaryMetricValue: variant.primaryMetricValue,
+      })),
+    },
+  };
+}
+
+function emptyExperimentResults(experiment: {
+  id: string;
+  campaignId: string;
+  status: string;
+  primaryMetric: string;
+  winnerVariantId: string | null;
+  autoWinnerEnabled: boolean;
+  autoWinnerMinSampleSize: number;
+  autoWinnerMinRuntimeHours: number;
+  autoWinnerConfidenceThreshold: number;
+  variants: Array<{
+    id: string;
+    name: string;
+    status: string;
+  }>;
+}): ExperimentResults {
+  return {
+    experimentId: experiment.id,
+    campaignId: experiment.campaignId,
+    status: experiment.status as ExperimentStatus,
+    primaryMetric: experiment.primaryMetric as ExperimentPrimaryMetric,
+    winnerVariantId: experiment.winnerVariantId,
+    runtimeHours: 0,
+    currencyCode: "USD",
+    autoWinner: {
+      enabled: experiment.autoWinnerEnabled,
+      minSampleSize: experiment.autoWinnerMinSampleSize,
+      minRuntimeHours: experiment.autoWinnerMinRuntimeHours,
+      confidenceThreshold: experiment.autoWinnerConfidenceThreshold,
+    },
+    variants: experiment.variants.map((variant) => ({
+      variantId: variant.id,
+      variantName: variant.name,
+      status: variant.status as ExperimentVariantStatus,
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+      addToCart: 0,
+      addToCartRate: 0,
+      checkoutStarted: 0,
+      checkoutRate: 0,
+      orders: 0,
+      revenue: 0,
+      revenuePerVisitor: 0,
+      conversionRate: 0,
+      visitors: 0,
+      primaryMetricValue: 0,
     })),
   };
 }

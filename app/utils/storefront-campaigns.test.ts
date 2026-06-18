@@ -53,6 +53,11 @@ describe("storefront campaign serialization", () => {
             startsAt: new Date("2026-01-01T00:00:00.000Z"),
             endsAt: null,
             winnerVariantId: null,
+            winnerDeclaredAt: null,
+            autoWinnerEnabled: false,
+            autoWinnerMinSampleSize: 100,
+            autoWinnerMinRuntimeHours: 24,
+            autoWinnerConfidenceThreshold: 0.95,
             createdAt: new Date("2026-01-01T00:00:00.000Z"),
             updatedAt: new Date("2026-01-01T00:00:00.000Z"),
             variants: [

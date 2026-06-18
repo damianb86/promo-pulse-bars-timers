@@ -395,18 +395,23 @@ model DiscountCodePool {
 }
 
 model Experiment {
-  id                   String                  @id @default(cuid())
-  shopId               String
-  campaignId           String
-  name                 String
-  status               ExperimentStatus        @default(DRAFT)
-  trafficSplitStrategy String                  @default("WEIGHTED")
-  primaryMetric        ExperimentPrimaryMetric
-  startsAt             DateTime?
-  endsAt               DateTime?
-  winnerVariantId      String?
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
+  id                            String                  @id @default(cuid())
+  shopId                        String
+  campaignId                    String
+  name                          String
+  status                        ExperimentStatus        @default(DRAFT)
+  trafficSplitStrategy          String                  @default("WEIGHTED")
+  primaryMetric                 ExperimentPrimaryMetric
+  startsAt                      DateTime?
+  endsAt                        DateTime?
+  winnerVariantId               String?
+  winnerDeclaredAt              DateTime?
+  autoWinnerEnabled             Boolean                 @default(false)
+  autoWinnerMinSampleSize       Int                     @default(100)
+  autoWinnerMinRuntimeHours     Int                     @default(24)
+  autoWinnerConfidenceThreshold Float                   @default(0.95)
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
 
   shop        Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
   campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)

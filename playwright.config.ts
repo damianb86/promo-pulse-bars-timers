@@ -40,7 +40,7 @@ export default defineConfig({
       SHOPIFY_APP_URL: baseURL,
       SCOPES:
         process.env.SCOPES ||
-        "read_products,read_discounts,write_discounts,write_pixels,read_customer_events",
+        "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events",
     },
   },
   projects: [

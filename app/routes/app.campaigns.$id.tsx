@@ -16,6 +16,7 @@ import {
   type UniqueCodeErrors,
   type UniqueCodePoolRow,
   type UniqueCodeRow,
+  type UniqueCodeStats,
 } from "../components/UniqueCodesEditor";
 import {
   clearDiscountSyncForShop,
@@ -58,6 +59,7 @@ import {
 import {
   createDiscountCodePool,
   generateCodeBatch,
+  getUniqueCodeStatsForCampaign,
   listDiscountCodePoolsForCampaign,
   listUniqueCodesForCampaign,
 } from "../services/discounts/uniqueCodes.server";
@@ -174,6 +176,7 @@ type LoaderData = {
     uniqueCodes: string;
   };
   uniqueCodePools: UniqueCodePoolRow[];
+  uniqueCodeStats: UniqueCodeStats;
   uniqueCodes: UniqueCodeRow[];
 };
 
@@ -243,9 +246,10 @@ export const loader = async ({
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
-  const [uniqueCodePools, uniqueCodes] = await Promise.all([
+  const [uniqueCodePools, uniqueCodes, uniqueCodeStats] = await Promise.all([
     listDiscountCodePoolsForCampaign(shop.id, campaign.id),
     listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
+    getUniqueCodeStatsForCampaign(shop.id, campaign.id),
   ]);
 
   return {
@@ -307,6 +311,7 @@ export const loader = async ({
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
     uniqueCodePools: uniqueCodePools.map(toUniqueCodePoolRow),
+    uniqueCodeStats,
     uniqueCodes: uniqueCodes.map(toUniqueCodeRow),
   };
 };
@@ -840,6 +845,7 @@ export default function EditCampaignPage() {
     freeShippingValues,
     lowStockValues,
     uniqueCodePools,
+    uniqueCodeStats,
     uniqueCodes,
     hasBadge,
     hasDeliveryCutoff,
@@ -879,6 +885,7 @@ export default function EditCampaignPage() {
               lockedReason={lockedFeatures.uniqueCodes}
               notice={actionData?.uniqueCodeNotice}
               pools={uniqueCodePools}
+              stats={uniqueCodeStats}
               values={
                 actionData?.uniqueCodeValues ??
                 actionData?.discountValues ??

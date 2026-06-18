@@ -37,7 +37,7 @@ export async function authenticateAdmin(
       isOnline: false,
       scope:
         process.env.SCOPES ||
-        "read_products,read_discounts,write_discounts,write_pixels,read_customer_events",
+        "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events",
       accessToken: "e2e_access_token",
     },
   } as ShopifyAdminAuth;

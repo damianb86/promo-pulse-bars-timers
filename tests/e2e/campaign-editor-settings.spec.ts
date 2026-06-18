@@ -269,6 +269,18 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
   await expect(
     discountForm.getByLabel("Unique code expiration minutes"),
   ).toHaveValue("30");
+  await expect(
+    page.getByRole("columnheader", { name: "Total assigned" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Total used" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Total expired" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("columnheader", { name: "Conversion rate" }),
+  ).toBeVisible();
 
   const firstResponse = await page.request.post("/api/discounts/unique-code", {
     data: {

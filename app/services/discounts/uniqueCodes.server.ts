@@ -444,6 +444,37 @@ export function listUniqueCodesForCampaign(
   });
 }
 
+export async function getUniqueCodeStatsForCampaign(
+  shopId: string,
+  campaignId: string,
+) {
+  const [poolTotals, totalExpired] = await Promise.all([
+    prisma.discountCodePool.aggregate({
+      where: { shopId, campaignId },
+      _sum: {
+        totalAssigned: true,
+        totalUsed: true,
+      },
+    }),
+    prisma.uniqueDiscountCode.count({
+      where: {
+        shopId,
+        campaignId,
+        status: UniqueDiscountCodeStatus.EXPIRED,
+      },
+    }),
+  ]);
+  const totalAssigned = poolTotals._sum.totalAssigned ?? 0;
+  const totalUsed = poolTotals._sum.totalUsed ?? 0;
+
+  return {
+    totalAssigned,
+    totalUsed,
+    totalExpired,
+    conversionRate: totalAssigned > 0 ? totalUsed / totalAssigned : 0,
+  };
+}
+
 export async function createShopifyDiscountForCode({
   admin,
   pool,

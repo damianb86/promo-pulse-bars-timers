@@ -274,6 +274,52 @@ export async function createFreeShippingCodeDiscount(
   return parseMutationPayload(response.discountCodeFreeShippingCreate);
 }
 
+export async function deactivateCodeDiscount(
+  admin: ShopifyGraphqlClient,
+  discountId: string,
+) {
+  const response = await executeGraphql<{
+    discountCodeDeactivate?: {
+      codeDiscountNode?: {
+        id?: string | null;
+      } | null;
+      userErrors?: Array<{
+        field?: string[] | string | null;
+        message?: string | null;
+      }>;
+    };
+  }>(
+    admin,
+    `#graphql
+    mutation CounterPulseDeactivateCodeDiscount($id: ID!) {
+      discountCodeDeactivate(id: $id) {
+        codeDiscountNode {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }`,
+    { id: discountId },
+  );
+  const userErrors = response.discountCodeDeactivate?.userErrors ?? [];
+
+  if (userErrors.length > 0) {
+    throw new Error(
+      userErrors
+        .map((error) => error.message)
+        .filter(Boolean)
+        .join(" "),
+    );
+  }
+
+  return {
+    id: response.discountCodeDeactivate?.codeDiscountNode?.id ?? discountId,
+  };
+}
+
 export function syncCampaignDatesFromDiscount(
   campaign: CampaignDateSyncInput,
   discount: Pick<ShopifyDiscountSummary, "startsAt" | "endsAt"> | null,

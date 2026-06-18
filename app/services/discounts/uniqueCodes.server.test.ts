@@ -14,6 +14,7 @@ import {
   expireVisitorCode,
   generateCodeBatch,
   getAssignedCodeForVisitor,
+  getUniqueCodeStatsForCampaign,
   UniqueCodesError,
 } from "./uniqueCodes.server";
 
@@ -25,12 +26,14 @@ const prismaMock = vi.hoisted(() => ({
     findFirst: vi.fn(),
   },
   discountCodePool: {
+    aggregate: vi.fn(),
     create: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
     update: vi.fn(),
   },
   uniqueDiscountCode: {
+    count: vi.fn(),
     create: vi.fn(),
     deleteMany: vi.fn(),
     findFirst: vi.fn(),
@@ -65,11 +68,15 @@ describe("Stage 2 unique discount code pools", () => {
       ...data,
     }));
     prismaMock.discountCodePool.findFirst.mockResolvedValue(pool());
+    prismaMock.discountCodePool.aggregate.mockResolvedValue({
+      _sum: { totalAssigned: 0, totalUsed: 0 },
+    });
     prismaMock.discountCodePool.update.mockImplementation(async ({ data }) => ({
       ...pool(),
       ...data,
     }));
     prismaMock.uniqueDiscountCode.deleteMany.mockResolvedValue({ count: 1 });
+    prismaMock.uniqueDiscountCode.count.mockResolvedValue(0);
     prismaMock.uniqueDiscountCode.updateMany.mockResolvedValue({ count: 1 });
   });
 
@@ -319,6 +326,37 @@ describe("Stage 2 unique discount code pools", () => {
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
+    });
+  });
+
+  it("summarizes assigned, used, expired, and conversion rate", async () => {
+    prismaMock.discountCodePool.aggregate.mockResolvedValue({
+      _sum: { totalAssigned: 8, totalUsed: 2 },
+    });
+    prismaMock.uniqueDiscountCode.count.mockResolvedValue(3);
+
+    await expect(
+      getUniqueCodeStatsForCampaign("shop-1", "campaign-1"),
+    ).resolves.toEqual({
+      totalAssigned: 8,
+      totalUsed: 2,
+      totalExpired: 3,
+      conversionRate: 0.25,
+    });
+
+    expect(prismaMock.discountCodePool.aggregate).toHaveBeenCalledWith({
+      where: { shopId: "shop-1", campaignId: "campaign-1" },
+      _sum: {
+        totalAssigned: true,
+        totalUsed: true,
+      },
+    });
+    expect(prismaMock.uniqueDiscountCode.count).toHaveBeenCalledWith({
+      where: {
+        shopId: "shop-1",
+        campaignId: "campaign-1",
+        status: UniqueDiscountCodeStatus.EXPIRED,
+      },
     });
   });
 

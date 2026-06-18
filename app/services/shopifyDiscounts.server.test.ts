@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createBasicCodeDiscount,
   createFreeShippingCodeDiscount,
+  deactivateCodeDiscount,
   getDiscountByCodeOrId,
   listCodeDiscounts,
   syncCampaignDatesFromDiscount,
@@ -197,6 +198,30 @@ describe("shopifyDiscounts service", () => {
         appliesOncePerCustomer: false,
       }),
     ).rejects.toThrow("Code has already been taken");
+  });
+
+  it("deactivates a code discount by id", async () => {
+    const admin = mockAdmin({
+      data: {
+        discountCodeDeactivate: {
+          codeDiscountNode: {
+            id: "gid://shopify/DiscountCodeNode/1",
+          },
+          userErrors: [],
+        },
+      },
+    });
+
+    await expect(
+      deactivateCodeDiscount(admin, "gid://shopify/DiscountCodeNode/1"),
+    ).resolves.toEqual({ id: "gid://shopify/DiscountCodeNode/1" });
+    expect(firstGraphqlQuery(admin)).toContain("discountCodeDeactivate");
+    expect(admin.graphql).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        variables: { id: "gid://shopify/DiscountCodeNode/1" },
+      }),
+    );
   });
 
   it("syncs campaign dates when enabled", () => {

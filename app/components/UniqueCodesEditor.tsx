@@ -29,6 +29,13 @@ export type UniqueCodeRow = {
   usedAt: string;
 };
 
+export type UniqueCodeStats = {
+  totalAssigned: number;
+  totalUsed: number;
+  totalExpired: number;
+  conversionRate: number;
+};
+
 export type UniqueCodeErrors = {
   form?: string;
   totalCodesToGenerate?: string;
@@ -40,6 +47,7 @@ type UniqueCodesEditorProps = {
   lockedReason?: string;
   notice?: string;
   pools: UniqueCodePoolRow[];
+  stats: UniqueCodeStats;
   values: DiscountSettingsValues;
 };
 
@@ -49,6 +57,7 @@ export function UniqueCodesEditor({
   lockedReason,
   notice,
   pools,
+  stats,
   values,
 }: UniqueCodesEditorProps) {
   const navigation = useNavigation();
@@ -165,6 +174,27 @@ export function UniqueCodesEditor({
         </Form>
       )}
 
+      <s-box paddingBlockStart="base">
+        <table className="counterpulse-table">
+          <thead>
+            <tr>
+              <th>Total assigned</th>
+              <th>Total used</th>
+              <th>Total expired</th>
+              <th>Conversion rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{stats.totalAssigned}</td>
+              <td>{stats.totalUsed}</td>
+              <td>{stats.totalExpired}</td>
+              <td>{formatPercent(stats.conversionRate)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </s-box>
+
       {pools.length > 0 && (
         <s-box paddingBlockStart="base">
           <table className="counterpulse-table">
@@ -233,6 +263,12 @@ export function UniqueCodesEditor({
       </s-box>
     </s-section>
   );
+}
+
+function formatPercent(value: number) {
+  if (!Number.isFinite(value)) return "0.0%";
+
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 function FormField({

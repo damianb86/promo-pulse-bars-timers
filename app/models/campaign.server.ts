@@ -90,11 +90,21 @@ type BadgeSettingsInput = BadgeSettingsValues;
 type DiscountSyncInput = {
   shopifyDiscountId: string | null;
   discountCode: string | null;
-  method: "CODE" | "AUTOMATIC";
+  method: "CODE" | "AUTOMATIC" | "UNIQUE_CODE";
   syncStartEnd: boolean;
   startsAt?: Date | null;
   endsAt?: Date | null;
   lastSyncedAt?: Date | null;
+  title?: string | null;
+  valueType?: "PERCENTAGE" | "FIXED_AMOUNT" | "FREE_SHIPPING" | null;
+  value?: string | number | null;
+  minimumSubtotal?: string | number | null;
+  appliesOncePerCustomer?: boolean;
+  uniqueCodePrefix?: string | null;
+  uniqueCodeExpiresMinutes?: number | null;
+  uniqueCodeAutoApply?: boolean;
+  uniqueCodeStartsAt?: Date | null;
+  uniqueCodeEndsAt?: Date | null;
 };
 
 export function getCampaignById(id: string) {
@@ -367,6 +377,16 @@ export async function updateDiscountSyncForShop(
         method: input.method,
         syncStartEnd: input.syncStartEnd,
         lastSyncedAt: input.lastSyncedAt ?? null,
+        title: input.title ?? null,
+        valueType: input.valueType ?? null,
+        value: input.value ?? null,
+        minimumSubtotal: input.minimumSubtotal ?? null,
+        appliesOncePerCustomer: input.appliesOncePerCustomer ?? false,
+        uniqueCodePrefix: input.uniqueCodePrefix ?? null,
+        uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
+        uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
+        uniqueCodeStartsAt: input.uniqueCodeStartsAt ?? null,
+        uniqueCodeEndsAt: input.uniqueCodeEndsAt ?? null,
       },
       update: {
         shopifyDiscountId: input.shopifyDiscountId,
@@ -374,6 +394,16 @@ export async function updateDiscountSyncForShop(
         method: input.method,
         syncStartEnd: input.syncStartEnd,
         lastSyncedAt: input.lastSyncedAt ?? null,
+        title: input.title ?? null,
+        valueType: input.valueType ?? null,
+        value: input.value ?? null,
+        minimumSubtotal: input.minimumSubtotal ?? null,
+        appliesOncePerCustomer: input.appliesOncePerCustomer ?? false,
+        uniqueCodePrefix: input.uniqueCodePrefix ?? null,
+        uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
+        uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
+        uniqueCodeStartsAt: input.uniqueCodeStartsAt ?? null,
+        uniqueCodeEndsAt: input.uniqueCodeEndsAt ?? null,
       },
     });
   });
@@ -776,6 +806,19 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 method: campaign.discountSync.method,
                 syncStartEnd: campaign.discountSync.syncStartEnd,
                 lastSyncedAt: campaign.discountSync.lastSyncedAt,
+                title: campaign.discountSync.title,
+                valueType: campaign.discountSync.valueType,
+                value: campaign.discountSync.value,
+                minimumSubtotal: campaign.discountSync.minimumSubtotal,
+                appliesOncePerCustomer:
+                  campaign.discountSync.appliesOncePerCustomer,
+                uniqueCodePrefix: campaign.discountSync.uniqueCodePrefix,
+                uniqueCodeExpiresMinutes:
+                  campaign.discountSync.uniqueCodeExpiresMinutes,
+                uniqueCodeAutoApply:
+                  campaign.discountSync.uniqueCodeAutoApply,
+                uniqueCodeStartsAt: campaign.discountSync.uniqueCodeStartsAt,
+                uniqueCodeEndsAt: campaign.discountSync.uniqueCodeEndsAt,
               },
             },
           }

@@ -37,6 +37,34 @@ describe("storefront campaign serialization", () => {
     expect(JSON.stringify(serialized)).not.toContain("shopifyDiscountId");
   });
 
+  it("serializes unique discount code availability without internal settings", () => {
+    const campaign = buildCampaign({
+      discountSync: {
+        method: "UNIQUE_CODE",
+        discountCode: null,
+        shopifyDiscountId: null,
+        uniqueCodeAutoApply: true,
+        uniqueCodeExpiresMinutes: 45,
+        uniqueCodePrefix: "VIP",
+        value: "77",
+      },
+    });
+    const serialized = serializeStorefrontCampaign(campaign, baseContext());
+
+    expect(serialized?.discount).toEqual({
+      method: "UNIQUE_CODE",
+      discountCode: null,
+      uniqueCode: {
+        endpoint: "/api/discounts/unique-code",
+        autoApply: true,
+        expiresMinutes: 45,
+      },
+    });
+    expect(JSON.stringify(serialized)).not.toContain("uniqueCodePrefix");
+    expect(JSON.stringify(serialized)).not.toContain("shopifyDiscountId");
+    expect(JSON.stringify(serialized)).not.toContain("77");
+  });
+
   it("filters by placement", () => {
     const campaigns = [
       buildCampaign({
@@ -313,8 +341,12 @@ function buildCampaign(
     }>;
     discountSync?: {
       method: string;
-      discountCode: string;
-      shopifyDiscountId: string;
+      discountCode: string | null;
+      shopifyDiscountId: string | null;
+      uniqueCodeAutoApply?: boolean;
+      uniqueCodeExpiresMinutes?: number | null;
+      uniqueCodePrefix?: string | null;
+      value?: string | null;
     };
     freeShippingSettings?: {
       thresholdAmount: string;
@@ -419,7 +451,22 @@ function buildCampaign(
         } as StorefrontCampaignSource["badgeSettings"])
       : null,
     discountSync: overrides.discountSync
-      ? (overrides.discountSync as StorefrontCampaignSource["discountSync"])
+      ? ({
+          campaignId: overrides.id ?? "campaign-1",
+          syncStartEnd: true,
+          lastSyncedAt: null,
+          title: null,
+          valueType: null,
+          value: null,
+          minimumSubtotal: null,
+          appliesOncePerCustomer: false,
+          uniqueCodePrefix: null,
+          uniqueCodeExpiresMinutes: null,
+          uniqueCodeAutoApply: false,
+          uniqueCodeStartsAt: null,
+          uniqueCodeEndsAt: null,
+          ...overrides.discountSync,
+        } as StorefrontCampaignSource["discountSync"])
       : null,
     translations: (overrides.translations ?? [
       {

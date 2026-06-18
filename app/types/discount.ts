@@ -4,6 +4,7 @@ export const discountModeOptions = [
   { value: "NONE", label: "No discount" },
   { value: "LINK_EXISTING", label: "Link existing discount" },
   { value: "CREATE_NEW", label: "Create new discount" },
+  { value: "UNIQUE_CODES", label: "Unique code per visitor" },
 ] as const;
 
 export const discountValueTypeOptions = [
@@ -29,6 +30,9 @@ export type DiscountSettingsValues = {
   endsAt: string;
   minimumSubtotal: string;
   appliesOncePerCustomer: boolean;
+  uniqueCodePrefix: string;
+  uniqueCodeExpiresMinutes: string;
+  uniqueCodeAutoApply: boolean;
 };
 
 export type DiscountSettingsErrors = Partial<
@@ -50,4 +54,7 @@ export const defaultDiscountSettingsValues: DiscountSettingsValues = {
   endsAt: "",
   minimumSubtotal: "",
   appliesOncePerCustomer: false,
+  uniqueCodePrefix: "PP",
+  uniqueCodeExpiresMinutes: "60",
+  uniqueCodeAutoApply: true,
 };

@@ -26,7 +26,8 @@ export type PlanFeatureKey =
   | "recurring_timers"
   | "scheduling"
   | "stronger_attribution"
-  | "templates";
+  | "templates"
+  | "unique_discount_codes";
 
 export type PlanGateCheck = {
   allowed: boolean;
@@ -71,6 +72,7 @@ const allFeatures: Record<PlanFeatureKey, boolean> = {
   scheduling: false,
   stronger_attribution: false,
   templates: false,
+  unique_discount_codes: false,
 };
 
 const limitsByPlan: Record<ShopPlan, PlanLimits> = {
@@ -101,6 +103,7 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
       recurring_timers: true,
       scheduling: true,
       templates: true,
+      unique_discount_codes: false,
     },
   },
   GROWTH: {
@@ -125,6 +128,7 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
       recurring_timers: true,
       scheduling: true,
       templates: true,
+      unique_discount_codes: false,
     },
   },
   PRO: {
@@ -153,6 +157,7 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
       scheduling: true,
       stronger_attribution: true,
       templates: true,
+      unique_discount_codes: true,
     },
   },
 };
@@ -363,7 +368,7 @@ export function getCampaignPlanViolations(
     design?: {
       customCss?: string | null;
     } | null;
-    discountSync?: unknown | null;
+    discountSync?: { method?: string | null } | unknown | null;
   },
   placementType?: PlacementTypeValue,
 ) {
@@ -405,7 +410,17 @@ export function getCampaignPlanViolations(
     features.add("recurring_timers");
   }
   if (campaign.design?.customCss?.trim()) features.add("custom_css");
-  if (campaign.discountSync) features.add("discount_sync");
+  if (campaign.discountSync) {
+    features.add("discount_sync");
+
+    if (
+      typeof campaign.discountSync === "object" &&
+      "method" in campaign.discountSync &&
+      campaign.discountSync.method === "UNIQUE_CODE"
+    ) {
+      features.add("unique_discount_codes");
+    }
+  }
 
   return Array.from(features)
     .map((feature) => canUseFeature(shop, feature))

@@ -14,34 +14,35 @@ datasource db {
 }
 
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
 
 model Shop {
-  id            String    @id @default(cuid())
-  shopifyDomain String    @unique
-  plan          ShopPlan  @default(FREE)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id            String   @id @default(cuid())
+  shopifyDomain String   @unique
+  plan          ShopPlan @default(FREE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   campaigns           Campaign[]
   analyticsEvents     AnalyticsEvent[]
+  discountCodeGrants  DiscountCodeGrant[]
   onboardingChecklist ShopOnboardingChecklist?
   settings            ShopSettings?
 }
@@ -95,18 +96,19 @@ model Campaign {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  shop                    Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  placements              CampaignPlacement[]
-  targeting               CampaignTargeting?
-  design                  CampaignDesign?
-  timerSettings           TimerSettings?
-  freeShippingSettings    FreeShippingSettings?
-  deliveryCutoffSettings  DeliveryCutoffSettings?
-  lowStockSettings        LowStockSettings?
-  badgeSettings           BadgeSettings?
-  discountSync            DiscountSync?
-  translations            CampaignTranslation[]
-  analyticsEvents         AnalyticsEvent[]
+  shop                   Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  placements             CampaignPlacement[]
+  targeting              CampaignTargeting?
+  design                 CampaignDesign?
+  timerSettings          TimerSettings?
+  freeShippingSettings   FreeShippingSettings?
+  deliveryCutoffSettings DeliveryCutoffSettings?
+  lowStockSettings       LowStockSettings?
+  badgeSettings          BadgeSettings?
+  discountSync           DiscountSync?
+  discountCodeGrants     DiscountCodeGrant[]
+  translations           CampaignTranslation[]
+  analyticsEvents        AnalyticsEvent[]
 
   @@index([shopId, status])
   @@index([shopId, type])
@@ -115,11 +117,11 @@ model Campaign {
 }
 
 model CampaignPlacement {
-  id            String        @id @default(cuid())
-  campaignId    String
-  placementType PlacementType
+  id             String        @id @default(cuid())
+  campaignId     String
+  placementType  PlacementType
   customSelector String?
-  enabled       Boolean       @default(true)
+  enabled        Boolean       @default(true)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -223,12 +225,22 @@ model BadgeSettings {
 }
 
 model DiscountSync {
-  campaignId        String             @id
-  shopifyDiscountId String?
-  discountCode      String?
-  method            DiscountSyncMethod
-  syncStartEnd      Boolean            @default(true)
-  lastSyncedAt      DateTime?
+  campaignId               String                 @id
+  shopifyDiscountId        String?
+  discountCode             String?
+  method                   DiscountSyncMethod
+  syncStartEnd             Boolean                @default(true)
+  lastSyncedAt             DateTime?
+  title                    String?
+  valueType                DiscountCodeValueType?
+  value                    Decimal?
+  minimumSubtotal          Decimal?
+  appliesOncePerCustomer   Boolean                @default(false)
+  uniqueCodePrefix         String?
+  uniqueCodeExpiresMinutes Int?
+  uniqueCodeAutoApply      Boolean                @default(false)
+  uniqueCodeStartsAt       DateTime?
+  uniqueCodeEndsAt         DateTime?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -236,22 +248,47 @@ model DiscountSync {
   @@index([discountCode])
 }
 
+model DiscountCodeGrant {
+  id                String                  @id @default(cuid())
+  shopId            String
+  campaignId        String
+  visitorKey        String
+  cartToken         String?
+  code              String
+  shopifyDiscountId String?
+  status            DiscountCodeGrantStatus @default(ISSUED)
+  expiresAt         DateTime?
+  claimedAt         DateTime?
+  appliedAt         DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, code])
+  @@index([campaignId, visitorKey])
+  @@index([campaignId, status, expiresAt])
+  @@index([shopId, createdAt])
+}
+
 model CampaignTranslation {
-  id                          String  @id @default(cuid())
-  campaignId                  String
-  locale                      String
-  headline                    String?
-  subheadline                 String?
-  ctaText                     String?
-  ctaUrl                      String?
-  expiredText                 String?
-  freeShippingEmptyText       String?
-  freeShippingProgressText    String?
-  freeShippingSuccessText     String?
-  deliveryBeforeCutoffText    String?
-  deliveryAfterCutoffText     String?
-  lowStockText                String?
-  badgeText                   String?
+  id                       String  @id @default(cuid())
+  campaignId               String
+  locale                   String
+  headline                 String?
+  subheadline              String?
+  ctaText                  String?
+  ctaUrl                   String?
+  expiredText              String?
+  freeShippingEmptyText    String?
+  freeShippingProgressText String?
+  freeShippingSuccessText  String?
+  deliveryBeforeCutoffText String?
+  deliveryAfterCutoffText  String?
+  lowStockText             String?
+  badgeText                String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -382,6 +419,20 @@ enum BadgePosition {
 enum DiscountSyncMethod {
   CODE
   AUTOMATIC
+  UNIQUE_CODE
+}
+
+enum DiscountCodeValueType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+}
+
+enum DiscountCodeGrantStatus {
+  ISSUED
+  REDEEMED
+  EXPIRED
+  REVOKED
 }
 
 enum AnalyticsEventType {

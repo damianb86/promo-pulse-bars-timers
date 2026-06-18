@@ -353,6 +353,16 @@ function createDiscountSync(
     method: DiscountSyncMethod.CODE,
     syncStartEnd: true,
     lastSyncedAt: null,
+    title: null,
+    valueType: null,
+    value: null,
+    minimumSubtotal: null,
+    appliesOncePerCustomer: false,
+    uniqueCodePrefix: null,
+    uniqueCodeExpiresMinutes: null,
+    uniqueCodeAutoApply: false,
+    uniqueCodeStartsAt: null,
+    uniqueCodeEndsAt: null,
     ...overrides,
   };
 }

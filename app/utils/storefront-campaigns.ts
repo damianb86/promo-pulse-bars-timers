@@ -432,6 +432,14 @@ function serializeDiscount(discountSync: DiscountSync | null) {
   return {
     method: discountSync.method,
     discountCode: discountSync.discountCode,
+    uniqueCode:
+      discountSync.method === "UNIQUE_CODE"
+        ? {
+            endpoint: "/api/discounts/unique-code",
+            autoApply: discountSync.uniqueCodeAutoApply,
+            expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
+          }
+        : null,
   };
 }
 

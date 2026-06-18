@@ -101,6 +101,17 @@ export function DiscountSettingsEditor({
               />
             </FormField>
 
+            <FormField
+              label="Unique code prefix"
+              error={errors?.uniqueCodePrefix}
+            >
+              <input
+                name="uniqueCodePrefix"
+                defaultValue={values.uniqueCodePrefix}
+                placeholder="VIP"
+              />
+            </FormField>
+
             <FormField label="New discount title" error={errors?.title}>
               <input
                 name="title"
@@ -158,6 +169,20 @@ export function DiscountSettingsEditor({
               />
             </FormField>
 
+            <FormField
+              label="Unique code expiration minutes"
+              error={errors?.uniqueCodeExpiresMinutes}
+            >
+              <input
+                name="uniqueCodeExpiresMinutes"
+                type="number"
+                min="5"
+                max="43200"
+                step="1"
+                defaultValue={values.uniqueCodeExpiresMinutes}
+              />
+            </FormField>
+
             <label className="counterpulse-toggle">
               <input
                 name="syncStartEnd"
@@ -176,6 +201,15 @@ export function DiscountSettingsEditor({
                 defaultChecked={values.appliesOncePerCustomer}
               />
               <span>Limit created discount to one use per customer</span>
+            </label>
+
+            <label className="counterpulse-toggle">
+              <input
+                name="uniqueCodeAutoApply"
+                type="checkbox"
+                defaultChecked={values.uniqueCodeAutoApply}
+              />
+              <span>Auto-apply unique visitor codes</span>
             </label>
           </div>
 

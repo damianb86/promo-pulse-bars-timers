@@ -7,12 +7,14 @@ import {
   type DiscountSettingsValues,
   type DiscountValueTypeValue,
 } from "../types/discount";
+import { normalizeUniqueCodePrefix } from "./unique-discount-codes.server";
 
 export type ParsedDiscountSettingsForm = {
   values: DiscountSettingsValues;
   errors: DiscountSettingsErrors;
   discountValue: number;
   minimumSubtotal: number | null;
+  uniqueCodeExpiresMinutes: number | null;
   startsAt: Date | null;
   endsAt: Date | null;
 };
@@ -40,11 +42,19 @@ export function parseDiscountSettingsFormData(
     endsAt: readString(formData, "endsAt"),
     minimumSubtotal: readString(formData, "minimumSubtotal"),
     appliesOncePerCustomer: readBoolean(formData, "appliesOncePerCustomer"),
+    uniqueCodePrefix: normalizeUniqueCodePrefix(
+      readString(formData, "uniqueCodePrefix"),
+    ),
+    uniqueCodeExpiresMinutes: readString(formData, "uniqueCodeExpiresMinutes"),
+    uniqueCodeAutoApply: readBoolean(formData, "uniqueCodeAutoApply"),
   };
   const errors: DiscountSettingsErrors = {};
   const discountValue = Number(values.value);
   const minimumSubtotal = values.minimumSubtotal
     ? Number(values.minimumSubtotal)
+    : null;
+  const uniqueCodeExpiresMinutes = values.uniqueCodeExpiresMinutes
+    ? Number(values.uniqueCodeExpiresMinutes)
     : null;
   const startsAt = parseOptionalDate(values.startsAt, "startsAt", errors);
   const endsAt = parseOptionalDate(values.endsAt, "endsAt", errors);
@@ -74,11 +84,42 @@ export function parseDiscountSettingsFormData(
     }
   }
 
+  if (values.mode === "UNIQUE_CODES") {
+    if (!values.title) {
+      errors.title = "Discount title is required.";
+    }
+
+    if (!values.uniqueCodePrefix) {
+      errors.uniqueCodePrefix = "Unique code prefix is required.";
+    } else if (!/^[A-Z0-9_-]{2,16}$/.test(values.uniqueCodePrefix)) {
+      errors.uniqueCodePrefix =
+        "Use 2-16 characters: letters, numbers, dashes, or underscores.";
+    }
+
+    if (values.valueType !== "FREE_SHIPPING") {
+      if (!Number.isFinite(discountValue) || discountValue <= 0) {
+        errors.value = "Discount value must be greater than 0.";
+      } else if (values.valueType === "PERCENTAGE" && discountValue > 100) {
+        errors.value = "Percentage discount cannot exceed 100.";
+      }
+    }
+  }
+
   if (
     minimumSubtotal !== null &&
     (!Number.isFinite(minimumSubtotal) || minimumSubtotal < 0)
   ) {
     errors.minimumSubtotal = "Minimum subtotal must be 0 or greater.";
+  }
+
+  if (
+    uniqueCodeExpiresMinutes !== null &&
+    (!Number.isInteger(uniqueCodeExpiresMinutes) ||
+      uniqueCodeExpiresMinutes < 5 ||
+      uniqueCodeExpiresMinutes > 43200)
+  ) {
+    errors.uniqueCodeExpiresMinutes =
+      "Unique code expiration must be between 5 minutes and 30 days.";
   }
 
   if (startsAt && endsAt && startsAt > endsAt) {
@@ -92,6 +133,11 @@ export function parseDiscountSettingsFormData(
     minimumSubtotal:
       minimumSubtotal !== null && Number.isFinite(minimumSubtotal)
         ? minimumSubtotal
+        : null,
+    uniqueCodeExpiresMinutes:
+      uniqueCodeExpiresMinutes !== null &&
+      Number.isInteger(uniqueCodeExpiresMinutes)
+        ? uniqueCodeExpiresMinutes
         : null,
     startsAt,
     endsAt,

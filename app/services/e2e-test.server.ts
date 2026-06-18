@@ -26,7 +26,8 @@ export type E2ETestScenario =
   | "delivery-cutoff"
   | "delivery-cutoff-after"
   | "cart-drawer"
-  | "analytics";
+  | "analytics"
+  | "unique-discount";
 
 export function isE2ETestMode() {
   return (
@@ -195,6 +196,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     await createCountdownCampaign(shopId, {
       discountCode: "SAVE20",
     });
+    return;
+  }
+
+  if (scenario === "unique-discount") {
+    await createUniqueDiscountCampaign(shopId);
   }
 }
 
@@ -272,6 +278,65 @@ async function createCountdownCampaign(
         : undefined,
       translations: {
         create: options.translations ?? [englishTranslation("Sale ends soon")],
+      },
+    },
+  });
+}
+
+async function createUniqueDiscountCampaign(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Unique Visitor Discount",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.TOP_BAR, enabled: true }],
+      },
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+        },
+      },
+      discountSync: {
+        create: {
+          method: DiscountSyncMethod.UNIQUE_CODE,
+          syncStartEnd: false,
+          title: "E2E unique visitor discount",
+          valueType: "PERCENTAGE",
+          value: "15",
+          appliesOncePerCustomer: true,
+          uniqueCodePrefix: "E2E",
+          uniqueCodeExpiresMinutes: 60,
+          uniqueCodeAutoApply: true,
+          uniqueCodeStartsAt: new Date(now.getTime() - 60 * 1000),
+          uniqueCodeEndsAt: endsAt,
+        },
+      },
+      translations: {
+        create: [
+          {
+            locale: "en",
+            headline: "Private code unlocked",
+            subheadline: "Save with your unique visitor code.",
+            ctaText: "Shop sale",
+            ctaUrl: "/collections/sale",
+            expiredText: "This offer has ended.",
+          },
+        ],
       },
     },
   });

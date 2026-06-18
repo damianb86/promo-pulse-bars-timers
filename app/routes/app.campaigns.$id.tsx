@@ -409,6 +409,19 @@ export const action = async ({
           discountValues: parsed.values,
         };
       }
+
+      if (parsed.values.mode === "UNIQUE_CODES") {
+        const uniqueCodeGate = canUseFeature(shop, "unique_discount_codes");
+
+        if (!uniqueCodeGate.allowed) {
+          return {
+            discountErrors: {
+              form: uniqueCodeGate.reason,
+            },
+            discountValues: parsed.values,
+          };
+        }
+      }
     }
 
     if (hasDiscountSettingsErrors(parsed.errors)) {
@@ -444,6 +457,36 @@ export const action = async ({
             },
           };
         }
+
+        return redirect(`/app/campaigns/${id}`);
+      }
+
+      if (parsed.values.mode === "UNIQUE_CODES") {
+        await updateDiscountSyncForShop(id, shop.id, {
+          shopifyDiscountId: null,
+          discountCode: null,
+          method: "UNIQUE_CODE",
+          syncStartEnd: parsed.values.syncStartEnd,
+          startsAt: parsed.startsAt,
+          endsAt: parsed.endsAt,
+          lastSyncedAt: parsed.values.syncStartEnd ? new Date() : null,
+          title: parsed.values.title,
+          valueType: parsed.values.valueType,
+          value:
+            parsed.values.valueType === "FREE_SHIPPING"
+              ? null
+              : String(parsed.discountValue),
+          minimumSubtotal:
+            parsed.minimumSubtotal === null
+              ? null
+              : String(parsed.minimumSubtotal),
+          appliesOncePerCustomer: parsed.values.appliesOncePerCustomer,
+          uniqueCodePrefix: parsed.values.uniqueCodePrefix,
+          uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
+          uniqueCodeAutoApply: parsed.values.uniqueCodeAutoApply,
+          uniqueCodeStartsAt: parsed.startsAt,
+          uniqueCodeEndsAt: parsed.endsAt,
+        });
 
         return redirect(`/app/campaigns/${id}`);
       }
@@ -962,10 +1005,49 @@ function toDiscountSettingsValues(
   settings: {
     shopifyDiscountId?: string | null;
     discountCode?: string | null;
+    method?: string | null;
     syncStartEnd: boolean;
+    title?: string | null;
+    valueType?: string | null;
+    value?: { toString(): string } | string | number | null;
+    minimumSubtotal?: { toString(): string } | string | number | null;
+    appliesOncePerCustomer?: boolean | null;
+    uniqueCodePrefix?: string | null;
+    uniqueCodeExpiresMinutes?: number | null;
+    uniqueCodeAutoApply?: boolean | null;
+    uniqueCodeStartsAt?: Date | string | null;
+    uniqueCodeEndsAt?: Date | string | null;
   } | null,
 ): DiscountSettingsValues {
   if (!settings) return defaultDiscountSettingsValues;
+
+  if (settings.method === "UNIQUE_CODE") {
+    return {
+      ...defaultDiscountSettingsValues,
+      mode: "UNIQUE_CODES",
+      existingCodeOrId: "",
+      discountCode: "",
+      shopifyDiscountId: "",
+      syncStartEnd: settings.syncStartEnd,
+      title: settings.title ?? "",
+      valueType: toDiscountValueType(settings.valueType),
+      value:
+        settings.value?.toString() ?? defaultDiscountSettingsValues.value,
+      startsAt: toDateTimeLocalValue(settings.uniqueCodeStartsAt ?? null),
+      endsAt: toDateTimeLocalValue(settings.uniqueCodeEndsAt ?? null),
+      minimumSubtotal: settings.minimumSubtotal?.toString() ?? "",
+      appliesOncePerCustomer: settings.appliesOncePerCustomer ?? false,
+      uniqueCodePrefix:
+        settings.uniqueCodePrefix ??
+        defaultDiscountSettingsValues.uniqueCodePrefix,
+      uniqueCodeExpiresMinutes:
+        settings.uniqueCodeExpiresMinutes?.toString() ??
+        defaultDiscountSettingsValues.uniqueCodeExpiresMinutes,
+      uniqueCodeAutoApply:
+        settings.uniqueCodeAutoApply ??
+        defaultDiscountSettingsValues.uniqueCodeAutoApply,
+    };
+  }
 
   return {
     ...defaultDiscountSettingsValues,
@@ -975,6 +1057,18 @@ function toDiscountSettingsValues(
     shopifyDiscountId: settings.shopifyDiscountId ?? "",
     syncStartEnd: settings.syncStartEnd,
   };
+}
+
+function toDiscountValueType(value: string | null | undefined) {
+  if (
+    value === "PERCENTAGE" ||
+    value === "FIXED_AMOUNT" ||
+    value === "FREE_SHIPPING"
+  ) {
+    return value;
+  }
+
+  return defaultDiscountSettingsValues.valueType;
 }
 
 function toLowStockSettingsValues(

@@ -242,6 +242,46 @@ describe("advanced campaign settings form parsing", () => {
       title: "Discount title is required.",
       value: "Percentage discount cannot exceed 100.",
     });
+
+    expect(
+      parseDiscountSettingsFormData(
+        formData({
+          mode: "UNIQUE_CODES",
+          title: "VIP unique discount",
+          uniqueCodePrefix: "vip sale!",
+          uniqueCodeExpiresMinutes: "30",
+          value: "15",
+          valueType: "PERCENTAGE",
+        }),
+      ),
+    ).toMatchObject({
+      errors: {},
+      uniqueCodeExpiresMinutes: 30,
+      values: {
+        mode: "UNIQUE_CODES",
+        uniqueCodePrefix: "VIPSALE",
+      },
+    });
+
+    expect(
+      parseDiscountSettingsFormData(
+        formData({
+          mode: "UNIQUE_CODES",
+          title: "",
+          uniqueCodePrefix: "x",
+          uniqueCodeExpiresMinutes: "2",
+          value: "0",
+          valueType: "PERCENTAGE",
+        }),
+      ).errors,
+    ).toMatchObject({
+      title: "Discount title is required.",
+      uniqueCodeExpiresMinutes:
+        "Unique code expiration must be between 5 minutes and 30 days.",
+      uniqueCodePrefix:
+        "Use 2-16 characters: letters, numbers, dashes, or underscores.",
+      value: "Discount value must be greater than 0.",
+    });
   });
 });
 

@@ -38,6 +38,20 @@ describe("plan limits", () => {
     });
   });
 
+  it("unlocks unique visitor discount codes only on Pro", () => {
+    expect(
+      canUseFeature({ plan: "GROWTH" }, "unique_discount_codes"),
+    ).toMatchObject({
+      allowed: false,
+      requiredPlan: "PRO",
+    });
+    expect(
+      canUseFeature({ plan: "PRO" }, "unique_discount_codes"),
+    ).toMatchObject({
+      allowed: true,
+    });
+  });
+
   it("blocks a second active campaign on Free", () => {
     expect(evaluateCanActivateCampaign("FREE", 1, false)).toMatchObject({
       allowed: false,
@@ -117,7 +131,7 @@ describe("plan limits", () => {
           type: "PRODUCT_BADGE",
           placements: [{ enabled: true, placementType: "CART_DRAWER" }],
           design: { customCss: ".pp-bar { letter-spacing: 0; }" },
-          discountSync: { discountCode: "SAVE20" },
+          discountSync: { discountCode: "SAVE20", method: "UNIQUE_CODE" },
           targeting: { customerTags: ["vip"], countries: ["US"] },
           timerSettings: { mode: "RECURRING_DAILY" },
         },

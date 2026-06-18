@@ -207,3 +207,110 @@ test("low stock, badge, and manual discount settings can be saved", async ({
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("unique visitor discount settings issue reusable E2E codes", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("unique-discount");
+  await loginAsDemoShop("/app/campaigns");
+
+  await Promise.all([
+    page.waitForURL((url) => {
+      const segments = url.pathname.split("/").filter(Boolean);
+      return (
+        segments.length === 3 &&
+        segments[0] === "app" &&
+        segments[1] === "campaigns"
+      );
+    }),
+    page.getByRole("link", { name: "E2E Unique Visitor Discount" }).click(),
+  ]);
+  const campaignId = new URL(page.url()).pathname.split("/").pop() ?? "";
+  const discountForm = page.locator(
+    'form:has(input[name="_action"][value="saveDiscount"])',
+  );
+
+  await discountForm.getByLabel("Discount mode").selectOption("UNIQUE_CODES");
+  await discountForm.getByLabel("New discount title").fill("VIP E2E discount");
+  await discountForm.getByLabel("Discount type").selectOption("PERCENTAGE");
+  await discountForm.getByLabel("Discount value").fill("18");
+  await discountForm
+    .locator('input[name="startsAt"]')
+    .fill(toLocalDateTime(new Date(Date.now() - 60 * 60 * 1000)));
+  await discountForm
+    .locator('input[name="endsAt"]')
+    .fill(toLocalDateTime(new Date(Date.now() + 2 * 60 * 60 * 1000)));
+  await discountForm.getByLabel("Unique code prefix").fill("VIP");
+  await discountForm.getByLabel("Unique code expiration minutes").fill("30");
+  await discountForm.getByLabel("Limit created discount").check();
+  await discountForm.getByLabel("Auto-apply unique visitor codes").check();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    discountForm.getByRole("button", { name: "Save discount" }).click(),
+  ]);
+  await page.reload();
+
+  await expect(discountForm.getByLabel("Discount mode")).toHaveValue(
+    "UNIQUE_CODES",
+  );
+  await expect(discountForm.getByLabel("New discount title")).toHaveValue(
+    "VIP E2E discount",
+  );
+  await expect(discountForm.getByLabel("Unique code prefix")).toHaveValue(
+    "VIP",
+  );
+  await expect(
+    discountForm.getByLabel("Unique code expiration minutes"),
+  ).toHaveValue("30");
+
+  const firstResponse = await page.request.post("/api/discounts/unique-code", {
+    data: {
+      shop: "demo-shop.myshopify.com",
+      campaignId,
+      visitorId: "visitor-e2e-123",
+      cartToken: "cart-e2e-123",
+    },
+  });
+  const firstBody = await firstResponse.json();
+
+  expect(firstResponse.status()).toBe(201);
+  expect(firstBody).toMatchObject({
+    ok: true,
+    campaignId,
+    autoApply: true,
+    reused: false,
+  });
+  expect(firstBody.code).toMatch(/^VIP-[A-F0-9]{10}$/);
+  expect(firstBody.autoApplyUrl).toBe(`/discount/${firstBody.code}`);
+
+  const secondResponse = await page.request.post("/api/discounts/unique-code", {
+    data: {
+      shop: "demo-shop.myshopify.com",
+      campaignId,
+      visitorId: "visitor-e2e-123",
+    },
+  });
+  const secondBody = await secondResponse.json();
+
+  expect(secondResponse.status()).toBe(201);
+  expect(secondBody).toMatchObject({
+    code: firstBody.code,
+    reused: true,
+  });
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+function toLocalDateTime(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+
+  return localDate.toISOString().slice(0, 16);
+}

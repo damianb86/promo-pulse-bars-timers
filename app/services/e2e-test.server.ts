@@ -8,6 +8,9 @@ import {
   DiscountCodePoolStatus,
   DiscountCodeValueType,
   DiscountSyncMethod,
+  ExperimentPrimaryMetric,
+  ExperimentStatus,
+  ExperimentVariantStatus,
   PlacementType,
   Prisma,
   ShopPlan,
@@ -30,6 +33,7 @@ export type E2ETestScenario =
   | "delivery-cutoff-after"
   | "cart-drawer"
   | "analytics"
+  | "ab-test"
   | "unique-discount"
   | "unique-discount-expired";
 
@@ -203,6 +207,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
+  if (scenario === "ab-test") {
+    await createAbTestCampaign(shopId);
+    return;
+  }
+
   if (scenario === "unique-discount") {
     await createUniqueDiscountCampaign(shopId);
     return;
@@ -290,6 +299,68 @@ async function createCountdownCampaign(
       },
     },
   });
+}
+
+async function createAbTestCampaign(shopId: string) {
+  const now = new Date();
+  const campaign = await createCountdownCampaign(shopId, {
+    discountCode: "CONTROL10",
+    translations: [
+      {
+        ...englishTranslation("Control headline"),
+        ctaText: "Shop control",
+      },
+    ],
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "e2e-experiment-headline",
+      shopId,
+      campaignId: campaign.id,
+      name: "E2E Headline Test",
+      status: ExperimentStatus.RUNNING,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      variants: {
+        create: [
+          {
+            id: "e2e-variant-control",
+            campaign: { connect: { id: campaign.id } },
+            name: "Control",
+            weight: 0,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Control headline",
+              ctaText: "Shop control",
+            },
+          },
+          {
+            id: "e2e-variant-treatment",
+            campaign: { connect: { id: campaign.id } },
+            name: "Treatment",
+            weight: 100,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Variant headline",
+              subheadline: "A/B treatment copy.",
+              ctaText: "Shop variant",
+            },
+            designOverride: {
+              backgroundColor: "#064E3B",
+              accentColor: "#34D399",
+            },
+            discountOverride: {
+              discountCode: "VARIANT20",
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  return campaign;
 }
 
 async function createUniqueDiscountCampaign(

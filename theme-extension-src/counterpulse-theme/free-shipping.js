@@ -141,11 +141,11 @@
       })
       .then(function (payload) {
         applyStorefrontSettings(payload.settings);
-        return (
-          Array.isArray(payload.campaigns) ? payload.campaigns : []
-        ).filter(function (campaign) {
-          return campaign.type === "FREE_SHIPPING_GOAL";
-        });
+        return (Array.isArray(payload.campaigns) ? payload.campaigns : [])
+          .map(applyExperiment)
+          .filter(function (campaign) {
+            return campaign.type === "FREE_SHIPPING_GOAL";
+          });
       })
       .then(function (campaigns) {
         updateDebug(
@@ -168,6 +168,14 @@
         debug(placement, error);
         return [];
       });
+  }
+
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
   }
 
   function assertJsonResponse(response, url) {
@@ -232,7 +240,6 @@
 
     emitImpression(campaign);
   }
-
   function updateDebug(element, message, url) {
     var status;
     var endpoint;
@@ -531,7 +538,18 @@
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

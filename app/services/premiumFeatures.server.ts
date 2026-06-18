@@ -19,7 +19,7 @@ export type Stage2FeatureFlagState = Record<InternalStage2FeatureFlag, boolean>;
 
 export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   UNIQUE_CODES: true,
-  AB_TESTING: false,
+  AB_TESTING: true,
   AUTO_WINNER: false,
   ADVANCED_DISCOUNTS: false,
   CHECKOUT_EXTENSIONS: false,

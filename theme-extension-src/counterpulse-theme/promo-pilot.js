@@ -85,7 +85,7 @@
       .then(function (payload) {
         applyStorefrontSettings(payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns
+          ? payload.campaigns.map(applyExperiment)
           : [];
         campaignCache[url] = {
           campaigns: campaigns,
@@ -210,6 +210,14 @@
     emitImpression(campaign);
   }
 
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
+  }
+
   function updateDebug(element, message, url) {
     var status;
     var endpoint;
@@ -331,7 +339,18 @@
     cta.addEventListener("click", function () {
       document.dispatchEvent(
         new CustomEvent("counterpulse:click", {
-          detail: { campaignId: campaign.id, placement: campaign.placement },
+          detail: {
+            campaignId: campaign.id,
+            experimentId:
+              campaign.experimentId ||
+              (campaign.experiment && campaign.experiment.id) ||
+              null,
+            variantId:
+              campaign.variantId ||
+              (campaign.variant && campaign.variant.id) ||
+              null,
+            placement: campaign.placement,
+          },
         }),
       );
     });
@@ -795,7 +814,18 @@
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

@@ -7,6 +7,8 @@ import type {
   CampaignTranslation,
   DeliveryCutoffSettings,
   DiscountSync,
+  Experiment,
+  ExperimentVariant,
   FreeShippingSettings,
   LowStockSettings,
   TimerSettings,
@@ -52,6 +54,7 @@ export type StorefrontCampaignSource = Campaign & {
   badgeSettings: BadgeSettings | null;
   discountSync: DiscountSync | null;
   translations: CampaignTranslation[];
+  experiments: Array<Experiment & { variants: ExperimentVariant[] }>;
 };
 
 export type StorefrontCampaignResponseItem = {
@@ -68,6 +71,7 @@ export type StorefrontCampaignResponseItem = {
   badge: ReturnType<typeof serializeBadge>;
   texts: Record<CampaignTextField | "ctaUrl", string>;
   discount: ReturnType<typeof serializeDiscount>;
+  experiment: ReturnType<typeof serializeExperiment>;
   startsAt: string | null;
   endsAt: string | null;
   timezone: string;
@@ -142,6 +146,7 @@ export function serializeStorefrontCampaign(
     badge: serializeBadge(campaign.badgeSettings),
     texts: serializeTexts(campaign, context.locale),
     discount: serializeDiscount(campaign.discountSync),
+    experiment: serializeExperiment(campaign.experiments),
     startsAt: campaign.startsAt ? campaign.startsAt.toISOString() : null,
     endsAt: campaign.endsAt ? campaign.endsAt.toISOString() : null,
     timezone: campaign.timezone,
@@ -440,6 +445,48 @@ function serializeDiscount(discountSync: DiscountSync | null) {
             expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
           }
         : null,
+  };
+}
+
+function serializeExperiment(
+  experiments: StorefrontCampaignSource["experiments"],
+  now = new Date(),
+) {
+  const experiment = experiments.find(
+    (item) =>
+      item.status === "RUNNING" &&
+      (!item.startsAt || item.startsAt <= now) &&
+      (!item.endsAt || item.endsAt >= now),
+  );
+
+  if (!experiment) return null;
+
+  const variants = experiment.variants
+    .filter(
+      (variant) =>
+        (variant.status === "ACTIVE" || variant.status === "WINNER") &&
+        Number(variant.weight) >= 0,
+    )
+    .map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      weight: variant.weight,
+      status: variant.status,
+      designOverride: jsonObject(variant.designOverride),
+      textOverride: jsonObject(variant.textOverride),
+      discountOverride: jsonObject(variant.discountOverride),
+      placementOverride: jsonObject(variant.placementOverride),
+    }));
+
+  if (variants.length === 0) return null;
+
+  return {
+    id: experiment.id,
+    name: experiment.name,
+    status: experiment.status,
+    trafficSplitStrategy: experiment.trafficSplitStrategy,
+    primaryMetric: experiment.primaryMetric,
+    variants,
   };
 }
 

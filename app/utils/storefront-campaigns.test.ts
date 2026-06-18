@@ -35,6 +35,80 @@ describe("storefront campaign serialization", () => {
       },
     });
     expect(JSON.stringify(serialized)).not.toContain("shopifyDiscountId");
+    expect(serialized?.experiment).toBeNull();
+  });
+
+  it("serializes running experiment variants with storefront overrides", () => {
+    const serialized = serializeStorefrontCampaign(
+      buildCampaign({
+        experiments: [
+          {
+            id: "experiment-1",
+            shopId: "shop-1",
+            campaignId: "campaign-1",
+            name: "Headline test",
+            status: "RUNNING",
+            trafficSplitStrategy: "WEIGHTED",
+            primaryMetric: "CLICK_RATE",
+            startsAt: new Date("2026-01-01T00:00:00.000Z"),
+            endsAt: null,
+            winnerVariantId: null,
+            createdAt: new Date("2026-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+            variants: [
+              {
+                id: "variant-a",
+                experimentId: "experiment-1",
+                campaignId: "campaign-1",
+                name: "Control",
+                weight: 50,
+                status: "ACTIVE",
+                designOverride: null,
+                textOverride: { headline: "Control headline" },
+                discountOverride: null,
+                placementOverride: null,
+                createdAt: new Date("2026-01-01T00:00:00.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+              },
+              {
+                id: "variant-b",
+                experimentId: "experiment-1",
+                campaignId: "campaign-1",
+                name: "Treatment",
+                weight: 50,
+                status: "ACTIVE",
+                designOverride: { backgroundColor: "#064E3B" },
+                textOverride: { headline: "Variant headline" },
+                discountOverride: { discountCode: "VARIANT20" },
+                placementOverride: { placement: "BOTTOM_BAR" },
+                createdAt: new Date("2026-01-01T00:00:01.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:01.000Z"),
+              },
+            ],
+          },
+        ] as StorefrontCampaignSource["experiments"],
+      }),
+      baseContext(),
+    );
+
+    expect(serialized?.experiment).toMatchObject({
+      id: "experiment-1",
+      status: "RUNNING",
+      primaryMetric: "CLICK_RATE",
+      variants: [
+        {
+          id: "variant-a",
+          textOverride: { headline: "Control headline" },
+        },
+        {
+          id: "variant-b",
+          designOverride: { backgroundColor: "#064E3B" },
+          discountOverride: { discountCode: "VARIANT20" },
+          placementOverride: { placement: "BOTTOM_BAR" },
+        },
+      ],
+    });
+    expect(JSON.stringify(serialized)).not.toContain("winnerVariantId");
   });
 
   it("serializes unique discount code availability without internal settings", () => {
@@ -367,6 +441,7 @@ function buildCampaign(
       badgeShape: string;
       badgeText: string;
     };
+    experiments?: StorefrontCampaignSource["experiments"];
   } = {},
 ): StorefrontCampaignSource {
   return {
@@ -477,5 +552,6 @@ function buildCampaign(
         ctaUrl: "/collections/sale",
       },
     ]) as StorefrontCampaignSource["translations"],
+    experiments: overrides.experiments ?? [],
   };
 }

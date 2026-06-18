@@ -1,5 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
+import {
+  ExperimentPrimaryMetric,
+  ExperimentVariantStatus,
+} from "@prisma/client";
 
 import { BadgeSettingsEditor } from "../components/BadgeSettingsEditor";
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
@@ -8,6 +12,11 @@ import { CampaignForm } from "../components/CampaignForm";
 import { CampaignTranslationsEditor } from "../components/CampaignTranslationsEditor";
 import { DeliveryCutoffSettingsEditor } from "../components/DeliveryCutoffSettingsEditor";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
+import {
+  ExperimentsEditor,
+  type ExperimentErrors,
+  type ExperimentRow,
+} from "../components/ExperimentsEditor";
 import { FreeShippingSettingsEditor } from "../components/FreeShippingSettingsEditor";
 import { LowStockSettingsEditor } from "../components/LowStockSettingsEditor";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
@@ -64,6 +73,15 @@ import {
   listUniqueCodesForCampaign,
 } from "../services/discounts/uniqueCodes.server";
 import {
+  createExperiment,
+  listExperimentsForCampaign,
+  pauseExperiment,
+  startExperiment,
+  stopExperiment,
+  updateExperiment,
+  type ExperimentVariantInput,
+} from "../services/experiments";
+import {
   hasFreeShippingSettingsErrors,
   parseFreeShippingSettingsFormData,
 } from "../services/free-shipping-settings-form.server";
@@ -87,6 +105,7 @@ import {
   getLockedFeatureReason,
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
+import { canUsePremiumFeature } from "../services/premiumFeatures.server";
 import {
   defaultBadgeSettingsValues,
   toBadgePosition,
@@ -172,9 +191,11 @@ type LoaderData = {
     customCss: string;
     deliveryCutoff: string;
     discountSync: string;
+    experiments: string;
     multiLanguage: string;
     uniqueCodes: string;
   };
+  experiments: ExperimentRow[];
   uniqueCodePools: UniqueCodePoolRow[];
   uniqueCodeStats: UniqueCodeStats;
   uniqueCodes: UniqueCodeRow[];
@@ -192,6 +213,8 @@ type ActionData = {
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
+  experimentErrors?: ExperimentErrors;
+  experimentNotice?: string;
   uniqueCodeErrors?: UniqueCodeErrors;
   uniqueCodeNotice?: string;
   uniqueCodeValues?: DiscountSettingsValues;
@@ -240,17 +263,20 @@ export const loader = async ({
     customCss: getLockedFeatureReason(shop, "custom_css"),
     deliveryCutoff: getLockedFeatureReason(shop, "delivery_cutoff"),
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
+    experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
   };
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
-  const [uniqueCodePools, uniqueCodes, uniqueCodeStats] = await Promise.all([
-    listDiscountCodePoolsForCampaign(shop.id, campaign.id),
-    listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
-    getUniqueCodeStatsForCampaign(shop.id, campaign.id),
-  ]);
+  const [uniqueCodePools, uniqueCodes, uniqueCodeStats, experiments] =
+    await Promise.all([
+      listDiscountCodePoolsForCampaign(shop.id, campaign.id),
+      listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
+      getUniqueCodeStatsForCampaign(shop.id, campaign.id),
+      listExperimentsForCampaign(shop.id, campaign.id),
+    ]);
 
   return {
     id: campaign.id,
@@ -310,6 +336,7 @@ export const loader = async ({
     }),
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
+    experiments: experiments.map(toExperimentRow),
     uniqueCodePools: uniqueCodePools.map(toUniqueCodePoolRow),
     uniqueCodeStats,
     uniqueCodes: uniqueCodes.map(toUniqueCodeRow),
@@ -668,6 +695,89 @@ export const action = async ({
     }
   }
 
+  if (
+    intent === "createExperiment" ||
+    intent === "updateExperiment" ||
+    intent === "startExperiment" ||
+    intent === "pauseExperiment" ||
+    intent === "stopExperiment"
+  ) {
+    const experimentGate = canUsePremiumFeature(shop, "AB_TESTING");
+
+    if (!experimentGate.allowed) {
+      return {
+        experimentErrors: {
+          form: experimentGate.reason,
+        },
+      };
+    }
+
+    try {
+      if (intent === "createExperiment") {
+        const parsed = parseExperimentFormData(formData);
+
+        if (parsed.errors.form) {
+          return { experimentErrors: parsed.errors };
+        }
+
+        await createExperiment({
+          shopId: shop.id,
+          campaignId: id,
+          name: parsed.name,
+          primaryMetric: parsed.primaryMetric,
+          variants: parsed.variants,
+        });
+
+        return redirect(`/app/campaigns/${id}`);
+      }
+
+      const experimentId = String(formData.get("experimentId") ?? "").trim();
+
+      if (!experimentId) {
+        return {
+          experimentErrors: {
+            form: "Experiment id is required.",
+          },
+        };
+      }
+
+      if (intent === "updateExperiment") {
+        const parsed = parseExperimentFormData(formData);
+
+        if (parsed.errors.form) {
+          return { experimentErrors: parsed.errors };
+        }
+
+        await updateExperiment({
+          shopId: shop.id,
+          experimentId,
+          name: parsed.name,
+          primaryMetric: parsed.primaryMetric,
+          variants: parsed.variants,
+        });
+      } else if (intent === "startExperiment") {
+        await startExperiment({ shopId: shop.id, experimentId });
+      } else if (intent === "pauseExperiment") {
+        await pauseExperiment({ shopId: shop.id, experimentId });
+      } else {
+        await stopExperiment({ shopId: shop.id, experimentId });
+      }
+
+      return redirect(`/app/campaigns/${id}`);
+    } catch (error) {
+      console.error("Failed to update experiment", error);
+
+      return {
+        experimentErrors: {
+          form:
+            error instanceof Error
+              ? error.message
+              : "Experiment could not be updated.",
+        },
+      };
+    }
+  }
+
   if (intent === "saveLowStockSettings") {
     const parsed = parseLowStockSettingsFormData(formData);
 
@@ -842,6 +952,7 @@ export default function EditCampaignPage() {
     discountApiError,
     discountOptions,
     discountValues,
+    experiments,
     freeShippingValues,
     lowStockValues,
     uniqueCodePools,
@@ -891,6 +1002,12 @@ export default function EditCampaignPage() {
                 actionData?.discountValues ??
                 discountValues
               }
+            />
+            <ExperimentsEditor
+              errors={actionData?.experimentErrors}
+              experiments={experiments}
+              lockedReason={lockedFeatures.experiments}
+              notice={actionData?.experimentNotice}
             />
             {hasBadge ||
             hasDeliveryCutoff ||
@@ -980,6 +1097,208 @@ function parseTotalCodesToGenerate(
 
 function isFormCheckboxChecked(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
+}
+
+function parseExperimentFormData(formData: FormData): {
+  errors: ExperimentErrors;
+  name: string;
+  primaryMetric: ExperimentPrimaryMetric;
+  variants: ExperimentVariantInput[];
+} {
+  const errors: ExperimentErrors = {};
+  const name = String(formData.get("name") ?? "").trim();
+  const primaryMetric = readExperimentPrimaryMetric(
+    String(formData.get("primaryMetric") ?? ""),
+  );
+  const ids = formData.getAll("variantId").map((value) => String(value));
+  const names = formData.getAll("variantName").map((value) => String(value));
+  const weights = formData
+    .getAll("variantWeight")
+    .map((value) => Number(value));
+  const statuses = formData
+    .getAll("variantStatus")
+    .map((value) => String(value));
+  const textOverrides = formData.getAll("textOverride");
+  const designOverrides = formData.getAll("designOverride");
+  const discountOverrides = formData.getAll("discountOverride");
+  const placementOverrides = formData.getAll("placementOverride");
+  const variantCount = Math.max(names.length, weights.length);
+
+  if (!name) {
+    errors.form = "Experiment name is required.";
+  }
+
+  if (!primaryMetric) {
+    errors.form = "Primary metric is required.";
+  }
+
+  const variants: ExperimentVariantInput[] = [];
+
+  for (let index = 0; index < variantCount; index += 1) {
+    const variantName = (names[index] ?? "").trim();
+    const status = readExperimentVariantStatus(statuses[index] ?? "");
+
+    if (!variantName) {
+      errors.form = "Each variant needs a name.";
+    }
+
+    if (!Number.isFinite(weights[index]) || weights[index] < 0) {
+      errors.form = "Variant weights must be zero or greater.";
+    }
+
+    if (!status) {
+      errors.form = "Variant status is invalid.";
+    }
+
+    variants.push({
+      id: ids[index]?.trim() || undefined,
+      name: variantName,
+      weight: Number.isFinite(weights[index]) ? weights[index] : 0,
+      status: status ?? ExperimentVariantStatus.DRAFT,
+      textOverride: parseJsonOverride(
+        textOverrides[index],
+        "Text override",
+        errors,
+      ),
+      designOverride: parseJsonOverride(
+        designOverrides[index],
+        "Design override",
+        errors,
+      ),
+      discountOverride: parseJsonOverride(
+        discountOverrides[index],
+        "Discount override",
+        errors,
+      ),
+      placementOverride: parseJsonOverride(
+        placementOverrides[index],
+        "Placement override",
+        errors,
+      ),
+    });
+  }
+
+  if (variants.length < 2) {
+    errors.form = "Create at least two variants.";
+  }
+
+  if (
+    variants.filter(
+      (variant) =>
+        variant.status !== ExperimentVariantStatus.ARCHIVED &&
+        variant.weight > 0,
+    ).length < 2
+  ) {
+    errors.form = "At least two variants need positive weights.";
+  }
+
+  return {
+    errors,
+    name,
+    primaryMetric: primaryMetric ?? ExperimentPrimaryMetric.CLICK_RATE,
+    variants,
+  };
+}
+
+function parseJsonOverride(
+  value: FormDataEntryValue | undefined,
+  label: string,
+  errors: ExperimentErrors,
+) {
+  const rawValue = String(value ?? "").trim();
+
+  if (!rawValue) return null;
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      errors.form = `${label} must be a JSON object.`;
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    errors.form = `${label} is not valid JSON.`;
+    return null;
+  }
+}
+
+function readExperimentPrimaryMetric(value: string) {
+  if (value === "CTR" || value === ExperimentPrimaryMetric.CLICK_RATE) {
+    return ExperimentPrimaryMetric.CLICK_RATE;
+  }
+
+  if (
+    value === ExperimentPrimaryMetric.ADD_TO_CART_RATE ||
+    value === ExperimentPrimaryMetric.CHECKOUT_RATE ||
+    value === ExperimentPrimaryMetric.REVENUE_PER_VISITOR
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function readExperimentVariantStatus(value: string) {
+  if (
+    value === ExperimentVariantStatus.DRAFT ||
+    value === ExperimentVariantStatus.ACTIVE ||
+    value === ExperimentVariantStatus.PAUSED ||
+    value === ExperimentVariantStatus.WINNER ||
+    value === ExperimentVariantStatus.LOSER ||
+    value === ExperimentVariantStatus.ARCHIVED
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function toExperimentRow(experiment: {
+  id: string;
+  name: string;
+  status: string;
+  primaryMetric: string;
+  trafficSplitStrategy: string;
+  startsAt: Date | string | null;
+  endsAt: Date | string | null;
+  variants: Array<{
+    id: string;
+    name: string;
+    weight: number;
+    status: string;
+    designOverride: unknown;
+    textOverride: unknown;
+    discountOverride: unknown;
+    placementOverride: unknown;
+  }>;
+}): ExperimentRow {
+  return {
+    id: experiment.id,
+    name: experiment.name,
+    status: experiment.status,
+    primaryMetric: experiment.primaryMetric,
+    trafficSplitStrategy: experiment.trafficSplitStrategy,
+    startsAt: toShortDateTime(experiment.startsAt),
+    endsAt: toShortDateTime(experiment.endsAt),
+    variants: experiment.variants.map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      weight: variant.weight,
+      status: variant.status,
+      designOverrideJson: jsonTextareaValue(variant.designOverride),
+      textOverrideJson: jsonTextareaValue(variant.textOverride),
+      discountOverrideJson: jsonTextareaValue(variant.discountOverride),
+      placementOverrideJson: jsonTextareaValue(variant.placementOverride),
+    })),
+  };
+}
+
+function jsonTextareaValue(value: unknown) {
+  if (!value || typeof value !== "object") return "";
+
+  return JSON.stringify(value, null, 2);
 }
 
 function toUniqueCodePoolRow(pool: {

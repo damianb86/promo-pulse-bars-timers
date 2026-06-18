@@ -125,6 +125,156 @@
     return button;
   };
 
+  window.CounterPulseApplyExperiment = function (campaign) {
+    var experiment = campaign && campaign.experiment;
+    var variants =
+      experiment && Array.isArray(experiment.variants)
+        ? experiment.variants.filter(isAssignableExperimentVariant)
+        : [];
+    var visitorId;
+    var assignmentKey;
+    var assignedVariantId;
+    var variant;
+    var nextCampaign;
+
+    if (!campaign || !experiment || experiment.status !== "RUNNING") {
+      return campaign;
+    }
+
+    if (!experiment.id || variants.length === 0) return campaign;
+
+    visitorId = getVisitorId();
+    assignmentKey = "counterpulse_experiment_assignment_" + experiment.id;
+    assignedVariantId = readStoredValue("localStorage", assignmentKey);
+    variant = findExperimentVariant(variants, assignedVariantId);
+
+    if (!variant) {
+      variant = selectExperimentVariant(experiment.id, visitorId, variants);
+      if (variant) {
+        writeStoredValue("localStorage", assignmentKey, variant.id);
+      }
+    }
+
+    if (!variant) return campaign;
+
+    nextCampaign = Object.assign({}, campaign, {
+      experimentId: experiment.id,
+      variantId: variant.id,
+      experiment: {
+        id: experiment.id,
+        name: experiment.name,
+        primaryMetric: experiment.primaryMetric,
+        trafficSplitStrategy: experiment.trafficSplitStrategy,
+        status: experiment.status,
+      },
+      variant: {
+        id: variant.id,
+        name: variant.name,
+      },
+      texts: mergePlainObjects(campaign.texts, variant.textOverride),
+      design: mergePlainObjects(campaign.design, variant.designOverride),
+      discount: mergePlainObjects(campaign.discount, variant.discountOverride),
+    });
+
+    applyPlacementOverride(nextCampaign, variant.placementOverride);
+
+    return nextCampaign;
+  };
+
+  function isAssignableExperimentVariant(variant) {
+    return (
+      variant &&
+      (variant.status === "ACTIVE" || variant.status === "WINNER") &&
+      Number(variant.weight) > 0
+    );
+  }
+
+  function findExperimentVariant(variants, variantId) {
+    if (!variantId) return null;
+
+    return (
+      variants.find(function (variant) {
+        return variant.id === variantId;
+      }) || null
+    );
+  }
+
+  function selectExperimentVariant(experimentId, visitorId, variants) {
+    var totalWeight = variants.reduce(function (total, variant) {
+      return total + Math.max(0, Math.trunc(Number(variant.weight) || 0));
+    }, 0);
+    var bucket;
+    var cumulativeWeight = 0;
+    var index;
+
+    if (!visitorId || totalWeight <= 0) return null;
+
+    bucket = hashAssignmentBucket(experimentId + ":" + visitorId) % totalWeight;
+
+    for (index = 0; index < variants.length; index += 1) {
+      cumulativeWeight += Math.max(
+        0,
+        Math.trunc(Number(variants[index].weight) || 0),
+      );
+      if (bucket < cumulativeWeight) return variants[index];
+    }
+
+    return variants[variants.length - 1] || null;
+  }
+
+  function hashAssignmentBucket(value) {
+    var hash = 2166136261;
+    var index;
+
+    for (index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return hash >>> 0;
+  }
+
+  function mergePlainObjects(base, override) {
+    var output =
+      base && typeof base === "object" && !Array.isArray(base)
+        ? Object.assign({}, base)
+        : {};
+
+    if (!override || typeof override !== "object" || Array.isArray(override)) {
+      return output;
+    }
+
+    Object.keys(override).forEach(function (key) {
+      output[key] = override[key];
+    });
+
+    return output;
+  }
+
+  function applyPlacementOverride(campaign, override) {
+    if (!override) return;
+
+    if (typeof override === "string") {
+      campaign.placement = override;
+      return;
+    }
+
+    if (typeof override !== "object" || Array.isArray(override)) return;
+
+    if (typeof override.placement === "string") {
+      campaign.placement = override.placement;
+    }
+    if (typeof override.placementType === "string") {
+      campaign.placement = override.placementType;
+    }
+    if (typeof override.placementSelector === "string") {
+      campaign.placementSelector = override.placementSelector;
+    }
+    if (typeof override.customSelector === "string") {
+      campaign.placementSelector = override.customSelector;
+    }
+  }
+
   function renderUniqueCodeWidget(campaign, config) {
     var wrapper = document.createElement("span");
     var loading = document.createElement("span");

@@ -7,10 +7,12 @@ import {
 } from "./premiumFeatures.server";
 
 describe("premium Stage 2 feature gates", () => {
-  it("keeps future premium flags disabled by default", () => {
+  it("enables implemented Stage 2 flags and keeps future flags disabled", () => {
     expect(defaultStage2FeatureFlags.UNIQUE_CODES).toBe(true);
-    expect(defaultStage2FeatureFlags.AB_TESTING).toBe(false);
-    expect(isPremiumFeatureFlagEnabled("AB_TESTING")).toBe(false);
+    expect(defaultStage2FeatureFlags.AB_TESTING).toBe(true);
+    expect(defaultStage2FeatureFlags.AUTO_WINNER).toBe(false);
+    expect(isPremiumFeatureFlagEnabled("AB_TESTING")).toBe(true);
+    expect(isPremiumFeatureFlagEnabled("AUTO_WINNER")).toBe(false);
   });
 
   it("requires the configured plan after a flag is enabled", () => {

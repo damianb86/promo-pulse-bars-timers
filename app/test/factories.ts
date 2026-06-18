@@ -69,6 +69,7 @@ type TestCampaignOverrides = {
       locale: string;
     }
   >;
+  experiments?: StorefrontCampaignSource["experiments"];
 };
 
 export function createTestShop(overrides: Partial<Shop> = {}): Shop {
@@ -214,6 +215,7 @@ export function createTestCampaign(
       badgeText: translation.badgeText ?? null,
       locale: translation.locale,
     })),
+    experiments: overrides.experiments ?? [],
   };
 }
 

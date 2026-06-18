@@ -253,7 +253,7 @@
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns
+          ? payload.campaigns.map(applyExperiment)
           : [];
         updateDebug(
           debugRoot,
@@ -274,6 +274,14 @@
         );
         throw error;
       });
+  }
+
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
   }
 
   function assertJsonResponse(response, url) {
@@ -826,7 +834,18 @@
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

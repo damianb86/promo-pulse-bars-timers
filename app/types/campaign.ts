@@ -11,6 +11,14 @@ export const campaignDetailsInclude = {
   badgeSettings: true,
   discountSync: true,
   translations: true,
+  experiments: {
+    include: {
+      variants: {
+        orderBy: [{ createdAt: "asc" }],
+      },
+    },
+    orderBy: [{ createdAt: "desc" }],
+  },
 } satisfies Prisma.CampaignInclude;
 
 export const campaignDuplicateInclude = {

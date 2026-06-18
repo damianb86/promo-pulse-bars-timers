@@ -22,6 +22,8 @@
       inventoryQuantity: numberOrNull(root.dataset.inventoryQuantity),
       variants: readVariants(root.dataset.variantsScriptId),
       customProductFormSelector: root.dataset.customProductFormSelector || "",
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -86,12 +88,23 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return "/apps/counterpulse-campaigns?" + params.toString();
+    return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
   }
 
   function fetchCampaign(config) {
     return fetch(buildUrl(config), {
-      credentials: "omit",
+      credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
       .then(function (response) {
@@ -101,7 +114,7 @@
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns
+          ? payload.campaigns.map(applyExperiment)
           : [];
         return (
           campaigns.filter(function (campaign) {
@@ -109,6 +122,14 @@
           })[0] || null
         );
       });
+  }
+
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
   }
 
   function render(root, campaign, config) {
@@ -291,7 +312,18 @@
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

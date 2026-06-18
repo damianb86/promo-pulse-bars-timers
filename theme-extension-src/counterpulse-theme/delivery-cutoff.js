@@ -149,11 +149,11 @@
       })
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
-        return (
-          Array.isArray(payload.campaigns) ? payload.campaigns : []
-        ).filter(function (campaign) {
-          return campaign.type === "DELIVERY_CUTOFF";
-        });
+        return (Array.isArray(payload.campaigns) ? payload.campaigns : [])
+          .map(applyExperiment)
+          .filter(function (campaign) {
+            return campaign.type === "DELIVERY_CUTOFF";
+          });
       })
       .then(function (campaigns) {
         updateDebug(
@@ -176,6 +176,14 @@
         if (config.debug && window.console) console.log("[CP delivery]", error);
         return [];
       });
+  }
+
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
   }
 
   function renderGlobal(campaign, config) {
@@ -648,7 +656,18 @@
   function emit(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

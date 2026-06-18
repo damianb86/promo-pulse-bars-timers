@@ -65,7 +65,7 @@
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns
+          ? payload.campaigns.map(applyExperiment)
           : [];
         var campaign = campaigns[0] || null;
         if (campaign) {
@@ -202,6 +202,14 @@
     root.replaceChildren(card);
     tick(card, campaign);
     emitImpression(campaign);
+  }
+
+  function applyExperiment(campaign) {
+    if (window.CounterPulseApplyExperiment) {
+      return window.CounterPulseApplyExperiment(campaign);
+    }
+
+    return campaign;
   }
 
   function updateDebug(root, message, url) {
@@ -579,7 +587,18 @@
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("counterpulse:impression", {
-        detail: { campaignId: campaign.id, placement: campaign.placement },
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
       }),
     );
   }

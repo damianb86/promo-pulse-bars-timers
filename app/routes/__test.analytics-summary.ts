@@ -20,33 +20,46 @@ export const loader = async () => {
       copyCode: 0,
       uniqueCodeAssigned: 0,
       applyCodeClicked: 0,
+      attributedVariants: 0,
     });
   }
 
-  const [impressions, clicks, copyCode, uniqueCodeAssigned, applyCodeClicked] =
-    await Promise.all([
-      prisma.analyticsEvent.count({
-        where: { shopId: shop.id, eventType: AnalyticsEventType.IMPRESSION },
-      }),
-      prisma.analyticsEvent.count({
-        where: { shopId: shop.id, eventType: AnalyticsEventType.CLICK },
-      }),
-      prisma.analyticsEvent.count({
-        where: { shopId: shop.id, eventType: AnalyticsEventType.COPY_CODE },
-      }),
-      prisma.analyticsEvent.count({
-        where: {
-          shopId: shop.id,
-          eventType: AnalyticsEventType.UNIQUE_CODE_ASSIGNED,
-        },
-      }),
-      prisma.analyticsEvent.count({
-        where: {
-          shopId: shop.id,
-          eventType: AnalyticsEventType.APPLY_CODE_CLICKED,
-        },
-      }),
-    ]);
+  const [
+    impressions,
+    clicks,
+    copyCode,
+    uniqueCodeAssigned,
+    applyCodeClicked,
+    attributedVariants,
+  ] = await Promise.all([
+    prisma.analyticsEvent.count({
+      where: { shopId: shop.id, eventType: AnalyticsEventType.IMPRESSION },
+    }),
+    prisma.analyticsEvent.count({
+      where: { shopId: shop.id, eventType: AnalyticsEventType.CLICK },
+    }),
+    prisma.analyticsEvent.count({
+      where: { shopId: shop.id, eventType: AnalyticsEventType.COPY_CODE },
+    }),
+    prisma.analyticsEvent.count({
+      where: {
+        shopId: shop.id,
+        eventType: AnalyticsEventType.UNIQUE_CODE_ASSIGNED,
+      },
+    }),
+    prisma.analyticsEvent.count({
+      where: {
+        shopId: shop.id,
+        eventType: AnalyticsEventType.APPLY_CODE_CLICKED,
+      },
+    }),
+    prisma.attributionTouch.count({
+      where: {
+        shopId: shop.id,
+        variantId: { not: null },
+      },
+    }),
+  ]);
 
   return json({
     impressions,
@@ -54,6 +67,7 @@ export const loader = async () => {
     copyCode,
     uniqueCodeAssigned,
     applyCodeClicked,
+    attributedVariants,
   });
 };
 

@@ -70,6 +70,46 @@ Entidades principales:
 La implementacion debe mantener reglas testeables en `app/services` y
 `app/utils`, evitando acoplar logica de negocio directamente a componentes.
 
+## Stage 2 Premium Architecture
+
+Stage 2 agrega una capa premium por encima de las campanas existentes, sin
+modificar el contrato base de Stage 1. Las features nuevas deben entrar por
+feature flag interno y por plan gate antes de exponerse en UI o storefront.
+
+Tipos y flags:
+
+- `app/types/stage2.ts` define `PremiumFeatureKey`, estados de experimentos,
+  modelos de atribucion, estados de codigos unicos, tipos de recomendacion y
+  categorias de templates.
+- `app/services/premiumFeatures.server.ts` define los defaults de flags
+  internos y el helper `canUsePremiumFeature(shop, featureKey)`.
+- `UNIQUE_CODES` queda habilitado porque ya existe la primera base backend.
+  Los demas flags Stage 2 quedan deshabilitados hasta su implementacion.
+
+Servicios reservados para Stage 2:
+
+- `app/services/discounts`: unique codes, auto-apply y Shopify Functions.
+- `app/services/experiments`: A/B testing y auto-winner.
+- `app/services/attribution`: touchpoints, checkout, thank-you y order-status.
+- `app/services/recommendations`: recomendaciones automaticas.
+- `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion.
+- `app/services/markets`: reglas avanzadas de pais, mercado, idioma y moneda.
+- `app/services/email-timers`: render dinamico de countdown timers para email.
+- `app/services/agency`: multi-store y agency dashboard.
+- `app/components/stage2`: slots/componentes admin para features premium.
+
+Reglas de integracion:
+
+- No activar UI premium solo por existir el tipo o carpeta.
+- No llamar APIs reales de Shopify desde tests automatizados salvo mocks o
+  `E2E_TEST_MODE=true`.
+- No exponer IDs internos, tokens de visitante o configuracion privada en
+  payloads storefront.
+- No simular urgencia: timers, stock y descuentos deben venir de datos reales o
+  quedar ocultos.
+- Mantener payloads storefront backwards-compatible para no romper Theme App
+  Extension ni Web Pixel Extension.
+
 ## Analytics
 
 El Web Pixel sera la fuente principal para eventos de storefront. La app admin

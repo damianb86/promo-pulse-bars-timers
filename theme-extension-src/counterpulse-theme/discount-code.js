@@ -106,6 +106,15 @@
   };
 
   window.CPcb = window.CounterPulseCouponButton = function (code, campaign) {
+    if (
+      campaign &&
+      campaign.discount &&
+      campaign.discount.uniqueCode &&
+      campaign.discount.uniqueCode.endpoint
+    ) {
+      return renderUniqueCodeWidget(campaign, campaign.discount.uniqueCode);
+    }
+
     var button = document.createElement("button");
     button.className = "pp-code";
     button.type = "button";
@@ -115,6 +124,219 @@
     };
     return button;
   };
+
+  function renderUniqueCodeWidget(campaign, config) {
+    var wrapper = document.createElement("span");
+    var loading = document.createElement("span");
+
+    wrapper.className = "pp-unique-code";
+    loading.className = "pp-unique-code__loading";
+    loading.textContent = "Loading code";
+    wrapper.appendChild(loading);
+
+    requestUniqueCode(campaign, config)
+      .then(function (payload) {
+        renderAssignedUniqueCode(wrapper, campaign, config, payload);
+      })
+      .catch(function (error) {
+        debug(getRoot(), error);
+        renderExpiredUniqueCode(wrapper, campaign);
+      });
+
+    return wrapper;
+  }
+
+  function requestUniqueCode(campaign, config) {
+    var root = getRoot();
+    var tracking = getVisitorSessionTracking(campaign);
+    var payload = {
+      shop: detectShop(root),
+      campaignId: campaign && (campaign.id || campaign.campaignId),
+      visitorId: tracking.visitorId,
+      sessionId: tracking.sessionId,
+      redirectPath: getCurrentPath(),
+    };
+
+    rememberCampaign(campaign, tracking);
+
+    return window
+      .fetch(getStorefrontApiPath(root, config.endpoint), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      .then(function (response) {
+        return response
+          .json()
+          .catch(function () {
+            return {};
+          })
+          .then(function (body) {
+            var error;
+
+            if (!response.ok || !body.code) {
+              error = new Error(body.error || "Unique code unavailable.");
+              error.status = response.status;
+              throw error;
+            }
+
+            body.tracking = tracking;
+            return body;
+          });
+      });
+  }
+
+  function renderAssignedUniqueCode(wrapper, campaign, config, payload) {
+    var value = document.createElement("span");
+    var copyButton = document.createElement("button");
+    var timer = document.createElement("span");
+    var applyLink;
+
+    wrapper.replaceChildren();
+    value.className = "pp-unique-code__value";
+    value.textContent = payload.code;
+    wrapper.appendChild(value);
+
+    copyButton.className = "pp-code";
+    copyButton.type = "button";
+    copyButton.textContent = "Copy code";
+    copyButton.setAttribute("aria-label", "Copy code " + payload.code);
+    copyButton.addEventListener("click", function () {
+      window.CounterPulseCopyCode(payload.code, campaign);
+    });
+    wrapper.appendChild(copyButton);
+
+    if (isSafeDiscountApplyUrl(payload.discountApplyUrl)) {
+      applyLink = document.createElement("a");
+      applyLink.className = "pp-cta";
+      applyLink.href = payload.discountApplyUrl;
+      applyLink.textContent = "Apply discount";
+      applyLink.setAttribute("aria-label", "Apply discount " + payload.code);
+      applyLink.addEventListener("click", function () {
+        window.CounterPulseTrackEvent("APPLY_CODE_CLICKED", campaign, {
+          code: payload.code,
+        });
+      });
+      wrapper.appendChild(applyLink);
+    }
+
+    if (payload.expiresAt) {
+      timer.className = "pp-unique-code__timer";
+      timer.setAttribute("aria-live", "polite");
+      timer.setAttribute("aria-label", "Code time remaining");
+      wrapper.appendChild(timer);
+      startUniqueCodeCountdown(wrapper, timer, campaign, config, payload);
+    }
+
+    window.CounterPulseTrackEvent("UNIQUE_CODE_ASSIGNED", campaign, {
+      code: payload.code,
+      reused: payload.reused === true,
+    });
+  }
+
+  function startUniqueCodeCountdown(wrapper, timer, campaign, config, payload) {
+    var expiresAt = parseDate(payload.expiresAt);
+    var expired = false;
+    var interval;
+
+    if (!expiresAt) return;
+
+    function tick() {
+      var remainingMs = expiresAt.getTime() - Date.now();
+
+      if (remainingMs <= 0) {
+        if (expired) return;
+        expired = true;
+        window.clearInterval(interval);
+        renderExpiredUniqueCode(wrapper, campaign);
+        expireUniqueCode(campaign, config, payload.tracking);
+        return;
+      }
+
+      timer.textContent = formatDuration(remainingMs);
+    }
+
+    tick();
+    interval = window.setInterval(tick, 1000);
+  }
+
+  function expireUniqueCode(campaign, config, tracking) {
+    var root = getRoot();
+
+    if (!tracking || !tracking.visitorId) return;
+
+    try {
+      window
+        .fetch(getStorefrontApiPath(root, config.endpoint), {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "expire",
+            shop: detectShop(root),
+            campaignId: campaign && (campaign.id || campaign.campaignId),
+            visitorId: tracking.visitorId,
+            sessionId: tracking.sessionId,
+          }),
+        })
+        .catch(function () {});
+    } catch (error) {
+      debug(root, error);
+    }
+  }
+
+  function renderExpiredUniqueCode(wrapper, campaign) {
+    var expired = document.createElement("span");
+    var texts = (campaign && campaign.texts) || {};
+
+    expired.className = "pp-unique-code__expired";
+    expired.textContent =
+      texts.expiredText || "This code is no longer available.";
+    wrapper.replaceChildren(expired);
+  }
+
+  function getStorefrontApiPath(root, endpoint) {
+    var apiBaseUrl = getApiBaseUrl(root);
+    var value = String(endpoint || "/api/storefront/unique-code/assign").trim();
+
+    if (/^https?:\/\//i.test(value)) return value;
+    if (apiBaseUrl && value.charAt(0) === "/") return apiBaseUrl + value;
+
+    return value || "/api/storefront/unique-code/assign";
+  }
+
+  function getCurrentPath() {
+    return window.location.pathname + window.location.search;
+  }
+
+  function isSafeDiscountApplyUrl(value) {
+    return typeof value === "string" && /^\/discount\/[^/]/.test(value);
+  }
+
+  function parseDate(value) {
+    var date = value ? new Date(value) : null;
+
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+
+  function formatDuration(ms) {
+    var totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    var days = Math.floor(totalSeconds / 86400);
+    var hours = Math.floor((totalSeconds % 86400) / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+
+    if (days > 0) {
+      return days + "d " + pad(hours) + "h " + pad(minutes) + "m";
+    }
+
+    return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  }
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
+  }
 
   function getRoot() {
     return (

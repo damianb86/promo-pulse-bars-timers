@@ -1,7 +1,6 @@
 (function () {
   "use strict";
 
-  var api = "/apps/counterpulse-campaigns";
   var embed = document.getElementById("counterpulse-app-embed");
   var device = window.matchMedia("(max-width: 767px)").matches
     ? "mobile"
@@ -29,6 +28,8 @@
         root.dataset.shop ||
         (window.Shopify && window.Shopify.shop) ||
         window.location.hostname,
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -63,6 +64,8 @@
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -113,7 +116,18 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return api + "?" + params.toString();
+    return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
   }
 
   function fetchCampaigns(config, placement, debugRoot) {
@@ -126,7 +140,7 @@
     );
 
     return fetch(url, {
-      credentials: "omit",
+      credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
       .then(function (response) {
@@ -277,7 +291,10 @@
 
     surface.appendChild(message);
 
-    if (campaign.discount && campaign.discount.discountCode) {
+    if (
+      campaign.discount &&
+      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+    ) {
       surface.appendChild(
         window.CounterPulseCouponButton(
           campaign.discount.discountCode,

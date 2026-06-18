@@ -210,6 +210,8 @@ describe("Stage 2 data helpers", () => {
             "IMPRESSION",
             "CLICK",
             "COPY_CODE",
+            "UNIQUE_CODE_ASSIGNED",
+            "APPLY_CODE_CLICKED",
             "ADD_TO_CART",
             "CHECKOUT_STARTED",
           ],

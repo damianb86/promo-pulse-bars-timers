@@ -13,7 +13,7 @@
     utmSource:
       new URLSearchParams(window.location.search).get("utm_source") || "",
     debugMode: root.dataset.debug === "true",
-    apiPath: "/apps/counterpulse-campaigns",
+    apiPath: getCampaignsEndpoint(root.dataset.apiBaseUrl),
   };
   var campaignCache = {};
   var pendingFetches = {};
@@ -72,7 +72,7 @@
     pendingFetches[url] = window
       .fetch(url, {
         method: "GET",
-        credentials: "omit",
+        credentials: "same-origin",
         headers: { Accept: "application/json" },
       })
       .then(function (response) {
@@ -134,6 +134,17 @@
     return config.apiPath + "?" + params.toString();
   }
 
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = (window.CounterPulseApiBaseUrl || apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
+  }
+
   function renderCampaign(campaign) {
     if (
       !campaign ||
@@ -173,7 +184,7 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      campaign.discount.discountCode
+      (campaign.discount.discountCode || campaign.discount.uniqueCode)
     ) {
       bar.appendChild(
         window.CounterPulseCouponButton(

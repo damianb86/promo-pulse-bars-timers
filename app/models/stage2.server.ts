@@ -208,6 +208,8 @@ const defaultAttributableEventTypes = [
   AnalyticsEventType.IMPRESSION,
   AnalyticsEventType.CLICK,
   AnalyticsEventType.COPY_CODE,
+  AnalyticsEventType.UNIQUE_CODE_ASSIGNED,
+  AnalyticsEventType.APPLY_CODE_CLICKED,
   AnalyticsEventType.ADD_TO_CART,
   AnalyticsEventType.CHECKOUT_STARTED,
 ] satisfies AnalyticsEventType[];

@@ -256,7 +256,7 @@ function PromoSurface({
       <div className="counterpulse-preview-message">
         <strong>{viewModel.headline}</strong>
         {deliveryPreview ? (
-          <span>{deliveryPreview.message}</span>
+          <span suppressHydrationWarning>{deliveryPreview.message}</span>
         ) : lowStockPreview ? (
           <span>{lowStockPreview.message}</span>
         ) : freeShippingPreview ? (
@@ -267,11 +267,17 @@ function PromoSurface({
           viewModel.subheadline && <span>{viewModel.subheadline}</span>
         )}
         {deliveryPreview?.beforeCutoff ? (
-          <span className="counterpulse-preview-countdown">
+          <span
+            className="counterpulse-preview-countdown"
+            suppressHydrationWarning
+          >
             {deliveryPreview.timeRemaining}
           </span>
         ) : timerState?.isActive ? (
-          <span className="counterpulse-preview-countdown">
+          <span
+            className="counterpulse-preview-countdown"
+            suppressHydrationWarning
+          >
             {formatTimeRemaining(timerState.remainingMs)}
           </span>
         ) : null}

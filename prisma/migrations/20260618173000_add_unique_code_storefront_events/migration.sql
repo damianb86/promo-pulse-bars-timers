@@ -1,0 +1,3 @@
+-- SQLite stores Prisma enums as TEXT. Adding storefront unique-code analytics
+-- values does not require a table rewrite; this migration records the schema
+-- change for UNIQUE_CODE_ASSIGNED and APPLY_CODE_CLICKED.

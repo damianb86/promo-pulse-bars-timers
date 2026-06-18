@@ -6,7 +6,6 @@
     return;
   }
 
-  var apiPath = "/apps/counterpulse-campaigns";
   var drawerSelectors = [
     "cart-drawer",
     "#CartDrawer",
@@ -195,6 +194,8 @@
       showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
   }
 
@@ -216,6 +217,8 @@
       showIcon: true,
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
   }
 
@@ -239,7 +242,7 @@
 
     return window
       .fetch(url, {
-        credentials: "omit",
+        credentials: "same-origin",
         headers: { Accept: "application/json" },
       })
       .then(function (response) {
@@ -314,7 +317,18 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return apiPath + "?" + params.toString();
+    return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
   }
 
   function renderCartCampaign(root, campaign, config, isDrawer) {
@@ -371,7 +385,7 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      campaign.discount.discountCode
+      (campaign.discount.discountCode || campaign.discount.uniqueCode)
     ) {
       card.appendChild(window.CPcb(campaign.discount.discountCode, campaign));
     }

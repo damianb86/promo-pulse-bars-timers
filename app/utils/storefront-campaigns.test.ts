@@ -55,7 +55,7 @@ describe("storefront campaign serialization", () => {
       method: "UNIQUE_CODE",
       discountCode: null,
       uniqueCode: {
-        endpoint: "/api/discounts/unique-code",
+        endpoint: "/api/storefront/unique-code/assign",
         autoApply: true,
         expiresMinutes: 45,
       },

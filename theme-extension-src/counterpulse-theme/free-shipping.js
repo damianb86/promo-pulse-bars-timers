@@ -24,6 +24,7 @@
       ? "mobile"
       : "desktop",
     debugMode: root.dataset.debug === "true",
+    apiBaseUrl: root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
   };
   var refreshTimer = 0;
   var refreshInFlight = false;
@@ -115,7 +116,7 @@
     if (config.cartSubtotal !== null) {
       params.set("cartSubtotal", String(config.cartSubtotal));
     }
-    var url = "/apps/counterpulse-campaigns?" + params.toString();
+    var url = getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
 
     if (isPaused("CounterPulseProxyPausedUntil")) {
       updateDebug(
@@ -130,7 +131,7 @@
 
     return window
       .fetch(url, {
-        credentials: "omit",
+        credentials: "same-origin",
         headers: { Accept: "application/json" },
       })
       .then(function (response) {
@@ -191,6 +192,17 @@
           ".",
       );
     }
+  }
+
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
   }
 
   function renderCampaign(campaign) {
@@ -270,7 +282,10 @@
     bar.appendChild(message);
     bar.appendChild(renderProgress(progress.percentage, detail.textContent));
 
-    if (campaign.discount && campaign.discount.discountCode) {
+    if (
+      campaign.discount &&
+      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+    ) {
       bar.appendChild(
         window.CounterPulseCouponButton(
           campaign.discount.discountCode,

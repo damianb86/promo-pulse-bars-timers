@@ -5,12 +5,15 @@ import {
   CampaignType,
   DeliveryAfterCutoffBehavior,
   DesignAlignment,
+  DiscountCodePoolStatus,
+  DiscountCodeValueType,
   DiscountSyncMethod,
   PlacementType,
   Prisma,
   ShopPlan,
   TimerMode,
   TimerResetBehavior,
+  UniqueDiscountCodeStatus,
 } from "@prisma/client";
 
 import prisma from "../db.server";
@@ -27,7 +30,8 @@ export type E2ETestScenario =
   | "delivery-cutoff-after"
   | "cart-drawer"
   | "analytics"
-  | "unique-discount";
+  | "unique-discount"
+  | "unique-discount-expired";
 
 export function isE2ETestMode() {
   return (
@@ -201,6 +205,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "unique-discount") {
     await createUniqueDiscountCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "unique-discount-expired") {
+    await createUniqueDiscountCampaign(shopId, { codes: [] });
   }
 }
 
@@ -283,11 +292,20 @@ async function createCountdownCampaign(
   });
 }
 
-async function createUniqueDiscountCampaign(shopId: string) {
+async function createUniqueDiscountCampaign(
+  shopId: string,
+  options: { codes?: string[] } = {},
+) {
   const now = new Date();
   const endsAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+  const codes = options.codes ?? [
+    "E2E-VISITOR-001",
+    "E2E-VISITOR-002",
+    "E2E-VISITOR-003",
+    "E2E-VISITOR-004",
+  ];
 
-  return prisma.campaign.create({
+  const campaign = await prisma.campaign.create({
     data: {
       shopId,
       name: "E2E Unique Visitor Discount",
@@ -340,6 +358,34 @@ async function createUniqueDiscountCampaign(shopId: string) {
       },
     },
   });
+
+  await prisma.discountCodePool.create({
+    data: {
+      shopId,
+      campaignId: campaign.id,
+      prefix: "E2E",
+      discountType: DiscountCodeValueType.PERCENTAGE,
+      value: new Prisma.Decimal(15),
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      expiresAt: endsAt,
+      totalGenerated: codes.length,
+      status: DiscountCodePoolStatus.ACTIVE,
+    },
+  });
+
+  if (codes.length > 0) {
+    await prisma.uniqueDiscountCode.createMany({
+      data: codes.map((code) => ({
+        shopId,
+        campaignId: campaign.id,
+        code,
+        expiresAt: endsAt,
+        status: UniqueDiscountCodeStatus.AVAILABLE,
+      })),
+    });
+  }
+
+  return campaign;
 }
 
 async function createFreeShippingCampaign(

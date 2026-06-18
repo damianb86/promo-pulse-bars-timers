@@ -23,6 +23,8 @@
       compactMode: root.dataset.compact === "true",
       showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
+      apiBaseUrl:
+        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -53,7 +55,7 @@
     );
 
     fetch(requestUrl, {
-      credentials: "omit",
+      credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
       .then(function (response) {
@@ -115,7 +117,18 @@
       params.set("campaignId", config.campaignId);
     }
 
-    return "/apps/counterpulse-campaigns?" + params.toString();
+    return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function getCampaignsEndpoint(apiBaseUrl) {
+    var value = String(apiBaseUrl || "")
+      .trim()
+      .replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
   }
 
   function render(root, campaign, config) {
@@ -170,7 +183,7 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      campaign.discount.discountCode
+      (campaign.discount.discountCode || campaign.discount.uniqueCode)
     ) {
       card.appendChild(
         window.CounterPulseCouponButton(

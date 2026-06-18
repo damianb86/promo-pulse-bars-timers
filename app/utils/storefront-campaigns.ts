@@ -435,7 +435,7 @@ function serializeDiscount(discountSync: DiscountSync | null) {
     uniqueCode:
       discountSync.method === "UNIQUE_CODE"
         ? {
-            endpoint: "/api/discounts/unique-code",
+            endpoint: "/api/storefront/unique-code/assign",
             autoApply: discountSync.uniqueCodeAutoApply,
             expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
           }

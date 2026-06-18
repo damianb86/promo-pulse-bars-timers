@@ -12,6 +12,12 @@ import { FreeShippingSettingsEditor } from "../components/FreeShippingSettingsEd
 import { LowStockSettingsEditor } from "../components/LowStockSettingsEditor";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import {
+  UniqueCodesEditor,
+  type UniqueCodeErrors,
+  type UniqueCodePoolRow,
+  type UniqueCodeRow,
+} from "../components/UniqueCodesEditor";
+import {
   clearDiscountSyncForShop,
   getCampaignForShop,
   updateBadgeSettingsForShop,
@@ -49,6 +55,12 @@ import {
   hasDiscountSettingsErrors,
   parseDiscountSettingsFormData,
 } from "../services/discount-settings-form.server";
+import {
+  createDiscountCodePool,
+  generateCodeBatch,
+  listDiscountCodePoolsForCampaign,
+  listUniqueCodesForCampaign,
+} from "../services/discounts/uniqueCodes.server";
 import {
   hasFreeShippingSettingsErrors,
   parseFreeShippingSettingsFormData,
@@ -159,7 +171,10 @@ type LoaderData = {
     deliveryCutoff: string;
     discountSync: string;
     multiLanguage: string;
+    uniqueCodes: string;
   };
+  uniqueCodePools: UniqueCodePoolRow[];
+  uniqueCodes: UniqueCodeRow[];
 };
 
 type ActionData = {
@@ -174,6 +189,9 @@ type ActionData = {
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
+  uniqueCodeErrors?: UniqueCodeErrors;
+  uniqueCodeNotice?: string;
+  uniqueCodeValues?: DiscountSettingsValues;
   freeShippingErrors?: FreeShippingSettingsErrors;
   freeShippingValues?: FreeShippingSettingsValues;
   lowStockErrors?: LowStockSettingsErrors;
@@ -220,10 +238,15 @@ export const loader = async ({
     deliveryCutoff: getLockedFeatureReason(shop, "delivery_cutoff"),
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
+    uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
   };
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
+  const [uniqueCodePools, uniqueCodes] = await Promise.all([
+    listDiscountCodePoolsForCampaign(shop.id, campaign.id),
+    listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
+  ]);
 
   return {
     id: campaign.id,
@@ -283,6 +306,8 @@ export const loader = async ({
     }),
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
+    uniqueCodePools: uniqueCodePools.map(toUniqueCodePoolRow),
+    uniqueCodes: uniqueCodes.map(toUniqueCodeRow),
   };
 };
 
@@ -534,6 +559,110 @@ export const action = async ({
     }
   }
 
+  if (intent === "generateUniqueCodes") {
+    formData.set("mode", "UNIQUE_CODES");
+    formData.set("uniqueCodeAutoApply", "false");
+
+    const parsed = parseDiscountSettingsFormData(formData);
+    const totalCodesToGenerate = parseTotalCodesToGenerate(formData);
+    const enabled = isFormCheckboxChecked(formData, "enableUniqueCodes");
+    const uniqueCodeGate = canUseFeature(shop, "unique_discount_codes");
+
+    if (!uniqueCodeGate.allowed) {
+      return {
+        uniqueCodeErrors: {
+          form: uniqueCodeGate.reason,
+        },
+        uniqueCodeValues: parsed.values,
+      };
+    }
+
+    if (!enabled) {
+      await clearDiscountSyncForShop(id, shop.id);
+      return redirect(`/app/campaigns/${id}`);
+    }
+
+    if (hasDiscountSettingsErrors(parsed.errors)) {
+      return {
+        uniqueCodeErrors: { form: Object.values(parsed.errors).join(" ") },
+        uniqueCodeValues: parsed.values,
+      };
+    }
+
+    if (!totalCodesToGenerate.ok) {
+      return {
+        uniqueCodeErrors: {
+          totalCodesToGenerate: totalCodesToGenerate.error,
+        },
+        uniqueCodeValues: parsed.values,
+      };
+    }
+
+    try {
+      await updateDiscountSyncForShop(id, shop.id, {
+        shopifyDiscountId: null,
+        discountCode: null,
+        method: "UNIQUE_CODE",
+        syncStartEnd: false,
+        startsAt: parsed.startsAt,
+        endsAt: parsed.endsAt,
+        lastSyncedAt: null,
+        title: parsed.values.title || "Promo Pulse unique codes",
+        valueType: parsed.values.valueType,
+        value:
+          parsed.values.valueType === "FREE_SHIPPING"
+            ? null
+            : String(parsed.discountValue),
+        minimumSubtotal:
+          parsed.minimumSubtotal === null
+            ? null
+            : String(parsed.minimumSubtotal),
+        appliesOncePerCustomer: true,
+        uniqueCodePrefix: parsed.values.uniqueCodePrefix,
+        uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
+        uniqueCodeAutoApply: false,
+        uniqueCodeStartsAt: parsed.startsAt,
+        uniqueCodeEndsAt: parsed.endsAt,
+      });
+      const pool = await createDiscountCodePool({
+        shopId: shop.id,
+        campaignId: id,
+        prefix: parsed.values.uniqueCodePrefix,
+        discountType: parsed.values.valueType,
+        value:
+          parsed.values.valueType === "FREE_SHIPPING"
+            ? null
+            : parsed.discountValue,
+        startsAt: parsed.startsAt,
+        expiresAt: parsed.endsAt,
+      });
+      const result = await generateCodeBatch({
+        shopId: shop.id,
+        campaignId: id,
+        poolId: pool.id,
+        totalCodes: totalCodesToGenerate.value,
+        admin,
+      });
+
+      return {
+        uniqueCodeNotice: `Generated ${result.codes.length} unique codes.`,
+        uniqueCodeValues: parsed.values,
+      };
+    } catch (error) {
+      console.error("Failed to generate unique codes", error);
+
+      return {
+        uniqueCodeErrors: {
+          form:
+            error instanceof Error
+              ? error.message
+              : "Unique codes could not be generated.",
+        },
+        uniqueCodeValues: parsed.values,
+      };
+    }
+  }
+
   if (intent === "saveLowStockSettings") {
     const parsed = parseLowStockSettingsFormData(formData);
 
@@ -710,6 +839,8 @@ export default function EditCampaignPage() {
     discountValues,
     freeShippingValues,
     lowStockValues,
+    uniqueCodePools,
+    uniqueCodes,
     hasBadge,
     hasDeliveryCutoff,
     hasFreeShippingGoal,
@@ -741,6 +872,18 @@ export default function EditCampaignPage() {
               lockedReason={lockedFeatures.discountSync}
               notice={actionData?.discountNotice}
               values={actionData?.discountValues ?? discountValues}
+            />
+            <UniqueCodesEditor
+              codes={uniqueCodes}
+              errors={actionData?.uniqueCodeErrors}
+              lockedReason={lockedFeatures.uniqueCodes}
+              notice={actionData?.uniqueCodeNotice}
+              pools={uniqueCodePools}
+              values={
+                actionData?.uniqueCodeValues ??
+                actionData?.discountValues ??
+                discountValues
+              }
             />
             {hasBadge ||
             hasDeliveryCutoff ||
@@ -812,6 +955,88 @@ function toDateTimeLocalValue(date: Date | string | null) {
 
   return parsedDate.toISOString().slice(0, 16);
 }
+
+function parseTotalCodesToGenerate(
+  formData: FormData,
+): { ok: true; value: number } | { ok: false; error: string } {
+  const value = Number(formData.get("totalCodesToGenerate"));
+
+  if (!Number.isInteger(value) || value < 1 || value > 500) {
+    return {
+      ok: false,
+      error: "Generate between 1 and 500 codes at a time.",
+    };
+  }
+
+  return { ok: true, value };
+}
+
+function isFormCheckboxChecked(formData: FormData, key: string) {
+  return formData.get(key) === "on" || formData.get(key) === "true";
+}
+
+function toUniqueCodePoolRow(pool: {
+  id: string;
+  prefix: string;
+  discountType: string;
+  value: { toString(): string } | null;
+  status: string;
+  totalGenerated: number;
+  totalAssigned: number;
+  totalUsed: number;
+  expiresAt: Date | string | null;
+}): UniqueCodePoolRow {
+  return {
+    id: pool.id,
+    prefix: pool.prefix,
+    discountType: formatEnum(pool.discountType),
+    value: pool.value?.toString() ?? "",
+    status: formatEnum(pool.status),
+    totalGenerated: pool.totalGenerated,
+    totalAssigned: pool.totalAssigned,
+    totalUsed: pool.totalUsed,
+    expiresAt: toShortDateTime(pool.expiresAt),
+  };
+}
+
+function toUniqueCodeRow(code: {
+  id: string;
+  code: string;
+  status: string;
+  visitorId: string | null;
+  assignedAt: Date | string | null;
+  expiresAt: Date | string | null;
+  usedAt: Date | string | null;
+}): UniqueCodeRow {
+  return {
+    id: code.id,
+    code: code.code,
+    status: formatEnum(code.status),
+    visitorId: code.visitorId ?? "",
+    assignedAt: toShortDateTime(code.assignedAt),
+    expiresAt: toShortDateTime(code.expiresAt),
+    usedAt: toShortDateTime(code.usedAt),
+  };
+}
+
+function toShortDateTime(date: Date | string | null) {
+  if (!date) return "";
+
+  const parsedDate = typeof date === "string" ? new Date(date) : date;
+
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return parsedDate.toISOString().slice(0, 16).replace("T", " ");
+}
+
+function formatEnum(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function toCampaignGoal(value: string, type: string): CampaignGoalValue {
   if (campaignGoalOptions.some((option) => option.value === value)) {
     return value as CampaignGoalValue;
@@ -1031,8 +1256,7 @@ function toDiscountSettingsValues(
       syncStartEnd: settings.syncStartEnd,
       title: settings.title ?? "",
       valueType: toDiscountValueType(settings.valueType),
-      value:
-        settings.value?.toString() ?? defaultDiscountSettingsValues.value,
+      value: settings.value?.toString() ?? defaultDiscountSettingsValues.value,
       startsAt: toDateTimeLocalValue(settings.uniqueCodeStartsAt ?? null),
       endsAt: toDateTimeLocalValue(settings.uniqueCodeEndsAt ?? null),
       minimumSubtotal: settings.minimumSubtotal?.toString() ?? "",

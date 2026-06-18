@@ -1,5 +1,6 @@
 import {
   AnalyticsEventType,
+  AttributionModel,
   CampaignDesignIcon,
   CampaignGoal,
   CampaignStatus,
@@ -61,6 +62,13 @@ const prismaMock = vi.hoisted(() => ({
     findFirst: vi.fn(),
     create: vi.fn(),
   },
+  attributionTouch: {
+    create: vi.fn(),
+    findFirst: vi.fn(),
+  },
+  attributionConversion: {
+    create: vi.fn(),
+  },
 }));
 
 const onboardingMock = vi.hoisted(() => ({
@@ -117,6 +125,13 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     prismaMock.analyticsEvent.findFirst.mockResolvedValue(null);
     prismaMock.analyticsEvent.create.mockImplementation(async () => ({
       id: `event-${prismaMock.analyticsEvent.create.mock.calls.length}`,
+    }));
+    prismaMock.attributionTouch.create.mockImplementation(async () => ({
+      id: `touch-${prismaMock.attributionTouch.create.mock.calls.length}`,
+    }));
+    prismaMock.attributionTouch.findFirst.mockResolvedValue(null);
+    prismaMock.attributionConversion.create.mockImplementation(async () => ({
+      id: `conversion-${prismaMock.attributionConversion.create.mock.calls.length}`,
     }));
   });
 
@@ -527,8 +542,80 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         }),
       }),
     );
+    expect(prismaMock.attributionTouch.create).toHaveBeenCalledTimes(2);
+    expect(prismaMock.attributionTouch.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: AnalyticsEventType.IMPRESSION,
+          sessionId: "session-1",
+        }),
+      }),
+    );
     expect(onboardingMock.markFirstImpressionReceived).toHaveBeenCalledWith(
       "shop-1",
+    );
+  });
+
+  it("records checkout completed analytics as an attribution conversion", async () => {
+    const completedCheckout = validateAnalyticsEventPayload({
+      shop: "example.myshopify.com",
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+      visitorId: "visitor-1",
+      sessionId: "session-1",
+      eventType: AnalyticsEventType.ORDER_ATTRIBUTED,
+      placementType: PlacementType.TOP_BAR,
+      orderId: "gid://shopify/Order/1",
+      revenueAmount: "128.50",
+      currencyCode: "usd",
+    });
+
+    expect(completedCheckout.ok).toBe(true);
+
+    if (!completedCheckout.ok) {
+      throw new Error("Expected valid checkout analytics payload.");
+    }
+
+    prismaMock.attributionTouch.findFirst.mockResolvedValue({
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+    });
+
+    await expect(
+      recordAnalyticsEvent(
+        completedCheckout.payload,
+        new Date("2026-06-16T12:02:00.000Z"),
+      ),
+    ).resolves.toMatchObject({
+      saved: true,
+      deduped: false,
+      attributionConversionId: "conversion-1",
+    });
+
+    expect(prismaMock.attributionTouch.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventType: AnalyticsEventType.ORDER_ATTRIBUTED,
+          visitorId: "visitor-1",
+          sessionId: "session-1",
+        }),
+      }),
+    );
+    expect(prismaMock.attributionConversion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          attributionModel: AttributionModel.LAST_TOUCH_7D,
+          campaignId: "campaign-1",
+          experimentId: "experiment-1",
+          variantId: "variant-1",
+          orderId: "gid://shopify/Order/1",
+          visitorId: "visitor-1",
+          sessionId: "session-1",
+        }),
+      }),
     );
   });
 

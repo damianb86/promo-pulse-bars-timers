@@ -23,9 +23,13 @@ describe("web pixel analytics mapper", () => {
       mapWebPixelEventToAnalyticsPayload({
         shop: "https://CounterPulse-Demo.myshopify.com",
         eventName: "product_added_to_cart",
+        visitorId: "visitor-1",
         sessionId: "session-1",
         lastSeenCampaignId: "campaign-1",
+        lastSeenExperimentId: "experiment-1",
+        lastSeenVariantId: "variant-1",
         lastSeenPlacementType: PlacementType.PRODUCT_PAGE,
+        lastPromoTouch: "1781798400000",
         cartToken: "cart-1",
         path: "/products/hat",
       }),
@@ -34,6 +38,9 @@ describe("web pixel analytics mapper", () => {
       payload: expect.objectContaining({
         shop: "counterpulse-demo.myshopify.com",
         campaignId: "campaign-1",
+        experimentId: "experiment-1",
+        variantId: "variant-1",
+        visitorId: "visitor-1",
         eventType: AnalyticsEventType.ADD_TO_CART,
         placementType: PlacementType.PRODUCT_PAGE,
         sessionId: "session-1",

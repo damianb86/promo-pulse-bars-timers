@@ -49,6 +49,9 @@ describe("analytics endpoint validation", () => {
     const result = validateAnalyticsEventPayload({
       shop: "https://Example.MyShopify.com/admin",
       campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+      visitorId: "visitor-1",
       eventType: AnalyticsEventType.CLICK,
       placementType: PlacementType.TOP_BAR,
       revenueAmount: 12,
@@ -63,6 +66,9 @@ describe("analytics endpoint validation", () => {
       payload: expect.objectContaining({
         shop: "example.myshopify.com",
         campaignId: "campaign-1",
+        experimentId: "experiment-1",
+        variantId: "variant-1",
+        visitorId: "visitor-1",
         eventType: AnalyticsEventType.CLICK,
         placementType: PlacementType.TOP_BAR,
         revenueAmount: "12.00",

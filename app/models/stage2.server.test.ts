@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createCampaignRecommendation,
@@ -6,6 +6,7 @@ import {
   createExperiment,
   createExperimentVariant,
   createUniqueDiscountCode,
+  findLastAttributableTouch,
   getExperimentWithVariants,
   listCampaignRecommendationsForShop,
   listCampaignTemplates,
@@ -22,6 +23,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   attributionTouch: {
     create: vi.fn(),
+    findFirst: vi.fn(),
   },
   campaignRecommendation: {
     create: vi.fn(),
@@ -53,11 +55,17 @@ vi.mock("../db.server", () => ({
 }));
 
 describe("Stage 2 data helpers", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("creates and lists unique discount pools and codes", async () => {
     prismaMock.discountCodePool.create.mockResolvedValue({ id: "pool-1" });
     prismaMock.discountCodePool.findMany.mockResolvedValue([{ id: "pool-1" }]);
     prismaMock.uniqueDiscountCode.create.mockResolvedValue({ id: "code-1" });
-    prismaMock.uniqueDiscountCode.findMany.mockResolvedValue([{ id: "code-1" }]);
+    prismaMock.uniqueDiscountCode.findMany.mockResolvedValue([
+      { id: "code-1" },
+    ]);
 
     await expect(
       createDiscountCodePool({
@@ -120,9 +128,9 @@ describe("Stage 2 data helpers", () => {
       id: "experiment-1",
       variants: [{ id: "variant-1" }],
     });
-    await expect(listExperimentsForCampaign("campaign-1")).resolves.toHaveLength(
-      1,
-    );
+    await expect(
+      listExperimentsForCampaign("campaign-1"),
+    ).resolves.toHaveLength(1);
   });
 
   it("records attribution and reads templates and recommendations", async () => {
@@ -174,5 +182,80 @@ describe("Stage 2 data helpers", () => {
       where: { shopId: "shop-1", status: "NEW" },
       orderBy: [{ createdAt: "desc" }],
     });
+  });
+
+  it("finds the last attributable touch inside the 24 hour window", async () => {
+    const occurredAt = new Date("2026-06-18T12:00:00.000Z");
+
+    prismaMock.attributionTouch.findFirst.mockResolvedValue({
+      id: "touch-24h",
+    });
+
+    await expect(
+      findLastAttributableTouch({
+        shopId: "shop-1",
+        visitorId: "visitor-1",
+        sessionId: "session-1",
+        attributionModel: "LAST_TOUCH_24H",
+        occurredAt,
+      }),
+    ).resolves.toEqual({ id: "touch-24h" });
+
+    expect(prismaMock.attributionTouch.findFirst).toHaveBeenCalledWith({
+      where: {
+        shopId: "shop-1",
+        OR: [{ visitorId: "visitor-1" }, { sessionId: "session-1" }],
+        eventType: {
+          in: [
+            "IMPRESSION",
+            "CLICK",
+            "COPY_CODE",
+            "ADD_TO_CART",
+            "CHECKOUT_STARTED",
+          ],
+        },
+        occurredAt: {
+          gte: new Date("2026-06-17T12:00:00.000Z"),
+          lte: occurredAt,
+        },
+      },
+      orderBy: { occurredAt: "desc" },
+    });
+  });
+
+  it("uses a seven day attribution window and first touch ordering when requested", async () => {
+    const occurredAt = new Date("2026-06-18T12:00:00.000Z");
+
+    prismaMock.attributionTouch.findFirst.mockResolvedValue({
+      id: "touch-first",
+    });
+
+    await findLastAttributableTouch({
+      shopId: "shop-1",
+      visitorId: "visitor-1",
+      attributionModel: "FIRST_TOUCH_7D",
+      occurredAt,
+    });
+
+    expect(prismaMock.attributionTouch.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        occurredAt: {
+          gte: new Date("2026-06-11T12:00:00.000Z"),
+          lte: occurredAt,
+        },
+      }),
+      orderBy: { occurredAt: "asc" },
+    });
+  });
+
+  it("does not query attribution when visitor and session IDs are missing", async () => {
+    await expect(
+      findLastAttributableTouch({
+        shopId: "shop-1",
+        attributionModel: "LAST_TOUCH_24H",
+      }),
+    ).resolves.toBeNull();
+
+    expect(prismaMock.attributionTouch.findFirst).not.toHaveBeenCalled();
   });
 });

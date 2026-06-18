@@ -60,6 +60,9 @@ export const attributionModels = [
   "LINEAR",
   "POSITION_BASED",
   "TIME_DECAY",
+  "LAST_TOUCH_24H",
+  "LAST_TOUCH_7D",
+  "FIRST_TOUCH_7D",
 ] as const;
 
 export type AttributionModel = (typeof attributionModels)[number];

@@ -1,0 +1,3 @@
+-- SQLite stores Prisma enums as TEXT, so adding attribution enum values does
+-- not require a table rewrite. This migration records the schema change for
+-- LAST_TOUCH_24H, LAST_TOUCH_7D, and FIRST_TOUCH_7D.

@@ -1,5 +1,6 @@
 import {
   AnalyticsEventType,
+  AttributionModel,
   PlacementType,
   Prisma,
   type AnalyticsEvent,
@@ -9,12 +10,20 @@ import {
 import prisma from "../db.server";
 import { markFirstImpressionReceived } from "../services/onboarding.server";
 import { normalizeShopDomain } from "../utils/storefront-campaigns";
+import {
+  findLastAttributableTouch,
+  recordAttributionConversion,
+  recordAttributionTouch,
+} from "./stage2.server";
 
 export const IMPRESSION_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 
 const maxStringLengths = {
   shop: 255,
   campaignId: 255,
+  experimentId: 255,
+  variantId: 255,
+  visitorId: 255,
   sessionId: 255,
   cartToken: 255,
   orderId: 255,
@@ -28,6 +37,9 @@ const maxStringLengths = {
 export type AnalyticsEventPayload = {
   shop: string;
   campaignId: string;
+  experimentId: string | null;
+  variantId: string | null;
+  visitorId: string | null;
   eventType: AnalyticsEventType;
   placementType: PlacementType | null;
   sessionId: string | null;
@@ -126,6 +138,12 @@ export function validateAnalyticsEventPayload(
     payload: {
       shop,
       campaignId,
+      experimentId: readNullableText(
+        input.experimentId,
+        maxStringLengths.experimentId,
+      ),
+      variantId: readNullableText(input.variantId, maxStringLengths.variantId),
+      visitorId: readNullableText(input.visitorId, maxStringLengths.visitorId),
       eventType,
       placementType,
       sessionId: readNullableText(input.sessionId, maxStringLengths.sessionId),
@@ -229,12 +247,81 @@ export async function recordAnalyticsEvent(
     },
     select: { id: true },
   });
+  const attributionTouch = await recordAttributionTouch({
+    shopId: shop.id,
+    campaignId: campaign.id,
+    experimentId: payload.experimentId,
+    variantId: payload.variantId,
+    visitorId: payload.visitorId,
+    sessionId: payload.sessionId,
+    eventType: payload.eventType,
+    placementType: payload.placementType,
+    path: payload.path,
+    country: payload.country,
+    locale: payload.locale,
+    occurredAt: now,
+  });
+  const conversion = await maybeRecordAttributionConversion({
+    shopId: shop.id,
+    campaignId: campaign.id,
+    payload,
+    occurredAt: now,
+  });
 
   if (payload.eventType === AnalyticsEventType.IMPRESSION) {
     await markFirstImpressionReceived(shop.id);
   }
 
-  return { saved: true, deduped: false, eventId: event.id };
+  return {
+    saved: true,
+    deduped: false,
+    eventId: event.id,
+    attributionTouchId: attributionTouch.id,
+    attributionConversionId: conversion?.id,
+  };
+}
+
+async function maybeRecordAttributionConversion({
+  shopId,
+  campaignId,
+  payload,
+  occurredAt,
+}: {
+  shopId: string;
+  campaignId: string;
+  payload: AnalyticsEventPayload;
+  occurredAt: Date;
+}) {
+  if (
+    payload.eventType !== AnalyticsEventType.ORDER_ATTRIBUTED ||
+    !payload.orderId
+  ) {
+    return null;
+  }
+
+  const touch = await findLastAttributableTouch({
+    shopId,
+    visitorId: payload.visitorId,
+    sessionId: payload.sessionId,
+    attributionModel: AttributionModel.LAST_TOUCH_7D,
+    occurredAt,
+  });
+
+  return recordAttributionConversion({
+    shopId,
+    campaignId: touch?.campaignId ?? campaignId,
+    experimentId: touch?.experimentId ?? payload.experimentId,
+    variantId: touch?.variantId ?? payload.variantId,
+    visitorId: payload.visitorId,
+    sessionId: payload.sessionId,
+    orderId: payload.orderId,
+    revenueAmount: payload.revenueAmount
+      ? new Prisma.Decimal(payload.revenueAmount)
+      : null,
+    currencyCode: payload.currencyCode,
+    attributionModel: AttributionModel.LAST_TOUCH_7D,
+    occurredAt,
+  });
 }
 
 function getAnalyticsGate(

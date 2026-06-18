@@ -18,9 +18,13 @@ export type CounterPulseWebPixelEventName =
 export type CounterPulseWebPixelPayload = {
   shop: string;
   eventName: CounterPulseWebPixelEventName;
+  visitorId: string | null;
   sessionId: string | null;
   lastSeenCampaignId: string | null;
+  lastSeenExperimentId: string | null;
+  lastSeenVariantId: string | null;
   lastSeenPlacementType: PlacementType | null;
+  lastPromoTouch: string | null;
   cartToken: string | null;
   orderId: string | null;
   revenueAmount: string | null;
@@ -34,6 +38,9 @@ export type CounterPulseWebPixelPayload = {
 export type WebPixelAnalyticsPayload = {
   shop: string;
   campaignId: string;
+  experimentId: string | null;
+  variantId: string | null;
+  visitorId: string | null;
   eventType: AnalyticsEventType;
   placementType: PlacementType | null;
   sessionId: string | null;
@@ -91,9 +98,13 @@ export function parseCounterPulseWebPixelPayload(
   return {
     shop,
     eventName,
+    visitorId: readNullableText(input.visitorId, 255),
     sessionId: readNullableText(input.sessionId, 255),
     lastSeenCampaignId: readNullableText(input.lastSeenCampaignId, 255),
+    lastSeenExperimentId: readNullableText(input.lastSeenExperimentId, 255),
+    lastSeenVariantId: readNullableText(input.lastSeenVariantId, 255),
     lastSeenPlacementType: readPlacementType(input.lastSeenPlacementType),
+    lastPromoTouch: readNullableText(input.lastPromoTouch, 64),
     cartToken: readNullableText(input.cartToken, 255),
     orderId: readNullableText(input.orderId, 255),
     revenueAmount: readRevenueAmount(input.revenueAmount),
@@ -151,6 +162,9 @@ export function mapWebPixelEventToAnalyticsPayload(
     payload: {
       shop: payload.shop,
       campaignId: payload.lastSeenCampaignId,
+      experimentId: payload.lastSeenExperimentId,
+      variantId: payload.lastSeenVariantId,
+      visitorId: payload.visitorId,
       eventType,
       placementType: payload.lastSeenPlacementType,
       sessionId: payload.sessionId,

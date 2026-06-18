@@ -15,8 +15,13 @@ type CounterPulsePixelEventName =
 
 type AttributionState = {
   campaignId: string;
+  experimentId?: string | null;
+  variantId?: string | null;
   placementType: string | null;
-  seenAt: number;
+  visitorId?: string | null;
+  sessionId?: string | null;
+  lastPromoTouch?: number;
+  seenAt?: number;
 };
 
 const subscribedEvents: CounterPulsePixelEventName[] = [
@@ -29,8 +34,13 @@ const subscribedEvents: CounterPulsePixelEventName[] = [
   "checkout_completed",
 ];
 
+const visitorIdStorageKey = "counterpulse_visitor_id";
 const sessionIdStorageKey = "counterpulse_session_id";
 const attributionStorageKey = "counterpulse_last_seen_campaign";
+const lastSeenCampaignIdStorageKey = "counterpulse_last_seen_campaign_id";
+const lastSeenExperimentIdStorageKey = "counterpulse_last_seen_experiment_id";
+const lastSeenVariantIdStorageKey = "counterpulse_last_seen_variant_id";
+const lastPromoTouchStorageKey = "counterpulse_last_promo_touch";
 const attributionMaxAgeMs = 24 * 60 * 60 * 1000;
 
 register(({ analytics, browser, settings, init }) => {
@@ -55,15 +65,22 @@ async function sendPixelEvent(
   browser: ExtensionApi["browser"],
   config: { appEndpoint: string; shop: string },
 ) {
+  const visitorId = await getVisitorId(browser);
   const sessionId = await getSessionId(browser);
   const attribution = await getAttribution(browser);
   const checkout = readCheckout(event);
   const payload = {
     shop: config.shop,
     eventName,
+    visitorId,
     sessionId,
     lastSeenCampaignId: attribution?.campaignId ?? null,
+    lastSeenExperimentId: attribution?.experimentId ?? null,
+    lastSeenVariantId: attribution?.variantId ?? null,
     lastSeenPlacementType: attribution?.placementType ?? null,
+    lastPromoTouch: attribution?.lastPromoTouch
+      ? String(attribution.lastPromoTouch)
+      : null,
     cartToken: readCartToken(event, checkout),
     orderId: checkout?.order?.id ?? null,
     revenueAmount: checkout?.totalPrice?.amount ?? null,
@@ -89,40 +106,113 @@ async function sendPixelEvent(
   }
 }
 
-async function getSessionId(browser: ExtensionApi["browser"]) {
-  try {
-    const existingSessionId =
-      await browser.localStorage.getItem(sessionIdStorageKey);
+async function getVisitorId(browser: ExtensionApi["browser"]) {
+  return getOrCreateBrowserStorageId(
+    browser.localStorage,
+    visitorIdStorageKey,
+    "cpv",
+  );
+}
 
-    if (typeof existingSessionId === "string" && existingSessionId) {
-      return existingSessionId;
+async function getSessionId(browser: ExtensionApi["browser"]) {
+  return getOrCreateBrowserStorageId(
+    browser.sessionStorage,
+    sessionIdStorageKey,
+    "cps",
+  );
+}
+
+async function getOrCreateBrowserStorageId(
+  storage: ExtensionApi["browser"]["localStorage"],
+  key: string,
+  prefix: string,
+) {
+  try {
+    const existingId = await storage.getItem(key);
+
+    if (typeof existingId === "string" && existingId) {
+      return existingId;
     }
 
-    const nextSessionId = createSessionId();
-    await browser.localStorage.setItem(sessionIdStorageKey, nextSessionId);
-    return nextSessionId;
+    const nextId = createTrackingId(prefix);
+    await storage.setItem(key, nextId);
+    return nextId;
   } catch {
-    return createSessionId();
+    return createTrackingId(prefix);
   }
 }
 
 async function getAttribution(browser: ExtensionApi["browser"]) {
+  const fromSnapshot = await getAttributionSnapshot(browser);
+
+  if (fromSnapshot) {
+    return fromSnapshot;
+  }
+
+  return getAttributionFromIndividualKeys(browser);
+}
+
+async function getAttributionSnapshot(browser: ExtensionApi["browser"]) {
   try {
     const value = await browser.localStorage.getItem(attributionStorageKey);
     const parsedValue = JSON.parse(
       String(value || "null"),
     ) as AttributionState | null;
+    const lastPromoTouch = Number(
+      parsedValue?.lastPromoTouch ?? parsedValue?.seenAt,
+    );
 
     if (
       !parsedValue ||
       !parsedValue.campaignId ||
-      !Number.isFinite(parsedValue.seenAt) ||
-      Date.now() - parsedValue.seenAt > attributionMaxAgeMs
+      !Number.isFinite(lastPromoTouch) ||
+      Date.now() - lastPromoTouch > attributionMaxAgeMs
     ) {
       return null;
     }
 
-    return parsedValue;
+    return {
+      campaignId: parsedValue.campaignId,
+      experimentId: parsedValue.experimentId ?? null,
+      variantId: parsedValue.variantId ?? null,
+      placementType: parsedValue.placementType ?? null,
+      visitorId: parsedValue.visitorId ?? null,
+      sessionId: parsedValue.sessionId ?? null,
+      lastPromoTouch,
+    } satisfies AttributionState;
+  } catch {
+    return null;
+  }
+}
+
+async function getAttributionFromIndividualKeys(
+  browser: ExtensionApi["browser"],
+) {
+  try {
+    const [campaignId, experimentId, variantId, lastPromoTouchValue] =
+      await Promise.all([
+        browser.localStorage.getItem(lastSeenCampaignIdStorageKey),
+        browser.localStorage.getItem(lastSeenExperimentIdStorageKey),
+        browser.localStorage.getItem(lastSeenVariantIdStorageKey),
+        browser.localStorage.getItem(lastPromoTouchStorageKey),
+      ]);
+    const lastPromoTouch = Number(lastPromoTouchValue);
+
+    if (
+      !campaignId ||
+      !Number.isFinite(lastPromoTouch) ||
+      Date.now() - lastPromoTouch > attributionMaxAgeMs
+    ) {
+      return null;
+    }
+
+    return {
+      campaignId,
+      experimentId: experimentId || null,
+      variantId: variantId || null,
+      placementType: null,
+      lastPromoTouch,
+    } satisfies AttributionState;
   } catch {
     return null;
   }
@@ -167,10 +257,12 @@ function readString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function createSessionId() {
+function createTrackingId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
+    return `${prefix}_${crypto.randomUUID()}`;
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}_${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2)}`;
 }

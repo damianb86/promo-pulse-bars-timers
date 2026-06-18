@@ -1,4 +1,10 @@
-import type { CampaignRecommendationStatus, Prisma } from "@prisma/client";
+import {
+  AnalyticsEventType,
+  AttributionModel,
+  type AttributionTouch,
+  type CampaignRecommendationStatus,
+  type Prisma,
+} from "@prisma/client";
 
 import prisma from "../db.server";
 
@@ -28,9 +34,7 @@ export function listUniqueDiscountCodesForCampaign(campaignId: string) {
   });
 }
 
-export function createExperiment(
-  data: Prisma.ExperimentUncheckedCreateInput,
-) {
+export function createExperiment(data: Prisma.ExperimentUncheckedCreateInput) {
   return prisma.experiment.create({ data });
 }
 
@@ -59,6 +63,51 @@ export function recordAttributionTouch(
   data: Prisma.AttributionTouchUncheckedCreateInput,
 ) {
   return prisma.attributionTouch.create({ data });
+}
+
+export type FindLastAttributableTouchInput = {
+  shopId: string;
+  visitorId?: string | null;
+  sessionId?: string | null;
+  attributionModel?: AttributionModel;
+  occurredAt?: Date;
+  campaignId?: string | null;
+  eventTypes?: AnalyticsEventType[];
+};
+
+export function findLastAttributableTouch({
+  shopId,
+  visitorId,
+  sessionId,
+  attributionModel = AttributionModel.LAST_TOUCH_24H,
+  occurredAt = new Date(),
+  campaignId,
+  eventTypes = defaultAttributableEventTypes,
+}: FindLastAttributableTouchInput): Promise<AttributionTouch | null> {
+  const identityFilters = buildAttributionIdentityFilters(visitorId, sessionId);
+
+  if (identityFilters.length === 0) {
+    return Promise.resolve(null);
+  }
+
+  return prisma.attributionTouch.findFirst({
+    where: {
+      shopId,
+      ...(campaignId ? { campaignId } : {}),
+      OR: identityFilters,
+      eventType: {
+        in: eventTypes,
+      },
+      occurredAt: {
+        gte: getAttributionWindowStart(attributionModel, occurredAt),
+        lte: occurredAt,
+      },
+    },
+    orderBy: {
+      occurredAt:
+        attributionModel === AttributionModel.FIRST_TOUCH_7D ? "asc" : "desc",
+    },
+  });
 }
 
 export function recordAttributionConversion(
@@ -149,4 +198,38 @@ export function grantAgencyShopAccess(
   data: Prisma.AgencyShopAccessUncheckedCreateInput,
 ) {
   return prisma.agencyShopAccess.create({ data });
+}
+
+const oneHourMs = 60 * 60 * 1000;
+const oneDayMs = 24 * oneHourMs;
+const sevenDaysMs = 7 * oneDayMs;
+
+const defaultAttributableEventTypes = [
+  AnalyticsEventType.IMPRESSION,
+  AnalyticsEventType.CLICK,
+  AnalyticsEventType.COPY_CODE,
+  AnalyticsEventType.ADD_TO_CART,
+  AnalyticsEventType.CHECKOUT_STARTED,
+] satisfies AnalyticsEventType[];
+
+function buildAttributionIdentityFilters(
+  visitorId: string | null | undefined,
+  sessionId: string | null | undefined,
+) {
+  return [
+    visitorId ? { visitorId } : null,
+    sessionId ? { sessionId } : null,
+  ].filter(Boolean) as Prisma.AttributionTouchWhereInput[];
+}
+
+function getAttributionWindowStart(
+  attributionModel: AttributionModel,
+  occurredAt: Date,
+) {
+  const windowMs =
+    attributionModel === AttributionModel.LAST_TOUCH_24H
+      ? oneDayMs
+      : sevenDaysMs;
+
+  return new Date(occurredAt.getTime() - windowMs);
 }

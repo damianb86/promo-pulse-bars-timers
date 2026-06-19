@@ -37,12 +37,13 @@ are connected in production.
 Local and E2E environments may override `Shop.plan` with:
 
 ```bash
-PROMO_PULSE_DEV_PLAN=PREMIUM
-PROMOPILOT_DEV_PLAN=PREMIUM
-COUNTERPULSE_DEV_PLAN=PREMIUM
+PROMO_PULSE_DEV_PLAN=AGENCY
+PROMOPILOT_DEV_PLAN=AGENCY
+COUNTERPULSE_DEV_PLAN=AGENCY
 ```
 
-Overrides are ignored when `NODE_ENV=production`.
+When no override is provided, `NODE_ENV=development` defaults to the `AGENCY`
+effective plan. Overrides are ignored when `NODE_ENV=production`.
 
 ## Billing Status
 

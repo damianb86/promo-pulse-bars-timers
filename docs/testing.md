@@ -37,8 +37,8 @@ Playwright starts the app through `npm run test:e2e:web`. That script sets:
 E2E_TEST_MODE=true
 NODE_ENV=development
 DATABASE_URL=file:./e2e.sqlite
-PROMO_PULSE_DEV_PLAN=PREMIUM
-PROMOPILOT_DEV_PLAN=PREMIUM
+PROMO_PULSE_DEV_PLAN=AGENCY
+PROMOPILOT_DEV_PLAN=AGENCY
 PORT=31338
 ```
 
@@ -53,6 +53,10 @@ the suite with old code or without `E2E_TEST_MODE=true`. The default E2E port is
 The demo shop is `demo-shop.myshopify.com`. `/__test/login` sets a local test
 cookie and `authenticateAdmin()` returns a mock admin session only in E2E mode.
 Real Shopify auth routes still use the official Shopify template auth.
+
+When no dev override is provided and `NODE_ENV=development`, Promo Pulse treats
+the effective local plan as `AGENCY` so all Stage 2 surfaces are available
+during development.
 
 ## Test Routes
 

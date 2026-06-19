@@ -41,8 +41,9 @@ npx shopify app build --no-color
 
 ## 3. Unique Codes
 
-- Set the dev shop to a Premium or Agency plan, or use
-  `PROMO_PULSE_DEV_PLAN=PREMIUM` locally.
+- Set the dev shop to a Premium or Agency plan. In local development the
+  effective default is `AGENCY`; use `PROMO_PULSE_DEV_PLAN=PREMIUM` only when
+  you need to QA Premium without Agency features.
 - Create an active campaign with unique codes enabled.
 - Create a pool with a short, recognizable prefix and a real discount value.
 - Generate codes through the admin UI.

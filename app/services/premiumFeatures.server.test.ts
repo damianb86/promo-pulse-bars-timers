@@ -105,4 +105,14 @@ describe("premium Stage 2 feature gates", () => {
       reason: "",
     });
   });
+
+  it("treats local development as Agency for premium feature gates", () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(canUsePremiumFeature({ plan: "FREE" }, "AGENCY_DASHBOARD")).toEqual({
+      allowed: true,
+      enabled: true,
+      reason: "",
+    });
+  });
 });

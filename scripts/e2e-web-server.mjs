@@ -6,8 +6,8 @@ const env = {
   E2E_TEST_MODE: "true",
   NODE_ENV: "development",
   PORT: process.env.PORT || process.env.E2E_PORT || "31338",
-  PROMO_PULSE_DEV_PLAN: process.env.PROMO_PULSE_DEV_PLAN || "PREMIUM",
-  PROMOPILOT_DEV_PLAN: process.env.PROMOPILOT_DEV_PLAN || "PREMIUM",
+  PROMO_PULSE_DEV_PLAN: process.env.PROMO_PULSE_DEV_PLAN || "AGENCY",
+  PROMOPILOT_DEV_PLAN: process.env.PROMOPILOT_DEV_PLAN || "AGENCY",
   SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY || "e2e_test_api_key",
   SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET || "e2e_test_secret",
   SHOPIFY_APP_URL:

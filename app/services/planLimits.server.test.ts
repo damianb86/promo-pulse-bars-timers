@@ -4,6 +4,7 @@ import {
   canUseFeature,
   evaluateCanActivateCampaign,
   getCampaignPlanViolations,
+  getEffectiveShopPlan,
   getPlanLimits,
   isCampaignAllowedByPlan,
   validateCampaignPlanAccess,
@@ -102,10 +103,16 @@ describe("plan limits", () => {
     });
   });
 
-  it("treats local development as Pro when no override is configured", () => {
+  it("treats local development as Agency when no override is configured", () => {
     vi.stubEnv("NODE_ENV", "development");
 
+    expect(getEffectiveShopPlan({ plan: "FREE" })).toBe("AGENCY");
     expect(canUseFeature({ plan: "FREE" }, "product_badges")).toMatchObject({
+      allowed: true,
+    });
+    expect(
+      canUseFeature({ plan: "FREE" }, "unique_discount_codes"),
+    ).toMatchObject({
       allowed: true,
     });
   });

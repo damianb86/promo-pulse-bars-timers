@@ -84,7 +84,8 @@ El callback OAuth esperado por este template es `/auth/callback`.
 - `DATABASE_URL`: SQLite local por defecto, `file:./dev.sqlite`.
 - `PROMO_PULSE_DEV_PLAN`: override local opcional (`FREE`, `STARTER`,
   `GROWTH`, `PRO`, `PREMIUM`, `AGENCY`) para probar plan gating sin cambiar la
-  base de datos.
+  base de datos. En `NODE_ENV=development`, si no hay override valido, el plan
+  efectivo por defecto es `AGENCY`.
 - `COUNTERPULSE_DEV_PLAN` y `PROMOPILOT_DEV_PLAN`: aliases legacy aceptados en
   desarrollo local.
 

@@ -114,10 +114,11 @@ Los flags tipados viven en `app/types/stage2.ts` y los defaults en
 - `AUTO_WINNER`: disabled.
 - `ADVANCED_DISCOUNTS`: enabled para la base de Shopify Functions.
 - `CHECKOUT_EXTENSIONS`: enabled para el bloque checkout base.
-- `EMAIL_TIMERS`: disabled.
-- `ADVANCED_BADGES`: disabled.
-- `MARKETS_ADVANCED`: disabled.
-- `AI_CAMPAIGN_BUILDER`: disabled.
+- `EMAIL_TIMERS`: enabled.
+- `ADVANCED_BADGES`: enabled.
+- `MARKETS_ADVANCED`: enabled.
+- `AI_CAMPAIGN_BUILDER`: enabled con provider mock por defecto y guardrails de
+  claims.
 - `AGENCY_DASHBOARD`: disabled.
 
 ## Criterios Tecnicos Por Corte

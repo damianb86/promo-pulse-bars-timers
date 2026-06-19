@@ -1,24 +1,48 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
+import {
+  ExperimentPrimaryMetric,
+  ExperimentVariantStatus,
+} from "@prisma/client";
 
+import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
 import { CampaignForm } from "../components/CampaignForm";
-import { createCampaign } from "../models/campaign.server";
+import {
+  createCampaign,
+  updateCampaignDesignForShop,
+  updateCampaignTranslationsForShop,
+} from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
+import {
+  buildDefaultCampaignAiInput,
+  generateCampaignSuggestion,
+  hasCampaignAiFormErrors,
+  parseAppliedCampaignSuggestion,
+  parseCampaignAiFormData,
+} from "../services/ai/campaignGenerator.server";
 import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
+import { createExperiment } from "../services/experiments";
 import {
   canCreateCampaign,
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
+import { canUsePremiumFeature } from "../services/premiumFeatures.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
+import type {
+  CampaignAiFormErrors,
+  CampaignAiInput,
+  CampaignSuggestion,
+} from "../types/ai-campaign";
 import {
   defaultCampaignFormValues,
   type CampaignFormErrors,
   type CampaignFormValues,
 } from "../types/campaign-form";
+import type { StorefrontLocale } from "../types/localization";
 import { defaultBadgeSettingsValues } from "../types/badge";
 import { defaultDeliveryCutoffSettingsValues } from "../types/delivery-cutoff";
 import { defaultFreeShippingSettingsValues } from "../types/free-shipping";
@@ -26,11 +50,16 @@ import { defaultLowStockSettingsValues } from "../types/low-stock";
 import { buildDefaultCampaignTranslations } from "../utils/campaign-localization";
 
 type ActionData = {
+  aiErrors?: CampaignAiFormErrors;
+  aiInput?: CampaignAiInput;
+  aiSuggestion?: CampaignSuggestion | null;
   errors?: CampaignFormErrors;
   values?: CampaignFormValues;
 };
 
 type LoaderData = {
+  aiInput: CampaignAiInput;
+  aiLockedReason?: string;
   defaults: CampaignFormValues;
 };
 
@@ -40,8 +69,14 @@ export const loader = async ({
   const { session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const settings = await getShopSettingsOrDefaults(shop.id);
+  const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
 
   return {
+    aiInput: buildDefaultCampaignAiInput({
+      countryCode: settings.defaultCountry ?? "US",
+      locale: settings.defaultLocale,
+    }),
+    aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
     defaults: {
       ...defaultCampaignFormValues,
       timezone: settings.defaultTimezone,
@@ -53,7 +88,47 @@ export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
   const { session, redirect } = await authenticateAdmin(request);
+  const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
+  const intent = formData.get("_action");
+
+  if (intent === "generateAiCampaignSuggestion") {
+    const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
+    const parsedAi = parseCampaignAiFormData(formData);
+
+    if (!aiGate.allowed) {
+      return {
+        aiInput: parsedAi.values,
+        aiErrors: {
+          form: aiGate.reason,
+        },
+      };
+    }
+
+    if (hasCampaignAiFormErrors(parsedAi.errors)) {
+      return {
+        aiInput: parsedAi.values,
+        aiErrors: parsedAi.errors,
+      };
+    }
+
+    try {
+      return {
+        aiInput: parsedAi.values,
+        aiSuggestion: await generateCampaignSuggestion(parsedAi.values),
+      };
+    } catch (error) {
+      console.error("Failed to generate AI campaign suggestion", error);
+
+      return {
+        aiInput: parsedAi.values,
+        aiErrors: {
+          form: "Suggestion could not be generated. Check the fields and try again.",
+        },
+      };
+    }
+  }
+
   const parsed = parseCampaignFormData(formData);
 
   if (hasCampaignFormErrors(parsed.errors)) {
@@ -63,8 +138,11 @@ export const action = async ({
     };
   }
 
+  const appliedAiSuggestion = parseAppliedCampaignSuggestion(
+    formData.get("aiSuggestionJson"),
+  );
+
   try {
-    const shop = await getOrCreateShopByDomain(session.shop);
     const createGate = await canCreateCampaign(shop);
 
     if (!createGate.allowed) {
@@ -74,6 +152,19 @@ export const action = async ({
           form: createGate.reason,
         },
       };
+    }
+
+    if (appliedAiSuggestion) {
+      const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
+
+      if (!aiGate.allowed) {
+        return {
+          values: parsed.values,
+          errors: {
+            form: aiGate.reason,
+          },
+        };
+      }
     }
 
     const planErrors = await validateCampaignPlanAccess(shop, parsed.values);
@@ -193,6 +284,15 @@ export const action = async ({
         : {}),
     });
 
+    if (appliedAiSuggestion) {
+      await applyAiSuggestionToCampaign({
+        campaignId: campaign.id,
+        formValues: parsed.values,
+        shopId: shop.id,
+        suggestion: appliedAiSuggestion,
+      });
+    }
+
     return redirect(`/app/campaigns/${campaign.id}`);
   } catch (error) {
     console.error("Failed to create campaign", error);
@@ -208,10 +308,16 @@ export const action = async ({
 
 export default function CreateCampaignPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
-  const { defaults } = useLoaderData<typeof loader>();
+  const { aiInput, aiLockedReason, defaults } = useLoaderData<typeof loader>();
 
   return (
     <s-page heading="Create campaign">
+      <AiCampaignBuilder
+        errors={actionData?.aiErrors}
+        lockedReason={aiLockedReason}
+        suggestion={actionData?.aiSuggestion}
+        values={actionData?.aiInput ?? aiInput}
+      />
       <CampaignForm
         mode="create"
         values={actionData?.values ?? defaults}
@@ -219,4 +325,73 @@ export default function CreateCampaignPage() {
       />
     </s-page>
   );
+}
+
+async function applyAiSuggestionToCampaign({
+  campaignId,
+  formValues,
+  shopId,
+  suggestion,
+}: {
+  campaignId: string;
+  formValues: CampaignFormValues;
+  shopId: string;
+  suggestion: CampaignSuggestion;
+}) {
+  await updateCampaignDesignForShop(campaignId, shopId, suggestion.design);
+  await updateCampaignTranslationsForShop(
+    campaignId,
+    shopId,
+    buildTranslationsForSavedCampaign(suggestion, formValues),
+  );
+
+  if (suggestion.variants.length < 2) return;
+
+  await createExperiment({
+    shopId,
+    campaignId,
+    name: "AI suggested variants",
+    primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
+    variants: suggestion.variants.map((variant) => ({
+      name: variant.name,
+      weight: variant.weight,
+      status: ExperimentVariantStatus.DRAFT,
+      textOverride: {
+        headline: variant.headline,
+        subheadline: variant.subheadline,
+        ctaText: variant.ctaText,
+      },
+      designOverride: variant.designOverride,
+      discountOverride: variant.discountOverride,
+      placementOverride: variant.placementOverride,
+    })),
+  });
+}
+
+function buildTranslationsForSavedCampaign(
+  suggestion: CampaignSuggestion,
+  formValues: CampaignFormValues,
+) {
+  const locales = Object.keys(suggestion.translations) as StorefrontLocale[];
+
+  return locales.map((locale) => {
+    const translation = suggestion.translations[locale];
+
+    return {
+      locale,
+      headline: locale === "en" ? formValues.headline : translation.headline,
+      subheadline:
+        locale === "en" ? formValues.subheadline : translation.subheadline,
+      ctaText: locale === "en" ? formValues.ctaText : translation.ctaText,
+      ctaUrl: locale === "en" ? formValues.ctaUrl : translation.ctaUrl,
+      expiredText: translation.expiredText,
+      freeShippingEmptyText: translation.freeShippingEmptyText,
+      freeShippingProgressText: translation.freeShippingProgressText,
+      freeShippingSuccessText: translation.freeShippingSuccessText,
+      deliveryBeforeCutoffText: translation.deliveryBeforeCutoffText,
+      deliveryAfterCutoffText: translation.deliveryAfterCutoffText,
+      lowStockText: translation.lowStockText,
+      badgeText: translation.badgeText,
+    };
+  });
 }

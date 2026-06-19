@@ -12,10 +12,12 @@ describe("premium Stage 2 feature gates", () => {
     expect(defaultStage2FeatureFlags.AB_TESTING).toBe(true);
     expect(defaultStage2FeatureFlags.ADVANCED_DISCOUNTS).toBe(true);
     expect(defaultStage2FeatureFlags.CHECKOUT_EXTENSIONS).toBe(true);
+    expect(defaultStage2FeatureFlags.AI_CAMPAIGN_BUILDER).toBe(true);
     expect(defaultStage2FeatureFlags.AUTO_WINNER).toBe(false);
     expect(isPremiumFeatureFlagEnabled("AB_TESTING")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("ADVANCED_DISCOUNTS")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("CHECKOUT_EXTENSIONS")).toBe(true);
+    expect(isPremiumFeatureFlagEnabled("AI_CAMPAIGN_BUILDER")).toBe(true);
     expect(isPremiumFeatureFlagEnabled("AUTO_WINNER")).toBe(false);
   });
 

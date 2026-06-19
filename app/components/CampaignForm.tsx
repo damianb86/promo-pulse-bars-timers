@@ -24,8 +24,14 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <Form method="post" className="counterpulse-form">
+    <Form data-campaign-form method="post" className="counterpulse-form">
       <input name="_action" type="hidden" value="saveBasics" />
+      <input
+        data-ai-suggestion-json
+        defaultValue=""
+        name="aiSuggestionJson"
+        type="hidden"
+      />
 
       {errors.form && (
         <s-banner tone="critical" heading="Campaign could not be saved">

@@ -90,9 +90,10 @@ Tipos y flags:
 - `app/services/premiumFeatures.server.ts` define los defaults de flags
   internos y el helper `canUsePremiumFeature(shop, featureKey)`.
 - `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS`, `CHECKOUT_EXTENSIONS`,
-  `EMAIL_TIMERS`, `ADVANCED_BADGES` y `MARKETS_ADVANCED` quedan habilitados
-  porque ya tienen base implementada. Los demas flags Stage 2 quedan
-  deshabilitados hasta su implementacion.
+  `EMAIL_TIMERS`, `ADVANCED_BADGES`, `MARKETS_ADVANCED` y
+  `AI_CAMPAIGN_BUILDER` quedan habilitados porque ya tienen base implementada.
+  `AUTO_WINNER` y `AGENCY_DASHBOARD` siguen deshabilitados hasta completar su
+  implementacion.
 
 Servicios reservados para Stage 2:
 
@@ -100,7 +101,9 @@ Servicios reservados para Stage 2:
 - `app/services/experiments`: A/B testing y auto-winner.
 - `app/services/attribution`: touchpoints, checkout, thank-you y order-status.
 - `app/services/recommendations`: recomendaciones automaticas.
-- `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion.
+- `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion. La
+  implementacion actual usa prompts versionados, provider mock por defecto,
+  provider externo opt-in y saneamiento de claims antes de exponer sugerencias.
 - `app/services/markets`: fetch/normalizacion de Shopify Markets, helpers puros
   para resolver contexto de market y aplicacion de `MarketCampaignRule` sobre
   payloads storefront.

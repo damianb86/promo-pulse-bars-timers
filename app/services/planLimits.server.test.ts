@@ -38,15 +38,15 @@ describe("plan limits", () => {
     });
   });
 
-  it("unlocks unique visitor discount codes only on Pro", () => {
-    expect(
-      canUseFeature({ plan: "GROWTH" }, "unique_discount_codes"),
-    ).toMatchObject({
-      allowed: false,
-      requiredPlan: "PRO",
-    });
+  it("unlocks unique visitor discount codes only on Premium", () => {
     expect(
       canUseFeature({ plan: "PRO" }, "unique_discount_codes"),
+    ).toMatchObject({
+      allowed: false,
+      requiredPlan: "PREMIUM",
+    });
+    expect(
+      canUseFeature({ plan: "PREMIUM" }, "unique_discount_codes"),
     ).toMatchObject({
       allowed: true,
     });
@@ -77,6 +77,27 @@ describe("plan limits", () => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", " pro ");
 
     expect(canUseFeature({ plan: "FREE" }, "custom_css")).toMatchObject({
+      allowed: true,
+    });
+  });
+
+  it("supports PROMOPILOT_DEV_PLAN=PREMIUM", () => {
+    vi.stubEnv("PROMOPILOT_DEV_PLAN", " premium ");
+
+    expect(
+      canUseFeature({ plan: "FREE" }, "unique_discount_codes"),
+    ).toMatchObject({
+      allowed: true,
+    });
+  });
+
+  it("does not let a development override downgrade Agency", () => {
+    vi.stubEnv("PROMOPILOT_DEV_PLAN", "PREMIUM");
+
+    expect(getPlanLimits("AGENCY").monthlyPriceUsd).toBe(149);
+    expect(
+      canUseFeature({ plan: "AGENCY" }, "unique_discount_codes"),
+    ).toMatchObject({
       allowed: true,
     });
   });
@@ -126,7 +147,7 @@ describe("plan limits", () => {
   it("allows Pro storefront campaigns that use premium features", () => {
     expect(
       isCampaignAllowedByPlan(
-        { plan: "PRO" },
+        { plan: "PREMIUM" },
         {
           type: "PRODUCT_BADGE",
           placements: [{ enabled: true, placementType: "CART_DRAWER" }],

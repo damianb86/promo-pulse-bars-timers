@@ -39,7 +39,7 @@ describe("advanced discounts service", () => {
     vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("NODE_ENV", "test");
     vi.clearAllMocks();
-    prismaMock.shop.findUnique.mockResolvedValue({ plan: ShopPlan.PRO });
+    prismaMock.shop.findUnique.mockResolvedValue({ plan: ShopPlan.PREMIUM });
     prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
     prismaMock.advancedDiscountRule.create.mockImplementation(
       async ({ data }) => advancedRule(data),
@@ -205,8 +205,8 @@ describe("advanced discounts service", () => {
     });
   });
 
-  it("blocks advanced discount rules below Pro", async () => {
-    prismaMock.shop.findUnique.mockResolvedValue({ plan: ShopPlan.GROWTH });
+  it("blocks advanced discount rules below Premium", async () => {
+    prismaMock.shop.findUnique.mockResolvedValue({ plan: ShopPlan.PRO });
 
     await expect(
       createAppDiscount({

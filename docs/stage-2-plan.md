@@ -38,8 +38,8 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
 - Web Pixel Extension: fuente primaria de eventos de comportamiento y
   atribucion.
 - Prisma: migraciones aditivas, con tablas nuevas antes de usar rutas o UI.
-- Billing: `PRO` como plan inicial para features premium; `GROWTH` puede
-  recibir biblioteca o analytics parcial cuando se defina pricing final.
+- Billing: `PREMIUM` agrupa optimizacion avanzada, `AGENCY` agrupa multi-store,
+  y `PRO` conserva targeting/reportes base.
 - E2E: toda dependencia de Shopify real debe tener mock o bypass solo bajo
   `E2E_TEST_MODE=true` y nunca en produccion.
 
@@ -96,13 +96,15 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
 
 - `FREE`: sin cambios de Stage 2. Mantiene limites y features basicas de Stage
   1.
-- `STARTER`: sin premium Stage 2 por defecto. Puede recibir mejoras menores de
-  templates existentes si no requieren datos avanzados.
-- `GROWTH`: conserva Stage 1 avanzado. Incluye Checkout UI Extension base para
-  mensajes promocionales en checkout.
-- `PRO`: plan inicial para unique codes, A/B testing, auto-winner, advanced
-  discounts, email timers, advanced badges, Markets
-  avanzado, AI, recommendations y agency dashboard.
+- `STARTER`: campanas basicas, scheduling, templates y targeting basico.
+- `GROWTH`: cart drawer, delivery cutoff, discount sync, analytics y
+  multi-idioma.
+- `PRO`: advanced targeting, product badges, custom CSS, mejor atribucion,
+  reports, checkout extensions, recommendations y behavior targeting.
+- `PREMIUM`: unique codes, A/B testing, auto-winner, advanced discounts, email
+  timers, advanced reports, Markets avanzado y AI Campaign Builder limitado.
+- `AGENCY`: multi-store, templates compartidos, agency dashboard y limites
+  superiores.
 
 ## Feature Flags Internos
 

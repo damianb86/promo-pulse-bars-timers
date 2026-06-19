@@ -40,7 +40,7 @@ describe("checkout campaign endpoint", () => {
     });
     shopModelMock.getShopByDomain.mockResolvedValue({
       id: "shop-1",
-      plan: ShopPlan.GROWTH,
+      plan: ShopPlan.PRO,
       shopifyDomain: "demo-shop.myshopify.com",
     });
     campaignModelMock.getActiveCampaignsForShop.mockResolvedValue([
@@ -91,7 +91,7 @@ describe("checkout campaign endpoint", () => {
     expect(shopModelMock.getShopByDomain).not.toHaveBeenCalled();
   });
 
-  it("blocks checkout campaign data below the Growth plan", async () => {
+  it("blocks checkout campaign data below the Pro plan", async () => {
     shopModelMock.getShopByDomain.mockResolvedValue({
       id: "shop-1",
       plan: ShopPlan.STARTER,
@@ -113,7 +113,7 @@ describe("checkout campaign endpoint", () => {
     expect(body).toMatchObject({
       campaign: null,
       gated: true,
-      requiredPlan: ShopPlan.GROWTH,
+      requiredPlan: ShopPlan.PRO,
     });
     expect(campaignModelMock.getActiveCampaignsForShop).not.toHaveBeenCalled();
   });
@@ -201,8 +201,7 @@ function freeShippingCampaign(): StorefrontCampaignSource {
         ctaUrl: "/checkout",
         expiredText: "This offer has ended.",
         freeShippingEmptyText: "",
-        freeShippingProgressText:
-          "You're {{amount}} away from free shipping",
+        freeShippingProgressText: "You're {{amount}} away from free shipping",
         freeShippingSuccessText: "Free shipping unlocked",
         deliveryBeforeCutoffText: "",
         deliveryAfterCutoffText: "",

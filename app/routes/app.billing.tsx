@@ -41,7 +41,14 @@ type ActionData = {
   error?: string;
 };
 
-const planOrder: Array<PlanCard["plan"]> = ["FREE", "STARTER", "GROWTH", "PRO"];
+const planOrder: Array<PlanCard["plan"]> = [
+  "FREE",
+  "STARTER",
+  "GROWTH",
+  "PRO",
+  "PREMIUM",
+  "AGENCY",
+];
 
 export const loader = async ({
   request,
@@ -67,7 +74,7 @@ export const action = async ({
   const formData = await request.formData();
   const plan = String(formData.get("plan") ?? "") as BillingPlanKey;
 
-  if (!["STARTER", "GROWTH", "PRO"].includes(plan)) {
+  if (!["STARTER", "GROWTH", "PRO", "PREMIUM", "AGENCY"].includes(plan)) {
     return { error: "Select a paid plan to start a subscription." };
   }
 
@@ -214,7 +221,12 @@ function getPlanFeatureBullets(plan: PlanCard["plan"]) {
   }
 
   if (plan === "STARTER") {
-    return ["Scheduling", "Recurring timers", "Basic targeting", "Templates"];
+    return [
+      "Basic campaigns",
+      "Scheduling",
+      "Campaign templates",
+      "Basic targeting",
+    ];
   }
 
   if (plan === "GROWTH") {
@@ -222,17 +234,37 @@ function getPlanFeatureBullets(plan: PlanCard["plan"]) {
       "Cart drawer timer",
       "Delivery cutoff",
       "Discount sync",
-      "Geo/market targeting",
       "Multi-language",
       "Analytics",
     ];
   }
 
+  if (plan === "PRO") {
+    return [
+      "Advanced targeting",
+      "Product badges",
+      "Custom CSS",
+      "Better attribution",
+      "Reports",
+    ];
+  }
+
+  if (plan === "PREMIUM") {
+    return [
+      "Unique visitor codes",
+      "A/B testing and auto-winner",
+      "Email countdown timers",
+      "Advanced reports",
+      "Market overrides",
+      "Limited AI campaign builder",
+    ];
+  }
+
   return [
-    "Custom CSS",
-    "Product badges",
-    "Advanced targeting",
-    "Priority support label",
-    "Stronger attribution",
+    "Multi-store workspace",
+    "Shared templates",
+    "Agency dashboard",
+    "Higher limits",
+    "Priority agency support label",
   ];
 }

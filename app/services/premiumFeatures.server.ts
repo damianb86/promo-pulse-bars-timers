@@ -6,7 +6,7 @@ import {
   type InternalStage2FeatureFlag,
   type PremiumFeatureKey,
 } from "../types/stage2";
-import { formatPlanName } from "./planLimits.server";
+import { formatPlanName, getEffectiveShopPlan } from "./planLimits.server";
 
 export type PremiumFeatureGateCheck = {
   allowed: boolean;
@@ -20,7 +20,7 @@ export type Stage2FeatureFlagState = Record<InternalStage2FeatureFlag, boolean>;
 export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   UNIQUE_CODES: true,
   AB_TESTING: true,
-  AUTO_WINNER: false,
+  AUTO_WINNER: true,
   ADVANCED_DISCOUNTS: true,
   CHECKOUT_EXTENSIONS: true,
   EMAIL_TIMERS: true,
@@ -31,20 +31,20 @@ export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
 };
 
 export const minimumPlanByPremiumFeature = {
-  UNIQUE_CODES: ShopPlan.PRO,
-  AB_TESTING: ShopPlan.PRO,
-  AUTO_WINNER: ShopPlan.PRO,
-  ADVANCED_DISCOUNTS: ShopPlan.PRO,
-  CHECKOUT_EXTENSIONS: ShopPlan.GROWTH,
-  EMAIL_TIMERS: ShopPlan.PRO,
+  UNIQUE_CODES: ShopPlan.PREMIUM,
+  AB_TESTING: ShopPlan.PREMIUM,
+  AUTO_WINNER: ShopPlan.PREMIUM,
+  ADVANCED_DISCOUNTS: ShopPlan.PREMIUM,
+  CHECKOUT_EXTENSIONS: ShopPlan.PRO,
+  EMAIL_TIMERS: ShopPlan.PREMIUM,
   ADVANCED_BADGES: ShopPlan.PRO,
-  MARKETS_ADVANCED: ShopPlan.PRO,
-  AI_CAMPAIGN_BUILDER: ShopPlan.PRO,
-  AGENCY_DASHBOARD: ShopPlan.PRO,
-  ADVANCED_REPORTING: ShopPlan.PRO,
+  MARKETS_ADVANCED: ShopPlan.PREMIUM,
+  AI_CAMPAIGN_BUILDER: ShopPlan.PREMIUM,
+  AGENCY_DASHBOARD: ShopPlan.AGENCY,
+  ADVANCED_REPORTING: ShopPlan.PREMIUM,
   BEHAVIORAL_TARGETING: ShopPlan.PRO,
   RECOMMENDATIONS: ShopPlan.PRO,
-  CAMPAIGN_LIBRARY: ShopPlan.GROWTH,
+  CAMPAIGN_LIBRARY: ShopPlan.STARTER,
 } satisfies Record<PremiumFeatureKey, ShopPlan>;
 
 const planRank = {
@@ -52,6 +52,8 @@ const planRank = {
   STARTER: 1,
   GROWTH: 2,
   PRO: 3,
+  PREMIUM: 4,
+  AGENCY: 5,
 } satisfies Record<ShopPlan, number>;
 
 export function canUsePremiumFeature(
@@ -63,6 +65,7 @@ export function canUsePremiumFeature(
 
   const enabled = isPremiumFeatureFlagEnabled(featureKey, featureFlags);
   const requiredPlan = minimumPlanByPremiumFeature[featureKey];
+  const plan = getEffectiveShopPlan(shop);
 
   if (!enabled) {
     return {
@@ -75,7 +78,7 @@ export function canUsePremiumFeature(
     };
   }
 
-  if (planRank[shop.plan] < planRank[requiredPlan]) {
+  if (planRank[plan] < planRank[requiredPlan]) {
     return {
       allowed: false,
       enabled,

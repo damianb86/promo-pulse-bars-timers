@@ -1,7 +1,7 @@
 # Advanced Reporting
 
 Advanced Reporting vive en `/app/reports` y esta disponible para tiendas con
-plan `PRO` mediante `ADVANCED_REPORTING`.
+plan `PREMIUM` mediante `ADVANCED_REPORTING`.
 
 ## Fuentes de Datos
 

@@ -84,7 +84,7 @@ describe("Stage 2 unique discount code pools", () => {
     vi.unstubAllEnvs();
   });
 
-  it("creates a gated active pool for a Pro campaign", async () => {
+  it("creates a gated active pool for a Premium campaign", async () => {
     await expect(
       createDiscountCodePool({
         shopId: "shop-1",
@@ -400,7 +400,7 @@ describe("Stage 2 unique discount code pools", () => {
     ).rejects.toThrow("Code has already been taken");
   });
 
-  it("blocks pool creation below Pro", async () => {
+  it("blocks pool creation below Premium", async () => {
     prismaMock.campaign.findFirst.mockResolvedValue(
       campaign({ plan: ShopPlan.GROWTH }),
     );
@@ -424,7 +424,7 @@ function campaign(overrides: { plan?: ShopPlan } = {}) {
     name: "VIP Sale",
     startsAt: new Date("2026-06-18T14:00:00.000Z"),
     endsAt: new Date("2026-06-18T17:00:00.000Z"),
-    shop: { plan: overrides.plan ?? ShopPlan.PRO },
+    shop: { plan: overrides.plan ?? ShopPlan.PREMIUM },
     discountSync: { uniqueCodeExpiresMinutes: 45 },
   };
 }

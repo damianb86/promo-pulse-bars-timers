@@ -136,7 +136,7 @@ describe("unique discount codes", () => {
     expect(prismaMock.discountCodeGrant.create).not.toHaveBeenCalled();
   });
 
-  it("blocks unique code issuing below Pro", async () => {
+  it("blocks unique code issuing below Premium", async () => {
     prismaMock.campaign.findFirst.mockResolvedValue(
       uniqueCampaign({ shopPlan: ShopPlan.GROWTH }),
     );
@@ -150,7 +150,7 @@ describe("unique discount codes", () => {
       }),
     ).rejects.toMatchObject({
       status: 403,
-      message: "Unique Discount Codes requires the Pro plan.",
+      message: "Unique Discount Codes requires the Premium plan.",
     });
   });
 
@@ -170,8 +170,7 @@ describe("unique discount codes", () => {
       }),
     ).rejects.toMatchObject({
       status: 409,
-      message:
-        "Unique discount codes can only be issued for active campaigns.",
+      message: "Unique discount codes can only be issued for active campaigns.",
     });
   });
 
@@ -220,11 +219,7 @@ describe("unique discount codes", () => {
         "visitor-123",
       ),
     ).toBe(
-      buildVisitorKey(
-        "example.myshopify.com",
-        "campaign-1",
-        "visitor-123",
-      ),
+      buildVisitorKey("example.myshopify.com", "campaign-1", "visitor-123"),
     );
   });
 
@@ -268,7 +263,7 @@ function uniqueCampaign(
     createdAt: new Date("2026-06-18T13:00:00.000Z"),
     updatedAt: new Date("2026-06-18T13:00:00.000Z"),
     shop: {
-      plan: overrides.shopPlan ?? ShopPlan.PRO,
+      plan: overrides.shopPlan ?? ShopPlan.PREMIUM,
     },
     discountSync: {
       campaignId: "campaign-1",

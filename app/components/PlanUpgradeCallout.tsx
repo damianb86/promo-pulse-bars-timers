@@ -11,7 +11,7 @@ export function PlanUpgradeCallout({
   title = "Upgrade required",
   message,
   actionHref = "/app/billing",
-  actionLabel = "View plans",
+  actionLabel = "View pricing",
 }: PlanUpgradeCalloutProps) {
   return (
     <s-box padding="base" borderWidth="base" borderRadius="base">

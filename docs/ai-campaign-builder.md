@@ -11,7 +11,7 @@ guarda la campana.
 - Servicio server: `app/services/ai/campaignGenerator.server.ts`.
 - Prompt versionado: `app/services/ai/campaignPrompts.server.ts`.
 - Tipos compartidos: `app/types/ai-campaign.ts`.
-- Gating: `AI_CAMPAIGN_BUILDER`, plan minimo `PRO`.
+- Gating: `AI_CAMPAIGN_BUILDER`, plan minimo `PREMIUM`.
 
 ## Provider
 

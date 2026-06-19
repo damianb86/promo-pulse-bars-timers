@@ -6,7 +6,7 @@ test("merchant can create and copy an email timer image URL", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("empty");
+  await resetDb("premium");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Email Timer Campaign",
@@ -27,5 +27,7 @@ test("merchant can create and copy an email timer image URL", async ({
 
   await expect(page.getByLabel("Email snippet").first()).toHaveValue(/<img/);
   await expect(page.getByRole("button", { name: "Copy URL" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy snippet" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy snippet" }),
+  ).toBeVisible();
 });

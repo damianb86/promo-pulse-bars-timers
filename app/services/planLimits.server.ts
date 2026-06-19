@@ -52,6 +52,8 @@ const planOrder: Record<ShopPlan, number> = {
   STARTER: 1,
   GROWTH: 2,
   PRO: 3,
+  PREMIUM: 4,
+  AGENCY: 5,
 };
 
 const allFeatures: Record<PlanFeatureKey, boolean> = {
@@ -139,6 +141,66 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
     plan: "PRO",
     monthlyPriceUsd: 39,
     activeCampaignLimit: null,
+    monthlyImpressionLimit: 1_000_000,
+    features: {
+      ...allFeatures,
+      advanced_analytics: true,
+      advanced_targeting: true,
+      basic_targeting: true,
+      cart_drawer: true,
+      cart_timer: true,
+      checkout_extensions: true,
+      countdown_bar: true,
+      custom_css: true,
+      delivery_cutoff: true,
+      discount_sync: true,
+      free_shipping_goal: true,
+      geo_market_targeting: true,
+      low_stock: true,
+      multi_language: true,
+      product_badges: true,
+      product_timer: true,
+      recurring_timers: true,
+      scheduling: true,
+      stronger_attribution: true,
+      templates: true,
+      unique_discount_codes: false,
+    },
+  },
+  PREMIUM: {
+    plan: "PREMIUM",
+    monthlyPriceUsd: 79,
+    activeCampaignLimit: null,
+    monthlyImpressionLimit: 2_500_000,
+    features: {
+      ...allFeatures,
+      advanced_analytics: true,
+      advanced_targeting: true,
+      basic_targeting: true,
+      cart_drawer: true,
+      cart_timer: true,
+      checkout_extensions: true,
+      countdown_bar: true,
+      custom_css: true,
+      delivery_cutoff: true,
+      discount_sync: true,
+      free_shipping_goal: true,
+      geo_market_targeting: true,
+      low_stock: true,
+      multi_language: true,
+      product_badges: true,
+      product_timer: true,
+      recurring_timers: true,
+      scheduling: true,
+      stronger_attribution: true,
+      templates: true,
+      unique_discount_codes: true,
+    },
+  },
+  AGENCY: {
+    plan: "AGENCY",
+    monthlyPriceUsd: 149,
+    activeCampaignLimit: null,
     monthlyImpressionLimit: null,
     features: {
       ...allFeatures,
@@ -198,7 +260,9 @@ export function getPlanLimits(plan: ShopPlan): PlanLimits {
 export function getEffectiveShopPlan(shop: Pick<Shop, "plan">): ShopPlan {
   const override = readDevPlanOverride();
 
-  return override ?? shop.plan;
+  if (!override) return shop.plan;
+
+  return planOrder[override] > planOrder[shop.plan] ? override : shop.plan;
 }
 
 export async function canCreateCampaign(
@@ -484,10 +548,15 @@ export function getLockedFeatureReason(
 }
 
 export function formatPlanName(plan: ShopPlan) {
+  if (plan === "AGENCY") return "Agency";
+  if (plan === "PREMIUM") return "Premium";
+
   return plan.charAt(0) + plan.slice(1).toLowerCase();
 }
 
 export function formatFeatureName(featureKey: PlanFeatureKey) {
+  if (featureKey === "custom_css") return "Custom CSS";
+
   return featureKey
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -497,13 +566,13 @@ export function formatFeatureName(featureKey: PlanFeatureKey) {
 function readDevPlanOverride() {
   if (process.env.NODE_ENV === "production") return null;
 
-  const value = (
-    process.env.PROMO_PULSE_DEV_PLAN ??
-    process.env.COUNTERPULSE_DEV_PLAN ??
-    process.env.PROMOPILOT_DEV_PLAN ??
-    ""
-  )
-    .trim()
+  const value = [
+    process.env.PROMO_PULSE_DEV_PLAN,
+    process.env.COUNTERPULSE_DEV_PLAN,
+    process.env.PROMOPILOT_DEV_PLAN,
+  ]
+    .find((candidate) => candidate?.trim())
+    ?.trim()
     .toUpperCase();
 
   return Object.values(ShopPlan).includes(value as ShopPlan)

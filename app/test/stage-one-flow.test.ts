@@ -779,7 +779,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     ).toEqual([
       "Product Badges requires the Pro plan.",
       "Cart Drawer requires the Growth plan.",
-      "Custom Css requires the Pro plan.",
+      "Custom CSS requires the Pro plan.",
     ]);
     expect(
       isCampaignAllowedByPlan(

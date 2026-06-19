@@ -12,6 +12,7 @@ import {
   sanitizeCustomCss,
   validateCampaignDesignValues,
 } from "../utils/campaign-design";
+import { canUseFeature } from "./planLimits.server";
 
 export type ParsedCampaignDesignForm = {
   values: CampaignDesignValues;
@@ -22,7 +23,8 @@ export function parseCampaignDesignFormData(
   formData: FormData,
   plan: ShopPlan,
 ): ParsedCampaignDesignForm {
-  const isProPlan = plan === "PRO";
+  const customCssGate = canUseFeature({ plan }, "custom_css");
+  const canUseCustomCss = customCssGate.allowed;
   const values: CampaignDesignValues = {
     templateKey: readString(formData, "templateKey") || "clean-minimal",
     backgroundColor:
@@ -52,7 +54,10 @@ export function parseCampaignDesignFormData(
     ),
     positionSticky: readBoolean(formData, "positionSticky"),
     mobileEnabled: readBoolean(formData, "mobileEnabled"),
-    customCss: sanitizeCustomCss(readString(formData, "customCss"), isProPlan),
+    customCss: sanitizeCustomCss(
+      readString(formData, "customCss"),
+      canUseCustomCss,
+    ),
     alignment: readAlignment(formData),
     showCloseButton: readBoolean(formData, "showCloseButton"),
     showIcon: readBoolean(formData, "showIcon"),
@@ -61,8 +66,8 @@ export function parseCampaignDesignFormData(
 
   const errors = validateCampaignDesignValues(values);
 
-  if (!isProPlan && readString(formData, "customCss").length > 0) {
-    errors.customCss = "Custom CSS is available on the Pro plan.";
+  if (!canUseCustomCss && readString(formData, "customCss").length > 0) {
+    errors.customCss = customCssGate.reason;
   }
 
   return { values, errors };

@@ -39,6 +39,7 @@ export type E2ETestScenario =
   | "delivery-cutoff-after"
   | "cart-drawer"
   | "analytics"
+  | "premium"
   | "ab-test"
   | "unique-discount"
   | "unique-discount-expired"
@@ -79,7 +80,7 @@ export async function ensureE2EShop() {
 
   const shop = await prisma.shop.upsert({
     where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
-    update: { plan: ShopPlan.PRO },
+    update: {},
     create: {
       shopifyDomain: E2E_DEMO_SHOP_DOMAIN,
       plan: ShopPlan.PRO,
@@ -160,6 +161,13 @@ function parseCookieHeader(header: string) {
 }
 
 async function seedScenario(shopId: string, scenario: E2ETestScenario) {
+  if (scenario === "ab-test" || scenario.startsWith("unique-discount")) {
+    await prisma.shop.update({
+      where: { id: shopId },
+      data: { plan: ShopPlan.PREMIUM },
+    });
+  }
+
   if (scenario === "countdown") {
     await createCountdownCampaign(shopId, {});
     return;
@@ -235,8 +243,20 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
   }
 
   if (scenario === "analytics") {
+    await prisma.shop.update({
+      where: { id: shopId },
+      data: { plan: ShopPlan.PREMIUM },
+    });
     await createCountdownCampaign(shopId, {
       discountCode: "SAVE20",
+    });
+    return;
+  }
+
+  if (scenario === "premium") {
+    await prisma.shop.update({
+      where: { id: shopId },
+      data: { plan: ShopPlan.PREMIUM },
     });
     return;
   }
@@ -547,11 +567,18 @@ async function createRecommendationsScenario(shopId: string) {
 }
 
 async function createAgencyScenario(shopId: string) {
+  await prisma.shop.update({
+    where: { id: shopId },
+    data: { plan: ShopPlan.AGENCY },
+  });
+
   const secondShop = await createE2EShopWithSettings(
     "agency-second.myshopify.com",
+    ShopPlan.AGENCY,
   );
   const unassignedShop = await createE2EShopWithSettings(
     "agency-hidden.myshopify.com",
+    ShopPlan.AGENCY,
   );
 
   const [sourceCampaign, secondCampaign, hiddenCampaign] = await Promise.all([
@@ -656,11 +683,14 @@ async function createAgencyScenario(shopId: string) {
   });
 }
 
-async function createE2EShopWithSettings(shopifyDomain: string) {
+async function createE2EShopWithSettings(
+  shopifyDomain: string,
+  plan: ShopPlan = ShopPlan.PRO,
+) {
   const shop = await prisma.shop.create({
     data: {
       shopifyDomain,
-      plan: ShopPlan.PRO,
+      plan,
     },
   });
 

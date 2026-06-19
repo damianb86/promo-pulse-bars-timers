@@ -10,7 +10,7 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
-  await resetDb();
+  await resetDb("premium");
   await loginAsDemoShop("/app/campaigns/new");
 
   await page.getByLabel("Product or category").fill("trail running shoes");

@@ -46,7 +46,7 @@ describe("post-purchase campaign endpoint", () => {
     });
     shopModelMock.getShopByDomain.mockResolvedValue({
       id: "shop-1",
-      plan: ShopPlan.GROWTH,
+      plan: ShopPlan.PRO,
       shopifyDomain: "demo-shop.myshopify.com",
     });
     campaignModelMock.getActiveCampaignsForShop.mockResolvedValue([
@@ -128,7 +128,7 @@ describe("post-purchase campaign endpoint", () => {
     expect(body.campaign).toBeNull();
   });
 
-  it("blocks post-purchase campaign data below the Growth plan", async () => {
+  it("blocks post-purchase campaign data below the Pro plan", async () => {
     shopModelMock.getShopByDomain.mockResolvedValue({
       id: "shop-1",
       plan: ShopPlan.STARTER,
@@ -150,7 +150,7 @@ describe("post-purchase campaign endpoint", () => {
     expect(body).toMatchObject({
       campaign: null,
       gated: true,
-      requiredPlan: ShopPlan.GROWTH,
+      requiredPlan: ShopPlan.PRO,
     });
     expect(campaignModelMock.getActiveCampaignsForShop).not.toHaveBeenCalled();
   });

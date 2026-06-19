@@ -37,8 +37,8 @@ Playwright starts the app through `npm run test:e2e:web`. That script sets:
 E2E_TEST_MODE=true
 NODE_ENV=development
 DATABASE_URL=file:./e2e.sqlite
-PROMO_PULSE_DEV_PLAN=PRO
-PROMOPILOT_DEV_PLAN=PRO
+PROMO_PULSE_DEV_PLAN=PREMIUM
+PROMOPILOT_DEV_PLAN=PREMIUM
 PORT=31338
 ```
 

@@ -21,7 +21,7 @@ Estos placements usan el mismo gate premium que checkout:
 
 `canUsePremiumFeature(shop, "CHECKOUT_EXTENSIONS")`
 
-El plan minimo es `GROWTH`; `PRO` tambien queda incluido.
+El plan minimo es `PRO`; `PREMIUM` y `AGENCY` tambien quedan incluidos.
 
 ## Endpoint
 

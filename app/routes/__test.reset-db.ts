@@ -47,6 +47,7 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "delivery-cutoff-after" ||
     value === "cart-drawer" ||
     value === "analytics" ||
+    value === "premium" ||
     value === "ab-test" ||
     value === "unique-discount" ||
     value === "unique-discount-expired" ||

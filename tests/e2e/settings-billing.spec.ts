@@ -68,11 +68,15 @@ test("billing page shows plan cards and local billing placeholder", async ({
   await expect(
     page.getByRole("heading", { exact: true, name: "Billing" }),
   ).toBeVisible();
-  await expect(page.getByText("Current: Pro")).toBeVisible();
+  await expect(page.getByText("Current: Premium")).toBeVisible();
   await expect(page.getByText("Free", { exact: true })).toBeVisible();
   await expect(page.getByText("Starter", { exact: true })).toBeVisible();
   await expect(page.getByText("Growth", { exact: true })).toBeVisible();
   await expect(page.getByText("Pro", { exact: true })).toBeVisible();
+  await expect(page.getByText("Premium", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".counterpulse-plan-card__name").filter({ hasText: "Agency" }),
+  ).toBeVisible();
 
   await Promise.all([
     page.waitForResponse(

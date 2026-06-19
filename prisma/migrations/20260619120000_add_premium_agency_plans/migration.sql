@@ -1,0 +1,3 @@
+-- SQLite stores Prisma enum values as TEXT. Adding PREMIUM and AGENCY to
+-- ShopPlan does not require a table rewrite; this migration records the
+-- schema-level enum expansion for Stage 2 pricing.

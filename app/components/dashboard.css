@@ -169,6 +169,62 @@
   background: #ffffff;
 }
 
+.counterpulse-report-bars {
+  display: grid;
+  gap: 10px;
+  margin-block-end: 14px;
+}
+
+.counterpulse-report-bar {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 2fr) minmax(
+      90px,
+      auto
+    );
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.counterpulse-report-bar__label {
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-report-bar__track,
+.counterpulse-report-meter {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #f1f2f4;
+}
+
+.counterpulse-report-bar__fill,
+.counterpulse-report-meter__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #008060;
+}
+
+.counterpulse-report-bar__value {
+  color: #616161;
+  text-align: right;
+}
+
+.counterpulse-report-meter {
+  max-width: 180px;
+  margin-block-start: 6px;
+}
+
+.counterpulse-report-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-inline-start: 18px;
+}
+
 .counterpulse-badge-rule-preview {
   display: inline-flex;
   align-items: center;

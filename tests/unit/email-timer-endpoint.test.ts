@@ -2,6 +2,9 @@ import { EmailTimerExpiredBehavior, EmailTimerMode } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
+  analyticsEvent: {
+    create: vi.fn(),
+  },
   emailTimer: {
     findUnique: vi.fn(),
   },
@@ -22,6 +25,7 @@ const now = new Date("2026-06-18T12:00:00.000Z");
 describe("email timer image endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.analyticsEvent.create.mockResolvedValue({ id: "event-1" });
   });
 
   it("returns a PNG for a valid public token", async () => {
@@ -31,12 +35,24 @@ describe("email timer image endpoint", () => {
       }),
     );
 
-    const response = await loadEmailTimerImageResponse(`${validToken}.png`, now);
+    const response = await loadEmailTimerImageResponse(
+      `${validToken}.png`,
+      now,
+    );
     const body = Buffer.from(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/png");
     expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(prismaMock.analyticsEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          campaignId: "campaign-1",
+          eventType: "IMPRESSION",
+          shopId: "shop-1",
+        }),
+      }),
+    );
     expect(body.subarray(0, 8)).toEqual(
       Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     );
@@ -75,7 +91,10 @@ describe("email timer image endpoint", () => {
       }),
     );
 
-    const response = await loadEmailTimerImageResponse(`${validToken}.png`, now);
+    const response = await loadEmailTimerImageResponse(
+      `${validToken}.png`,
+      now,
+    );
     const body = Buffer.from(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
@@ -90,7 +109,10 @@ describe("email timer image endpoint", () => {
       }),
     );
 
-    const response = await loadEmailTimerImageResponse(`${validToken}.png`, now);
+    const response = await loadEmailTimerImageResponse(
+      `${validToken}.png`,
+      now,
+    );
     const body = Buffer.from(await response.arrayBuffer());
 
     expect(response.status).toBe(200);

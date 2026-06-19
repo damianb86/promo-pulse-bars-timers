@@ -101,6 +101,9 @@ Servicios reservados para Stage 2:
 - `app/services/experiments`: A/B testing y auto-winner.
 - `app/services/attribution`: touchpoints, checkout, thank-you y order-status.
 - `app/services/recommendations`: recomendaciones automaticas.
+- `app/services/reports`: agregaciones premium para revenue, placements,
+  markets, experiment variants, unique codes, email timer views, CSV export y
+  resumen semanal in-app.
 - `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion. La
   implementacion actual usa prompts versionados, provider mock por defecto,
   provider externo opt-in y saneamiento de claims antes de exponer sugerencias.
@@ -117,6 +120,8 @@ Servicios reservados para Stage 2:
   thank-you/order-status y view models sin PII para extensiones post-compra.
 - `app/routes/api.email-timer.$publicToken.ts`: endpoint publico de imagen
   `GET /api/email-timer/:publicToken.png` para countdown timers de email.
+- `app/routes/app.reports.tsx`: pagina premium `/app/reports` con filtros,
+  tablas, barras simples, export CSV y resumen semanal preparado.
 - `app/components/stage2`: slots/componentes admin para features premium.
 
 Reglas de integracion:

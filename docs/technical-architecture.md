@@ -142,6 +142,9 @@ Reglas de integracion:
 - Las reglas de Markets se aplican despues de serializar la campaña global. Si
   no hay match, no cambian el payload; si una regla matching esta desactivada,
   la campaña se oculta solo para ese contexto.
+- La auditoria de performance, privacidad y compliance de Stage 2 vive en
+  `docs/stage-2-performance-privacy-compliance-audit.md` y debe revisarse antes
+  de habilitar nuevas features premium en storefront.
 
 ## Analytics
 

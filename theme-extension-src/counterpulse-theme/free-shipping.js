@@ -18,8 +18,7 @@
     country:
       root.dataset.country || (window.Shopify && window.Shopify.country) || "",
     market: detectMarket(root),
-    currency:
-      detectCurrency(root) || "USD",
+    currency: detectCurrency(root) || "USD",
     cartSubtotal: readCartSubtotal(root),
     device: window.matchMedia("(max-width: 767px)").matches
       ? "mobile"
@@ -312,7 +311,8 @@
 
     if (
       campaign.discount &&
-      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.CounterPulseCouponButton === "function"
     ) {
       bar.appendChild(
         window.CounterPulseCouponButton(

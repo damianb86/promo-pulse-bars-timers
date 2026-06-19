@@ -32,6 +32,7 @@ export const E2E_AUTH_COOKIE = "counterpulse_e2e_shop";
 export type E2ETestScenario =
   | "empty"
   | "countdown"
+  | "countdown-consent-strict"
   | "targeting"
   | "behavior-targeting"
   | "free-shipping"
@@ -169,6 +170,18 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
   }
 
   if (scenario === "countdown") {
+    await createCountdownCampaign(shopId, {});
+    return;
+  }
+
+  if (scenario === "countdown-consent-strict") {
+    await prisma.shopSettings.update({
+      where: { shopId },
+      data: {
+        consentMode: "STRICT",
+        respectDoNotTrack: true,
+      },
+    });
     await createCountdownCampaign(shopId, {});
     return;
   }

@@ -23,6 +23,10 @@ until Shopify handles that URL. If a theme, market, checkout setting, or browser
 policy changes Shopify's discount behavior, the fallback is still a visible code
 with a copy action.
 
+The redirect uses only `window.location.pathname`; query strings are stripped so
+email addresses, customer tokens, or other URL parameters are not copied into
+public discount URLs.
+
 ## Expiration
 
 The widget shows a code-level countdown when `expiresAt` is present. When that

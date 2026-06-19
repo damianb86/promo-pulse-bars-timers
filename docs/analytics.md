@@ -23,10 +23,15 @@ counterpulse_last_seen_campaign
 The value contains only:
 
 - campaign id;
+- anonymous visitor/session ids;
 - placement type;
+- experiment/variant ids when an A/B test is active;
 - timestamp.
 
 It does not store customer identity, email, phone, address, or IP address.
+When analytics is disabled, Do Not Track is respected, or strict consent is not
+granted, Promo Pulse does not write this last-touch record or send campaign
+analytics events.
 
 ## Web Pixel Events
 
@@ -74,9 +79,10 @@ Those events can become funnel context later, but Etapa 1 keeps the
 
 ## Attribution Limits
 
-Etapa 1 attribution is approximate. The pixel cannot reliably know which
-campaign caused checkout or purchase, so it uses the most recently rendered
-Promo Pulse campaign in the same browser session.
+Promo Pulse attribution is approximate. The pixel and storefront runtime cannot
+reliably know which campaign caused checkout or purchase, so Stage 2 attribution
+uses anonymous recent touches such as last touch 24h/7d when a visitor or
+session id is available and privacy settings allow analytics.
 
 Known limits:
 

@@ -40,6 +40,7 @@ async function reset(request: Request) {
 function readScenario(value: string | null): E2ETestScenario {
   if (
     value === "countdown" ||
+    value === "countdown-consent-strict" ||
     value === "targeting" ||
     value === "behavior-targeting" ||
     value === "free-shipping" ||

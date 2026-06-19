@@ -204,7 +204,8 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.CounterPulseCouponButton === "function"
     ) {
       card.appendChild(
         window.CounterPulseCouponButton(
@@ -405,10 +406,13 @@
   }
 
   function evergreenDeadline(id, timer) {
-    var storage =
-      timer.resetBehavior === "ON_SESSION_END" ? sessionStorage : localStorage;
+    var storage = safeStorage(
+      timer.resetBehavior === "ON_SESSION_END"
+        ? "sessionStorage"
+        : "localStorage",
+    );
     var key = "counterpulse_product_deadline_" + id;
-    var stored = parseDate(storage.getItem(key));
+    var stored = storage ? parseDate(storage.getItem(key)) : null;
     var duration = Number(timer.durationMinutes);
     var endsAt;
 
@@ -422,6 +426,14 @@
     }
 
     return endsAt;
+  }
+
+  function safeStorage(storageName) {
+    try {
+      return window[storageName] || null;
+    } catch {
+      return null;
+    }
   }
 
   function dailyDeadline(settings, timezone, now) {

@@ -14,6 +14,15 @@ and graceful failure over aggressive conversion tactics.
 - Coupon buttons and CTA links should not be shown after the timer is expired.
 - Never change cart contents, checkout behavior, payment flow, or add-to-cart behavior in Stage 1.
 - Discount expiry is only reliable when campaign dates are synced from Shopify discounts or the merchant keeps campaign dates aligned manually.
+- Unique codes must expire in the backend or stop rendering in the storefront
+  when their code-level timer reaches zero.
+- A/B tests and behavior targeting must respect analytics consent, Do Not Track,
+  and merchant analytics settings.
+- AI-generated copy must stay draft-only until merchant confirmation and must
+  not invent stock, discount availability, delivery promises, or scarcity
+  claims.
+- Checkout and order-status extensions must render promotional messages only;
+  they must never block payment or checkout completion.
 
 ## Accessibility requirements
 
@@ -29,6 +38,8 @@ and graceful failure over aggressive conversion tactics.
 - Theme assets must be loaded with `defer` where Liquid controls the script tag.
 - Storefront code must fail silently outside debug mode if the API is unavailable.
 - API calls should be deduped per placement and cached briefly in memory where safe.
+- Unique-code assignment calls should be deduped per anonymous visitor/campaign
+  to avoid multiple POSTs for the same widget render.
 - Cart drawer observers must be debounced and must not assume a drawer exists.
 - CSS must remain namespaced with `.pp-` classes and avoid global resets.
 - Z-index values should be high enough for bars, but not maximum browser values.

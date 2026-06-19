@@ -90,14 +90,105 @@ describe("storefront visitor and session tracking", () => {
     expect(secondPayload.visitorId).toBe(firstPayload.visitorId);
     expect(secondPayload.sessionId).toBe(firstPayload.sessionId);
   });
+
+  it("does not create analytics identity or send events when strict consent is denied", () => {
+    const localStorage = createStorage();
+    const sessionStorage = createStorage();
+    const context = loadDiscountCodeScript({
+      localStorage,
+      sessionStorage,
+      settings: { consentMode: "STRICT", respectDoNotTrack: true },
+      analyticsProcessingAllowed: false,
+    });
+
+    trackCampaign(context, "IMPRESSION");
+
+    expect(context.fetchMock).not.toHaveBeenCalled();
+    expect(localStorage.data.counterpulse_visitor_id).toBeUndefined();
+    expect(sessionStorage.data.counterpulse_session_id).toBeUndefined();
+    expect(
+      localStorage.data.counterpulse_last_seen_campaign_id,
+    ).toBeUndefined();
+  });
+
+  it("omits visitor and session IDs for behavior eligibility when privacy blocks analytics", () => {
+    const localStorage = createStorage();
+    const sessionStorage = createStorage();
+    const context = loadDiscountCodeScript({
+      localStorage,
+      sessionStorage,
+      settings: { consentMode: "STRICT", respectDoNotTrack: true },
+      analyticsProcessingAllowed: false,
+    });
+    const getTracking = (
+      context.context.window as {
+        CounterPulseGetVisitorSessionTracking: (options?: {
+          purpose?: string;
+        }) => Record<string, unknown>;
+      }
+    ).CounterPulseGetVisitorSessionTracking;
+
+    expect(getTracking()).toMatchObject({
+      visitorId: "",
+      sessionId: "",
+      doNotTrack: false,
+      consentGranted: false,
+    });
+
+    expect(getTracking({ purpose: "uniqueCode" })).toMatchObject({
+      visitorId: expect.stringMatching(/^cpv_/),
+      sessionId: expect.stringMatching(/^cps_/),
+      consentGranted: false,
+    });
+  });
+
+  it("does not include the unique code value in copy tracking details", () => {
+    const loaded = loadDiscountCodeScript({
+      localStorage: createStorage(),
+      sessionStorage: createStorage(),
+    });
+    const copyCode = (
+      loaded.context.window as {
+        CounterPulseCopyCode: (
+          code: string,
+          campaign: Record<string, string>,
+        ) => void;
+      }
+    ).CounterPulseCopyCode;
+
+    copyCode("SECRET-CODE", {
+      id: "campaign-1",
+      experimentId: "experiment-1",
+      placement: "TOP_BAR",
+      variantId: "variant-1",
+    });
+
+    const event = loaded.documentMock.dispatchEvent.mock.calls[0]?.[0] as {
+      detail: Record<string, unknown>;
+      type: string;
+    };
+
+    expect(event.type).toBe("counterpulse:copy-code");
+    expect(event.detail).toEqual({
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      placement: "TOP_BAR",
+      variantId: "variant-1",
+    });
+    expect(event.detail).not.toHaveProperty("code");
+  });
 });
 
 function loadDiscountCodeScript({
   localStorage,
   sessionStorage,
+  settings = {},
+  analyticsProcessingAllowed,
 }: {
   localStorage: ReturnType<typeof createStorage>;
   sessionStorage: ReturnType<typeof createStorage>;
+  settings?: Record<string, unknown>;
+  analyticsProcessingAllowed?: boolean;
 }) {
   const root = {
     dataset: {
@@ -109,9 +200,15 @@ function loadDiscountCodeScript({
     },
   };
   const fetchMock = vi.fn(() => Promise.resolve({ ok: true }));
+  const customerPrivacy =
+    analyticsProcessingAllowed === undefined
+      ? undefined
+      : {
+          analyticsProcessingAllowed: vi.fn(() => analyticsProcessingAllowed),
+        };
   const windowMock = {
-    CounterPulseSettings: {},
-    Shopify: { shop: "demo.myshopify.com" },
+    CounterPulseSettings: settings,
+    Shopify: { shop: "demo.myshopify.com", customerPrivacy },
     crypto: createCryptoMock(),
     doNotTrack: "0",
     fetch: fetchMock,
@@ -163,7 +260,7 @@ function loadDiscountCodeScript({
 
   vm.runInContext(source, context);
 
-  return { context, fetchMock };
+  return { context, documentMock, fetchMock };
 }
 
 function trackCampaign(

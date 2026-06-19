@@ -326,7 +326,8 @@
 
     if (
       campaign.discount &&
-      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.CounterPulseCouponButton === "function"
     ) {
       surface.appendChild(
         window.CounterPulseCouponButton(

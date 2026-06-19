@@ -149,7 +149,10 @@
     if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
     if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
     params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
-    if (tracking.consentGranted !== null && tracking.consentGranted !== undefined) {
+    if (
+      tracking.consentGranted !== null &&
+      tracking.consentGranted !== undefined
+    ) {
       params.set("consentGranted", tracking.consentGranted ? "true" : "false");
     }
   }
@@ -204,7 +207,8 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.CounterPulseCouponButton === "function"
     ) {
       bar.appendChild(
         window.CounterPulseCouponButton(
@@ -645,9 +649,9 @@
   }
 
   function getEvergreenStorage(resetBehavior) {
-    return resetBehavior === "ON_SESSION_END"
-      ? window.sessionStorage
-      : window.localStorage;
+    return safeStorage(
+      resetBehavior === "ON_SESSION_END" ? "sessionStorage" : "localStorage",
+    );
   }
 
   function readStorage(storage, key) {
@@ -661,6 +665,14 @@
   function writeStorage(storage, key, value) {
     try {
       storage.setItem(key, JSON.stringify(value));
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorage(storageName) {
+    try {
+      return window[storageName] || null;
     } catch {
       return null;
     }

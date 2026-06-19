@@ -10,6 +10,7 @@ export function buildE2EStorefrontHtml(
   const locale = url.searchParams.get("locale") || "en";
   const country = url.searchParams.get("country") || "US";
   const badCart = url.searchParams.get("badCart") === "1";
+  const consentAllowed = url.searchParams.get("consent") !== "denied";
   const subtotal = Number(url.searchParams.get("subtotal") || "40");
   const subtotalCents = Number.isFinite(subtotal)
     ? Math.round(subtotal * 100)
@@ -41,7 +42,7 @@ export function buildE2EStorefrontHtml(
       window.Shopify = {
         shop: "${E2E_DEMO_SHOP_DOMAIN}",
         country: "${escapeJs(country)}",
-        customerPrivacy: { analyticsProcessingAllowed: function () { return true; } }
+        customerPrivacy: { analyticsProcessingAllowed: function () { return ${consentAllowed ? "true" : "false"}; } }
       };
       window.CounterPulseAnalyticsEndpoint = "/api/analytics/event";
       window.CounterPulseCartSubtotal = ${subtotalCents / 100};

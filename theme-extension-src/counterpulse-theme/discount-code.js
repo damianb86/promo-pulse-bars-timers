@@ -8,6 +8,8 @@
   var lastSeenExperimentIdStorageKey = "counterpulse_last_seen_experiment_id";
   var lastSeenVariantIdStorageKey = "counterpulse_last_seen_variant_id";
   var lastPromoTouchStorageKey = "counterpulse_last_promo_touch";
+  var uniqueCodeRequestCache = {};
+  var uniqueCodeRequestTtlMs = 30000;
   var memoryVisitorId = "";
   var memorySessionId = "";
 
@@ -102,10 +104,13 @@
     });
   }
 
-  window.CounterPulseGetVisitorSessionTracking = function () {
+  window.CounterPulseGetVisitorSessionTracking = function (options) {
+    var includeIdentity =
+      isFunctionalTrackingRequest(options) || analyticsAllowed();
+
     return {
-      visitorId: getVisitorId(),
-      sessionId: getSessionId(),
+      visitorId: includeIdentity ? getVisitorId() : "",
+      sessionId: includeIdentity ? getSessionId() : "",
       doNotTrack: isDoNotTrackEnabled(),
       consentGranted: hasAnalyticsConsent(),
     };
@@ -118,9 +123,7 @@
 
     document.dispatchEvent(
       new CustomEvent("counterpulse:copy-code", {
-        detail: Object.assign(buildCampaignTrackingDetail(campaign), {
-          code: code,
-        }),
+        detail: buildCampaignTrackingDetail(campaign),
       }),
     );
   };
@@ -162,6 +165,7 @@
     }
 
     if (!experiment.id || variants.length === 0) return campaign;
+    if (!analyticsAllowed()) return campaign;
 
     visitorId = getVisitorId();
     assignmentKey = "counterpulse_experiment_assignment_" + experiment.id;
@@ -318,7 +322,12 @@
 
   function requestUniqueCode(campaign, config) {
     var root = getRoot();
-    var tracking = getVisitorSessionTracking(campaign);
+    var tracking = getVisitorSessionTracking(campaign, {
+      purpose: "uniqueCode",
+    });
+    var cacheKey;
+    var cached;
+    var request;
     var payload = {
       shop: detectShop(root),
       campaignId: campaign && (campaign.id || campaign.campaignId),
@@ -327,9 +336,24 @@
       redirectPath: getCurrentPath(),
     };
 
-    rememberCampaign(campaign, tracking);
+    if (analyticsAllowed()) {
+      rememberCampaign(campaign, tracking);
+    }
 
-    return window
+    cacheKey = [
+      payload.shop,
+      payload.campaignId,
+      payload.visitorId,
+      payload.sessionId || "",
+      getStorefrontApiPath(root, config.endpoint),
+    ].join(":");
+    cached = uniqueCodeRequestCache[cacheKey];
+
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.promise.then(clonePlainObject);
+    }
+
+    request = window
       .fetch(getStorefrontApiPath(root, config.endpoint), {
         method: "POST",
         credentials: "same-origin",
@@ -355,6 +379,17 @@
             return body;
           });
       });
+
+    uniqueCodeRequestCache[cacheKey] = {
+      expiresAt: Date.now() + uniqueCodeRequestTtlMs,
+      promise: request,
+    };
+
+    request.catch(function () {
+      delete uniqueCodeRequestCache[cacheKey];
+    });
+
+    return request.then(clonePlainObject);
   }
 
   function renderAssignedUniqueCode(wrapper, campaign, config, payload) {
@@ -384,9 +419,7 @@
       applyLink.textContent = "Apply discount";
       applyLink.setAttribute("aria-label", "Apply discount " + payload.code);
       applyLink.addEventListener("click", function () {
-        window.CounterPulseTrackEvent("APPLY_CODE_CLICKED", campaign, {
-          code: payload.code,
-        });
+        window.CounterPulseTrackEvent("APPLY_CODE_CLICKED", campaign);
       });
       wrapper.appendChild(applyLink);
     }
@@ -400,7 +433,6 @@
     }
 
     window.CounterPulseTrackEvent("UNIQUE_CODE_ASSIGNED", campaign, {
-      code: payload.code,
       reused: payload.reused === true,
     });
   }
@@ -477,7 +509,7 @@
   }
 
   function getCurrentPath() {
-    return window.location.pathname + window.location.search;
+    return window.location.pathname || "/";
   }
 
   function isSafeDiscountApplyUrl(value) {
@@ -580,12 +612,17 @@
     return null;
   }
 
-  function getVisitorSessionTracking(campaign) {
+  function isFunctionalTrackingRequest(options) {
+    return options && options.purpose === "uniqueCode";
+  }
+
+  function getVisitorSessionTracking(campaign, options) {
+    var publicTracking = window.CounterPulseGetVisitorSessionTracking(options);
     var touchTime = Date.now();
 
     return {
-      visitorId: getVisitorId(),
-      sessionId: getSessionId(),
+      visitorId: publicTracking.visitorId,
+      sessionId: publicTracking.sessionId,
       campaignId: campaign && (campaign.id || campaign.campaignId),
       experimentId: readExperimentId(campaign),
       variantId: readVariantId(campaign),
@@ -621,10 +658,11 @@
   }
 
   function readStoredValue(storageName, key) {
-    var storage = window[storageName];
+    var storage;
     var value;
 
     try {
+      storage = window[storageName];
       if (!storage) return "";
       value = storage.getItem(key);
     } catch {
@@ -635,9 +673,10 @@
   }
 
   function writeStoredValue(storageName, key, value) {
-    var storage = window[storageName];
+    var storage;
 
     try {
+      storage = window[storageName];
       if (storage) storage.setItem(key, value);
     } catch (error) {
       debug(getRoot(), error);
@@ -659,6 +698,7 @@
     var placementType = tracking && tracking.placementType;
 
     if (!campaignId) return;
+    if (!analyticsAllowed()) return;
 
     try {
       writeStoredValue(
@@ -698,6 +738,12 @@
     } catch (error) {
       debug(getRoot(), error);
     }
+  }
+
+  function clonePlainObject(value) {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? Object.assign({}, value)
+      : value;
   }
 
   function buildCampaignTrackingDetail(campaign) {

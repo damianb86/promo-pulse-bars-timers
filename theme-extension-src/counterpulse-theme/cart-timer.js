@@ -415,7 +415,8 @@
     if (
       !timerState.isExpired &&
       campaign.discount &&
-      (campaign.discount.discountCode || campaign.discount.uniqueCode)
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.CPcb === "function"
     ) {
       card.appendChild(window.CPcb(campaign.discount.discountCode, campaign));
     }
@@ -597,8 +598,11 @@
   function calculateCartReserveTimer(campaign, now, config) {
     var timer = campaign.timer || {};
     var duration = Number(timer.durationMinutes);
-    var storage =
-      timer.resetBehavior === "ON_SESSION_END" ? sessionStorage : localStorage;
+    var storage = safeStorage(
+      timer.resetBehavior === "ON_SESSION_END"
+        ? "sessionStorage"
+        : "localStorage",
+    );
     var token = config.cartToken || "session";
     var key = "counterpulse_cart_deadline_" + campaign.id + "_" + token;
     var stored = readStorage(storage, key);
@@ -895,6 +899,14 @@
   function readStorage(storage, key) {
     try {
       return JSON.parse(storage.getItem(key) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorage(storageName) {
+    try {
+      return window[storageName] || null;
     } catch {
       return null;
     }

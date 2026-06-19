@@ -72,7 +72,7 @@ to `/password`, Shopify is not proxying that request to the app. Check that
 
 ```toml
 [app_proxy]
-url = "https://shopify.dev/apps/default-app-home/apps/counterpulse-campaigns"
+url = "https://shopify.dev/apps/counterpulse-campaigns"
 subpath = "counterpulse-campaigns"
 prefix = "apps"
 ```

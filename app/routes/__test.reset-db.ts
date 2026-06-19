@@ -51,6 +51,7 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "unique-discount" ||
     value === "unique-discount-expired" ||
     value === "recommendations" ||
+    value === "template-library" ||
     value === "post-purchase"
   ) {
     return value;

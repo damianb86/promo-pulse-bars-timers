@@ -32,6 +32,11 @@ import {
 } from "../services/planLimits.server";
 import { canUsePremiumFeature } from "../services/premiumFeatures.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
+import {
+  buildCampaignAiInputFromTemplate,
+  buildCampaignFormDefaultsFromTemplate,
+  getCampaignTemplateByKey,
+} from "../services/templates/templateLibrary.server";
 import type {
   CampaignAiFormErrors,
   CampaignAiInput,
@@ -61,6 +66,7 @@ type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
   defaults: CampaignFormValues;
+  templateSourceName?: string;
 };
 
 export const loader = async ({
@@ -70,17 +76,29 @@ export const loader = async ({
   const shop = await getOrCreateShopByDomain(session.shop);
   const settings = await getShopSettingsOrDefaults(shop.id);
   const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
+  const url = new URL(request.url);
+  const templateKey = url.searchParams.get("templateKey");
+  const templateGate = canUsePremiumFeature(shop, "CAMPAIGN_LIBRARY");
+  const template =
+    templateKey && templateGate.allowed
+      ? await getCampaignTemplateByKey(templateKey)
+      : null;
 
   return {
-    aiInput: buildDefaultCampaignAiInput({
-      countryCode: settings.defaultCountry ?? "US",
-      locale: settings.defaultLocale,
-    }),
+    aiInput: template
+      ? buildCampaignAiInputFromTemplate(template)
+      : buildDefaultCampaignAiInput({
+          countryCode: settings.defaultCountry ?? "US",
+          locale: settings.defaultLocale,
+        }),
     aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
-    defaults: {
-      ...defaultCampaignFormValues,
-      timezone: settings.defaultTimezone,
-    },
+    defaults: template
+      ? buildCampaignFormDefaultsFromTemplate(template)
+      : {
+          ...defaultCampaignFormValues,
+          timezone: settings.defaultTimezone,
+        },
+    templateSourceName: template?.eventName,
   };
 };
 
@@ -308,7 +326,8 @@ export const action = async ({
 
 export default function CreateCampaignPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
-  const { aiInput, aiLockedReason, defaults } = useLoaderData<typeof loader>();
+  const { aiInput, aiLockedReason, defaults, templateSourceName } =
+    useLoaderData<typeof loader>();
 
   return (
     <s-page heading="Create campaign">
@@ -316,6 +335,7 @@ export default function CreateCampaignPage() {
         errors={actionData?.aiErrors}
         lockedReason={aiLockedReason}
         suggestion={actionData?.aiSuggestion}
+        templateSourceName={templateSourceName}
         values={actionData?.aiInput ?? aiInput}
       />
       <CampaignForm

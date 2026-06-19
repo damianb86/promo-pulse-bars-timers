@@ -15,6 +15,7 @@ type AiCampaignBuilderProps = {
   errors?: CampaignAiFormErrors;
   lockedReason?: string;
   suggestion?: CampaignSuggestion | null;
+  templateSourceName?: string;
   values: CampaignAiInput;
 };
 
@@ -22,6 +23,7 @@ export function AiCampaignBuilder({
   errors = {},
   lockedReason,
   suggestion,
+  templateSourceName,
   values,
 }: AiCampaignBuilderProps) {
   const navigation = useNavigation();
@@ -42,6 +44,15 @@ export function AiCampaignBuilder({
           {errors.form && (
             <s-banner tone="critical" heading="Suggestion could not be created">
               <s-paragraph>{errors.form}</s-paragraph>
+            </s-banner>
+          )}
+
+          {templateSourceName && (
+            <s-banner tone="info" heading="Template context loaded">
+              <s-paragraph>
+                Generate variants from {templateSourceName}, then review before
+                applying or saving.
+              </s-paragraph>
             </s-banner>
           )}
 
@@ -124,7 +135,11 @@ export function AiCampaignBuilder({
 
             <div className="counterpulse-actions">
               <button className="counterpulse-button" type="submit">
-                {isGenerating ? "Generating..." : "Generate with AI"}
+                {isGenerating
+                  ? "Generating..."
+                  : templateSourceName
+                    ? "Generate variants from template"
+                    : "Generate with AI"}
               </button>
             </div>
           </Form>

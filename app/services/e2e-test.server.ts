@@ -39,6 +39,7 @@ export type E2ETestScenario =
   | "unique-discount"
   | "unique-discount-expired"
   | "recommendations"
+  | "template-library"
   | "post-purchase";
 
 export function isE2ETestMode() {
@@ -251,6 +252,10 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "recommendations") {
     await createRecommendationsScenario(shopId);
+    return;
+  }
+
+  if (scenario === "template-library") {
     return;
   }
 

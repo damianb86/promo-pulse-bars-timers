@@ -6,7 +6,6 @@ import {
   CampaignRecommendationStatus,
   CampaignRecommendationType,
   CampaignStatus,
-  CampaignTemplateCategory,
   CampaignType,
   DeliveryAfterCutoffBehavior,
   DiscountCodePoolStatus,
@@ -25,6 +24,7 @@ import {
   TimerResetBehavior,
   UniqueDiscountCodeStatus,
 } from "@prisma/client";
+import { buildSystemCampaignTemplates } from "../app/services/templates/systemTemplates.js";
 
 const prisma = new PrismaClient();
 
@@ -34,13 +34,9 @@ const demoCampaignIds = [
   "demo-free-shipping-goal",
   "demo-delivery-cutoff",
 ];
-const demoTemplateKeys = [
-  "us-bfcm-flash-sale",
-  "us-free-shipping-weekend",
-  "ca-winter-delivery-cutoff",
-  "ar-hot-sale-countdown",
-  "global-product-launch-badge",
-];
+const demoTemplateKeys = buildSystemCampaignTemplates().map(
+  (template) => template.key,
+);
 
 const emptyTargeting = {
   countries: [],
@@ -882,113 +878,7 @@ async function seedStage2DemoData({
 }
 
 async function seedCampaignTemplates() {
-  const templates = [
-    {
-      key: "us-bfcm-flash-sale",
-      category: CampaignTemplateCategory.BFCM,
-      countryCode: "US",
-      locale: "en",
-      eventName: "Black Friday Cyber Monday",
-      goal: CampaignGoal.FLASH_SALE,
-      type: CampaignType.COUNTDOWN_BAR,
-      defaultTexts: {
-        headline: "BFCM sale ends soon",
-        subheadline: "Shop verified offers before the event closes.",
-        ctaText: "Shop BFCM",
-      },
-      defaultDesign: {
-        templateKey: "flash-sale-bold",
-        icon: "FIRE",
-      },
-      defaultSettings: {
-        suggestedDurationHours: 48,
-      },
-    },
-    {
-      key: "us-free-shipping-weekend",
-      category: CampaignTemplateCategory.FREE_SHIPPING,
-      countryCode: "US",
-      locale: "en",
-      eventName: "Free Shipping Weekend",
-      goal: CampaignGoal.FREE_SHIPPING,
-      type: CampaignType.FREE_SHIPPING_GOAL,
-      defaultTexts: {
-        headline: "You are close to free shipping",
-        freeShippingProgressText: "You're {{amount}} away from free shipping",
-      },
-      defaultDesign: {
-        templateKey: "free-shipping-progress",
-        icon: "TRUCK",
-      },
-      defaultSettings: {
-        thresholdAmount: 75,
-        currencyCode: "USD",
-      },
-    },
-    {
-      key: "ca-winter-delivery-cutoff",
-      category: CampaignTemplateCategory.SEASONAL,
-      countryCode: "CA",
-      locale: "en",
-      eventName: "Winter Delivery Cutoff",
-      goal: CampaignGoal.DELIVERY_CUTOFF,
-      type: CampaignType.DELIVERY_CUTOFF,
-      defaultTexts: {
-        headline: "Order before the winter shipping cutoff",
-        deliveryBeforeCutoffText:
-          "Order within {{time_left}} for the current delivery window.",
-      },
-      defaultDesign: {
-        templateKey: "delivery-cutoff-clean",
-        icon: "CLOCK",
-      },
-      defaultSettings: {
-        cutoffHour: 14,
-        workingDays: [1, 2, 3, 4, 5],
-      },
-    },
-    {
-      key: "ar-hot-sale-countdown",
-      category: CampaignTemplateCategory.COUNTRY_EVENT,
-      countryCode: "AR",
-      locale: "es",
-      eventName: "Hot Sale",
-      goal: CampaignGoal.FLASH_SALE,
-      type: CampaignType.COUNTDOWN_BAR,
-      defaultTexts: {
-        headline: "Hot Sale termina pronto",
-        subheadline: "Aprovecha ofertas verificadas antes del cierre.",
-        ctaText: "Comprar Hot Sale",
-      },
-      defaultDesign: {
-        templateKey: "flash-sale-bold",
-        icon: "FIRE",
-      },
-      defaultSettings: {
-        suggestedDurationHours: 72,
-      },
-    },
-    {
-      key: "global-product-launch-badge",
-      category: CampaignTemplateCategory.PRODUCT_LAUNCH,
-      countryCode: null,
-      locale: "en",
-      eventName: "Product Launch",
-      goal: CampaignGoal.PRODUCT_BADGE,
-      type: CampaignType.PRODUCT_BADGE,
-      defaultTexts: {
-        headline: "New arrival",
-        badgeText: "New",
-      },
-      defaultDesign: {
-        badgeShape: "PILL",
-        badgePosition: "TOP_RIGHT",
-      },
-      defaultSettings: {
-        recommendedPlacement: "COLLECTION_CARD",
-      },
-    },
-  ];
+  const templates = buildSystemCampaignTemplates();
 
   for (const template of templates) {
     await prisma.campaignTemplate.upsert({

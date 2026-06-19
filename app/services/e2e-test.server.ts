@@ -1,4 +1,5 @@
 import {
+  AnalyticsEventType,
   CampaignDesignIcon,
   CampaignGoal,
   CampaignStatus,
@@ -37,6 +38,7 @@ export type E2ETestScenario =
   | "ab-test"
   | "unique-discount"
   | "unique-discount-expired"
+  | "recommendations"
   | "post-purchase";
 
 export function isE2ETestMode() {
@@ -244,6 +246,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "unique-discount-expired") {
     await createUniqueDiscountCampaign(shopId, { codes: [] });
+    return;
+  }
+
+  if (scenario === "recommendations") {
+    await createRecommendationsScenario(shopId);
     return;
   }
 
@@ -489,6 +496,38 @@ async function createUniqueDiscountCampaign(
   }
 
   return campaign;
+}
+
+async function createRecommendationsScenario(shopId: string) {
+  const campaign = await createCountdownCampaign(shopId, {});
+  const now = new Date();
+
+  await prisma.analyticsEvent.createMany({
+    data: [
+      ...Array.from({ length: 140 }, (_, index) => ({
+        shopId,
+        campaignId: campaign.id,
+        eventType: AnalyticsEventType.IMPRESSION,
+        placementType: PlacementType.TOP_BAR,
+        sessionId: `e2e-rec-session-${index}`,
+        country: "US",
+        locale: "en",
+        path: "/collections/sale",
+        occurredAt: new Date(now.getTime() - index * 1000),
+      })),
+      {
+        shopId,
+        campaignId: campaign.id,
+        eventType: AnalyticsEventType.CLICK,
+        placementType: PlacementType.TOP_BAR,
+        sessionId: "e2e-rec-click-session",
+        country: "US",
+        locale: "en",
+        path: "/collections/sale",
+        occurredAt: now,
+      },
+    ],
+  });
 }
 
 async function createPostPurchaseCampaigns(shopId: string) {

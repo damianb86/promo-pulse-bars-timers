@@ -16,6 +16,7 @@ const navigationItems = [
   { label: "Create campaign", href: "/app/campaigns/new" },
   { label: "Analytics", href: "/app/analytics" },
   { label: "Reports", href: "/app/reports" },
+  { label: "Recommendations", href: "/app/recommendations" },
   { label: "Settings", href: "/app/settings" },
   { label: "Billing", href: "/app/billing" },
 ];

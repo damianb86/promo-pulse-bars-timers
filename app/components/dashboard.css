@@ -169,6 +169,42 @@
   background: #ffffff;
 }
 
+.counterpulse-recommendation-list {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-recommendation {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-recommendation__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.counterpulse-recommendation__title {
+  color: #202223;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.counterpulse-recommendation__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.counterpulse-recommendation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .counterpulse-report-bars {
   display: grid;
   gap: 10px;

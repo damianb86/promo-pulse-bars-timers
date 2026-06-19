@@ -1,7 +1,11 @@
 import {
+  AgencyShopRole,
   AnalyticsEventType,
+  AttributionModel,
   CampaignDesignIcon,
   CampaignGoal,
+  CampaignRecommendationStatus,
+  CampaignRecommendationType,
   CampaignStatus,
   CampaignType,
   DeliveryAfterCutoffBehavior,
@@ -39,6 +43,7 @@ export type E2ETestScenario =
   | "unique-discount"
   | "unique-discount-expired"
   | "recommendations"
+  | "agency"
   | "template-library"
   | "post-purchase";
 
@@ -115,6 +120,7 @@ export async function resetE2ETestDatabase(
   await prisma.$transaction([
     prisma.analyticsEvent.deleteMany({}),
     prisma.campaign.deleteMany({}),
+    prisma.agencyAccount.deleteMany({}),
     prisma.shopOnboardingChecklist.deleteMany({}),
     prisma.shopSettings.deleteMany({}),
     prisma.session.deleteMany({}),
@@ -252,6 +258,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "recommendations") {
     await createRecommendationsScenario(shopId);
+    return;
+  }
+
+  if (scenario === "agency") {
+    await createAgencyScenario(shopId);
     return;
   }
 
@@ -535,6 +546,152 @@ async function createRecommendationsScenario(shopId: string) {
   });
 }
 
+async function createAgencyScenario(shopId: string) {
+  const secondShop = await createE2EShopWithSettings(
+    "agency-second.myshopify.com",
+  );
+  const unassignedShop = await createE2EShopWithSettings(
+    "agency-hidden.myshopify.com",
+  );
+
+  const [sourceCampaign, secondCampaign, hiddenCampaign] = await Promise.all([
+    createCountdownCampaign(shopId, {
+      translations: [
+        {
+          ...englishTranslation("Agency source campaign"),
+          ctaText: "Shop source",
+        },
+      ],
+    }),
+    createCountdownCampaign(secondShop.id, {
+      translations: [
+        {
+          ...englishTranslation("Second shop campaign"),
+          ctaText: "Shop second",
+        },
+      ],
+    }),
+    createCountdownCampaign(unassignedShop.id, {
+      translations: [
+        {
+          ...englishTranslation("Hidden shop campaign"),
+          ctaText: "Shop hidden",
+        },
+      ],
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.campaign.update({
+      where: { id: sourceCampaign.id },
+      data: { name: "E2E Agency Source Campaign" },
+    }),
+    prisma.campaign.update({
+      where: { id: secondCampaign.id },
+      data: { name: "E2E Second Shop Campaign" },
+    }),
+    prisma.campaign.update({
+      where: { id: hiddenCampaign.id },
+      data: { name: "E2E Hidden Shop Campaign" },
+    }),
+  ]);
+
+  await prisma.agencyAccount.create({
+    data: {
+      name: "E2E Promo Agency",
+      shopAccesses: {
+        create: [
+          { shopId, role: AgencyShopRole.OWNER },
+          { shopId: secondShop.id, role: AgencyShopRole.ADMIN },
+        ],
+      },
+    },
+  });
+
+  await prisma.attributionConversion.createMany({
+    data: [
+      {
+        shopId,
+        campaignId: sourceCampaign.id,
+        orderId: "e2e-agency-order-1",
+        revenueAmount: new Prisma.Decimal(320),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_24H,
+      },
+      {
+        shopId: secondShop.id,
+        campaignId: secondCampaign.id,
+        orderId: "e2e-agency-order-2",
+        revenueAmount: new Prisma.Decimal(540),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_24H,
+      },
+      {
+        shopId: unassignedShop.id,
+        campaignId: hiddenCampaign.id,
+        orderId: "e2e-hidden-order-1",
+        revenueAmount: new Prisma.Decimal(999),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_24H,
+      },
+    ],
+  });
+
+  await prisma.campaignRecommendation.create({
+    data: {
+      shopId: secondShop.id,
+      campaignId: secondCampaign.id,
+      type: CampaignRecommendationType.MESSAGE,
+      title: "Improve second shop campaign copy",
+      description: "E2E recommendation for the assigned agency shop.",
+      impact: "Better CTA clarity for assigned multi-store traffic.",
+      confidence: 0.8,
+      status: CampaignRecommendationStatus.NEW,
+      payload: {
+        action: "CREATE_DRAFT_EXPERIMENT",
+        fingerprint: "E2E_AGENCY_SECOND_SHOP",
+        ruleKey: "LOW_CTR_COPY",
+      },
+    },
+  });
+}
+
+async function createE2EShopWithSettings(shopifyDomain: string) {
+  const shop = await prisma.shop.create({
+    data: {
+      shopifyDomain,
+      plan: ShopPlan.PRO,
+    },
+  });
+
+  await prisma.shopSettings.create({
+    data: {
+      shopId: shop.id,
+      analyticsEnabled: true,
+      consentMode: "BASIC",
+      defaultCountry: "US",
+      defaultCurrency: "USD",
+      defaultLocale: "en",
+      defaultTimezone: "America/New_York",
+      enableDebugMode: true,
+      enabledLocales: ["en", "es"],
+      respectDoNotTrack: false,
+    },
+  });
+
+  await prisma.shopOnboardingChecklist.create({
+    data: {
+      shopId: shop.id,
+      appEmbedEnabled: true,
+      cartBlockAdded: true,
+      firstCampaignCreated: true,
+      productBlockAdded: true,
+    },
+  });
+
+  return shop;
+}
+
 async function createPostPurchaseCampaigns(shopId: string) {
   const now = new Date();
   const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -550,7 +707,9 @@ async function createPostPurchaseCampaigns(shopId: string) {
       endsAt,
       timezone: "America/New_York",
       placements: {
-        create: [{ placementType: PlacementType.THANK_YOU_PAGE, enabled: true }],
+        create: [
+          { placementType: PlacementType.THANK_YOU_PAGE, enabled: true },
+        ],
       },
       design: {
         create: flashSaleDesign(),

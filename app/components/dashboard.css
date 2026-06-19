@@ -304,6 +304,14 @@
   justify-content: flex-end;
 }
 
+.counterpulse-agency-copy-form {
+  min-width: 260px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
 .counterpulse-form {
   display: grid;
   gap: 16px;

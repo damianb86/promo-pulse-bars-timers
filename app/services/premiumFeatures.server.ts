@@ -27,7 +27,7 @@ export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   ADVANCED_BADGES: true,
   MARKETS_ADVANCED: true,
   AI_CAMPAIGN_BUILDER: true,
-  AGENCY_DASHBOARD: false,
+  AGENCY_DASHBOARD: true,
 };
 
 export const minimumPlanByPremiumFeature = {

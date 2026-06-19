@@ -6,6 +6,13 @@ producto y carrito, goal bars de envio gratis, delivery cutoffs, mensajes de
 stock bajo, badges, targeting, sincronizacion basica con descuentos nativos de
 Shopify, multi-idioma y analytics operativo.
 
+Etapa 2 agrega features premium para campanas promocionales inteligentes:
+codigos unicos por visitante, A/B testing, auto-winner, Shopify Functions para
+descuentos avanzados, checkout/thank-you/order-status extensions, email
+countdown timers, badges avanzados, Shopify Markets avanzado, AI Campaign
+Builder, reporting avanzado, recomendaciones, biblioteca de plantillas y
+dashboard multi-store para agencias.
+
 El producto fue definido originalmente con los alias PromoPilot y CounterPulse.
 El nombre publico final de la app es `Promo Pulse: Bars & Timers`. El namespace
 tecnico `counterpulse` se mantiene en rutas, assets, eventos y nombres internos
@@ -68,13 +75,16 @@ El callback OAuth esperado por este template es `/auth/callback`.
 
 - `SHOPIFY_API_KEY`: API key de la app Shopify.
 - `SHOPIFY_API_SECRET`: API secret de la app Shopify.
-- `SCOPES`: scopes separados por coma. Para Etapa 1 usa
-  `read_products,read_discounts,write_discounts,write_pixels,read_customer_events`.
+- `SCOPES`: scopes separados por coma. Para Etapa 2 usa
+  `read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events`.
+  `read_shipping` no se usa en esta release; agregalo solo si una futura
+  iteracion lee shipping profiles/rates desde Admin API.
 - `SHOPIFY_APP_URL`: URL publica/tunel usada por Shopify CLI.
 - `SHOP_CUSTOM_DOMAIN`: dominio custom opcional para shops especificos.
 - `DATABASE_URL`: SQLite local por defecto, `file:./dev.sqlite`.
 - `PROMO_PULSE_DEV_PLAN`: override local opcional (`FREE`, `STARTER`,
-  `GROWTH`, `PRO`) para probar plan gating sin cambiar la base de datos.
+  `GROWTH`, `PRO`, `PREMIUM`, `AGENCY`) para probar plan gating sin cambiar la
+  base de datos.
 - `COUNTERPULSE_DEV_PLAN` y `PROMOPILOT_DEV_PLAN`: aliases legacy aceptados en
   desarrollo local.
 
@@ -92,7 +102,9 @@ npm run lint         # ESLint
 npm run typecheck    # React Router typegen + TypeScript
 npm run format       # Prettier write
 npm run format:check # Prettier check
-npm run test         # Vitest unitario e integracion liviana
+npm run test         # Vitest unitario + Playwright
+npm run test:unit    # Vitest unitario
+npm run test:e2e     # Playwright en E2E_TEST_MODE
 npm run prisma       # Prisma CLI
 npm run db:migrate   # aplica migraciones Prisma en la DB configurada
 npm run db:seed      # carga shop y campanas demo
@@ -109,18 +121,44 @@ npm run setup        # prisma generate + migrate deploy
 - `app/utils`: helpers puros y testeables.
 - `app/types`: tipos compartidos del dominio.
 - `prisma`: schema y migraciones.
-- `extensions`: Theme App Extension, App Embed y Web Pixel.
+- `extensions`: Theme App Extension, App Embed, Web Pixel, Checkout UI
+  Extension, customer account/order-status extension y Shopify Function.
 - `docs`: especificacion de producto y arquitectura.
 
 ## Estado actual
 
-El MVP de Etapa 1 incluye admin embebido, CRUD de campanas, editor de diseno y
-preview, traducciones, targeting, Theme App Extension, App Embed, Product/Cart
-blocks, Web Pixel, analytics basico, onboarding, plan gating y tests de logica
-critica. Para preparar una prueba en dev store, revisa:
+Etapa 1 incluye admin embebido, CRUD de campanas, editor de diseno y preview,
+traducciones, targeting, Theme App Extension, App Embed, Product/Cart blocks,
+Web Pixel, analytics basico, onboarding, plan gating y tests de logica critica.
 
+Etapa 2 suma features premium y de agencia con cobertura E2E en modo mock:
+unique codes, experiments, auto-winner, email timers, checkout/post-purchase
+extensions, advanced badges, market overrides, AI builder, advanced reports,
+behavior targeting, recommendations, template library y agency dashboard.
+
+Para preparar una prueba en dev store o release candidate, revisa:
+
+- `docs/stage-2-release-notes.md`
+- `docs/stage-2-qa-checklist.md`
+- `docs/stage-2-performance-privacy-compliance-audit.md`
 - `docs/mvp-qa-checklist.md`
 - `docs/release-notes.md`
 - `docs/theme-extension.md`
 - `docs/analytics.md`
 - `docs/testing.md`
+
+## Stage 2 Release Validation
+
+Antes de considerar una release candidate, corre:
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test:e2e
+npm run build
+```
+
+Para validacion de Shopify real, ademas revisa scopes, OAuth reinstall,
+webhooks, App Proxy, Web Pixel, checkout editor, customer account extension y
+Shopify Function deployment en una development store.

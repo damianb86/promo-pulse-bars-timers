@@ -6,13 +6,14 @@ Promo Pulse: Bars & Timers
 
 ## Tagline
 
-Urgency bars, cart timers, delivery promises, and free shipping goals for your
-Shopify store.
+Smart promo bars, timers, unique codes, and campaign testing for your Shopify
+store.
 
 ## Short Description
 
-Create ethical promotional bars and timers for product pages, carts, and global
-storefront placements with targeting, translations, and basic analytics.
+Create ethical promotional bars and timers for product pages, carts, checkout,
+and global storefront placements with targeting, translations, unique codes,
+A/B tests, and premium reporting.
 
 ## Long Description
 
@@ -28,9 +29,16 @@ Preview desktop and mobile designs before publishing.
 
 Promo Pulse is designed for transparent urgency. It does not fake stock counts
 when inventory is unavailable, and timers require explicit campaign dates or
-merchant-configured evergreen settings. Basic analytics track impressions,
-clicks, coupon copies, add-to-cart, checkout started, and approximate attributed
-orders when Shopify data allows.
+merchant-configured evergreen settings.
+
+Premium tools help merchants optimize campaigns with unique discount codes per
+visitor, A/B testing, conservative auto-winner detection, email countdown timer
+images, market-specific overrides, advanced product badge rules, AI-assisted
+draft creation, recommendations, and multi-store agency workflows.
+
+Analytics and reports track impressions, clicks, coupon copies, add-to-cart,
+checkout started, unique-code usage, email timer views, and approximate
+attributed orders when Shopify data allows.
 
 ## Features
 
@@ -44,11 +52,26 @@ orders when Shopify data allows.
 - Campaign targeting by placement, locale, country, product, collection, tags,
   device, URL, UTM, and customer tags where available.
 - Native Shopify discount code linking and basic discount creation.
+- Unique discount code pools with visitor-scoped assignment and expiration.
+- A/B testing for messages, designs, discounts, and placements.
+- Conservative experiment auto-winner detection with merchant confirmation.
+- Advanced discount Function base for premium cart and shipping discount rules.
+- Checkout, thank-you, and order-status promotional message blocks.
+- Dynamic email countdown timer image URLs for email campaigns.
+- Advanced badge rules by tag, collection, vendor, inventory, metafield, market,
+  locale, schedule, and priority.
+- Shopify Markets overrides for country, locale, currency, thresholds, delivery
+  settings, and copy.
+- AI Campaign Builder for reviewed campaign drafts and suggested variants.
+- Advanced reporting with market, placement, country, locale, campaign type,
+  experiment variant, unique-code, and email timer breakdowns.
+- Behavior targeting, transparent recommendations, campaign template library,
+  and agency dashboard.
 - Storefront translations for `en`, `es`, `pt-BR`, `fr`, and `de`.
 - Desktop/mobile live preview.
-- Basic analytics dashboard.
+- Basic analytics and premium reports.
 - Guided onboarding checklist.
-- Plan gating for Free, Starter, Growth, and Pro tiers.
+- Plan gating for Free, Starter, Growth, Pro, Premium, and Agency tiers.
 
 ## Suggested Pricing
 
@@ -59,13 +82,21 @@ orders when Shopify data allows.
 - Growth: $19/month, high campaign limit, cart drawer timer, delivery cutoff,
   discount sync, geo/market targeting, multi-language, and analytics.
 - Pro: $39/month, unlimited reasonable views, advanced targeting, custom CSS,
-  product badges, priority support label, and stronger attribution.
+  product badges, behavior targeting, recommendations, stronger attribution,
+  reports, and priority support label.
+- Premium: $79/month, unique codes, A/B testing, auto-winner, advanced
+  discounts, email timers, advanced reports, market overrides, and limited AI
+  Campaign Builder.
+- Agency: $149+/month, multi-store dashboard, shared/copy workflows, agency
+  campaign management, and higher limits.
 
 ## Keywords
 
 countdown timer, announcement bar, free shipping bar, cart timer, product timer,
 delivery cutoff, low stock, product badge, urgency, promotion, Shopify discount,
-campaign analytics, multi language, theme app extension
+unique discount codes, A/B testing, email countdown timer, checkout extension,
+Shopify Markets, campaign analytics, multi language, agency dashboard, theme app
+extension
 
 ## Required Screenshots
 
@@ -76,15 +107,29 @@ campaign analytics, multi language, theme app extension
 - Storefront top countdown bar.
 - Product page timer block.
 - Cart timer or free shipping goal in cart drawer.
-- Analytics dashboard.
-- Billing plan cards.
+- Unique code campaign with generated code pool.
+- A/B test setup and experiment results table.
+- Email timer URL/snippet panel.
+- Checkout extension block in checkout editor or checkout preview.
+- Market override editor showing US and ES thresholds/copy.
+- Advanced reports with filters and CSV export.
+- AI Campaign Builder preview before applying as draft.
+- Agency dashboard with multiple connected shops.
+- Billing plan cards with Premium and Agency.
 
 ## Review Notes
 
 - The app uses Shopify Theme App Extensions and does not require merchants to
   manually edit Liquid.
-- The app requests only Stage 1 scopes:
-  `read_products,read_discounts,write_discounts,write_pixels,read_customer_events`.
+- Current configured OAuth scopes:
+  `read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events`.
+- `read_shipping` is not currently requested because Stage 2 does not call
+  Shopify Admin shipping APIs. Add it only if a future release reads shipping
+  profile/rate data.
+- Checkout, thank-you, order-status, and discount Function features require
+  Shopify extension deployment and merchant setup in the relevant editor.
 - Billing integration must be connected before public listing.
 - Web Pixel creation should be wired during install/onboarding before public
   listing.
+- Stage 2 attribution is approximate and anonymous; it is not customer-level or
+  cross-device attribution.

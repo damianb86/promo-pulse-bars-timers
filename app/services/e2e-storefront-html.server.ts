@@ -9,8 +9,12 @@ export function buildE2EStorefrontHtml(
   const url = new URL(request.url);
   const locale = url.searchParams.get("locale") || "en";
   const country = url.searchParams.get("country") || "US";
+  const market = url.searchParams.get("market") || "";
+  const currency = url.searchParams.get("currency") || "USD";
   const badCart = url.searchParams.get("badCart") === "1";
   const consentAllowed = url.searchParams.get("consent") !== "denied";
+  const visitorId = url.searchParams.get("visitorId") || "";
+  const sessionId = url.searchParams.get("sessionId") || "";
   const subtotal = Number(url.searchParams.get("subtotal") || "40");
   const subtotalCents = Number.isFinite(subtotal)
     ? Math.round(subtotal * 100)
@@ -42,16 +46,30 @@ export function buildE2EStorefrontHtml(
       window.Shopify = {
         shop: "${E2E_DEMO_SHOP_DOMAIN}",
         country: "${escapeJs(country)}",
+        market: "${escapeJs(market)}",
+        currency: { active: "${escapeJs(currency)}" },
         customerPrivacy: { analyticsProcessingAllowed: function () { return ${consentAllowed ? "true" : "false"}; } }
       };
       window.CounterPulseAnalyticsEndpoint = "/api/analytics/event";
       window.CounterPulseCartSubtotal = ${subtotalCents / 100};
-      window.CounterPulseCartCurrency = "USD";
+      window.CounterPulseCartCurrency = "${escapeJs(currency)}";
+      try {
+        ${
+          visitorId
+            ? `window.localStorage.setItem("counterpulse_visitor_id", "${escapeJs(visitorId)}");`
+            : ""
+        }
+        ${
+          sessionId
+            ? `window.sessionStorage.setItem("counterpulse_session_id", "${escapeJs(sessionId)}");`
+            : ""
+        }
+      } catch {}
       window.__counterpulseFetchCounts = { cart: 0 };
       window.__counterpulseCart = {
         token: "e2e-cart-token",
         total_price: ${subtotalCents},
-        currency: "USD",
+        currency: "${escapeJs(currency)}",
         item_count: ${subtotalCents > 0 ? 1 : 0}
       };
       (function () {
@@ -80,8 +98,8 @@ export function buildE2EStorefrontHtml(
     </script>
   </head>
   <body>
-    ${embedRoot({ locale, country, subtotalCents })}
-    ${bodyForKind(kind, { locale, country, subtotalCents })}
+    ${embedRoot({ locale, country, currency, market, subtotalCents })}
+    ${bodyForKind(kind, { locale, country, currency, subtotalCents })}
     ${scriptsForKind(kind)}
   </body>
 </html>`;
@@ -90,10 +108,14 @@ export function buildE2EStorefrontHtml(
 function embedRoot({
   locale,
   country,
+  currency,
+  market,
   subtotalCents,
 }: {
   locale: string;
   country: string;
+  currency: string;
+  market: string;
   subtotalCents: number;
 }) {
   return `<div
@@ -103,8 +125,9 @@ function embedRoot({
     data-default-locale="en"
     data-locale="${escapeHtml(locale)}"
     data-country="${escapeHtml(country)}"
+    data-market="${escapeHtml(market)}"
     data-cart-total-cents="${subtotalCents}"
-    data-cart-currency="USD"
+    data-cart-currency="${escapeHtml(currency)}"
     data-cart-token="e2e-cart-token"
     data-cart-timer-src="/__test/theme-asset/cart-timer.js"
     data-analytics-path="/api/analytics/event"
@@ -120,7 +143,12 @@ function embedRoot({
 
 function bodyForKind(
   kind: StorefrontPageKind,
-  context: { locale: string; country: string; subtotalCents: number },
+  context: {
+    locale: string;
+    country: string;
+    currency: string;
+    subtotalCents: number;
+  },
 ) {
   if (kind === "product") {
     return `<main>
@@ -154,7 +182,7 @@ function bodyForKind(
         class="pp-cart-timer"
         data-shop="${E2E_DEMO_SHOP_DOMAIN}"
         data-cart-total-cents="${context.subtotalCents}"
-        data-cart-currency="USD"
+        data-cart-currency="${escapeHtml(context.currency)}"
         data-cart-token="e2e-cart-token"
         data-locale="${escapeHtml(context.locale)}"
         data-country="${escapeHtml(context.country)}"

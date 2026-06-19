@@ -29,6 +29,11 @@ test("agency dashboard shows assigned shops and copies a campaign as draft", asy
   await expect(page.getByText("$320.00")).toBeVisible();
   await expect(page.getByText("$540.00")).toBeVisible();
 
+  await page.goto("/app/agency?shopId=e2e-agency-hidden-shop");
+  await expect(page.getByText("Selected shop is not connected")).toBeVisible();
+  await expect(page.getByText("E2E Hidden Shop Campaign")).toHaveCount(0);
+  await expect(page.getByText("$999.00")).toHaveCount(0);
+
   await page
     .getByLabel("Current shop")
     .selectOption({ label: "agency-second.myshopify.com" });

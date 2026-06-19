@@ -10,39 +10,30 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
-  await resetDb("analytics");
-  await page.goto("/__test/storefront");
-  await expect(page.locator(".pp-bar").first()).toContainText("Sale ends soon");
-
-  await page
-    .locator(".pp-cta")
-    .first()
-    .evaluate((element) => {
-      element.addEventListener("click", (event) => event.preventDefault(), {
-        once: true,
-      });
-      (element as HTMLElement).click();
-    });
-
-  await expect
-    .poll(async () => {
-      const response = await page.request.get("/__test/analytics-summary");
-      return response.json();
-    })
-    .toMatchObject({
-      impressions: 1,
-      clicks: 1,
-    });
-
+  await resetDb("reports");
   await loginAsDemoShop("/app/reports");
   await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
   await expect(page.getByText("Revenue overview")).toBeVisible();
   await expect(page.getByText("Performance by placement")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Top Bar 1 1/ })).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /US 30 6 20\.0%/ }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /ES 20 5 25\.0%/ }).first(),
+  ).toBeVisible();
 
-  await page.getByLabel("Country").fill("US");
+  await page
+    .getByLabel("Campaign")
+    .selectOption({ label: "E2E Reports ES Campaign" });
+  await page.getByLabel("Country").fill("ES");
+  await page.getByLabel("Market").selectOption("ES");
   await page.getByRole("button", { name: "Apply" }).click();
-  await expect(page).toHaveURL(/country=US/);
+  await expect(page).toHaveURL(/country=ES/);
+  await expect(page).toHaveURL(/market=ES/);
+  await expect(
+    page.getByRole("row", { name: /ES 20 5 25\.0%/ }).first(),
+  ).toBeVisible();
+  await expect(page.getByRole("row", { name: /US 30 6/ })).toHaveCount(0);
 
   const csvHref = await page
     .getByRole("link", { name: "Export CSV" })
@@ -54,6 +45,9 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   expect(csvResponse.headers()["content-type"]).toContain("text/csv");
   const csv = await csvResponse.text();
   expect(csv).toContain("Summary,All campaigns");
+  expect(csv).toContain("Country,ES");
+  expect(csv).toContain("Market,ES");
+  expect(csv).not.toContain("Market,US");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -1,0 +1,114 @@
+import {
+  EmailTimerExpiredBehavior,
+  UniqueDiscountCodeStatus,
+} from "@prisma/client";
+import type { ActionFunctionArgs } from "react-router";
+
+import prisma from "../db.server";
+import { requireE2ETestMode } from "../services/e2e-test.server";
+import { normalizeShopDomain } from "../utils/storefront-campaigns";
+
+type Stage2TestBody = Record<string, unknown>;
+
+export const loader = async () => {
+  requireE2ETestMode();
+
+  return json({ error: "Use POST for Stage 2 test mutations." }, 405);
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  requireE2ETestMode();
+
+  if (request.method !== "POST") {
+    return json({ error: "Use POST for Stage 2 test mutations." }, 405);
+  }
+
+  const body = await readJsonBody(request);
+  const actionName = readText(body.action);
+
+  if (actionName === "expireUniqueCode") {
+    return expireUniqueCode(body);
+  }
+
+  if (actionName === "expireEmailTimer") {
+    return expireEmailTimer(body);
+  }
+
+  return json({ error: "Unsupported Stage 2 test mutation." }, 400);
+};
+
+async function expireUniqueCode(body: Stage2TestBody) {
+  const shop = await prisma.shop.findUnique({
+    where: { shopifyDomain: normalizeShopDomain(readText(body.shop)) },
+    select: { id: true },
+  });
+
+  if (!shop) return json({ error: "Shop not found." }, 404);
+
+  const now = new Date();
+  const result = await prisma.uniqueDiscountCode.updateMany({
+    where: {
+      shopId: shop.id,
+      campaignId: readText(body.campaignId),
+      visitorId: readText(body.visitorId),
+      status: UniqueDiscountCodeStatus.ASSIGNED,
+    },
+    data: {
+      status: UniqueDiscountCodeStatus.EXPIRED,
+      expiresAt: new Date(now.getTime() - 1000),
+    },
+  });
+
+  return json({ ok: true, expired: result.count }, 200);
+}
+
+async function expireEmailTimer(body: Stage2TestBody) {
+  const expiredBehavior = readEmailTimerExpiredBehavior(body.expiredBehavior);
+  const result = await prisma.emailTimer.updateMany({
+    where: { publicToken: readText(body.publicToken) },
+    data: {
+      endsAt: new Date(Date.now() - 1000),
+      ...(expiredBehavior ? { expiredBehavior } : {}),
+    },
+  });
+
+  return json({ ok: true, expired: result.count }, result.count ? 200 : 404);
+}
+
+async function readJsonBody(request: Request): Promise<Stage2TestBody> {
+  try {
+    const body = await request.json();
+
+    return body && typeof body === "object" && !Array.isArray(body)
+      ? (body as Stage2TestBody)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function readText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readEmailTimerExpiredBehavior(value: unknown) {
+  if (
+    value === EmailTimerExpiredBehavior.SHOW_EXPIRED ||
+    value === EmailTimerExpiredBehavior.SHOW_ZERO ||
+    value === EmailTimerExpiredBehavior.HIDE
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "application/json; charset=utf-8",
+    },
+  });
+}

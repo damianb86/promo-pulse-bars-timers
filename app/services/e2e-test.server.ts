@@ -42,8 +42,10 @@ export type E2ETestScenario =
   | "analytics"
   | "premium"
   | "ab-test"
+  | "auto-winner"
   | "unique-discount"
   | "unique-discount-expired"
+  | "reports"
   | "recommendations"
   | "agency"
   | "template-library"
@@ -162,7 +164,12 @@ function parseCookieHeader(header: string) {
 }
 
 async function seedScenario(shopId: string, scenario: E2ETestScenario) {
-  if (scenario === "ab-test" || scenario.startsWith("unique-discount")) {
+  if (
+    scenario === "ab-test" ||
+    scenario === "auto-winner" ||
+    scenario === "reports" ||
+    scenario.startsWith("unique-discount")
+  ) {
     await prisma.shop.update({
       where: { id: shopId },
       data: { plan: ShopPlan.PREMIUM },
@@ -279,6 +286,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
+  if (scenario === "auto-winner") {
+    await createAutoWinnerScenario(shopId);
+    return;
+  }
+
   if (scenario === "unique-discount") {
     await createUniqueDiscountCampaign(shopId);
     return;
@@ -286,6 +298,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "unique-discount-expired") {
     await createUniqueDiscountCampaign(shopId, { codes: [] });
+    return;
+  }
+
+  if (scenario === "reports") {
+    await createReportsScenario(shopId);
     return;
   }
 
@@ -547,6 +564,395 @@ async function createUniqueDiscountCampaign(
   return campaign;
 }
 
+async function createAutoWinnerScenario(shopId: string) {
+  const now = new Date();
+  const campaign = await createCountdownCampaign(shopId, {
+    discountCode: "CONTROL10",
+    translations: [
+      {
+        ...englishTranslation("Auto winner control"),
+        subheadline: "Control copy before the winner is applied.",
+      },
+    ],
+  });
+
+  await prisma.campaign.update({
+    where: { id: campaign.id },
+    data: { name: "E2E Auto Winner Campaign" },
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "e2e-auto-winner-experiment",
+      shopId,
+      campaignId: campaign.id,
+      name: "E2E Auto Winner Test",
+      status: ExperimentStatus.RUNNING,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
+      startsAt: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+      autoWinnerEnabled: true,
+      autoWinnerMinSampleSize: 50,
+      autoWinnerMinRuntimeHours: 1,
+      autoWinnerConfidenceThreshold: 0.7,
+      variants: {
+        create: [
+          {
+            id: "e2e-auto-winner-control",
+            campaign: { connect: { id: campaign.id } },
+            name: "Control",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Auto winner control",
+            },
+          },
+          {
+            id: "e2e-auto-winner-treatment",
+            campaign: { connect: { id: campaign.id } },
+            name: "Treatment",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Winning headline",
+              subheadline: "Winning treatment copy.",
+              ctaText: "Shop winner",
+            },
+            discountOverride: {
+              discountCode: "WINNER20",
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.attributionTouch.createMany({
+    data: [
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: campaign.id,
+        experimentId: "e2e-auto-winner-experiment",
+        variantId: "e2e-auto-winner-control",
+        impressions: 100,
+        clicks: 10,
+        visitorPrefix: "control",
+        now,
+      }),
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: campaign.id,
+        experimentId: "e2e-auto-winner-experiment",
+        variantId: "e2e-auto-winner-treatment",
+        impressions: 100,
+        clicks: 40,
+        visitorPrefix: "treatment",
+        now,
+      }),
+    ],
+  });
+
+  await prisma.attributionConversion.createMany({
+    data: [
+      {
+        shopId,
+        campaignId: campaign.id,
+        experimentId: "e2e-auto-winner-experiment",
+        variantId: "e2e-auto-winner-treatment",
+        visitorId: "treatment-visitor-order",
+        sessionId: "treatment-session-order",
+        orderId: "e2e-auto-winner-order",
+        revenueAmount: new Prisma.Decimal(120),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+    ],
+  });
+
+  return campaign;
+}
+
+function buildExperimentTouches({
+  shopId,
+  campaignId,
+  experimentId,
+  variantId,
+  impressions,
+  clicks,
+  visitorPrefix,
+  now,
+}: {
+  shopId: string;
+  campaignId: string;
+  experimentId: string;
+  variantId: string;
+  impressions: number;
+  clicks: number;
+  visitorPrefix: string;
+  now: Date;
+}) {
+  const impressionTouches = Array.from({ length: impressions }, (_, index) => ({
+    shopId,
+    campaignId,
+    experimentId,
+    variantId,
+    visitorId: `${visitorPrefix}-visitor-${index}`,
+    sessionId: `${visitorPrefix}-session-${index}`,
+    eventType: AnalyticsEventType.IMPRESSION,
+    placementType: PlacementType.TOP_BAR,
+    path: "/collections/sale",
+    country: "US",
+    locale: "en",
+    occurredAt: new Date(now.getTime() - index * 1000),
+  }));
+  const clickTouches = Array.from({ length: clicks }, (_, index) => ({
+    shopId,
+    campaignId,
+    experimentId,
+    variantId,
+    visitorId: `${visitorPrefix}-visitor-${index}`,
+    sessionId: `${visitorPrefix}-session-${index}`,
+    eventType: AnalyticsEventType.CLICK,
+    placementType: PlacementType.TOP_BAR,
+    path: "/collections/sale",
+    country: "US",
+    locale: "en",
+    occurredAt: new Date(now.getTime() - (impressions + index) * 1000),
+  }));
+
+  return [...impressionTouches, ...clickTouches];
+}
+
+async function createReportsScenario(shopId: string) {
+  const now = new Date();
+  const usCampaign = await createCountdownCampaign(shopId, {
+    discountCode: "US20",
+    translations: [
+      {
+        ...englishTranslation("Reports US campaign"),
+        subheadline: "US report seed.",
+      },
+    ],
+  });
+  const esCampaign = await createCountdownCampaign(shopId, {
+    discountCode: "ES20",
+    translations: [
+      {
+        locale: "en",
+        headline: "Reports ES campaign",
+        subheadline: "ES report seed.",
+        ctaText: "Shop ES",
+        ctaUrl: "/collections/es",
+        expiredText: "This offer ended.",
+      },
+    ],
+  });
+
+  await Promise.all([
+    prisma.campaign.update({
+      where: { id: usCampaign.id },
+      data: { name: "E2E Reports US Campaign" },
+    }),
+    prisma.campaign.update({
+      where: { id: esCampaign.id },
+      data: { name: "E2E Reports ES Campaign" },
+    }),
+    prisma.marketCampaignRule.createMany({
+      data: [
+        {
+          shopId,
+          campaignId: usCampaign.id,
+          marketId: "US",
+          countryCode: "US",
+          locale: "en",
+          currencyCode: "USD",
+        },
+        {
+          shopId,
+          campaignId: esCampaign.id,
+          marketId: "ES",
+          countryCode: "ES",
+          locale: "es",
+          currencyCode: "EUR",
+        },
+      ],
+    }),
+  ]);
+
+  await prisma.analyticsEvent.createMany({
+    data: [
+      ...reportEvents({
+        shopId,
+        campaignId: usCampaign.id,
+        country: "US",
+        locale: "en",
+        currencyCode: "USD",
+        impressions: 30,
+        clicks: 6,
+        now,
+      }),
+      ...reportEvents({
+        shopId,
+        campaignId: esCampaign.id,
+        country: "ES",
+        locale: "es",
+        currencyCode: "EUR",
+        impressions: 20,
+        clicks: 5,
+        now,
+      }),
+    ],
+  });
+
+  await prisma.attributionTouch.createMany({
+    data: [
+      ...reportTouches({
+        shopId,
+        campaignId: usCampaign.id,
+        country: "US",
+        locale: "en",
+        count: 8,
+        now,
+      }),
+      ...reportTouches({
+        shopId,
+        campaignId: esCampaign.id,
+        country: "ES",
+        locale: "es",
+        count: 8,
+        now,
+      }),
+    ],
+  });
+
+  await prisma.attributionConversion.createMany({
+    data: [
+      {
+        shopId,
+        campaignId: usCampaign.id,
+        visitorId: "reports-us-visitor-1",
+        sessionId: "reports-us-session-1",
+        orderId: "reports-us-order-1",
+        revenueAmount: new Prisma.Decimal(150),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+      {
+        shopId,
+        campaignId: esCampaign.id,
+        visitorId: "reports-es-visitor-1",
+        sessionId: "reports-es-session-1",
+        orderId: "reports-es-order-1",
+        revenueAmount: new Prisma.Decimal(90),
+        currencyCode: "EUR",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+    ],
+  });
+
+  await prisma.uniqueDiscountCode.createMany({
+    data: [
+      {
+        shopId,
+        campaignId: usCampaign.id,
+        code: "REPORT-US-1",
+        visitorId: "reports-us-visitor-1",
+        status: UniqueDiscountCodeStatus.USED,
+        assignedAt: new Date(now.getTime() - 60_000),
+        usedAt: now,
+        orderId: "reports-us-order-1",
+      },
+      {
+        shopId,
+        campaignId: esCampaign.id,
+        code: "REPORT-ES-1",
+        visitorId: "reports-es-visitor-1",
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+        assignedAt: now,
+      },
+    ],
+  });
+}
+
+function reportEvents({
+  shopId,
+  campaignId,
+  country,
+  locale,
+  currencyCode,
+  impressions,
+  clicks,
+  now,
+}: {
+  shopId: string;
+  campaignId: string;
+  country: string;
+  locale: string;
+  currencyCode: string;
+  impressions: number;
+  clicks: number;
+  now: Date;
+}) {
+  const common = {
+    shopId,
+    campaignId,
+    placementType: PlacementType.TOP_BAR,
+    country,
+    locale,
+    currencyCode,
+    path: "/collections/sale",
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+  };
+
+  return [
+    ...Array.from({ length: impressions }, (_, index) => ({
+      ...common,
+      eventType: AnalyticsEventType.IMPRESSION,
+      sessionId: `${country.toLowerCase()}-impression-${index}`,
+      occurredAt: new Date(now.getTime() - index * 1000),
+    })),
+    ...Array.from({ length: clicks }, (_, index) => ({
+      ...common,
+      eventType: AnalyticsEventType.CLICK,
+      sessionId: `${country.toLowerCase()}-click-${index}`,
+      occurredAt: new Date(now.getTime() - (impressions + index) * 1000),
+    })),
+  ];
+}
+
+function reportTouches({
+  shopId,
+  campaignId,
+  country,
+  locale,
+  count,
+  now,
+}: {
+  shopId: string;
+  campaignId: string;
+  country: string;
+  locale: string;
+  count: number;
+  now: Date;
+}) {
+  return Array.from({ length: count }, (_, index) => ({
+    shopId,
+    campaignId,
+    visitorId: `reports-${country.toLowerCase()}-visitor-${index}`,
+    sessionId: `reports-${country.toLowerCase()}-session-${index}`,
+    eventType: AnalyticsEventType.IMPRESSION,
+    placementType: PlacementType.TOP_BAR,
+    path: "/collections/sale",
+    country,
+    locale,
+    occurredAt: new Date(now.getTime() - index * 1000),
+  }));
+}
+
 async function createRecommendationsScenario(shopId: string) {
   const campaign = await createCountdownCampaign(shopId, {});
   const now = new Date();
@@ -588,10 +994,12 @@ async function createAgencyScenario(shopId: string) {
   const secondShop = await createE2EShopWithSettings(
     "agency-second.myshopify.com",
     ShopPlan.AGENCY,
+    "e2e-agency-second-shop",
   );
   const unassignedShop = await createE2EShopWithSettings(
     "agency-hidden.myshopify.com",
     ShopPlan.AGENCY,
+    "e2e-agency-hidden-shop",
   );
 
   const [sourceCampaign, secondCampaign, hiddenCampaign] = await Promise.all([
@@ -699,9 +1107,11 @@ async function createAgencyScenario(shopId: string) {
 async function createE2EShopWithSettings(
   shopifyDomain: string,
   plan: ShopPlan = ShopPlan.PRO,
+  id?: string,
 ) {
   const shop = await prisma.shop.create({
     data: {
+      ...(id ? { id } : {}),
       shopifyDomain,
       plan,
     },

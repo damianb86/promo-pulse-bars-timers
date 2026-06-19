@@ -18,23 +18,23 @@ test("advanced market rules override storefront free shipping by market", async 
   const marketForm = page.locator(
     'form:has(input[name="_action"][value="saveMarketRule"])',
   );
-  await marketForm.locator('select[name="marketRuleMarketId"]').selectOption("ES");
+  await marketForm
+    .locator('select[name="marketRuleMarketId"]')
+    .selectOption("ES");
   await marketForm.getByLabel("Country").fill("ES");
   await marketForm.getByLabel("Locale").fill("es");
   await marketForm.getByLabel("Currency").fill("EUR");
   await marketForm.getByLabel("Free shipping threshold").fill("95");
-  await marketForm
-    .getByLabel("Text overrides JSON")
-    .fill(
-      JSON.stringify(
-        {
-          headline: "Envio gratis Espana",
-          freeShippingProgressText: "Te faltan {{amount}}",
-        },
-        null,
-        2,
-      ),
-    );
+  await marketForm.getByLabel("Text overrides JSON").fill(
+    JSON.stringify(
+      {
+        headline: "Envio gratis Espana",
+        freeShippingProgressText: "Te faltan {{amount}}",
+      },
+      null,
+      2,
+    ),
+  );
 
   await Promise.all([
     page.waitForResponse(
@@ -100,6 +100,23 @@ test("advanced market rules override storefront free shipping by market", async 
   expect(fallbackResponse.ok()).toBe(true);
   expect(fallbackPayload.campaigns[0].freeShipping.thresholdAmount).toBe(
     "100.00",
+  );
+
+  await page.goto(
+    "/__test/storefront-cart?subtotal=20&market=ES&country=ES&locale=es&currency=EUR",
+  );
+  await expect(page.locator(".pp-cart-card").first()).toContainText(
+    "Envio gratis Espana",
+  );
+  await expect(page.locator(".pp-cart-card").first()).toContainText(
+    "Te faltan",
+  );
+
+  await page.goto(
+    "/__test/storefront-cart?subtotal=20&market=US&country=US&locale=en&currency=USD",
+  );
+  await expect(page.locator(".pp-cart-card").first()).toContainText(
+    "Free shipping",
   );
 
   expectNoConsoleErrors(page);

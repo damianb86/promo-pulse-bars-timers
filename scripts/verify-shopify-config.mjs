@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 import fs from "node:fs";
 import path from "node:path";
 
@@ -11,6 +13,12 @@ const redirectUrls = readTomlStringArray(config, "redirect_urls");
 const appProxyUrl = readTomlSectionString(config, "app_proxy", "url");
 const appProxySubpath = readTomlSectionString(config, "app_proxy", "subpath");
 const appProxyPrefix = readTomlSectionString(config, "app_proxy", "prefix");
+const expectedRedirectUrl = applicationUrl
+  ? `${applicationUrl.replace(/\/+$/, "")}/auth/callback`
+  : "";
+const expectedAppProxyUrl = applicationUrl
+  ? `${applicationUrl.replace(/\/+$/, "")}/apps/counterpulse-campaigns`
+  : "";
 const errors = [];
 const warnings = [];
 
@@ -51,6 +59,15 @@ if (appProxyUrl?.includes("shopify.dev/apps/default-app-home")) {
 }
 
 if (
+  expectedAppProxyUrl &&
+  !applicationUrl?.includes("shopify.dev/apps/default-app-home") &&
+  appProxyUrl !== expectedAppProxyUrl
+) {
+  const message = `app_proxy.url should be ${expectedAppProxyUrl}, but it is ${appProxyUrl || "(missing)"}. Run \`npm run config:sync-url\` before deploy.`;
+  (strict ? errors : warnings).push(message);
+}
+
+if (
   appProxyPrefix &&
   !["a", "apps", "community", "tools"].includes(appProxyPrefix)
 ) {
@@ -79,6 +96,15 @@ for (const redirectUrl of redirectUrls) {
     errors.push(
       `redirect URL should end with /auth/callback for this React Router template: ${redirectUrl}`,
     );
+  }
+
+  if (
+    expectedRedirectUrl &&
+    !applicationUrl?.includes("shopify.dev/apps/default-app-home") &&
+    redirectUrl !== expectedRedirectUrl
+  ) {
+    const message = `redirect URL should be ${expectedRedirectUrl}, but it is ${redirectUrl}. Run \`npm run config:sync-url\` before deploy.`;
+    (strict ? errors : warnings).push(message);
   }
 }
 

@@ -93,7 +93,7 @@ describe("Stage 2 unique discount code pools", () => {
         discountType: DiscountCodeValueType.PERCENTAGE,
         value: 15,
         startsAt: now,
-        expiresAt: new Date("2026-06-19T15:00:00.000Z"),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       }),
     ).resolves.toMatchObject({
       prefix: "VIPSALE",

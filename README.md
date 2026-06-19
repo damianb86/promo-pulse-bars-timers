@@ -96,6 +96,7 @@ configura `DATABASE_URL` con la URL administrada y genera una migracion dedicada
 
 ```bash
 npm run dev          # Shopify CLI + React Router dev server
+npm run config:sync-url # sincroniza URLs de app/auth/app proxy desde SHOPIFY_APP_URL
 npm run config:check # verifica web config, scopes y callback OAuth
 npm run build        # build de Theme assets + React Router
 npm run start        # sirve el build
@@ -163,3 +164,15 @@ npm run build
 Para validacion de Shopify real, ademas revisa scopes, OAuth reinstall,
 webhooks, App Proxy, Web Pixel, checkout editor, customer account extension y
 Shopify Function deployment en una development store.
+
+Antes de `npm run deploy`, `SHOPIFY_APP_URL` debe apuntar al backend web
+desplegado de Promo Pulse. El deploy ahora ejecuta `config:sync-url`, que escribe
+en `shopify.app.toml`:
+
+- `application_url = "$SHOPIFY_APP_URL"`
+- `redirect_urls = ["$SHOPIFY_APP_URL/auth/callback"]`
+- `[app_proxy].url = "$SHOPIFY_APP_URL/apps/counterpulse-campaigns"`
+
+Si `/apps/counterpulse-campaigns` en storefront devuelve 404, vuelve a correr
+`SHOPIFY_APP_URL=https://tu-backend npm run deploy` para publicar el App Proxy
+en la app de Shopify correcta.

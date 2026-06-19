@@ -17,8 +17,9 @@
       "en",
     country:
       root.dataset.country || (window.Shopify && window.Shopify.country) || "",
+    market: detectMarket(root),
     currency:
-      root.dataset.cartCurrency || window.CounterPulseCartCurrency || "USD",
+      detectCurrency(root) || "USD",
     cartSubtotal: readCartSubtotal(root),
     device: window.matchMedia("(max-width: 767px)").matches
       ? "mobile"
@@ -112,6 +113,7 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
     if (config.currency) params.set("currency", config.currency);
     if (config.cartSubtotal !== null) {
       params.set("cartSubtotal", String(config.cartSubtotal));
@@ -459,6 +461,28 @@
       return window.CounterPulseCartSubtotal;
     }
     return null;
+  }
+
+  function detectMarket(element) {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      element.dataset.market ||
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency(element) {
+    return (
+      element.dataset.cartCurrency ||
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
   }
 
   function setDesign(element, design) {

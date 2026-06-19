@@ -183,9 +183,10 @@
       path: window.location.pathname,
       locale: root.dataset.locale || detectLocale(),
       country: root.dataset.country || "",
+      market: root.dataset.market || detectMarket(),
       placement: placement,
       cartSubtotal: subtotal,
-      currency: root.dataset.cartCurrency || "",
+      currency: root.dataset.cartCurrency || detectCurrency(),
       cartToken: root.dataset.cartToken || "",
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
@@ -206,9 +207,10 @@
       locale:
         root.dataset.locale || root.dataset.defaultLocale || detectLocale(),
       country: root.dataset.country || "",
+      market: root.dataset.market || detectMarket(),
       placement: placement,
       cartSubtotal: detectWindowCartSubtotal(),
-      currency: window.CounterPulseCartCurrency || "",
+      currency: detectCurrency(),
       cartToken: "",
       campaignId: "",
       fallbackMode: "AUTO_ELIGIBLE",
@@ -317,6 +319,7 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
     if (config.cartSubtotal !== null) {
       params.set("cartSubtotal", String(config.cartSubtotal));
     }
@@ -782,6 +785,26 @@
 
   function detectLocale() {
     return document.documentElement.lang || window.navigator.language || "en";
+  }
+
+  function detectMarket() {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency() {
+    return (
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
   }
 
   function detectDevice() {

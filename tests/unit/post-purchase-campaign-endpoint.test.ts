@@ -249,6 +249,7 @@ function baseCampaign({
       uniqueCodeStartsAt: null,
       uniqueCodeEndsAt: null,
     },
+    marketCampaignRules: [],
     translations: [
       {
         id: `${id}-translation`,

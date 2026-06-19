@@ -34,6 +34,12 @@ import {
   type EmailTimerRow,
 } from "../components/EmailTimerEditor";
 import {
+  CampaignMarketsEditor,
+  type MarketOptionRow,
+  type MarketRuleErrors,
+  type MarketRuleRow,
+} from "../components/CampaignMarketsEditor";
+import {
   ExperimentsEditor,
   type ExperimentErrors,
   type ExperimentRow,
@@ -133,6 +139,14 @@ import {
   listEmailTimersForCampaign,
 } from "../services/email-timers/emailTimers.server";
 import {
+  deleteMarketRule,
+  fetchShopMarkets,
+  listMarketRulesForCampaign,
+  saveMarketRule,
+  type MarketRuleInput,
+  type ShopifyMarket,
+} from "../services/markets/markets.server";
+import {
   hasFreeShippingSettingsErrors,
   parseFreeShippingSettingsFormData,
 } from "../services/free-shipping-settings-form.server";
@@ -229,6 +243,9 @@ type LoaderData = {
   discountApiError: string;
   discountOptions: DiscountOption[];
   discountValues: DiscountSettingsValues;
+  marketApiError: string;
+  marketOptions: MarketOptionRow[];
+  marketRules: MarketRuleRow[];
   freeShippingValues: FreeShippingSettingsValues;
   lowStockValues: LowStockSettingsValues;
   hasBadge: boolean;
@@ -244,6 +261,7 @@ type LoaderData = {
     discountSync: string;
     advancedBadges: string;
     advancedDiscounts: string;
+    markets: string;
     experiments: string;
     emailTimers: string;
     multiLanguage: string;
@@ -270,6 +288,8 @@ type ActionData = {
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
+  marketErrors?: MarketRuleErrors;
+  marketNotice?: string;
   advancedBadgeErrors?: AdvancedBadgeRuleErrors;
   advancedBadgeNotice?: string;
   advancedDiscountErrors?: AdvancedDiscountRuleErrors;
@@ -327,6 +347,7 @@ export const loader = async ({
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
     advancedBadges: canUsePremiumFeature(shop, "ADVANCED_BADGES").reason,
     advancedDiscounts: canUsePremiumFeature(shop, "ADVANCED_DISCOUNTS").reason,
+    markets: canUsePremiumFeature(shop, "MARKETS_ADVANCED").reason,
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
     emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
@@ -335,6 +356,9 @@ export const loader = async ({
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
+  const marketListResult = lockedFeatures.markets
+    ? { markets: [], error: "" }
+    : await loadMarketOptions(admin);
   const [
     uniqueCodePools,
     uniqueCodes,
@@ -343,6 +367,7 @@ export const loader = async ({
     advancedDiscountRules,
     emailTimers,
     advancedBadgeRules,
+    marketRules,
   ] = await Promise.all([
     listDiscountCodePoolsForCampaign(shop.id, campaign.id),
     listUniqueCodesForCampaign(shop.id, campaign.id, { take: 100 }),
@@ -351,6 +376,7 @@ export const loader = async ({
     listAdvancedDiscountRulesForCampaign(shop.id, campaign.id),
     listEmailTimersForCampaign(shop.id, campaign.id),
     listAdvancedBadgeRulesForCampaign(shop.id, campaign.id),
+    listMarketRulesForCampaign(shop.id, campaign.id),
   ]);
   const experimentResults = await Promise.all(
     experiments.map((experiment) =>
@@ -406,6 +432,9 @@ export const loader = async ({
     discountApiError: discountListResult.error,
     discountOptions: discountListResult.discounts,
     discountValues: toDiscountSettingsValues(campaign.discountSync),
+    marketApiError: marketListResult.error,
+    marketOptions: marketListResult.markets.map(toMarketOptionRow),
+    marketRules: marketRules.map(toMarketRuleRow),
     freeShippingValues: toFreeShippingSettingsValues(
       campaign.freeShippingSettings,
     ),
@@ -828,6 +857,68 @@ export const action = async ({
             error instanceof Error
               ? error.message
               : "Email timer could not be created.",
+        },
+      };
+    }
+  }
+
+  if (intent === "saveMarketRule" || intent === "deleteMarketRule") {
+    const marketsGate = canUsePremiumFeature(shop, "MARKETS_ADVANCED");
+
+    if (!marketsGate.allowed) {
+      return {
+        marketErrors: {
+          form: marketsGate.reason,
+        },
+      };
+    }
+
+    try {
+      if (intent === "deleteMarketRule") {
+        const ruleId = String(formData.get("marketRuleId") ?? "").trim();
+
+        if (!ruleId) {
+          return {
+            marketErrors: {
+              form: "Market rule id is required.",
+            },
+          };
+        }
+
+        await deleteMarketRule({
+          campaignId: id,
+          ruleId,
+          shopId: shop.id,
+        });
+
+        return redirect(`/app/campaigns/${id}`);
+      }
+
+      const parsed = parseMarketRuleFormData(formData);
+
+      if (parsed.errors.form) {
+        return {
+          marketErrors: parsed.errors,
+        };
+      }
+
+      await saveMarketRule({
+        campaignId: id,
+        input: parsed.input,
+        ruleId: String(formData.get("marketRuleId") ?? "").trim() || undefined,
+        shopId: shop.id,
+      });
+
+      return redirect(`/app/campaigns/${id}`);
+    } catch (error) {
+      console.error("Failed to save market rule", error);
+
+      return {
+        marketErrors: {
+          form:
+            error instanceof Error
+              ? error.message
+              : "Market rule could not be saved.",
         },
       };
     }
@@ -1281,6 +1372,9 @@ export default function EditCampaignPage() {
     discountApiError,
     discountOptions,
     discountValues,
+    marketApiError,
+    marketOptions,
+    marketRules,
     advancedBadgeRules,
     advancedDiscountRules,
     emailTimers,
@@ -1351,6 +1445,14 @@ export default function EditCampaignPage() {
               experiments={experiments}
               lockedReason={lockedFeatures.experiments}
               notice={actionData?.experimentNotice}
+            />
+            <CampaignMarketsEditor
+              apiError={marketApiError}
+              errors={actionData?.marketErrors}
+              lockedReason={lockedFeatures.markets}
+              markets={marketOptions}
+              notice={actionData?.marketNotice}
+              rules={marketRules}
             />
             {hasBadge ||
             hasDeliveryCutoff ||
@@ -1489,6 +1591,121 @@ function readEmailTimerExpiredBehavior(value: string) {
   }
 
   return null;
+}
+
+function parseMarketRuleFormData(formData: FormData): {
+  errors: MarketRuleErrors;
+  input: MarketRuleInput;
+} {
+  const errors: MarketRuleErrors = {};
+  const marketId = readFormString(formData, "marketRuleMarketId");
+  const countryCode = readFormString(
+    formData,
+    "marketRuleCountryCode",
+  ).toUpperCase();
+  const locale = normalizeMarketLocale(
+    readFormString(formData, "marketRuleLocale"),
+  );
+  const currencyCode = readFormString(
+    formData,
+    "marketRuleCurrencyCode",
+  ).toUpperCase();
+  const thresholdAmount = parseMarketThreshold(
+    readFormString(formData, "marketRuleThresholdAmount"),
+    errors,
+  );
+  const textOverrides = parseMarketJsonObject(
+    readFormString(formData, "marketRuleTextOverridesJson"),
+    "textOverridesJson",
+    "Text overrides JSON must be a JSON object.",
+    errors,
+  );
+  const deliverySettings = parseMarketJsonObject(
+    readFormString(formData, "marketRuleDeliverySettingsJson"),
+    "deliverySettingsJson",
+    "Delivery cutoff JSON must be a JSON object.",
+    errors,
+  );
+
+  if (!marketId && !countryCode && !locale && !currencyCode) {
+    errors.form = "Choose at least one market, country, locale, or currency.";
+  }
+
+  if (countryCode && !/^[A-Z]{2}$/.test(countryCode)) {
+    errors.countryCode = "Country must be a 2-letter ISO code.";
+    errors.form = errors.countryCode;
+  }
+
+  if (locale && !/^[a-z]{2}(-[a-z0-9]{2,8})?$/i.test(locale)) {
+    errors.locale = "Locale must look like en or es-ES.";
+    errors.form = errors.locale;
+  }
+
+  if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+    errors.currencyCode = "Currency must be a 3-letter ISO code.";
+    errors.form = errors.currencyCode;
+  }
+
+  return {
+    errors,
+    input: {
+      enabled: isFormCheckboxChecked(formData, "marketRuleEnabled"),
+      marketId: marketId || null,
+      countryCode: countryCode || null,
+      locale: locale || null,
+      currencyCode: currencyCode || null,
+      thresholdAmount,
+      deliverySettings,
+      textOverrides,
+    },
+  };
+}
+
+function parseMarketThreshold(value: string, errors: MarketRuleErrors) {
+  if (!value) return null;
+
+  const number = Number(value);
+
+  if (!Number.isFinite(number) || number < 0) {
+    errors.thresholdAmount = "Enter a zero or positive threshold amount.";
+    errors.form = errors.thresholdAmount;
+    return null;
+  }
+
+  return number.toFixed(2);
+}
+
+function parseMarketJsonObject(
+  value: string,
+  key: "deliverySettingsJson" | "textOverridesJson",
+  message: string,
+  errors: MarketRuleErrors,
+): Prisma.InputJsonObject {
+  if (!value.trim()) return {};
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      errors[key] = message;
+      errors.form = message;
+      return {};
+    }
+
+    return parsed as Prisma.InputJsonObject;
+  } catch {
+    errors[key] = `${message.replace(/\.$/, "")} and valid JSON.`;
+    errors.form = errors[key];
+    return {};
+  }
+}
+
+function readFormString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function normalizeMarketLocale(value: string) {
+  return value.replace("_", "-").toLowerCase();
 }
 
 function parseAdvancedBadgeRuleFormData(formData: FormData): {
@@ -2428,6 +2645,80 @@ async function loadDiscountOptions(admin: ShopifyGraphqlClient): Promise<{
         error instanceof Error ? error.message : SHOPIFY_DISCOUNT_SCOPE_MESSAGE,
     };
   }
+}
+
+async function loadMarketOptions(admin: ShopifyGraphqlClient): Promise<{
+  markets: ShopifyMarket[];
+  error: string;
+}> {
+  try {
+    return {
+      markets: await fetchShopMarkets(admin),
+      error: "",
+    };
+  } catch (error) {
+    return {
+      markets: [],
+      error:
+        error instanceof Error
+          ? error.message
+          : "Shopify Markets could not be loaded.",
+    };
+  }
+}
+
+function toMarketOptionRow(market: ShopifyMarket): MarketOptionRow {
+  return {
+    id: market.handle || market.id,
+    name: market.name,
+    handle: market.handle,
+    enabled: market.enabled,
+    primary: market.primary,
+    countryCodes: market.countryCodes.join(", "),
+    locale: market.locale,
+    currencyCode: market.currencyCode,
+  };
+}
+
+function toMarketRuleRow(rule: {
+  id: string;
+  enabled: boolean;
+  marketId: string | null;
+  countryCode: string | null;
+  locale: string | null;
+  currencyCode: string | null;
+  thresholdAmount: { toString(): string } | null;
+  deliverySettings: unknown;
+  textOverrides: unknown;
+}): MarketRuleRow {
+  return {
+    id: rule.id,
+    enabled: rule.enabled,
+    marketId: rule.marketId ?? "",
+    countryCode: rule.countryCode ?? "",
+    locale: rule.locale ?? "",
+    currencyCode: rule.currencyCode ?? "",
+    thresholdAmount: rule.thresholdAmount?.toString() ?? "",
+    deliverySettingsJson: jsonTextareaValue(rule.deliverySettings),
+    textOverridesJson: jsonTextareaValue(rule.textOverrides),
+    scopeSummary: summarizeMarketRuleScope(rule),
+  };
+}
+
+function summarizeMarketRuleScope(rule: {
+  marketId: string | null;
+  countryCode: string | null;
+  locale: string | null;
+  currencyCode: string | null;
+}) {
+  const parts = [
+    rule.marketId ? `market: ${rule.marketId}` : "",
+    rule.countryCode ? `country: ${rule.countryCode}` : "",
+    rule.locale ? `locale: ${rule.locale}` : "",
+    rule.currencyCode ? `currency: ${rule.currencyCode}` : "",
+  ].filter(Boolean);
+
+  return parts.join(" | ") || "No scope";
 }
 
 async function linkExistingDiscount({

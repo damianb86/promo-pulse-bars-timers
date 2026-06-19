@@ -64,6 +64,7 @@ type TestCampaignOverrides = {
   discountSync?: Partial<
     NonNullable<StorefrontCampaignSource["discountSync"]>
   > | null;
+  marketCampaignRules?: StorefrontCampaignSource["marketCampaignRules"];
   translations?: Array<
     Partial<StorefrontCampaignSource["translations"][number]> & {
       locale: string;
@@ -216,6 +217,7 @@ export function createTestCampaign(
       locale: translation.locale,
     })),
     experiments: overrides.experiments ?? [],
+    marketCampaignRules: overrides.marketCampaignRules ?? [],
   };
 }
 

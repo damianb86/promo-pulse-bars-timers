@@ -573,6 +573,7 @@ model MarketCampaignRule {
   id               String   @id @default(cuid())
   shopId           String
   campaignId       String
+  enabled          Boolean  @default(true)
   marketId         String?
   countryCode      String?
   locale           String?

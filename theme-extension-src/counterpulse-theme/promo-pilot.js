@@ -9,6 +9,8 @@
     path: window.location.pathname,
     locale: detectLocale(root),
     country: detectCountry(root),
+    market: detectMarket(root),
+    currency: detectCurrency(root),
     device: detectDevice(),
     utmSource:
       new URLSearchParams(window.location.search).get("utm_source") || "",
@@ -125,6 +127,8 @@
     var cartSubtotal = detectCartSubtotal();
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
+    if (config.currency) params.set("currency", config.currency);
     if (config.utmSource) params.set("utmSource", config.utmSource);
 
     if (cartSubtotal !== null) {
@@ -856,6 +860,28 @@
     );
   }
 
+  function detectMarket(element) {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      element.dataset.market ||
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency(element) {
+    return (
+      element.dataset.cartCurrency ||
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
+  }
+
   function detectDevice() {
     if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
     if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
@@ -934,5 +960,7 @@
     if (settings.defaultLocale && !config.locale) {
       config.locale = settings.defaultLocale;
     }
+    config.currency = config.currency || settings.defaultCurrency || "";
+    config.country = config.country || settings.defaultCountry || "";
   }
 })();

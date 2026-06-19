@@ -17,6 +17,8 @@
         root.dataset.country ||
         (window.Shopify && window.Shopify.country) ||
         "",
+      market: root.dataset.market || detectMarket(),
+      currency: root.dataset.cartCurrency || detectCurrency(),
       debug: root.dataset.debug === "true",
       locale:
         root.dataset.locale ||
@@ -57,6 +59,8 @@
     var config = {
       campaignId: root.dataset.campaignId || "",
       country: root.dataset.country || "",
+      market: root.dataset.market || detectMarket(),
+      currency: root.dataset.cartCurrency || detectCurrency(),
       debug: root.dataset.debug === "true",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       locale: root.dataset.locale || document.documentElement.lang || "en",
@@ -108,6 +112,8 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
+    if (config.currency) params.set("currency", config.currency);
     if (config.productId) params.set("productId", config.productId);
     if (config.productTags && config.productTags.length) {
       params.set("productTags", config.productTags.join(","));
@@ -715,6 +721,26 @@
     return String(value).padStart(2, "0");
   }
 
+  function detectMarket() {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency() {
+    return (
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
+  }
+
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
@@ -722,5 +748,6 @@
     config.debug = settings.enableDebugMode === true || config.debug;
     config.locale = config.locale || settings.defaultLocale || "";
     config.country = config.country || settings.defaultCountry || "";
+    config.currency = config.currency || settings.defaultCurrency || "";
   }
 })();

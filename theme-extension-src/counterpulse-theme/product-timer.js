@@ -10,13 +10,14 @@
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       locale: root.dataset.locale || document.documentElement.lang || "en",
       country: root.dataset.country || "",
+      market: root.dataset.market || detectMarket(),
       productId: root.dataset.productId || "",
       productTags: splitList(root.dataset.productTags),
       cartSubtotal:
         typeof window.CounterPulseCartSubtotal === "number"
           ? window.CounterPulseCartSubtotal
           : null,
-      currency: window.CounterPulseCartCurrency || "",
+      currency: root.dataset.cartCurrency || detectCurrency(),
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
@@ -108,6 +109,7 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
     if (config.cartSubtotal !== null)
@@ -673,6 +675,26 @@
     } catch {
       return "UTC";
     }
+  }
+
+  function detectMarket() {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency() {
+    return (
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
   }
 
   function iconLabel(icon) {

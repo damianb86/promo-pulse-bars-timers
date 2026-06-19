@@ -10,6 +10,8 @@
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       locale: root.dataset.locale || document.documentElement.lang || "en",
       country: root.dataset.country || "",
+      market: root.dataset.market || detectMarket(),
+      currency: root.dataset.cartCurrency || detectCurrency(),
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
       campaignId: root.dataset.campaignId || "",
@@ -82,6 +84,8 @@
     });
 
     if (config.country) params.set("country", config.country);
+    if (config.market) params.set("market", config.market);
+    if (config.currency) params.set("currency", config.currency);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
@@ -393,6 +397,26 @@
     return "center";
   }
 
+  function detectMarket() {
+    var shopifyMarket = window.Shopify && window.Shopify.market;
+
+    return (
+      (shopifyMarket &&
+        (shopifyMarket.handle || shopifyMarket.id || shopifyMarket)) ||
+      ""
+    );
+  }
+
+  function detectCurrency() {
+    return (
+      window.CounterPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
+  }
+
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
@@ -402,6 +426,7 @@
       settings.customProductFormSelector || config.customProductFormSelector;
     config.locale = config.locale || settings.defaultLocale || "";
     config.country = config.country || settings.defaultCountry || "";
+    config.currency = config.currency || settings.defaultCurrency || "";
   }
 
   function safeQuerySelector(selector) {

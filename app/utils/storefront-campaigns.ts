@@ -11,9 +11,11 @@ import type {
   ExperimentVariant,
   FreeShippingSettings,
   LowStockSettings,
+  MarketCampaignRule,
   TimerSettings,
 } from "@prisma/client";
 
+import { applyMarketCampaignRule } from "../services/markets/marketOverrides";
 import { defaultCampaignDesignValues } from "../types/campaign-design";
 import {
   campaignTranslationFields,
@@ -53,6 +55,7 @@ export type StorefrontCampaignSource = Campaign & {
   lowStockSettings: LowStockSettings | null;
   badgeSettings: BadgeSettings | null;
   discountSync: DiscountSync | null;
+  marketCampaignRules: MarketCampaignRule[];
   translations: CampaignTranslation[];
   experiments: Array<Experiment & { variants: ExperimentVariant[] }>;
 };
@@ -129,7 +132,7 @@ export function serializeStorefrontCampaign(
     return null;
   }
 
-  return {
+  const serializedCampaign = {
     id: campaign.id,
     type: campaign.type,
     goal: campaign.goal,
@@ -151,6 +154,12 @@ export function serializeStorefrontCampaign(
     endsAt: campaign.endsAt ? campaign.endsAt.toISOString() : null,
     timezone: campaign.timezone,
   };
+
+  return applyMarketCampaignRule(
+    serializedCampaign,
+    campaign.marketCampaignRules,
+    context,
+  );
 }
 
 export function serializeStorefrontCampaigns(

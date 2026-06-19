@@ -1,0 +1,1 @@
+ALTER TABLE "MarketCampaignRule" ADD COLUMN "enabled" BOOLEAN NOT NULL DEFAULT true;

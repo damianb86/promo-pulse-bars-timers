@@ -823,6 +823,23 @@ export async function duplicateCampaign(id: string, shopId: string) {
             },
           }
         : {}),
+      ...(campaign.marketCampaignRules.length > 0
+        ? {
+            marketCampaignRules: {
+              create: campaign.marketCampaignRules.map((rule) => ({
+                shop: { connect: { id: shopId } },
+                enabled: rule.enabled,
+                marketId: rule.marketId,
+                countryCode: rule.countryCode,
+                locale: rule.locale,
+                currencyCode: rule.currencyCode,
+                thresholdAmount: rule.thresholdAmount,
+                deliverySettings: rule.deliverySettings ?? Prisma.JsonNull,
+                textOverrides: rule.textOverrides ?? Prisma.JsonNull,
+              })),
+            },
+          }
+        : {}),
       translations: {
         create: campaign.translations.map((translation) => ({
           locale: translation.locale,

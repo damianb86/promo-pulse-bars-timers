@@ -10,6 +10,7 @@ export const campaignDetailsInclude = {
   lowStockSettings: true,
   badgeSettings: true,
   discountSync: true,
+  marketCampaignRules: true,
   translations: true,
   experiments: {
     include: {
@@ -31,6 +32,7 @@ export const campaignDuplicateInclude = {
   lowStockSettings: true,
   badgeSettings: true,
   discountSync: true,
+  marketCampaignRules: true,
   translations: true,
 } satisfies Prisma.CampaignInclude;
 

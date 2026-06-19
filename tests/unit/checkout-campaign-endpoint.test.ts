@@ -189,6 +189,7 @@ function freeShippingCampaign(): StorefrontCampaignSource {
     lowStockSettings: null,
     badgeSettings: null,
     discountSync: null,
+    marketCampaignRules: [],
     translations: [
       {
         id: "translation-1",

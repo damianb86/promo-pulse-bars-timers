@@ -90,9 +90,9 @@ Tipos y flags:
 - `app/services/premiumFeatures.server.ts` define los defaults de flags
   internos y el helper `canUsePremiumFeature(shop, featureKey)`.
 - `UNIQUE_CODES`, `AB_TESTING`, `ADVANCED_DISCOUNTS`, `CHECKOUT_EXTENSIONS`,
-  `EMAIL_TIMERS` y `ADVANCED_BADGES` quedan habilitados porque ya tienen base
-  implementada. Los demas flags Stage 2 quedan deshabilitados hasta su
-  implementacion.
+  `EMAIL_TIMERS`, `ADVANCED_BADGES` y `MARKETS_ADVANCED` quedan habilitados
+  porque ya tienen base implementada. Los demas flags Stage 2 quedan
+  deshabilitados hasta su implementacion.
 
 Servicios reservados para Stage 2:
 
@@ -101,7 +101,9 @@ Servicios reservados para Stage 2:
 - `app/services/attribution`: touchpoints, checkout, thank-you y order-status.
 - `app/services/recommendations`: recomendaciones automaticas.
 - `app/services/ai`: AI Campaign Builder y asistentes de copy/localizacion.
-- `app/services/markets`: reglas avanzadas de pais, mercado, idioma y moneda.
+- `app/services/markets`: fetch/normalizacion de Shopify Markets, helpers puros
+  para resolver contexto de market y aplicacion de `MarketCampaignRule` sobre
+  payloads storefront.
 - `app/services/email-timers`: render dinamico de countdown timers para email.
 - `app/services/badges`: reglas avanzadas de merchandising para product badges,
   endpoint storefront y engine puro de evaluacion.
@@ -129,6 +131,9 @@ Reglas de integracion:
   un codigo aplicado que coincida con la campana.
 - Mantener payloads storefront backwards-compatible para no romper Theme App
   Extension ni Web Pixel Extension.
+- Las reglas de Markets se aplican despues de serializar la campaña global. Si
+  no hay match, no cambian el payload; si una regla matching esta desactivada,
+  la campaña se oculta solo para ese contexto.
 
 ## Analytics
 

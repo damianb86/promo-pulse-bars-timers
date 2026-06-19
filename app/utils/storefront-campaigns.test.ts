@@ -212,6 +212,181 @@ describe("storefront campaign serialization", () => {
     ).toBe("100.00");
   });
 
+  it("applies campaign market rules for US vs ES contexts", () => {
+    const campaign = buildCampaign({
+      translations: [
+        {
+          locale: "en",
+          headline: "Global offer",
+        },
+      ],
+      marketCampaignRules: [
+        marketRule({
+          id: "rule-us",
+          countryCode: "US",
+          textOverrides: { headline: "US offer" },
+        }),
+        marketRule({
+          id: "rule-es",
+          countryCode: "ES",
+          locale: "es",
+          textOverrides: { headline: "Oferta ES" },
+        }),
+      ],
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        country: "US",
+        locale: "en",
+      })?.texts.headline,
+    ).toBe("US offer");
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        country: "ES",
+        locale: "es-ES",
+      })?.texts.headline,
+    ).toBe("Oferta ES");
+  });
+
+  it("lets market rules override free shipping threshold and currency", () => {
+    const campaign = buildCampaign({
+      type: "FREE_SHIPPING_GOAL",
+      goal: "FREE_SHIPPING",
+      freeShippingSettings: {
+        thresholdAmount: "75.00",
+        currencyCode: "USD",
+      },
+      marketCampaignRules: [
+        marketRule({
+          marketId: "ES",
+          currencyCode: "EUR",
+          thresholdAmount: "95.00",
+        }),
+      ],
+    });
+    const serialized = serializeStorefrontCampaign(campaign, {
+      ...baseContext(),
+      market: "ES",
+      currency: "EUR",
+    });
+
+    expect(serialized?.freeShipping).toMatchObject({
+      thresholdAmount: "95.00",
+      currencyCode: "EUR",
+    });
+  });
+
+  it("uses locale market overrides before global translations", () => {
+    const campaign = buildCampaign({
+      translations: [
+        { locale: "en", headline: "Global offer" },
+        { locale: "es", headline: "Oferta global" },
+      ],
+      marketCampaignRules: [
+        marketRule({
+          locale: "es",
+          textOverrides: { headline: "Oferta mercado" },
+        }),
+      ],
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        locale: "es-MX",
+      })?.texts.headline,
+    ).toBe("Oferta mercado");
+  });
+
+  it("falls back to global campaign settings when market is not detected", () => {
+    const campaign = buildCampaign({
+      type: "FREE_SHIPPING_GOAL",
+      goal: "FREE_SHIPPING",
+      freeShippingSettings: {
+        thresholdAmount: "75.00",
+        currencyCode: "USD",
+      },
+      marketCampaignRules: [
+        marketRule({
+          marketId: "ES",
+          thresholdAmount: "95.00",
+        }),
+      ],
+    });
+    const serialized = serializeStorefrontCampaign(campaign, {
+      ...baseContext(),
+      market: "",
+      country: "",
+      currency: "",
+    });
+
+    expect(serialized?.freeShipping?.thresholdAmount).toBe("75.00");
+  });
+
+  it("lets market rules override delivery cutoff settings", () => {
+    const campaign = buildCampaign({
+      type: "DELIVERY_CUTOFF",
+      goal: "DELIVERY_CUTOFF",
+      deliveryCutoffSettings: {
+        cutoffHour: 14,
+        countryRules: {},
+      },
+      marketCampaignRules: [
+        marketRule({
+          countryCode: "ES",
+          deliverySettings: {
+            cutoffHour: 16,
+            minDeliveryDays: 3,
+            maxDeliveryDays: 6,
+          },
+          textOverrides: {
+            deliveryBeforeCutoffText: "Pedidos ES hasta las 16:00",
+          },
+        }),
+      ],
+    });
+    const serialized = serializeStorefrontCampaign(campaign, {
+      ...baseContext(),
+      country: "ES",
+    });
+
+    expect(serialized?.deliveryCutoff).toMatchObject({
+      cutoffHour: 16,
+      minDeliveryDays: 3,
+      maxDeliveryDays: 6,
+    });
+    expect(serialized?.texts.deliveryBeforeCutoffText).toBe(
+      "Pedidos ES hasta las 16:00",
+    );
+  });
+
+  it("can disable a campaign for a matched market rule", () => {
+    const campaign = buildCampaign({
+      marketCampaignRules: [
+        marketRule({
+          countryCode: "ES",
+          enabled: false,
+        }),
+      ],
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        country: "ES",
+      }),
+    ).toBeNull();
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        country: "US",
+      })?.id,
+    ).toBe("campaign-1");
+  });
+
   it("resolves delivery cutoff country rules without exposing raw rules", () => {
     const campaign = buildCampaign({
       type: "DELIVERY_CUTOFF",
@@ -446,6 +621,7 @@ function buildCampaign(
       badgeShape: string;
       badgeText: string;
     };
+    marketCampaignRules?: StorefrontCampaignSource["marketCampaignRules"];
     experiments?: StorefrontCampaignSource["experiments"];
   } = {},
 ): StorefrontCampaignSource {
@@ -558,5 +734,39 @@ function buildCampaign(
       },
     ]) as StorefrontCampaignSource["translations"],
     experiments: overrides.experiments ?? [],
+    marketCampaignRules: overrides.marketCampaignRules ?? [],
+  };
+}
+
+type MarketRuleOverride = Omit<
+  Partial<StorefrontCampaignSource["marketCampaignRules"][number]>,
+  "thresholdAmount"
+> & {
+  thresholdAmount?: string | null;
+};
+
+function marketRule(
+  overrides: MarketRuleOverride,
+): StorefrontCampaignSource["marketCampaignRules"][number] {
+  const id = overrides.id ?? "market-rule-1";
+  const { thresholdAmount, ...rest } = overrides;
+
+  return {
+    id,
+    shopId: "shop-1",
+    campaignId: "campaign-1",
+    enabled: true,
+    marketId: null,
+    countryCode: null,
+    locale: null,
+    currencyCode: null,
+    deliverySettings: null,
+    textOverrides: null,
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    ...rest,
+    thresholdAmount: thresholdAmount
+      ? ({ toString: () => String(thresholdAmount) } as never)
+      : null,
   };
 }

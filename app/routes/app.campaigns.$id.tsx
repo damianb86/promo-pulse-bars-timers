@@ -22,6 +22,10 @@ import {
   type AdvancedBadgeRuleRow,
 } from "../components/AdvancedBadgeRulesEditor";
 import { BadgeSettingsEditor } from "../components/BadgeSettingsEditor";
+import {
+  BehaviorTargetingEditor,
+  type BehaviorTargetingErrors,
+} from "../components/BehaviorTargetingEditor";
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
 import { CampaignForm } from "../components/CampaignForm";
@@ -59,6 +63,7 @@ import {
   getCampaignForShop,
   updateBadgeSettingsForShop,
   updateCampaignBasicsForShop,
+  updateCampaignBehaviorTargetingForShop,
   updateCampaignDesignForShop,
   updateCampaignTranslationsForShop,
   updateDeliveryCutoffSettingsForShop,
@@ -178,6 +183,10 @@ import {
   type BadgeSettingsErrors,
   type BadgeSettingsValues,
 } from "../types/badge";
+import {
+  normalizeBehaviorTargetingRules,
+  type BehaviorTargetingRules,
+} from "../types/behavior-targeting";
 import type {
   CampaignDesignErrors,
   CampaignDesignValues,
@@ -266,7 +275,9 @@ type LoaderData = {
     emailTimers: string;
     multiLanguage: string;
     uniqueCodes: string;
+    behaviorTargeting: string;
   };
+  behaviorTargetingValues: BehaviorTargetingRules;
   advancedBadgeRules: AdvancedBadgeRuleRow[];
   advancedDiscountRules: AdvancedDiscountRuleRow[];
   emailTimers: EmailTimerRow[];
@@ -300,6 +311,9 @@ type ActionData = {
   uniqueCodeErrors?: UniqueCodeErrors;
   uniqueCodeNotice?: string;
   uniqueCodeValues?: DiscountSettingsValues;
+  behaviorTargetingErrors?: BehaviorTargetingErrors;
+  behaviorTargetingNotice?: string;
+  behaviorTargetingValues?: BehaviorTargetingRules;
   freeShippingErrors?: FreeShippingSettingsErrors;
   freeShippingValues?: FreeShippingSettingsValues;
   lowStockErrors?: LowStockSettingsErrors;
@@ -352,6 +366,10 @@ export const loader = async ({
     emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
+    behaviorTargeting: canUsePremiumFeature(
+      shop,
+      "BEHAVIORAL_TARGETING",
+    ).reason,
   };
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
@@ -432,6 +450,9 @@ export const loader = async ({
     discountApiError: discountListResult.error,
     discountOptions: discountListResult.discounts,
     discountValues: toDiscountSettingsValues(campaign.discountSync),
+    behaviorTargetingValues: normalizeBehaviorTargetingRules(
+      campaign.targeting?.behaviorRules,
+    ),
     marketApiError: marketListResult.error,
     marketOptions: marketListResult.markets.map(toMarketOptionRow),
     marketRules: marketRules.map(toMarketRuleRow),
@@ -711,6 +732,49 @@ export const action = async ({
               ? error.message
               : "Discount could not be saved. Check the fields and try again.",
         },
+      };
+    }
+  }
+
+  if (intent === "saveBehaviorTargeting") {
+    const behaviorGate = canUsePremiumFeature(shop, "BEHAVIORAL_TARGETING");
+    const parsed = parseBehaviorTargetingFormData(formData);
+
+    if (!behaviorGate.allowed) {
+      return {
+        behaviorTargetingErrors: {
+          form: behaviorGate.reason,
+        },
+        behaviorTargetingValues: parsed.values,
+      };
+    }
+
+    if (parsed.errors.form) {
+      return {
+        behaviorTargetingErrors: parsed.errors,
+        behaviorTargetingValues: parsed.values,
+      };
+    }
+
+    try {
+      await updateCampaignBehaviorTargetingForShop(
+        id,
+        shop.id,
+        parsed.values as Prisma.InputJsonValue,
+      );
+
+      return {
+        behaviorTargetingNotice: "Behavior targeting saved.",
+        behaviorTargetingValues: parsed.values,
+      };
+    } catch (error) {
+      console.error("Failed to update behavior targeting", error);
+
+      return {
+        behaviorTargetingErrors: {
+          form: "Behavior targeting could not be saved. Check the fields and try again.",
+        },
+        behaviorTargetingValues: parsed.values,
       };
     }
   }
@@ -1372,6 +1436,7 @@ export default function EditCampaignPage() {
     discountApiError,
     discountOptions,
     discountValues,
+    behaviorTargetingValues,
     marketApiError,
     marketOptions,
     marketRules,
@@ -1445,6 +1510,14 @@ export default function EditCampaignPage() {
               experiments={experiments}
               lockedReason={lockedFeatures.experiments}
               notice={actionData?.experimentNotice}
+            />
+            <BehaviorTargetingEditor
+              errors={actionData?.behaviorTargetingErrors}
+              lockedReason={lockedFeatures.behaviorTargeting}
+              notice={actionData?.behaviorTargetingNotice}
+              values={
+                actionData?.behaviorTargetingValues ?? behaviorTargetingValues
+              }
             />
             <CampaignMarketsEditor
               apiError={marketApiError}
@@ -1546,6 +1619,84 @@ function parseTotalCodesToGenerate(
   }
 
   return { ok: true, value };
+}
+
+function parseBehaviorTargetingFormData(formData: FormData): {
+  values: BehaviorTargetingRules;
+  errors: BehaviorTargetingErrors;
+} {
+  const errors: BehaviorTargetingErrors = {};
+  const rawValues = {
+    enabled: isFormCheckboxChecked(formData, "behaviorEnabled"),
+    segments: formData.getAll("behaviorSegments").map(String),
+    campaignIds: parseMultilineIds(formData.get("behaviorCampaignIds")),
+    lookbackDays: readBehaviorInteger(
+      formData,
+      "behaviorLookbackDays",
+      30,
+      1,
+      365,
+      "lookbackDays",
+      errors,
+    ),
+    inactiveCartMinutes: readBehaviorInteger(
+      formData,
+      "behaviorInactiveCartMinutes",
+      60,
+      15,
+      10080,
+      "inactiveCartMinutes",
+      errors,
+    ),
+    highIntentMinEvents: readBehaviorInteger(
+      formData,
+      "behaviorHighIntentMinEvents",
+      3,
+      2,
+      20,
+      "highIntentMinEvents",
+      errors,
+    ),
+    highIntentWindowMinutes: readBehaviorInteger(
+      formData,
+      "behaviorHighIntentWindowMinutes",
+      60,
+      5,
+      1440,
+      "highIntentWindowMinutes",
+      errors,
+    ),
+  };
+  const values = normalizeBehaviorTargetingRules(rawValues);
+
+  if (values.enabled && values.segments.length === 0) {
+    errors.form =
+      "Choose at least one behavior segment or disable behavior targeting.";
+  }
+
+  return { values, errors };
+}
+
+function readBehaviorInteger(
+  formData: FormData,
+  key: string,
+  fallback: number,
+  min: number,
+  max: number,
+  field: keyof BehaviorTargetingErrors,
+  errors: BehaviorTargetingErrors,
+) {
+  const rawValue = readFormString(formData, key);
+  const parsed = Number(rawValue);
+
+  if (!rawValue) return fallback;
+
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    errors[field] = `Enter a whole number from ${min} to ${max}.`;
+    return fallback;
+  }
+
+  return parsed;
 }
 
 function parseEmailTimerFormData(formData: FormData): {

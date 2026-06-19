@@ -28,6 +28,7 @@ export type E2ETestScenario =
   | "empty"
   | "countdown"
   | "targeting"
+  | "behavior-targeting"
   | "free-shipping"
   | "delivery-cutoff"
   | "delivery-cutoff-after"
@@ -176,6 +177,29 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
+  if (scenario === "behavior-targeting") {
+    await createCountdownCampaign(shopId, {
+      targeting: {
+        behaviorRules: {
+          enabled: true,
+          segments: ["NEW_VISITOR"],
+          campaignIds: [],
+          lookbackDays: 30,
+          inactiveCartMinutes: 60,
+          highIntentMinEvents: 3,
+          highIntentWindowMinutes: 60,
+        },
+      },
+      translations: [
+        {
+          ...englishTranslation("New visitor offer"),
+          subheadline: "Shown only before the first Promo Pulse touch.",
+        },
+      ],
+    });
+    return;
+  }
+
   if (scenario === "free-shipping") {
     await createFreeShippingCampaign(shopId, [
       PlacementType.CART_PAGE,
@@ -234,6 +258,7 @@ async function createCountdownCampaign(
     targeting?: {
       countries?: string[];
       locales?: string[];
+      behaviorRules?: Prisma.InputJsonValue;
     };
     discountCode?: string;
     translations?: Array<{
@@ -277,6 +302,7 @@ async function createCountdownCampaign(
               devices: [],
               excludeProductIds: [],
               excludeCollectionIds: [],
+              behaviorRules: options.targeting.behaviorRules ?? Prisma.JsonNull,
             },
           }
         : undefined,

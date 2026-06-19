@@ -65,9 +65,13 @@ const prismaMock = vi.hoisted(() => ({
   attributionTouch: {
     create: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
   },
   attributionConversion: {
     create: vi.fn(),
+  },
+  uniqueDiscountCode: {
+    findMany: vi.fn(),
   },
 }));
 
@@ -130,9 +134,11 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       id: `touch-${prismaMock.attributionTouch.create.mock.calls.length}`,
     }));
     prismaMock.attributionTouch.findFirst.mockResolvedValue(null);
+    prismaMock.attributionTouch.findMany.mockResolvedValue([]);
     prismaMock.attributionConversion.create.mockImplementation(async () => ({
       id: `conversion-${prismaMock.attributionConversion.create.mock.calls.length}`,
     }));
+    prismaMock.uniqueDiscountCode.findMany.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -178,6 +184,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         devices: [],
         excludeProductIds: [],
         excludeCollectionIds: [],
+        behaviorRules: null,
       },
       design: {
         campaignId: draftCampaign.id,
@@ -361,6 +368,76 @@ describe("Promo Pulse Stage 1 critical flow", () => {
 
     expect(mismatchResponse.status).toBe(200);
     expect(mismatchBody.campaigns).toEqual([]);
+  });
+
+  it("serves behavior-targeted storefront campaigns from anonymous visitor history", async () => {
+    prismaMock.shop.findUnique.mockResolvedValue({
+      ...createTestShop({ plan: ShopPlan.PRO }),
+      settings: {
+        analyticsEnabled: true,
+        consentMode: "BASIC",
+        respectDoNotTrack: true,
+      },
+    });
+    const activeCampaign = createTestCampaign({
+      id: "behavior-campaign",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      placements: [{ placementType: PlacementType.TOP_BAR }],
+      targeting: {
+        behaviorRules: {
+          enabled: true,
+          segments: ["CLICKED_CAMPAIGN"],
+          campaignIds: ["source-campaign"],
+          lookbackDays: 30,
+          inactiveCartMinutes: 60,
+          highIntentMinEvents: 3,
+          highIntentWindowMinutes: 60,
+        },
+      },
+    });
+
+    prismaMock.campaign.findMany.mockResolvedValue([activeCampaign]);
+    prismaMock.attributionTouch.findMany.mockResolvedValue([
+      {
+        id: "touch-1",
+        shopId: "shop-1",
+        campaignId: "source-campaign",
+        experimentId: null,
+        variantId: null,
+        visitorId: "visitor-1",
+        sessionId: "session-1",
+        eventType: AnalyticsEventType.CLICK,
+        placementType: PlacementType.TOP_BAR,
+        path: "/collections/sale",
+        country: "US",
+        locale: "en",
+        occurredAt: new Date("2026-06-18T11:00:00.000Z"),
+      },
+    ]);
+
+    const response = await storefrontCampaignsLoader(
+      createLoaderArgs(
+        new Request(
+          "https://app.test/api/storefront/campaigns?shop=example.myshopify.com&placement=TOP_BAR&visitorId=visitor-1&sessionId=session-1&consentGranted=true",
+          { headers: { "x-forwarded-for": "203.0.113.12" } },
+        ),
+      ),
+    );
+    const body = await response.json();
+
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(prismaMock.attributionTouch.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ visitorId: "visitor-1" }, { sessionId: "session-1" }],
+        }),
+      }),
+    );
+    expect(body.campaigns.map((campaign: { id: string }) => campaign.id)).toEqual(
+      ["behavior-campaign"],
+    );
   });
 
   it("validates storefront API input and disables cache for dynamic cart or UTM context", async () => {

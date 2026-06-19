@@ -118,6 +118,7 @@
     if (config.cartSubtotal !== null) {
       params.set("cartSubtotal", String(config.cartSubtotal));
     }
+    appendBehaviorTargetingParams(params);
     var url = getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
 
     if (isPaused("CounterPulseProxyPausedUntil")) {
@@ -201,6 +202,24 @@
           url +
           ".",
       );
+    }
+  }
+
+  function appendBehaviorTargetingParams(params) {
+    var tracking =
+      typeof window.CounterPulseGetVisitorSessionTracking === "function"
+        ? window.CounterPulseGetVisitorSessionTracking()
+        : null;
+
+    if (!tracking) return;
+    if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
+    if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
+    params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
+    if (
+      tracking.consentGranted !== null &&
+      tracking.consentGranted !== undefined
+    ) {
+      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
     }
   }
 

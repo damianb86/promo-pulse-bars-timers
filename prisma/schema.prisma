@@ -165,6 +165,7 @@ model CampaignTargeting {
   devices              Json
   excludeProductIds    Json
   excludeCollectionIds Json
+  behaviorRules        Json?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -894,6 +895,7 @@ enum AgencyShopRole {
 enum AnalyticsEventType {
   IMPRESSION
   CLICK
+  PRODUCT_VIEWED
   BADGE_IMPRESSION
   BADGE_CLICK
   COPY_CODE

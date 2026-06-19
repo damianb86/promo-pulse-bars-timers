@@ -41,6 +41,7 @@ function readScenario(value: string | null): E2ETestScenario {
   if (
     value === "countdown" ||
     value === "targeting" ||
+    value === "behavior-targeting" ||
     value === "free-shipping" ||
     value === "delivery-cutoff" ||
     value === "delivery-cutoff-after" ||

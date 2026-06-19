@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import type { BehaviorTargetingRules } from "./behavior-targeting";
 
 export const campaignDetailsInclude = {
   placements: true,
@@ -62,6 +63,7 @@ export type CampaignTargetingRules = {
   devices: TargetDevice[];
   excludeProductIds: string[];
   excludeCollectionIds: string[];
+  behaviorRules: BehaviorTargetingRules;
 };
 
 export type DeliveryCountryRule = {
@@ -88,5 +90,14 @@ export function createEmptyTargetingRules(): CampaignTargetingRules {
     devices: [],
     excludeProductIds: [],
     excludeCollectionIds: [],
+    behaviorRules: {
+      enabled: false,
+      segments: [],
+      campaignIds: [],
+      lookbackDays: 30,
+      inactiveCartMinutes: 60,
+      highIntentMinEvents: 3,
+      highIntentWindowMinutes: 60,
+    },
   };
 }

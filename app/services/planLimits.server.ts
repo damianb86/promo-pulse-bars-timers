@@ -2,6 +2,7 @@ import { AnalyticsEventType, CampaignStatus, ShopPlan } from "@prisma/client";
 import type { Shop } from "@prisma/client";
 
 import prisma from "../db.server";
+import { hasBehaviorTargetingRules } from "../types/behavior-targeting";
 import type {
   CampaignTypeValue,
   PlacementTypeValue,
@@ -365,6 +366,7 @@ export function getCampaignPlanViolations(
       devices?: unknown;
       excludeProductIds?: unknown;
       excludeCollectionIds?: unknown;
+      behaviorRules?: unknown;
     } | null;
     timerSettings?: {
       mode?: string | null;
@@ -536,12 +538,14 @@ function usesGeoMarketTargeting(
 function usesAdvancedTargeting(
   targeting: Parameters<typeof getCampaignPlanViolations>[1]["targeting"],
 ) {
-  return [
-    targeting?.customerTags,
-    targeting?.utmSources,
-    targeting?.excludeProductIds,
-    targeting?.excludeCollectionIds,
-  ].some(jsonHasValues);
+  return (
+    [
+      targeting?.customerTags,
+      targeting?.utmSources,
+      targeting?.excludeProductIds,
+      targeting?.excludeCollectionIds,
+    ].some(jsonHasValues) || hasBehaviorTargetingRules(targeting?.behaviorRules)
+  );
 }
 
 function usesRecurringTimer(

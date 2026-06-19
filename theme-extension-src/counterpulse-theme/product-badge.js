@@ -111,8 +111,27 @@
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
     }
+    appendBehaviorTargetingParams(params);
 
     return params;
+  }
+
+  function appendBehaviorTargetingParams(params) {
+    var tracking =
+      typeof window.CounterPulseGetVisitorSessionTracking === "function"
+        ? window.CounterPulseGetVisitorSessionTracking()
+        : null;
+
+    if (!tracking) return;
+    if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
+    if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
+    params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
+    if (
+      tracking.consentGranted !== null &&
+      tracking.consentGranted !== undefined
+    ) {
+      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
+    }
   }
 
   function buildCampaignUrl(config) {

@@ -15,6 +15,10 @@ import type {
   TimerSettings,
 } from "@prisma/client";
 
+import {
+  campaignMatchesBehaviorTargeting,
+  type VisitorBehaviorProfile,
+} from "../services/behavior/behaviorTargeting";
 import { applyMarketCampaignRule } from "../services/markets/marketOverrides";
 import { defaultCampaignDesignValues } from "../types/campaign-design";
 import {
@@ -43,6 +47,11 @@ export type StorefrontCampaignContext = {
   currency: string;
   placement: string;
   campaignId: string;
+  visitorId: string;
+  sessionId: string;
+  doNotTrack: boolean;
+  consentGranted: boolean | null;
+  behaviorProfile: VisitorBehaviorProfile | null;
 };
 
 export type StorefrontCampaignSource = Campaign & {
@@ -101,6 +110,11 @@ export function parseStorefrontCampaignContext(
     currency: readString(searchParams, "currency").toUpperCase(),
     placement: readString(searchParams, "placement").toUpperCase(),
     campaignId: readString(searchParams, "campaignId"),
+    visitorId: readString(searchParams, "visitorId"),
+    sessionId: readString(searchParams, "sessionId"),
+    doNotTrack: readBoolean(searchParams, "doNotTrack"),
+    consentGranted: readNullableBoolean(searchParams, "consentGranted"),
+    behaviorProfile: null,
   };
 }
 
@@ -258,7 +272,11 @@ function isTargetingEligible(
       jsonStringList(targeting.utmSources),
       context.utmSource,
     ) &&
-    matchesOptionalExactList(jsonStringList(targeting.devices), context.device)
+    matchesOptionalExactList(jsonStringList(targeting.devices), context.device) &&
+    campaignMatchesBehaviorTargeting(
+      targeting.behaviorRules,
+      context.behaviorProfile,
+    )
   );
 }
 
@@ -517,6 +535,20 @@ function readNumber(searchParams: URLSearchParams, key: string) {
 
   const parsedValue = Number(rawValue);
   return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function readBoolean(searchParams: URLSearchParams, key: string) {
+  const value = readString(searchParams, key).toLowerCase();
+
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function readNullableBoolean(searchParams: URLSearchParams, key: string) {
+  const value = readString(searchParams, key).toLowerCase();
+
+  if (!value) return null;
+
+  return value === "1" || value === "true" || value === "yes";
 }
 
 function jsonStringList(value: unknown) {

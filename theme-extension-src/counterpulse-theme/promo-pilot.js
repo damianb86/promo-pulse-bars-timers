@@ -130,12 +130,28 @@
     if (config.market) params.set("market", config.market);
     if (config.currency) params.set("currency", config.currency);
     if (config.utmSource) params.set("utmSource", config.utmSource);
+    appendBehaviorTargetingParams(params);
 
     if (cartSubtotal !== null) {
       params.set("cartSubtotal", String(cartSubtotal));
     }
 
     return config.apiPath + "?" + params.toString();
+  }
+
+  function appendBehaviorTargetingParams(params) {
+    var tracking =
+      typeof window.CounterPulseGetVisitorSessionTracking === "function"
+        ? window.CounterPulseGetVisitorSessionTracking()
+        : null;
+
+    if (!tracking) return;
+    if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
+    if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
+    params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
+    if (tracking.consentGranted !== null && tracking.consentGranted !== undefined) {
+      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
+    }
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {

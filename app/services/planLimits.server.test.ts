@@ -153,4 +153,40 @@ describe("plan limits", () => {
       ),
     ).toEqual(["Advanced Targeting requires the Pro plan."]);
   });
+
+  it("blocks active behavior targeting below Pro but ignores disabled rules", () => {
+    expect(
+      getCampaignPlanViolations(
+        { plan: "GROWTH" },
+        {
+          type: "COUNTDOWN_BAR",
+          placements: [{ enabled: true, placementType: "TOP_BAR" }],
+          targeting: {
+            behaviorRules: {
+              enabled: true,
+              segments: ["HIGH_INTENT"],
+            },
+          },
+        },
+        "TOP_BAR",
+      ),
+    ).toEqual(["Advanced Targeting requires the Pro plan."]);
+
+    expect(
+      getCampaignPlanViolations(
+        { plan: "GROWTH" },
+        {
+          type: "COUNTDOWN_BAR",
+          placements: [{ enabled: true, placementType: "TOP_BAR" }],
+          targeting: {
+            behaviorRules: {
+              enabled: false,
+              segments: ["HIGH_INTENT"],
+            },
+          },
+        },
+        "TOP_BAR",
+      ),
+    ).toEqual([]);
+  });
 });

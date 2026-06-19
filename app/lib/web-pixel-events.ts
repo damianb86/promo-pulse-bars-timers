@@ -72,6 +72,7 @@ export type WebPixelMappingResult =
 const campaignMetricEventTypes: Partial<
   Record<CounterPulseWebPixelEventName, AnalyticsEventType>
 > = {
+  product_viewed: AnalyticsEventType.PRODUCT_VIEWED,
   product_added_to_cart: AnalyticsEventType.ADD_TO_CART,
   checkout_started: AnalyticsEventType.CHECKOUT_STARTED,
   checkout_completed: AnalyticsEventType.ORDER_ATTRIBUTED,
@@ -79,7 +80,6 @@ const campaignMetricEventTypes: Partial<
 
 const nonCampaignMetricEvents = new Set<CounterPulseWebPixelEventName>([
   "page_viewed",
-  "product_viewed",
   "collection_viewed",
   "cart_viewed",
 ]);

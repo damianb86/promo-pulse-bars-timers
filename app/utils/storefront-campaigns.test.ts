@@ -508,6 +508,52 @@ describe("storefront campaign serialization", () => {
     ).toEqual(["eligible"]);
   });
 
+  it("applies behavior targeting only when the visitor profile matches", () => {
+    const campaign = buildCampaign({
+      id: "new-visitor-offer",
+      targeting: {
+        behaviorRules: {
+          enabled: true,
+          segments: ["NEW_VISITOR"],
+          campaignIds: [],
+          lookbackDays: 30,
+          inactiveCartMinutes: 60,
+          highIntentMinEvents: 3,
+          highIntentWindowMinutes: 60,
+        },
+      },
+    });
+
+    expect(serializeStorefrontCampaign(campaign, baseContext())).toBeNull();
+    expect(
+      serializeStorefrontCampaign(
+        campaign,
+        baseContext({
+          behaviorProfile: {
+            canUseBehaviorTargeting: true,
+            reason: "",
+            visitorId: "visitor-1",
+            sessionId: "session-1",
+            firstSeenAt: null,
+            lastSeenAt: null,
+            totalTouches: 0,
+            sessionCount: 0,
+            newVisitor: true,
+            returningVisitor: false,
+            viewedProductNoAddToCart: false,
+            addedToCartNoCheckout: false,
+            checkoutStarted: false,
+            sawCampaignIds: [],
+            clickedCampaignIds: [],
+            usedUniqueCodeCampaignIds: [],
+            highIntentVisitor: false,
+            inactiveCart: false,
+          },
+        }),
+      )?.id,
+    ).toBe("new-visitor-offer");
+  });
+
   it("falls back to English texts when locale text is missing", () => {
     const campaign = buildCampaign({
       translations: [
@@ -571,6 +617,11 @@ function baseContext(
     currency: "",
     placement: "",
     campaignId: "",
+    visitorId: "",
+    sessionId: "",
+    doNotTrack: false,
+    consentGranted: true,
+    behaviorProfile: null,
     ...overrides,
   };
 }
@@ -585,7 +636,7 @@ function buildCampaign(
     }>;
     type?: string;
     goal?: string;
-    targeting?: Record<string, string[]>;
+    targeting?: Partial<NonNullable<StorefrontCampaignSource["targeting"]>>;
     translations?: Array<{
       locale: string;
       headline?: string;
@@ -657,6 +708,7 @@ function buildCampaign(
           devices: [],
           excludeProductIds: [],
           excludeCollectionIds: [],
+          behaviorRules: null,
           ...overrides.targeting,
         } as StorefrontCampaignSource["targeting"])
       : null,

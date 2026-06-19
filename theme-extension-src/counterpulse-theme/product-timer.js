@@ -115,11 +115,30 @@
     if (config.cartSubtotal !== null)
       params.set("cartSubtotal", String(config.cartSubtotal));
     if (config.currency) params.set("currency", config.currency);
+    appendBehaviorTargetingParams(params);
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
     }
 
     return getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function appendBehaviorTargetingParams(params) {
+    var tracking =
+      typeof window.CounterPulseGetVisitorSessionTracking === "function"
+        ? window.CounterPulseGetVisitorSessionTracking()
+        : null;
+
+    if (!tracking) return;
+    if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
+    if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
+    params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
+    if (
+      tracking.consentGranted !== null &&
+      tracking.consentGranted !== undefined
+    ) {
+      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
+    }
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {

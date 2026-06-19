@@ -4,17 +4,24 @@ import { describe, expect, it } from "vitest";
 import { mapWebPixelEventToAnalyticsPayload } from "./web-pixel-events";
 
 describe("web pixel analytics mapper", () => {
-  it("ignores view events because they are not campaign metrics", () => {
+  it("maps product_viewed to PRODUCT_VIEWED with campaign attribution", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
         shop: "counterpulse-demo.myshopify.com",
         eventName: "product_viewed",
+        visitorId: "visitor-1",
         sessionId: "session-1",
+        lastSeenCampaignId: "campaign-1",
+        path: "/products/hat",
       }),
     ).toEqual({
-      ok: false,
-      reason: "not_campaign_metric",
-      errors: [],
+      ok: true,
+      payload: expect.objectContaining({
+        campaignId: "campaign-1",
+        eventType: AnalyticsEventType.PRODUCT_VIEWED,
+        path: "/products/hat",
+        visitorId: "visitor-1",
+      }),
     });
   });
 

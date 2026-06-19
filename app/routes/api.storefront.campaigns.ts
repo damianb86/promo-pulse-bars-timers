@@ -12,11 +12,16 @@ import {
   hasReachedMonthlyImpressions,
   isCampaignAllowedByPlan,
 } from "../services/planLimits.server";
+import { buildVisitorBehaviorProfile } from "../services/behavior/behaviorTargeting.server";
 import {
   applySettingsToStorefrontContext,
   getShopSettingsOrDefaults,
   serializePublicShopSettings,
 } from "../services/shopSettings.server";
+import {
+  getBehaviorTargetingLookbackDays,
+  hasBehaviorTargetingRules,
+} from "../types/behavior-targeting";
 import { checkStorefrontRateLimit } from "../utils/storefront-rate-limit.server";
 import {
   parseStorefrontCampaignContext,
@@ -93,17 +98,33 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     new Date(),
     placementType,
   );
+  const planAllowedCampaigns = campaigns.filter((campaign) =>
+    isCampaignAllowedByPlan(shop, campaign, placementType),
+  );
+  const behaviorLookbackDays = getMaxBehaviorLookbackDays(planAllowedCampaigns);
+  const behaviorProfile =
+    behaviorLookbackDays > 0
+      ? await buildVisitorBehaviorProfile({
+          shopId: shop.id,
+          visitorId: context.visitorId,
+          sessionId: context.sessionId,
+          settings: shopSettings,
+          privacy: {
+            doNotTrack: context.doNotTrack,
+            consentGranted: context.consentGranted,
+          },
+          lookbackDays: behaviorLookbackDays,
+        })
+      : null;
   const storefrontCampaigns = serializeStorefrontCampaigns(
-    campaigns.filter((campaign) =>
-      isCampaignAllowedByPlan(shop, campaign, placementType),
-    ),
-    context,
+    planAllowedCampaigns,
+    { ...context, behaviorProfile },
   );
 
   return jsonResponse(
     { campaigns: storefrontCampaigns, settings: publicSettings },
     {
-      cacheControl: getCacheControlHeader(context),
+      cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
       rateLimit,
     },
   );
@@ -166,12 +187,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 function getCacheControlHeader(
   context: ReturnType<typeof parseStorefrontCampaignContext>,
+  hasBehaviorTargeting = false,
 ) {
-  if (shouldBypassStorefrontCache(context)) {
+  if (hasBehaviorTargeting || shouldBypassStorefrontCache(context)) {
     return "no-store";
   }
 
   return "public, max-age=45, stale-while-revalidate=30";
+}
+
+function getMaxBehaviorLookbackDays(
+  campaigns: Awaited<ReturnType<typeof getActiveCampaignsForShop>>,
+) {
+  return campaigns.reduce((maxLookbackDays, campaign) => {
+    const behaviorRules = campaign.targeting?.behaviorRules;
+
+    if (!hasBehaviorTargetingRules(behaviorRules)) return maxLookbackDays;
+
+    return Math.max(
+      maxLookbackDays,
+      getBehaviorTargetingLookbackDays(behaviorRules),
+    );
+  }, 0);
 }
 
 function jsonResponse(

@@ -103,6 +103,11 @@ export function createTestContext(
     currency: "USD",
     placement: PlacementType.TOP_BAR,
     campaignId: "",
+    visitorId: "",
+    sessionId: "",
+    doNotTrack: false,
+    consentGranted: true,
+    behaviorProfile: null,
     ...overrides,
   };
 }
@@ -239,6 +244,7 @@ function createTargeting(
     devices: [],
     excludeProductIds: [],
     excludeCollectionIds: [],
+    behaviorRules: null,
     ...overrides,
   };
 }

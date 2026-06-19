@@ -207,6 +207,7 @@ const sevenDaysMs = 7 * oneDayMs;
 const defaultAttributableEventTypes = [
   AnalyticsEventType.IMPRESSION,
   AnalyticsEventType.CLICK,
+  AnalyticsEventType.PRODUCT_VIEWED,
   AnalyticsEventType.COPY_CODE,
   AnalyticsEventType.UNIQUE_CODE_ASSIGNED,
   AnalyticsEventType.APPLY_CODE_CLICKED,

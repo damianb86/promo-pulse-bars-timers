@@ -102,6 +102,15 @@
     });
   }
 
+  window.CounterPulseGetVisitorSessionTracking = function () {
+    return {
+      visitorId: getVisitorId(),
+      sessionId: getSessionId(),
+      doNotTrack: isDoNotTrackEnabled(),
+      consentGranted: hasAnalyticsConsent(),
+    };
+  };
+
   window.CounterPulseCopyCode = function (code, campaign) {
     if (window.navigator.clipboard && window.navigator.clipboard.writeText) {
       window.navigator.clipboard.writeText(code).catch(function () {});

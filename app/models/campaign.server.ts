@@ -693,6 +693,9 @@ export async function duplicateCampaign(id: string, shopId: string) {
                   .excludeProductIds as Prisma.InputJsonValue,
                 excludeCollectionIds: campaign.targeting
                   .excludeCollectionIds as Prisma.InputJsonValue,
+                behaviorRules:
+                  (campaign.targeting.behaviorRules as Prisma.InputJsonValue) ??
+                  Prisma.JsonNull,
               },
             },
           }
@@ -859,6 +862,37 @@ export async function duplicateCampaign(id: string, shopId: string) {
       },
     },
     include: campaignDetailsInclude,
+  });
+}
+
+export async function updateCampaignBehaviorTargetingForShop(
+  id: string,
+  shopId: string,
+  behaviorRules: Prisma.InputJsonValue,
+) {
+  await assertCampaignBelongsToShop(id, shopId);
+
+  return prisma.campaignTargeting.upsert({
+    where: { campaignId: id },
+    create: {
+      campaignId: id,
+      countries: [],
+      markets: [],
+      locales: [],
+      productIds: [],
+      collectionIds: [],
+      productTags: [],
+      customerTags: [],
+      urlContains: [],
+      utmSources: [],
+      devices: [],
+      excludeProductIds: [],
+      excludeCollectionIds: [],
+      behaviorRules,
+    },
+    update: {
+      behaviorRules,
+    },
   });
 }
 

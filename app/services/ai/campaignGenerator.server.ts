@@ -997,11 +997,16 @@ function sanitizePartialDesign(
       ? { layout: design.layout }
       : {}),
     ...(design.backgroundType === "SOLID" ||
-    design.backgroundType === "GRADIENT"
+    design.backgroundType === "GRADIENT" ||
+    design.backgroundType === "IMAGE"
       ? { backgroundType: design.backgroundType }
       : {}),
     ...(isHexColor(design.backgroundColor)
       ? { backgroundColor: design.backgroundColor }
+      : {}),
+    ...(typeof design.backgroundImageUrl === "string" &&
+    isSafeImageUrl(design.backgroundImageUrl)
+      ? { backgroundImageUrl: design.backgroundImageUrl.slice(0, 1000) }
       : {}),
     ...(isHexColor(design.gradientStartColor)
       ? { gradientStartColor: design.gradientStartColor }
@@ -1076,6 +1081,9 @@ function sanitizePartialDesign(
     ...(typeof design.timerShowLabels === "boolean"
       ? { timerShowLabels: design.timerShowLabels }
       : {}),
+    ...(typeof design.timerShowSeconds === "boolean"
+      ? { timerShowSeconds: design.timerShowSeconds }
+      : {}),
     ...(isHexColor(design.timerSurfaceColor)
       ? { timerSurfaceColor: design.timerSurfaceColor }
       : {}),
@@ -1103,6 +1111,9 @@ function sanitizePartialDesign(
     ...(typeof design.contentGap === "number"
       ? { contentGap: clampInteger(design.contentGap, 0, 32) }
       : {}),
+    ...(typeof design.contentMaxWidth === "number"
+      ? { contentMaxWidth: clampInteger(design.contentMaxWidth, 280, 1440) }
+      : {}),
     ...(typeof design.fullWidth === "boolean"
       ? { fullWidth: design.fullWidth }
       : {}),
@@ -1126,6 +1137,9 @@ function sanitizePartialDesign(
     ...(typeof design.showCloseButton === "boolean"
       ? { showCloseButton: design.showCloseButton }
       : {}),
+    ...(typeof design.showButton === "boolean"
+      ? { showButton: design.showButton }
+      : {}),
     ...(typeof design.showIcon === "boolean"
       ? { showIcon: design.showIcon }
       : {}),
@@ -1146,6 +1160,10 @@ function sanitizePartialDesign(
 
 function isHexColor(value: unknown) {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+function isSafeImageUrl(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
 }
 
 function sanitizeWeight(value: unknown, fallback: number) {

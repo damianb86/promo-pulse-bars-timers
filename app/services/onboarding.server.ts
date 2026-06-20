@@ -1,4 +1,5 @@
 import {
+  TimerExpiredBehavior,
   TimerMode,
   TimerResetBehavior,
   type Shop,
@@ -133,6 +134,7 @@ export async function createStarterCampaignFromGoal(
               durationMinutes: null,
               recurringDays: [],
               resetBehavior: TimerResetBehavior.NEVER,
+              expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
             },
           },
         }
@@ -145,6 +147,7 @@ export async function createStarterCampaignFromGoal(
               durationMinutes: 15,
               recurringDays: [],
               resetBehavior: TimerResetBehavior.ON_SESSION_END,
+              expiredBehavior: TimerExpiredBehavior.HIDE_TIMER,
             },
           },
         }
@@ -346,6 +349,12 @@ function toCampaignDesignCreateInput(template: CampaignDesignTemplate) {
     timerStyle: template.timerStyle,
     timerFormat: template.timerFormat,
     timerShowLabels: template.timerShowLabels,
+    timerShowSeconds: template.timerShowSeconds,
+    timerDaysLabel: template.timerDaysLabel,
+    timerHoursLabel: template.timerHoursLabel,
+    timerMinutesLabel: template.timerMinutesLabel,
+    timerSecondsLabel: template.timerSecondsLabel,
+    timerHideZeroDays: template.timerHideZeroDays,
     timerSurfaceColor: template.timerSurfaceColor,
     timerSurfaceBorderColor: template.timerSurfaceBorderColor,
     timerSurfaceBorderSize: template.timerSurfaceBorderSize,

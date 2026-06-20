@@ -1,67 +1,42 @@
 import { useMemo, useState } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
-import { Form, useNavigation } from "react-router";
+import { AppAlert } from "./Notifications";
 
 import { DesignControls } from "./DesignControls";
-import { CampaignPreview } from "./CampaignPreview";
-import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
+import {
+  CampaignPreviewPanel,
+  type PreviewPlacement,
+} from "./CampaignPreviewPanel";
+import type { PreviewDevice } from "./DevicePreviewToggle";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 import type {
   CampaignDesignErrors,
+  CampaignDesignMediaOptions,
   CampaignDesignValues,
 } from "../types/campaign-design";
+import { emptyCampaignDesignMediaOptions } from "../types/campaign-design";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 
-type PreviewPlacement =
-  | "TOP_BAR"
-  | "BOTTOM_BAR"
-  | "PRODUCT_PAGE"
-  | "CART_PAGE"
-  | "CART_DRAWER"
-  | "PRODUCT_BADGE";
-
 type CampaignDesignEditorProps = {
-  initialDesign: CampaignDesignValues;
+  design: CampaignDesignValues;
+  designMediaOptions?: CampaignDesignMediaOptions;
   errors?: CampaignDesignErrors;
   isProPlan: boolean;
   lockedCustomCssReason?: string;
+  onChange: (design: CampaignDesignValues) => void;
   viewModel: CampaignViewModel;
 };
 
-const previewPlacementOptions: Array<{
-  value: PreviewPlacement;
-  label: string;
-}> = [
-  { value: "TOP_BAR", label: "Top bar" },
-  { value: "BOTTOM_BAR", label: "Bottom bar" },
-  { value: "PRODUCT_PAGE", label: "Product page block" },
-  { value: "CART_PAGE", label: "Cart page block" },
-  { value: "CART_DRAWER", label: "Cart drawer block" },
-  { value: "PRODUCT_BADGE", label: "Badge" },
-];
-
 export function CampaignDesignEditor({
-  initialDesign,
+  design,
+  designMediaOptions = emptyCampaignDesignMediaOptions,
   errors,
   isProPlan,
   lockedCustomCssReason,
+  onChange,
   viewModel,
 }: CampaignDesignEditorProps) {
-  const navigation = useNavigation();
-  const [design, setDesign] = useState(initialDesign);
   const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [placement, setPlacement] = useState<PreviewPlacement>("PRODUCT_PAGE");
-  const isSubmitting = navigation.state === "submitting";
-  const confirmSubmit = useConfirmSubmit({
-    confirmLabel: "Save design",
-    title: "Save campaign design?",
-    children: (
-      <p>
-        This updates visual styling for the campaign widget across enabled
-        placements. Review the preview before confirming.
-      </p>
-    ),
-  });
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -85,60 +60,27 @@ export function CampaignDesignEditor({
         />
       )}
 
-      <Form
-        method="post"
-        className="counterpulse-design-editor"
-        onSubmit={confirmSubmit.onSubmit}
-      >
-        <input name="_action" type="hidden" value="saveDesign" />
-
+      <div className="counterpulse-design-editor">
         <div className="counterpulse-design-editor__controls">
           <DesignControls
+            mediaOptions={designMediaOptions}
             errors={errors}
             isProPlan={isProPlan}
             values={design}
-            onChange={setDesign}
+            onChange={onChange}
           />
-          <div className="counterpulse-actions">
-            <button className="counterpulse-button" type="submit">
-              {isSubmitting ? "Saving..." : "Save design"}
-            </button>
-            {!isProPlan && (
-              <span className="counterpulse-muted">
-                Custom CSS is gated for Pro.
-              </span>
-            )}
-          </div>
         </div>
 
-        <div className="counterpulse-design-editor__preview">
-          <div className="counterpulse-preview-toolbar">
-            <DevicePreviewToggle value={device} onChange={setDevice} />
-            <label className="counterpulse-form-field counterpulse-preview-placement-field">
-              <span>Placement preview</span>
-              <select
-                value={placement}
-                onChange={(event) =>
-                  setPlacement(event.target.value as PreviewPlacement)
-                }
-              >
-                {previewPlacementOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <CampaignPreview
-            design={design}
-            device={device}
-            placement={placement}
-            viewModel={previewViewModel}
-          />
-        </div>
-      </Form>
-      {confirmSubmit.modal}
+        <CampaignPreviewPanel
+          className="counterpulse-design-editor__preview"
+          design={design}
+          device={device}
+          placement={placement}
+          viewModel={previewViewModel}
+          onDeviceChange={setDevice}
+          onPlacementChange={setPlacement}
+        />
+      </div>
     </s-section>
   );
 }

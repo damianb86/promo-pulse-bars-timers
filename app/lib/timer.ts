@@ -10,6 +10,13 @@ export type TimerResetBehavior =
   | "DAILY"
   | "WEEKLY";
 
+export type TimerExpiredBehavior =
+  | "UNPUBLISH_TIMER"
+  | "HIDE_TIMER"
+  | "REPEAT_COUNTDOWN"
+  | "SHOW_CUSTOM_TITLE"
+  | "DO_NOTHING";
+
 export type TimerStorageState = {
   startedAt?: string | Date | null;
   endsAt?: string | Date | null;
@@ -21,6 +28,7 @@ export type TimerSettingsInput = {
   durationMinutes?: number | null;
   recurringDays?: unknown;
   resetBehavior?: TimerResetBehavior | string | null;
+  expiredBehavior?: TimerExpiredBehavior | string | null;
   cutoffHour?: number | null;
   cutoffMinute?: number | null;
 };

@@ -347,7 +347,7 @@
       );
     }
 
-    if ((campaign.texts || {}).ctaText) {
+    if (design.showButton !== false && (campaign.texts || {}).ctaText) {
       surface.appendChild(
         link(
           "pp-cta",
@@ -503,10 +503,7 @@
   }
 
   function setDesign(element, design) {
-    element.style.setProperty(
-      "--pp-bg",
-      color(design.backgroundColor, "#111827"),
-    );
+    element.style.setProperty("--pp-bg", getBackground(design));
     element.style.setProperty("--pp-text", color(design.textColor, "#ffffff"));
     element.style.setProperty(
       "--pp-accent",
@@ -527,6 +524,18 @@
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 24, 4) + "px",
+    );
+    element.style.setProperty(
+      "--pp-content-max-width",
+      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-block",
+      clamp(design.paddingBlock, 4, 48, 11) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-inline",
+      clamp(design.paddingInline, 8, 64, 16) + "px",
     );
     element.style.setProperty("--pp-justify", justify(design.alignment));
     element.style.setProperty("--pp-align", align(design.alignment));
@@ -645,8 +654,15 @@
         formatTimerUnit(days > 0 ? h : Math.floor(total / 3600), "Hr", design),
       );
       units.push(formatTimerUnit(m, "Min", design));
-      units.push(formatTimerUnit(s, "Sec", design));
+      if (!design || design.timerShowSeconds !== false) {
+        units.push(formatTimerUnit(s, "Sec", design));
+      }
       return units.join(" ");
+    }
+
+    if (design && design.timerShowSeconds === false) {
+      if (days > 0) return [pad(days), pad(h), pad(m)].join(":");
+      return pad(h) + ":" + pad(m);
     }
 
     return pad(h) + ":" + pad(m) + ":" + pad(s);
@@ -779,6 +795,45 @@
 
   function color(value, fallback) {
     return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
+  }
+
+  function getBackground(design) {
+    if (
+      design &&
+      design.backgroundType === "IMAGE" &&
+      isSafeImageUrl(design.backgroundImageUrl)
+    ) {
+      return (
+        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
+        escapeCssUrl(design.backgroundImageUrl) +
+        '") center / cover no-repeat'
+      );
+    }
+
+    if (design && design.backgroundType === "GRADIENT") {
+      return (
+        "linear-gradient(" +
+        clamp(design.gradientAngle, 0, 360, 90) +
+        "deg, " +
+        color(design.gradientStartColor, "#252237") +
+        ", " +
+        color(design.gradientEndColor, "#4c4861") +
+        ")"
+      );
+    }
+
+    return color(design.backgroundColor, "#111827");
+  }
+
+  function isSafeImageUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
+    );
+  }
+
+  function escapeCssUrl(value) {
+    return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
   function clamp(value, min, max, fallback) {

@@ -3,11 +3,7 @@ import { URL } from "node:url";
 
 import type { Frame, Locator, Page } from "@playwright/test";
 
-import {
-  getConfig,
-  requireRealE2E,
-  storageStateAbsolutePath,
-} from "./env";
+import { getConfig, requireRealE2E, storageStateAbsolutePath } from "./env";
 
 export type AppScope = Frame | Page;
 
@@ -39,9 +35,12 @@ export async function openPromoPulseApp(page: Page, appPath = "/app") {
   if (adminEmbeddedUrl) {
     await page.goto(adminEmbeddedUrl, { waitUntil: "domcontentloaded" });
   } else if (canNavigateDirectlyToAppUrl(config.appAdminUrl)) {
-    await page.goto(resolveAppUrl(config.appAdminUrl, appPath, config.shopDomain), {
-      waitUntil: "domcontentloaded",
-    });
+    await page.goto(
+      resolveAppUrl(config.appAdminUrl, appPath, config.shopDomain),
+      {
+        waitUntil: "domcontentloaded",
+      },
+    );
   } else {
     await page.goto(config.appAdminUrl, { waitUntil: "domcontentloaded" });
   }
@@ -54,7 +53,10 @@ export async function openPromoPulseApp(page: Page, appPath = "/app") {
   if (isShopifyAdminUrl(page.url()) && appPath !== "/app") {
     await navigateToEmbeddedAdminPath(page, appPath);
     await waitForAppReady(page, appPath);
-  } else if (!canNavigateDirectlyToAppUrl(config.appAdminUrl) && appPath !== "/app") {
+  } else if (
+    !canNavigateDirectlyToAppUrl(config.appAdminUrl) &&
+    appPath !== "/app"
+  ) {
     await navigateToEmbeddedAdminPath(page, appPath);
     await waitForAppReady(page, appPath);
   }
@@ -73,6 +75,16 @@ export async function getAppFrameOrPage(page: Page): Promise<AppScope> {
   const deadline = Date.now() + 45_000;
 
   while (Date.now() < deadline) {
+    for (const candidate of page.frames()) {
+      if (candidate === page.mainFrame()) continue;
+      if (
+        isConfiguredAppUrl(candidate.url()) &&
+        (await frameLooksLikePromoPulse(candidate))
+      ) {
+        return candidate;
+      }
+    }
+
     const iframeHandles = await page
       .locator("iframe")
       .elementHandles()
@@ -120,6 +132,15 @@ function canNavigateDirectlyToAppUrl(value: string) {
   const url = safeUrl(value);
   if (!url) return false;
   return url.hostname !== "admin.shopify.com";
+}
+
+function isConfiguredAppUrl(value: string) {
+  const configUrl = safeUrl(getConfig().appAdminUrl);
+  const candidateUrl = safeUrl(value);
+
+  return Boolean(
+    configUrl && candidateUrl && candidateUrl.hostname === configUrl.hostname,
+  );
 }
 
 function resolveAppUrl(base: string, appPath: string, shopDomain: string) {

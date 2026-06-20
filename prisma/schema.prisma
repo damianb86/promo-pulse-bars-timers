@@ -105,6 +105,9 @@ model Campaign {
   endsAt    DateTime?
   timezone  String         @default("UTC")
   priority  Int            @default(0)
+  lastSavedAt       DateTime @default(now())
+  publishedAt       DateTime?
+  publishedSnapshot Json?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -136,6 +139,7 @@ model Campaign {
   @@index([shopId, status])
   @@index([shopId, type])
   @@index([shopId, priority])
+  @@index([shopId, publishedAt])
   @@index([startsAt, endsAt])
 }
 
@@ -177,6 +181,7 @@ model CampaignDesign {
   layout                  DesignLayout         @default(STANDARD)
   backgroundType          DesignBackgroundType @default(SOLID)
   backgroundColor         String               @default("#111827")
+  backgroundImageUrl      String               @default("")
   gradientStartColor      String               @default("#252237")
   gradientEndColor        String               @default("#4C4861")
   gradientAngle           Int                  @default(90)
@@ -200,6 +205,12 @@ model CampaignDesign {
   timerStyle              DesignTimerStyle     @default(PLAIN)
   timerFormat             DesignTimerFormat    @default(UNITS)
   timerShowLabels         Boolean              @default(true)
+  timerShowSeconds        Boolean              @default(true)
+  timerDaysLabel          String               @default("Days")
+  timerHoursLabel         String               @default("Hrs")
+  timerMinutesLabel       String               @default("Mins")
+  timerSecondsLabel       String               @default("Secs")
+  timerHideZeroDays       Boolean              @default(true)
   timerSurfaceColor       String               @default("#FFFFFF")
   timerSurfaceBorderColor String               @default("#D1D5DB")
   timerSurfaceBorderSize  Int                  @default(0)
@@ -207,6 +218,7 @@ model CampaignDesign {
   paddingBlock            Int                  @default(20)
   paddingInline           Int                  @default(24)
   contentGap              Int                  @default(8)
+  contentMaxWidth         Int                  @default(960)
   fullWidth               Boolean              @default(false)
   positionMode            DesignPositionMode   @default(FLOW)
   positionSticky          Boolean              @default(true)
@@ -214,6 +226,7 @@ model CampaignDesign {
   mobileEnabled           Boolean              @default(true)
   alignment               DesignAlignment      @default(CENTER)
   showCloseButton         Boolean              @default(true)
+  showButton              Boolean              @default(true)
   showIcon                Boolean              @default(true)
   icon                    CampaignDesignIcon   @default(NONE)
   customIconUrl           String               @default("")
@@ -222,11 +235,12 @@ model CampaignDesign {
 }
 
 model TimerSettings {
-  campaignId      String             @id
+  campaignId      String               @id
   mode            TimerMode
   durationMinutes Int?
   recurringDays   Json
-  resetBehavior   TimerResetBehavior @default(NEVER)
+  resetBehavior   TimerResetBehavior   @default(NEVER)
+  expiredBehavior TimerExpiredBehavior @default(UNPUBLISH_TIMER)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -777,6 +791,14 @@ enum TimerResetBehavior {
   WEEKLY
 }
 
+enum TimerExpiredBehavior {
+  UNPUBLISH_TIMER
+  HIDE_TIMER
+  REPEAT_COUNTDOWN
+  SHOW_CUSTOM_TITLE
+  DO_NOTHING
+}
+
 enum FreeShippingProgressStyle {
   BAR
   COMPACT
@@ -974,6 +996,7 @@ enum DesignLayout {
 enum DesignBackgroundType {
   SOLID
   GRADIENT
+  IMAGE
 }
 
 enum DesignFontFamily {

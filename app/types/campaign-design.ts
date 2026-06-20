@@ -6,7 +6,7 @@ export type DesignLayoutValue =
   | "CTA_RIGHT"
   | "CTA_LEFT"
   | "CTA_TOP";
-export type DesignBackgroundTypeValue = "SOLID" | "GRADIENT";
+export type DesignBackgroundTypeValue = "SOLID" | "GRADIENT" | "IMAGE";
 export type DesignFontFamilyValue =
   | "THEME"
   | "SYSTEM"
@@ -34,6 +34,7 @@ export type CampaignDesignValues = {
   layout: DesignLayoutValue;
   backgroundType: DesignBackgroundTypeValue;
   backgroundColor: string;
+  backgroundImageUrl: string;
   gradientStartColor: string;
   gradientEndColor: string;
   gradientAngle: number;
@@ -57,6 +58,12 @@ export type CampaignDesignValues = {
   timerStyle: DesignTimerStyleValue;
   timerFormat: DesignTimerFormatValue;
   timerShowLabels: boolean;
+  timerShowSeconds: boolean;
+  timerDaysLabel: string;
+  timerHoursLabel: string;
+  timerMinutesLabel: string;
+  timerSecondsLabel: string;
+  timerHideZeroDays: boolean;
   timerSurfaceColor: string;
   timerSurfaceBorderColor: string;
   timerSurfaceBorderSize: number;
@@ -64,6 +71,7 @@ export type CampaignDesignValues = {
   paddingBlock: number;
   paddingInline: number;
   contentGap: number;
+  contentMaxWidth: number;
   fullWidth: boolean;
   positionMode: DesignPositionModeValue;
   positionSticky: boolean;
@@ -71,6 +79,7 @@ export type CampaignDesignValues = {
   customCss: string;
   alignment: DesignAlignmentValue;
   showCloseButton: boolean;
+  showButton: boolean;
   showIcon: boolean;
   icon: CampaignDesignIconValue;
   customIconUrl: string;
@@ -86,11 +95,28 @@ export type CampaignDesignTemplate = CampaignDesignValues & {
   label: string;
 };
 
+export type CampaignDesignImageOption = {
+  id: string;
+  label: string;
+  url: string;
+  previewUrl: string;
+  alt?: string;
+};
+
+export type CampaignDesignMediaOptions = {
+  images: CampaignDesignImageOption[];
+};
+
+export const emptyCampaignDesignMediaOptions: CampaignDesignMediaOptions = {
+  images: [],
+};
+
 export const defaultCampaignDesignValues: CampaignDesignValues = {
   templateKey: "clean-minimal",
   layout: "STANDARD",
   backgroundType: "SOLID",
   backgroundColor: "#FFFFFF",
+  backgroundImageUrl: "",
   gradientStartColor: "#252237",
   gradientEndColor: "#4C4861",
   gradientAngle: 90,
@@ -114,6 +140,12 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   timerStyle: "PLAIN",
   timerFormat: "UNITS",
   timerShowLabels: true,
+  timerShowSeconds: true,
+  timerDaysLabel: "Days",
+  timerHoursLabel: "Hrs",
+  timerMinutesLabel: "Mins",
+  timerSecondsLabel: "Secs",
+  timerHideZeroDays: true,
   timerSurfaceColor: "#FFFFFF",
   timerSurfaceBorderColor: "#D1D5DB",
   timerSurfaceBorderSize: 0,
@@ -121,6 +153,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   paddingBlock: 20,
   paddingInline: 24,
   contentGap: 8,
+  contentMaxWidth: 960,
   fullWidth: false,
   positionMode: "FLOW",
   positionSticky: false,
@@ -128,6 +161,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   customCss: "",
   alignment: "CENTER",
   showCloseButton: true,
+  showButton: true,
   showIcon: false,
   icon: "NONE",
   customIconUrl: "",
@@ -421,6 +455,7 @@ export const designBackgroundTypeOptions: Array<{
 }> = [
   { value: "SOLID", label: "Single color background" },
   { value: "GRADIENT", label: "Gradient background" },
+  { value: "IMAGE", label: "Image background" },
 ];
 
 export const designFontFamilyOptions: Array<{

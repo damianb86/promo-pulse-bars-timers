@@ -57,6 +57,7 @@ export default defineConfig({
         "**/10.analytics-reports.spec.ts",
         "**/11.templates-ai.spec.ts",
         "**/12.settings-billing.spec.ts",
+        "**/14.design-timer-configuration.spec.ts",
         "**/99.cleanup.spec.ts",
       ],
       use: {

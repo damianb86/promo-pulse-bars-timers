@@ -1,4 +1,11 @@
-import { CampaignStatus, PlacementType, Prisma } from "@prisma/client";
+import {
+  CampaignStatus,
+  PlacementType,
+  Prisma,
+  type TimerExpiredBehavior,
+  type TimerMode,
+  type TimerResetBehavior,
+} from "@prisma/client";
 
 import prisma from "../db.server";
 import {
@@ -54,6 +61,14 @@ type CampaignBasicsInput = {
   subheadline: string;
   ctaText: string;
   ctaUrl: string;
+  expiredText: string;
+  timerSettings: {
+    mode: TimerMode;
+    durationMinutes: number | null;
+    recurringDays: Prisma.InputJsonValue;
+    resetBehavior: TimerResetBehavior;
+    expiredBehavior: TimerExpiredBehavior;
+  };
 };
 
 type CampaignTranslationInput = CampaignTranslationValues & {
@@ -110,6 +125,10 @@ type DiscountSyncInput = {
   uniqueCodeStartsAt?: Date | null;
   uniqueCodeEndsAt?: Date | null;
 };
+
+type CampaignDetailsRecord = Prisma.CampaignGetPayload<{
+  include: typeof campaignDetailsInclude;
+}>;
 
 export function getCampaignById(id: string) {
   return prisma.campaign.findUnique({
@@ -204,6 +223,7 @@ export async function updateCampaignBasicsForShop(
         startsAt: input.startsAt,
         endsAt: input.endsAt,
         timezone: input.timezone,
+        lastSavedAt: new Date(),
       },
     });
 
@@ -246,12 +266,33 @@ export async function updateCampaignBasicsForShop(
         subheadline: input.subheadline,
         ctaText: input.ctaText,
         ctaUrl: input.ctaUrl,
+        expiredText: input.expiredText,
       },
       update: {
         headline: input.headline,
         subheadline: input.subheadline,
         ctaText: input.ctaText,
         ctaUrl: input.ctaUrl,
+        expiredText: input.expiredText,
+      },
+    });
+
+    await tx.timerSettings.upsert({
+      where: { campaignId: id },
+      create: {
+        campaignId: id,
+        mode: input.timerSettings.mode,
+        durationMinutes: input.timerSettings.durationMinutes,
+        recurringDays: input.timerSettings.recurringDays,
+        resetBehavior: input.timerSettings.resetBehavior,
+        expiredBehavior: input.timerSettings.expiredBehavior,
+      },
+      update: {
+        mode: input.timerSettings.mode,
+        durationMinutes: input.timerSettings.durationMinutes,
+        recurringDays: input.timerSettings.recurringDays,
+        resetBehavior: input.timerSettings.resetBehavior,
+        expiredBehavior: input.timerSettings.expiredBehavior,
       },
     });
 
@@ -520,6 +561,64 @@ export async function updateFreeShippingSettingsForShop(
   });
 }
 
+function toCampaignDesignWriteData(input: CampaignDesignValues) {
+  return {
+    templateKey: input.templateKey,
+    layout: input.layout,
+    backgroundType: input.backgroundType,
+    backgroundColor: input.backgroundColor,
+    backgroundImageUrl: input.backgroundImageUrl,
+    gradientStartColor: input.gradientStartColor,
+    gradientEndColor: input.gradientEndColor,
+    gradientAngle: input.gradientAngle,
+    textColor: input.textColor,
+    accentColor: input.accentColor,
+    buttonColor: input.buttonColor,
+    buttonTextColor: input.buttonTextColor,
+    fontSize: input.fontSize,
+    borderRadius: input.borderRadius,
+    borderSize: input.borderSize,
+    borderColor: input.borderColor,
+    fontFamily: input.fontFamily,
+    titleFontSize: input.titleFontSize,
+    titleColor: input.titleColor,
+    subheadingFontSize: input.subheadingFontSize,
+    subheadingColor: input.subheadingColor,
+    timerFontSize: input.timerFontSize,
+    timerColor: input.timerColor,
+    legendFontSize: input.legendFontSize,
+    legendColor: input.legendColor,
+    timerStyle: input.timerStyle,
+    timerFormat: input.timerFormat,
+    timerShowLabels: input.timerShowLabels,
+    timerShowSeconds: input.timerShowSeconds,
+    timerDaysLabel: input.timerDaysLabel,
+    timerHoursLabel: input.timerHoursLabel,
+    timerMinutesLabel: input.timerMinutesLabel,
+    timerSecondsLabel: input.timerSecondsLabel,
+    timerHideZeroDays: input.timerHideZeroDays,
+    timerSurfaceColor: input.timerSurfaceColor,
+    timerSurfaceBorderColor: input.timerSurfaceBorderColor,
+    timerSurfaceBorderSize: input.timerSurfaceBorderSize,
+    timerSurfaceRadius: input.timerSurfaceRadius,
+    paddingBlock: input.paddingBlock,
+    paddingInline: input.paddingInline,
+    contentGap: input.contentGap,
+    contentMaxWidth: input.contentMaxWidth,
+    fullWidth: input.fullWidth,
+    positionMode: input.positionMode,
+    positionSticky: input.positionSticky,
+    customCss: input.customCss,
+    mobileEnabled: input.mobileEnabled,
+    alignment: input.alignment,
+    showCloseButton: input.showCloseButton,
+    showButton: input.showButton,
+    showIcon: input.showIcon,
+    icon: input.icon,
+    customIconUrl: input.customIconUrl,
+  };
+}
+
 export async function updateCampaignDesignForShop(
   id: string,
   shopId: string,
@@ -527,101 +626,52 @@ export async function updateCampaignDesignForShop(
 ) {
   await assertCampaignBelongsToShop(id, shopId);
 
-  return prisma.campaignDesign.upsert({
-    where: { campaignId: id },
-    create: {
-      campaignId: id,
-      templateKey: input.templateKey,
-      layout: input.layout,
-      backgroundType: input.backgroundType,
-      backgroundColor: input.backgroundColor,
-      gradientStartColor: input.gradientStartColor,
-      gradientEndColor: input.gradientEndColor,
-      gradientAngle: input.gradientAngle,
-      textColor: input.textColor,
-      accentColor: input.accentColor,
-      buttonColor: input.buttonColor,
-      buttonTextColor: input.buttonTextColor,
-      fontSize: input.fontSize,
-      borderRadius: input.borderRadius,
-      borderSize: input.borderSize,
-      borderColor: input.borderColor,
-      fontFamily: input.fontFamily,
-      titleFontSize: input.titleFontSize,
-      titleColor: input.titleColor,
-      subheadingFontSize: input.subheadingFontSize,
-      subheadingColor: input.subheadingColor,
-      timerFontSize: input.timerFontSize,
-      timerColor: input.timerColor,
-      legendFontSize: input.legendFontSize,
-      legendColor: input.legendColor,
-      timerStyle: input.timerStyle,
-      timerFormat: input.timerFormat,
-      timerShowLabels: input.timerShowLabels,
-      timerSurfaceColor: input.timerSurfaceColor,
-      timerSurfaceBorderColor: input.timerSurfaceBorderColor,
-      timerSurfaceBorderSize: input.timerSurfaceBorderSize,
-      timerSurfaceRadius: input.timerSurfaceRadius,
-      paddingBlock: input.paddingBlock,
-      paddingInline: input.paddingInline,
-      contentGap: input.contentGap,
-      fullWidth: input.fullWidth,
-      positionMode: input.positionMode,
-      positionSticky: input.positionSticky,
-      customCss: input.customCss,
-      mobileEnabled: input.mobileEnabled,
-      alignment: input.alignment,
-      showCloseButton: input.showCloseButton,
-      showIcon: input.showIcon,
-      icon: input.icon,
-      customIconUrl: input.customIconUrl,
+  return prisma.$transaction(async (tx) => {
+    await tx.campaign.update({
+      where: { id },
+      data: { lastSavedAt: new Date() },
+    });
+
+    return tx.campaignDesign.upsert({
+      where: { campaignId: id },
+      create: {
+        campaignId: id,
+        ...toCampaignDesignWriteData(input),
+      },
+      update: toCampaignDesignWriteData(input),
+    });
+  });
+}
+
+export async function publishCampaignForShop(id: string, shopId: string) {
+  const campaign = await prisma.campaign.findFirst({
+    where: { id, shopId },
+    include: campaignDetailsInclude,
+  });
+
+  if (!campaign) {
+    throw new Error("Campaign not found.");
+  }
+
+  assertCanActivateCampaign(campaign);
+
+  const now = new Date();
+  const snapshot = createCampaignPublicationSnapshot({
+    ...campaign,
+    status: CampaignStatus.ACTIVE,
+    publishedAt: now,
+    lastSavedAt: now,
+  });
+
+  return prisma.campaign.update({
+    where: { id },
+    data: {
+      status: CampaignStatus.ACTIVE,
+      lastSavedAt: now,
+      publishedAt: now,
+      publishedSnapshot: snapshot,
     },
-    update: {
-      templateKey: input.templateKey,
-      layout: input.layout,
-      backgroundType: input.backgroundType,
-      backgroundColor: input.backgroundColor,
-      gradientStartColor: input.gradientStartColor,
-      gradientEndColor: input.gradientEndColor,
-      gradientAngle: input.gradientAngle,
-      textColor: input.textColor,
-      accentColor: input.accentColor,
-      buttonColor: input.buttonColor,
-      buttonTextColor: input.buttonTextColor,
-      fontSize: input.fontSize,
-      borderRadius: input.borderRadius,
-      borderSize: input.borderSize,
-      borderColor: input.borderColor,
-      fontFamily: input.fontFamily,
-      titleFontSize: input.titleFontSize,
-      titleColor: input.titleColor,
-      subheadingFontSize: input.subheadingFontSize,
-      subheadingColor: input.subheadingColor,
-      timerFontSize: input.timerFontSize,
-      timerColor: input.timerColor,
-      legendFontSize: input.legendFontSize,
-      legendColor: input.legendColor,
-      timerStyle: input.timerStyle,
-      timerFormat: input.timerFormat,
-      timerShowLabels: input.timerShowLabels,
-      timerSurfaceColor: input.timerSurfaceColor,
-      timerSurfaceBorderColor: input.timerSurfaceBorderColor,
-      timerSurfaceBorderSize: input.timerSurfaceBorderSize,
-      timerSurfaceRadius: input.timerSurfaceRadius,
-      paddingBlock: input.paddingBlock,
-      paddingInline: input.paddingInline,
-      contentGap: input.contentGap,
-      fullWidth: input.fullWidth,
-      positionMode: input.positionMode,
-      positionSticky: input.positionSticky,
-      customCss: input.customCss,
-      mobileEnabled: input.mobileEnabled,
-      alignment: input.alignment,
-      showCloseButton: input.showCloseButton,
-      showIcon: input.showIcon,
-      icon: input.icon,
-      customIconUrl: input.customIconUrl,
-    },
+    include: campaignDetailsInclude,
   });
 }
 
@@ -804,6 +854,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 layout: campaign.design.layout,
                 backgroundType: campaign.design.backgroundType,
                 backgroundColor: campaign.design.backgroundColor,
+                backgroundImageUrl: campaign.design.backgroundImageUrl,
                 gradientStartColor: campaign.design.gradientStartColor,
                 gradientEndColor: campaign.design.gradientEndColor,
                 gradientAngle: campaign.design.gradientAngle,
@@ -827,6 +878,12 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 timerStyle: campaign.design.timerStyle,
                 timerFormat: campaign.design.timerFormat,
                 timerShowLabels: campaign.design.timerShowLabels,
+                timerShowSeconds: campaign.design.timerShowSeconds,
+                timerDaysLabel: campaign.design.timerDaysLabel,
+                timerHoursLabel: campaign.design.timerHoursLabel,
+                timerMinutesLabel: campaign.design.timerMinutesLabel,
+                timerSecondsLabel: campaign.design.timerSecondsLabel,
+                timerHideZeroDays: campaign.design.timerHideZeroDays,
                 timerSurfaceColor: campaign.design.timerSurfaceColor,
                 timerSurfaceBorderColor:
                   campaign.design.timerSurfaceBorderColor,
@@ -835,6 +892,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 paddingBlock: campaign.design.paddingBlock,
                 paddingInline: campaign.design.paddingInline,
                 contentGap: campaign.design.contentGap,
+                contentMaxWidth: campaign.design.contentMaxWidth,
                 fullWidth: campaign.design.fullWidth,
                 positionMode: campaign.design.positionMode,
                 positionSticky: campaign.design.positionSticky,
@@ -842,6 +900,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 mobileEnabled: campaign.design.mobileEnabled,
                 alignment: campaign.design.alignment,
                 showCloseButton: campaign.design.showCloseButton,
+                showButton: campaign.design.showButton,
                 showIcon: campaign.design.showIcon,
                 icon: campaign.design.icon,
                 customIconUrl: campaign.design.customIconUrl,
@@ -858,6 +917,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 recurringDays: campaign.timerSettings
                   .recurringDays as Prisma.InputJsonValue,
                 resetBehavior: campaign.timerSettings.resetBehavior,
+                expiredBehavior: campaign.timerSettings.expiredBehavior,
               },
             },
           }
@@ -1032,35 +1092,162 @@ async function assertCampaignBelongsToShop(id: string, shopId: string) {
   }
 }
 
-export function getActiveCampaignsForShop(
+export async function getActiveCampaignsForShop(
   shopId: string,
   at = new Date(),
   placementType?: PlacementType,
 ) {
-  return prisma.campaign.findMany({
+  const campaigns = await prisma.campaign.findMany({
     where: {
       shopId,
-      status: CampaignStatus.ACTIVE,
-      ...(placementType
-        ? {
-            placements: {
-              some: {
-                placementType,
-                enabled: true,
-              },
-            },
-          }
-        : {}),
-      AND: [
-        {
-          OR: [{ startsAt: null }, { startsAt: { lte: at } }],
-        },
-        {
-          OR: [{ endsAt: null }, { endsAt: { gte: at } }],
-        },
-      ],
+      publishedAt: { not: null },
     },
     include: campaignDetailsInclude,
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
   });
+
+  return campaigns
+    .map(hydratePublishedCampaignSnapshot)
+    .filter((campaign) =>
+      isPublishedCampaignActive(campaign, at, placementType),
+    );
+}
+
+function isPublishedCampaignActive(
+  campaign: CampaignDetailsRecord,
+  at: Date,
+  placementType?: PlacementType,
+) {
+  if (campaign.status !== CampaignStatus.ACTIVE) return false;
+
+  if (campaign.startsAt && campaign.startsAt > at) return false;
+  if (
+    campaign.endsAt &&
+    campaign.endsAt < at &&
+    (campaign.timerSettings?.expiredBehavior ?? "UNPUBLISH_TIMER") ===
+      "UNPUBLISH_TIMER"
+  ) {
+    return false;
+  }
+
+  if (!placementType) return true;
+
+  return campaign.placements.some(
+    (placement) =>
+      placement.enabled && placement.placementType === placementType,
+  );
+}
+
+function createCampaignPublicationSnapshot(
+  campaign: CampaignDetailsRecord,
+): Prisma.InputJsonValue {
+  const snapshot = JSON.parse(
+    JSON.stringify({
+      ...campaign,
+      publishedSnapshot: undefined,
+    }),
+  ) as Record<string, unknown>;
+
+  delete snapshot.publishedSnapshot;
+
+  return snapshot as Prisma.InputJsonObject;
+}
+
+function hydratePublishedCampaignSnapshot(
+  campaign: CampaignDetailsRecord,
+): CampaignDetailsRecord {
+  const snapshot = readJsonObject(campaign.publishedSnapshot);
+
+  if (!snapshot) return campaign;
+
+  const hydrated = {
+    ...campaign,
+    ...snapshot,
+    createdAt: readDate(snapshot.createdAt) ?? campaign.createdAt,
+    updatedAt: readDate(snapshot.updatedAt) ?? campaign.updatedAt,
+    startsAt: readDate(snapshot.startsAt),
+    endsAt: readDate(snapshot.endsAt),
+    lastSavedAt: readDate(snapshot.lastSavedAt) ?? campaign.lastSavedAt,
+    publishedAt: readDate(snapshot.publishedAt) ?? campaign.publishedAt,
+    placements: readArray(snapshot.placements, campaign.placements),
+    targeting: readNullableObject(snapshot.targeting, campaign.targeting),
+    design: readNullableObject(snapshot.design, campaign.design),
+    timerSettings: readNullableObject(
+      snapshot.timerSettings,
+      campaign.timerSettings,
+    ),
+    freeShippingSettings: readNullableObject(
+      snapshot.freeShippingSettings,
+      campaign.freeShippingSettings,
+    ),
+    deliveryCutoffSettings: readNullableObject(
+      snapshot.deliveryCutoffSettings,
+      campaign.deliveryCutoffSettings,
+    ),
+    lowStockSettings: readNullableObject(
+      snapshot.lowStockSettings,
+      campaign.lowStockSettings,
+    ),
+    badgeSettings: readNullableObject(
+      snapshot.badgeSettings,
+      campaign.badgeSettings,
+    ),
+    discountSync: readNullableObject(
+      snapshot.discountSync,
+      campaign.discountSync,
+    ),
+    marketCampaignRules: readArray(
+      snapshot.marketCampaignRules,
+      campaign.marketCampaignRules,
+    ),
+    translations: readArray(snapshot.translations, campaign.translations),
+    experiments: hydrateExperimentSnapshots(
+      readArray(snapshot.experiments, campaign.experiments),
+    ),
+  };
+
+  return hydrated as CampaignDetailsRecord;
+}
+
+function hydrateExperimentSnapshots(
+  experiments: CampaignDetailsRecord["experiments"],
+) {
+  return experiments.map((experiment) => ({
+    ...experiment,
+    createdAt: readDate(experiment.createdAt) ?? experiment.createdAt,
+    updatedAt: readDate(experiment.updatedAt) ?? experiment.updatedAt,
+    startsAt: readDate(experiment.startsAt),
+    endsAt: readDate(experiment.endsAt),
+    variants: experiment.variants.map((variant) => ({
+      ...variant,
+      createdAt: readDate(variant.createdAt) ?? variant.createdAt,
+      updatedAt: readDate(variant.updatedAt) ?? variant.updatedAt,
+    })),
+  }));
+}
+
+function readJsonObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readNullableObject<T>(value: unknown, fallback: T): T {
+  if (value === null) return null as T;
+
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as T)
+    : fallback;
+}
+
+function readArray<T>(value: unknown, fallback: T[]): T[] {
+  return Array.isArray(value) ? (value as T[]) : fallback;
+}
+
+function readDate(value: unknown) {
+  if (!value || typeof value !== "string") return null;
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }

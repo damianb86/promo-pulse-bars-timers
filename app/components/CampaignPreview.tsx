@@ -372,6 +372,7 @@ function buildPreviewStyle(design: CampaignDesignValues) {
   return {
     "--cp-surface-bg": getSurfaceBackground(design),
     "--cp-bg": design.backgroundColor,
+    "--cp-content-max-width": `${design.contentMaxWidth}px`,
     "--cp-text": design.textColor,
     "--cp-accent": design.accentColor,
     "--cp-button": design.buttonColor,
@@ -402,11 +403,21 @@ function buildPreviewStyle(design: CampaignDesignValues) {
 }
 
 function getSurfaceBackground(design: CampaignDesignValues) {
+  if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
+    return `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("${escapeCssUrl(
+      design.backgroundImageUrl,
+    )}") center / cover no-repeat`;
+  }
+
   if (design.backgroundType === "GRADIENT") {
     return `linear-gradient(${design.gradientAngle}deg, ${design.gradientStartColor}, ${design.gradientEndColor})`;
   }
 
   return design.backgroundColor;
+}
+
+function escapeCssUrl(value: string) {
+  return value.replace(/["\\\n\r]/g, "");
 }
 
 function getJustifyContent(alignment: CampaignDesignValues["alignment"]) {
@@ -530,26 +541,25 @@ function PromoSurface({
         />
       ) : null}
 
-      {(viewModel.discountCode ||
-        viewModel.ctaText ||
-        design.showCloseButton) && (
+      {(viewModel.discountCode || (design.showButton && viewModel.ctaText)) && (
         <div className="counterpulse-preview-actions">
           {viewModel.discountCode && (
             <span className="counterpulse-preview-code">
               {viewModel.discountCode}
             </span>
           )}
-          {viewModel.ctaText && (
+          {design.showButton && viewModel.ctaText && (
             <span className="counterpulse-preview-cta">
               {viewModel.ctaText}
             </span>
           )}
-          {design.showCloseButton && (
-            <span className="counterpulse-preview-close" aria-hidden="true">
-              x
-            </span>
-          )}
         </div>
+      )}
+
+      {design.showCloseButton && (
+        <span className="counterpulse-preview-close" aria-hidden="true">
+          x
+        </span>
       )}
 
       {freeShippingPreview && (
@@ -575,10 +585,13 @@ function TimerDisplay({
   compact?: boolean;
 }) {
   const timerParts = timerState?.isActive
-    ? buildTimerParts(timerState.remainingMs, design.timerStyle === "BOXES")
+    ? buildTimerParts(timerState.remainingMs, design)
     : buildTimerPartsFromText(deliveryTime);
+  const visibleTimerParts = design.timerShowSeconds
+    ? timerParts
+    : timerParts.filter((part) => part.shortLabel !== "Secs");
 
-  if (!timerParts.length) return null;
+  if (!visibleTimerParts.length) return null;
 
   if (design.timerFormat === "COLON") {
     return (
@@ -591,7 +604,7 @@ function TimerDisplay({
         ].join(" ")}
         suppressHydrationWarning
       >
-        {formatTimerPartsAsColon(timerParts)}
+        {formatTimerPartsAsColon(visibleTimerParts)}
       </div>
     );
   }
@@ -602,7 +615,7 @@ function TimerDisplay({
         className="counterpulse-preview-timer counterpulse-preview-timer--inline-plain"
         suppressHydrationWarning
       >
-        {timerParts
+        {visibleTimerParts
           .map((part) =>
             design.timerShowLabels
               ? `${part.value} ${part.shortLabel}`
@@ -622,7 +635,7 @@ function TimerDisplay({
       ].join(" ")}
       suppressHydrationWarning
     >
-      {timerParts.map((part) => (
+      {visibleTimerParts.map((part) => (
         <span className="counterpulse-preview-timer-unit" key={part.label}>
           <strong>{part.value}</strong>
           {design.timerShowLabels ? <small>{part.label}</small> : null}
@@ -744,9 +757,10 @@ function PreviewIconSvg({ icon }: { icon: CampaignDesignValues["icon"] }) {
   return null;
 }
 
-function buildTimerParts(remainingMs: number, includeDays: boolean) {
+function buildTimerParts(remainingMs: number, design: CampaignDesignValues) {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
   const days = Math.floor(totalSeconds / 86400);
+  const includeDays = !design.timerHideZeroDays || days > 0;
   const hours =
     includeDays || days > 0
       ? Math.floor((totalSeconds % 86400) / 3600)
@@ -755,11 +769,25 @@ function buildTimerParts(remainingMs: number, includeDays: boolean) {
   const seconds = totalSeconds % 60;
   const parts = [
     ...(includeDays || days > 0
-      ? [{ value: pad(days), label: "Days", shortLabel: "Days" }]
+      ? [
+          {
+            value: pad(days),
+            label: design.timerDaysLabel,
+            shortLabel: "Days",
+          },
+        ]
       : []),
-    { value: pad(hours), label: "Hrs", shortLabel: "Hrs" },
-    { value: pad(minutes), label: "Mins", shortLabel: "Mins" },
-    { value: pad(seconds), label: "Secs", shortLabel: "Secs" },
+    { value: pad(hours), label: design.timerHoursLabel, shortLabel: "Hrs" },
+    {
+      value: pad(minutes),
+      label: design.timerMinutesLabel,
+      shortLabel: "Mins",
+    },
+    {
+      value: pad(seconds),
+      label: design.timerSecondsLabel,
+      shortLabel: "Secs",
+    },
   ];
 
   return parts;

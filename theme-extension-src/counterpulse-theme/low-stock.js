@@ -302,10 +302,7 @@
   }
 
   function setDesign(element, design, alignment) {
-    element.style.setProperty(
-      "--pp-bg",
-      color(design.backgroundColor, "#111827"),
-    );
+    element.style.setProperty("--pp-bg", getBackground(design));
     element.style.setProperty("--pp-text", color(design.textColor, "#ffffff"));
     element.style.setProperty(
       "--pp-accent",
@@ -318,6 +315,18 @@
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 24, 4) + "px",
+    );
+    element.style.setProperty(
+      "--pp-content-max-width",
+      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-block",
+      clamp(design.paddingBlock, 4, 48, 12) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-inline",
+      clamp(design.paddingInline, 8, 64, 14) + "px",
     );
     element.style.setProperty(
       "--pp-justify",
@@ -433,6 +442,45 @@
 
   function color(value, fallback) {
     return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
+  }
+
+  function getBackground(design) {
+    if (
+      design &&
+      design.backgroundType === "IMAGE" &&
+      isSafeImageUrl(design.backgroundImageUrl)
+    ) {
+      return (
+        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
+        escapeCssUrl(design.backgroundImageUrl) +
+        '") center / cover no-repeat'
+      );
+    }
+
+    if (design && design.backgroundType === "GRADIENT") {
+      return (
+        "linear-gradient(" +
+        clamp(design.gradientAngle, 0, 360, 90) +
+        "deg, " +
+        color(design.gradientStartColor, "#252237") +
+        ", " +
+        color(design.gradientEndColor, "#4c4861") +
+        ")"
+      );
+    }
+
+    return color(design.backgroundColor, "#111827");
+  }
+
+  function isSafeImageUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
+    );
+  }
+
+  function escapeCssUrl(value) {
+    return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
   function clamp(value, min, max, fallback) {

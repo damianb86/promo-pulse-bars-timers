@@ -385,6 +385,9 @@ export async function validateCampaignPlanAccess(
     placementType: PlacementTypeValue;
     startsAt?: string;
     targeting?: Parameters<typeof getCampaignPlanViolations>[1]["targeting"];
+    timerSettings?: Parameters<
+      typeof getCampaignPlanViolations
+    >[1]["timerSettings"];
   },
   options: { campaignId?: string } = {},
 ) {
@@ -416,6 +419,14 @@ export async function validateCampaignPlanAccess(
 
   if (usesAdvancedTargeting(campaign.targeting)) {
     const featureGate = canUseFeature(shop, "advanced_targeting");
+
+    if (!featureGate.allowed) {
+      errors.push(featureGate.reason);
+    }
+  }
+
+  if (usesRecurringTimer(campaign.timerSettings)) {
+    const featureGate = canUseFeature(shop, "recurring_timers");
 
     if (!featureGate.allowed) {
       errors.push(featureGate.reason);

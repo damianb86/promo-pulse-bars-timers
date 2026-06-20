@@ -38,6 +38,10 @@ export function parseCampaignDesignFormData(
     backgroundColor:
       readString(formData, "backgroundColor") ||
       defaultCampaignDesignValues.backgroundColor,
+    backgroundImageUrl: readString(formData, "backgroundImageUrl").slice(
+      0,
+      1000,
+    ),
     gradientStartColor:
       readString(formData, "gradientStartColor") ||
       defaultCampaignDesignValues.gradientStartColor,
@@ -115,6 +119,20 @@ export function parseCampaignDesignFormData(
     timerStyle: readTimerStyle(formData),
     timerFormat: readTimerFormat(formData),
     timerShowLabels: readBoolean(formData, "timerShowLabels"),
+    timerShowSeconds: readBoolean(formData, "timerShowSeconds"),
+    timerDaysLabel:
+      readString(formData, "timerDaysLabel") ||
+      defaultCampaignDesignValues.timerDaysLabel,
+    timerHoursLabel:
+      readString(formData, "timerHoursLabel") ||
+      defaultCampaignDesignValues.timerHoursLabel,
+    timerMinutesLabel:
+      readString(formData, "timerMinutesLabel") ||
+      defaultCampaignDesignValues.timerMinutesLabel,
+    timerSecondsLabel:
+      readString(formData, "timerSecondsLabel") ||
+      defaultCampaignDesignValues.timerSecondsLabel,
+    timerHideZeroDays: readBoolean(formData, "timerHideZeroDays"),
     timerSurfaceColor:
       readString(formData, "timerSurfaceColor") ||
       defaultCampaignDesignValues.timerSurfaceColor,
@@ -146,6 +164,11 @@ export function parseCampaignDesignFormData(
       "contentGap",
       defaultCampaignDesignValues.contentGap,
     ),
+    contentMaxWidth: readInteger(
+      formData,
+      "contentMaxWidth",
+      defaultCampaignDesignValues.contentMaxWidth,
+    ),
     fullWidth: readBoolean(formData, "fullWidth"),
     positionMode: readPositionMode(formData),
     positionSticky: readBoolean(formData, "positionSticky"),
@@ -156,6 +179,7 @@ export function parseCampaignDesignFormData(
     ),
     alignment: readAlignment(formData),
     showCloseButton: readBoolean(formData, "showCloseButton"),
+    showButton: readBoolean(formData, "showButton"),
     showIcon: readBoolean(formData, "showIcon"),
     icon: readIcon(formData),
     customIconUrl: readString(formData, "customIconUrl").slice(0, 150_000),
@@ -213,7 +237,7 @@ function readLayout(formData: FormData): DesignLayoutValue {
 function readBackgroundType(formData: FormData): DesignBackgroundTypeValue {
   const value = readString(formData, "backgroundType");
 
-  if (["SOLID", "GRADIENT"].includes(value)) {
+  if (["SOLID", "GRADIENT", "IMAGE"].includes(value)) {
     return value as DesignBackgroundTypeValue;
   }
 

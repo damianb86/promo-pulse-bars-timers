@@ -16,6 +16,9 @@ import {
   productSelectionOptions,
   splitCampaignList,
   defaultCampaignFormValues,
+  type CampaignTimerExpiredBehaviorValue,
+  type CampaignTimerModeValue,
+  type CampaignTimerResetBehaviorValue,
   type CampaignFormErrors,
   type CampaignFormValues,
   type CountrySelectionValue,
@@ -46,6 +49,24 @@ const placementTypes = new Set(
 );
 const productSelections = new Set<string>(productSelectionOptions);
 const countrySelections = new Set<string>(countrySelectionOptions);
+const timerModes = new Set<string>([
+  "FIXED_DATE",
+  "EVERGREEN_SESSION",
+  "RECURRING_DAILY",
+]);
+const timerResetBehaviors = new Set<string>([
+  "NEVER",
+  "ON_SESSION_END",
+  "DAILY",
+  "WEEKLY",
+]);
+const timerExpiredBehaviors = new Set<string>([
+  "UNPUBLISH_TIMER",
+  "HIDE_TIMER",
+  "REPEAT_COUNTDOWN",
+  "SHOW_CUSTOM_TITLE",
+  "DO_NOTHING",
+]);
 
 export function parseCampaignFormData(
   formData: FormData,
@@ -98,6 +119,34 @@ export function parseCampaignFormData(
     subheadline: readString(formData, "subheadline"),
     ctaText: readString(formData, "ctaText"),
     ctaUrl: readString(formData, "ctaUrl"),
+    expiredText: readString(formData, "expiredText"),
+    timerMode: readOption(
+      formData,
+      "timerMode",
+      timerModes,
+      defaultCampaignFormValues.timerMode,
+    ) as CampaignTimerModeValue,
+    timerDurationMinutes:
+      readString(formData, "timerDurationMinutes") ||
+      defaultCampaignFormValues.timerDurationMinutes,
+    timerResetBehavior: readOption(
+      formData,
+      "timerResetBehavior",
+      timerResetBehaviors,
+      defaultCampaignFormValues.timerResetBehavior,
+    ) as CampaignTimerResetBehaviorValue,
+    timerExpiredBehavior: readOption(
+      formData,
+      "timerExpiredBehavior",
+      timerExpiredBehaviors,
+      defaultCampaignFormValues.timerExpiredBehavior,
+    ) as CampaignTimerExpiredBehaviorValue,
+    timerRecurringHour:
+      readString(formData, "timerRecurringHour") ||
+      defaultCampaignFormValues.timerRecurringHour,
+    timerRecurringMinute:
+      readString(formData, "timerRecurringMinute") ||
+      defaultCampaignFormValues.timerRecurringMinute,
     productSelection,
     productIds: readString(formData, "productIds"),
     excludeProductIds: readString(formData, "excludeProductIds"),
@@ -131,6 +180,28 @@ export function parseCampaignFormData(
 
   if (values.ctaUrl && !isValidCtaUrl(values.ctaUrl)) {
     errors.ctaUrl = "CTA URL must be a valid absolute URL or storefront path.";
+  }
+
+  if (
+    values.timerMode === "EVERGREEN_SESSION" &&
+    !isIntegerInRange(values.timerDurationMinutes, 1, 10080)
+  ) {
+    errors.timerDurationMinutes = "Enter minutes between 1 and 10080.";
+  }
+
+  if (
+    values.timerMode === "RECURRING_DAILY" &&
+    (!isIntegerInRange(values.timerRecurringHour, 0, 23) ||
+      !isIntegerInRange(values.timerRecurringMinute, 0, 59))
+  ) {
+    errors.timerRecurringHour = "Enter a valid recurring time.";
+  }
+
+  if (
+    values.timerExpiredBehavior === "SHOW_CUSTOM_TITLE" &&
+    values.expiredText.trim().length === 0
+  ) {
+    errors.expiredText = "Add the title shown after the timer ends.";
   }
 
   if (
@@ -234,4 +305,10 @@ function isValidCtaUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function isIntegerInRange(value: string, min: number, max: number) {
+  const number = Number(value);
+
+  return Number.isInteger(number) && number >= min && number <= max;
 }

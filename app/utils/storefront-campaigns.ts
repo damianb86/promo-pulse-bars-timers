@@ -12,6 +12,7 @@ import type {
   FreeShippingSettings,
   LowStockSettings,
   MarketCampaignRule,
+  Prisma,
   TimerSettings,
 } from "@prisma/client";
 
@@ -54,7 +55,13 @@ export type StorefrontCampaignContext = {
   behaviorProfile: VisitorBehaviorProfile | null;
 };
 
-export type StorefrontCampaignSource = Campaign & {
+export type StorefrontCampaignSource = Omit<
+  Campaign,
+  "lastSavedAt" | "publishedAt" | "publishedSnapshot"
+> & {
+  lastSavedAt?: Date;
+  publishedAt?: Date | null;
+  publishedSnapshot?: Prisma.JsonValue | null;
   placements: CampaignPlacement[];
   targeting: CampaignTargeting | null;
   design: CampaignDesign | null;
@@ -299,6 +306,7 @@ function serializeTimer(timerSettings: TimerSettings | null) {
     durationMinutes: timerSettings.durationMinutes,
     recurringDays: timerSettings.recurringDays,
     resetBehavior: timerSettings.resetBehavior,
+    expiredBehavior: timerSettings.expiredBehavior,
   };
 }
 

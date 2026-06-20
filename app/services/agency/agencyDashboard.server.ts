@@ -397,6 +397,12 @@ function buildCrossShopCampaignDraft(
               timerStyle: campaign.design.timerStyle,
               timerFormat: campaign.design.timerFormat,
               timerShowLabels: campaign.design.timerShowLabels,
+              timerShowSeconds: campaign.design.timerShowSeconds,
+              timerDaysLabel: campaign.design.timerDaysLabel,
+              timerHoursLabel: campaign.design.timerHoursLabel,
+              timerMinutesLabel: campaign.design.timerMinutesLabel,
+              timerSecondsLabel: campaign.design.timerSecondsLabel,
+              timerHideZeroDays: campaign.design.timerHideZeroDays,
               timerSurfaceColor: campaign.design.timerSurfaceColor,
               timerSurfaceBorderColor: campaign.design.timerSurfaceBorderColor,
               timerSurfaceBorderSize: campaign.design.timerSurfaceBorderSize,
@@ -427,6 +433,7 @@ function buildCrossShopCampaignDraft(
               recurringDays: campaign.timerSettings
                 .recurringDays as Prisma.InputJsonValue,
               resetBehavior: campaign.timerSettings.resetBehavior,
+              expiredBehavior: campaign.timerSettings.expiredBehavior,
             },
           },
         }

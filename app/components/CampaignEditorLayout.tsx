@@ -12,11 +12,13 @@ type CampaignEditorLayoutProps = {
     campaignSectionKey?: string;
     formId: string;
     goalLabel: string;
+    isPublishing?: boolean;
     placementLabel: string;
+    publicationLabel?: string;
+    publishLabel?: string;
     statusLabel: string;
-    submitLabel: string;
-    submittingLabel?: string;
     isSubmitting?: boolean;
+    onPublish?: () => void;
   };
   sections: CampaignEditorSection[];
 };
@@ -43,6 +45,9 @@ export function CampaignEditorLayout({
               <span>{actionBar.statusLabel}</span>
               <span>{actionBar.goalLabel}</span>
               <span>{actionBar.placementLabel}</span>
+              {actionBar.publicationLabel && (
+                <span>{actionBar.publicationLabel}</span>
+              )}
             </div>
           </div>
           <div className="counterpulse-create-actions">
@@ -60,13 +65,14 @@ export function CampaignEditorLayout({
             </button>
             <button
               className="counterpulse-button"
-              data-testid="campaign-save-button"
-              form={actionBar.formId}
-              type="submit"
+              data-testid="campaign-publish-button"
+              disabled={actionBar.isSubmitting}
+              type="button"
+              onClick={actionBar.onPublish}
             >
-              {actionBar.isSubmitting
-                ? (actionBar.submittingLabel ?? "Saving...")
-                : actionBar.submitLabel}
+              {actionBar.isPublishing
+                ? "Publishing..."
+                : (actionBar.publishLabel ?? "Publish")}
             </button>
           </div>
         </div>
@@ -89,8 +95,8 @@ export function CampaignEditorLayout({
             aria-label={section.label}
             onClick={() => setActiveSectionKey(section.key)}
           >
+            <EditorTabIcon sectionKey={section.key} />
             <span>{section.label}</span>
-            <small>{section.description}</small>
           </button>
         ))}
       </div>
@@ -112,5 +118,133 @@ export function CampaignEditorLayout({
         </section>
       ))}
     </div>
+  );
+}
+
+function EditorTabIcon({ sectionKey }: { sectionKey: string }) {
+  const icon = getEditorTabIconPath(sectionKey);
+
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      {icon}
+    </svg>
+  );
+}
+
+function getEditorTabIconPath(sectionKey: string) {
+  if (sectionKey === "campaign") {
+    return (
+      <>
+        <path
+          d="M5 7.5h9.5l4.5 4.5-4.5 4.5H5z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <circle cx="8.5" cy="12" r="1.3" fill="currentColor" />
+      </>
+    );
+  }
+
+  if (sectionKey === "offers") {
+    return (
+      <>
+        <path
+          d="M4.5 12.2 12.2 4H20v7.8L11.8 20z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <circle cx="16.6" cy="7.4" r="1.2" fill="currentColor" />
+      </>
+    );
+  }
+
+  if (sectionKey === "experiments") {
+    return (
+      <path
+        d="M9 3.8v5.4l-4.2 7.3A3 3 0 0 0 7.4 21h9.2a3 3 0 0 0 2.6-4.5L15 9.2V3.8M8 3.8h8M8.2 15h7.6"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    );
+  }
+
+  if (sectionKey === "targeting") {
+    return (
+      <>
+        <circle
+          cx="12"
+          cy="12"
+          r="7.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+      </>
+    );
+  }
+
+  if (sectionKey === "markets") {
+    return (
+      <>
+        <circle
+          cx="12"
+          cy="12"
+          r="8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="M4.5 12h15M12 4c2.1 2.2 3.2 4.8 3.2 8s-1.1 5.8-3.2 8c-2.1-2.2-3.2-4.8-3.2-8S9.9 6.2 12 4Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+      </>
+    );
+  }
+
+  if (sectionKey === "merchandising") {
+    return (
+      <path
+        d="M6 8.5 12 5l6 3.5v7L12 19l-6-3.5zM12 12l6-3.5M12 12v7M12 12 6 8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    );
+  }
+
+  if (sectionKey === "design") {
+    return (
+      <path
+        d="M12 4.5a7.5 7.5 0 0 0 0 15h1.2a1.8 1.8 0 0 0 1.1-3.2l-.4-.3a1.4 1.4 0 0 1 .9-2.5H16a3.5 3.5 0 0 0 0-7 7.5 7.5 0 0 0-4-2ZM8.3 11.4h.1M10.5 8.4h.1M14 8.4h.1"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    );
+  }
+
+  return (
+    <path
+      d="M6 4.5h12v15H6zM8.5 8h7M8.5 12h7M8.5 16h4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    />
   );
 }

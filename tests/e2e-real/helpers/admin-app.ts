@@ -38,23 +38,34 @@ export async function createCampaignViaUI(
   await openPromoPulseApp(page, "/app/campaigns/new");
   const app = await getAppFrameOrPage(page);
 
+  await waitForCampaignBuilderInteractivity(app);
   await checkCampaignGoal(app, values.goal);
   await app.getByLabel("Campaign type").selectOption(values.type);
-  await app.getByLabel("Primary placement").selectOption(values.placement);
   await app.getByLabel("Campaign name").fill(values.name);
-  await app.getByRole("combobox", { name: /^Status$/ }).selectOption(values.status);
-  await app.getByLabel("Start date/time").fill(toDateTimeLocal(-5));
-  await app.getByLabel("End date/time").fill(toDateTimeLocal(24 * 60));
-  await app.getByLabel("Timezone").fill(values.timezone);
+  await app
+    .getByRole("combobox", { name: /^Status$/ })
+    .selectOption(values.status);
+
+  await clickCampaignBuilderTab(app, "message");
   await app.locator('input[name="headline"]').fill(values.headline);
   await app.locator('textarea[name="subheadline"]').fill(values.subheadline);
   await app.getByLabel("CTA text").fill(values.ctaText);
   await app.getByLabel("CTA URL").fill(values.ctaUrl);
-  await app.getByRole("button", { name: /save campaign/i }).click();
 
-  await expect(app.getByRole("button", { name: /update campaign/i })).toBeVisible({
-    timeout: 30_000,
-  });
+  await clickCampaignBuilderTab(app, "placement");
+  await app.getByLabel("Primary placement").selectOption(values.placement);
+
+  await clickCampaignBuilderTab(app, "schedule");
+  const startInput = app.getByLabel("Start date/time");
+  if (await startInput.isVisible().catch(() => false)) {
+    await startInput.fill(toDateTimeLocal(-5));
+  }
+  await app.getByLabel(/^End date/).fill(toDateTimeLocal(24 * 60));
+  await app.getByLabel("Timezone").fill(values.timezone);
+  await app.getByRole("button", { name: /save campaign/i }).click();
+  await confirmSaveCampaignIfNeeded(app);
+
+  await expectEditorReady(page);
 
   return values.name;
 }
@@ -170,10 +181,16 @@ export async function openCampaignEditor(page: Page, campaignName: string) {
   await openPromoPulseApp(page, "/app/campaigns");
   const app = await getAppFrameOrPage(page);
   await searchCampaign(page, campaignName);
-  await app.getByRole("link", { name: campaignName }).click();
-  await expect(app.getByRole("button", { name: /update campaign/i })).toBeVisible({
-    timeout: 20_000,
-  });
+  const link = app.getByRole("link", { name: campaignName });
+  const href = await link.getAttribute("href");
+
+  if (href) {
+    await openPromoPulseApp(page, normalizeAppPath(href));
+  } else {
+    await link.click();
+  }
+
+  await expectEditorReady(page);
 }
 
 export async function editCampaignBasics(
@@ -181,6 +198,8 @@ export async function editCampaignBasics(
   updates: Pick<CampaignOptions, "headline" | "subheadline" | "ctaText">,
 ) {
   const app = await getAppFrameOrPage(page);
+  await clickCampaignEditorTab(app, "campaign");
+  await clickCampaignBuilderTab(app, "message");
 
   if (updates.headline) {
     await app.locator('input[name="headline"]').fill(updates.headline);
@@ -192,10 +211,83 @@ export async function editCampaignBasics(
     await app.locator('input[name="ctaText"]').fill(updates.ctaText);
   }
 
-  await app.getByRole("button", { name: /update campaign/i }).click();
-  await expect(app.getByRole("button", { name: /update campaign/i })).toBeVisible({
-    timeout: 20_000,
-  });
+  await saveCampaignDraft(page);
+}
+
+export async function saveCampaignDraft(page: Page) {
+  const app = await getAppFrameOrPage(page);
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    triggerDraftSave(app),
+  ]);
+  await expectEditorReady(page);
+}
+
+export async function publishCampaignDraft(page: Page) {
+  const app = await getAppFrameOrPage(page);
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    app.getByTestId("campaign-publish-button").click(),
+  ]);
+  await expectEditorReady(page);
+}
+
+export async function clickCampaignEditorTab(app: AppScope, key: string) {
+  await clickTabUntilPanelVisible(
+    app,
+    `campaign-editor-tab-${key}`,
+    `campaign-editor-panel-${key}`,
+  );
+}
+
+export async function clickCampaignBuilderTab(app: AppScope, key: string) {
+  await clickTabUntilPanelVisible(
+    app,
+    `campaign-builder-tab-${key}`,
+    `campaign-builder-panel-${key}`,
+  );
+}
+
+async function waitForCampaignBuilderInteractivity(app: AppScope) {
+  await clickCampaignBuilderTab(app, "message");
+  await clickCampaignBuilderTab(app, "setup");
+}
+
+async function clickTabUntilPanelVisible(
+  app: AppScope,
+  tabId: string,
+  panelId: string,
+) {
+  const panel = app.locator(`#${panelId}`);
+  const deadline = Date.now() + 20_000;
+
+  while (Date.now() < deadline) {
+    await clickTabById(app, tabId);
+
+    if (await panel.isVisible().catch(() => false)) return;
+
+    await app.waitForTimeout(400);
+  }
+
+  await expect(panel).toBeVisible({ timeout: 1 });
+}
+
+async function clickTabById(app: AppScope, id: string) {
+  await app.locator(`#${id}`).evaluate((element, tabId) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error(`Tab ${tabId} is not an HTMLElement.`);
+    }
+
+    element.click();
+  }, id);
 }
 
 export async function pauseAllPrefixedCampaigns(page: Page) {
@@ -231,6 +323,42 @@ async function campaignListAction(
   await page.waitForLoadState("domcontentloaded");
 }
 
+async function confirmSaveCampaignIfNeeded(app: AppScope) {
+  const dialog = app.getByRole("dialog", { name: /save this campaign/i });
+
+  if (!(await dialog.isVisible({ timeout: 5_000 }).catch(() => false))) {
+    return;
+  }
+
+  await dialog.getByRole("button", { name: /^save campaign$/i }).click();
+}
+
+async function expectEditorReady(page: Page) {
+  const app = await getAppFrameOrPage(page);
+  await expect(app.locator(".counterpulse-editor-workspace")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(app.getByTestId("campaign-publish-button")).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+async function triggerDraftSave(app: AppScope) {
+  const saveButton = app
+    .locator("ui-save-bar button")
+    .filter({ hasText: /^Save$/ })
+    .first();
+
+  if (await saveButton.isVisible().catch(() => false)) {
+    await saveButton.click();
+    return;
+  }
+
+  await app.evaluate(() => {
+    window.dispatchEvent(new CustomEvent("counterpulse:campaign-save"));
+  });
+}
+
 function toDateTimeLocal(minutesFromNow: number) {
   const date = new Date(Date.now() + minutesFromNow * 60_000);
   const year = date.getFullYear();
@@ -240,6 +368,15 @@ function toDateTimeLocal(minutesFromNow: number) {
   const minutes = String(date.getMinutes()).padStart(2, "0");
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function normalizeAppPath(href: string) {
+  try {
+    const url = new URL(href, "https://promo-pulse.local");
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return href;
+  }
 }
 
 export function campaignEditorScope(scope: AppScope) {

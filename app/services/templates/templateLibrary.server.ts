@@ -2,6 +2,7 @@ import {
   CampaignStatus,
   CampaignType,
   Prisma,
+  TimerExpiredBehavior,
   TimerMode,
   TimerResetBehavior,
   type CampaignGoal,
@@ -211,6 +212,7 @@ export async function createDraftCampaignFromTemplate(
                   : null,
                 recurringDays: [],
                 resetBehavior: TimerResetBehavior.NEVER,
+                expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
               },
             },
           }
@@ -452,11 +454,12 @@ function readTemplateDesign(value: Prisma.JsonValue) {
         "CTA_TOP",
       ]) ?? defaultCampaignDesignValues.layout,
     backgroundType:
-      readEnum(input.backgroundType, ["SOLID", "GRADIENT"]) ??
+      readEnum(input.backgroundType, ["SOLID", "GRADIENT", "IMAGE"]) ??
       defaultCampaignDesignValues.backgroundType,
     backgroundColor:
       readString(input.backgroundColor) ||
       defaultCampaignDesignValues.backgroundColor,
+    backgroundImageUrl: readString(input.backgroundImageUrl),
     gradientStartColor:
       readString(input.gradientStartColor) ||
       defaultCampaignDesignValues.gradientStartColor,
@@ -534,6 +537,26 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.timerShowLabels,
       defaultCampaignDesignValues.timerShowLabels,
     ),
+    timerShowSeconds: readBoolean(
+      input.timerShowSeconds,
+      defaultCampaignDesignValues.timerShowSeconds,
+    ),
+    timerDaysLabel:
+      readString(input.timerDaysLabel) ||
+      defaultCampaignDesignValues.timerDaysLabel,
+    timerHoursLabel:
+      readString(input.timerHoursLabel) ||
+      defaultCampaignDesignValues.timerHoursLabel,
+    timerMinutesLabel:
+      readString(input.timerMinutesLabel) ||
+      defaultCampaignDesignValues.timerMinutesLabel,
+    timerSecondsLabel:
+      readString(input.timerSecondsLabel) ||
+      defaultCampaignDesignValues.timerSecondsLabel,
+    timerHideZeroDays: readBoolean(
+      input.timerHideZeroDays,
+      defaultCampaignDesignValues.timerHideZeroDays,
+    ),
     timerSurfaceColor:
       readString(input.timerSurfaceColor) ||
       defaultCampaignDesignValues.timerSurfaceColor,
@@ -560,6 +583,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.contentGap,
       defaultCampaignDesignValues.contentGap,
     ),
+    contentMaxWidth: readInteger(
+      input.contentMaxWidth,
+      defaultCampaignDesignValues.contentMaxWidth,
+    ),
     fullWidth: readBoolean(
       input.fullWidth,
       defaultCampaignDesignValues.fullWidth,
@@ -582,6 +609,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     showCloseButton: readBoolean(
       input.showCloseButton,
       defaultCampaignDesignValues.showCloseButton,
+    ),
+    showButton: readBoolean(
+      input.showButton,
+      defaultCampaignDesignValues.showButton,
     ),
     showIcon: readBoolean(input.showIcon, defaultCampaignDesignValues.showIcon),
     icon:

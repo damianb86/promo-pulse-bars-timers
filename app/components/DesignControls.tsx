@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
   designAlignmentOptions,
@@ -6,31 +6,19 @@ import {
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
-  designPositionModeOptions,
   designTimerFormatOptions,
   designTimerStyleOptions,
   type CampaignDesignErrors,
+  type CampaignDesignImageOption,
+  type CampaignDesignMediaOptions,
   type CampaignDesignValues,
 } from "../types/campaign-design";
 import { TemplatePicker } from "./TemplatePicker";
 
-const customIconMaxDataUrlLength = 150_000;
-const customIconDataUrlPattern = /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i;
-const customIconFileTypes = new Set([
-  "image/svg+xml",
-  "image/png",
-  "image/jpeg",
-]);
-const customIconFileExtensions = new Map([
-  ["svg", "image/svg+xml"],
-  ["png", "image/png"],
-  ["jpg", "image/jpeg"],
-  ["jpeg", "image/jpeg"],
-]);
-
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
+  mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
   onChange: (values: CampaignDesignValues) => void;
 };
@@ -41,8 +29,12 @@ export function DesignControls({
   isProPlan,
   onChange,
 }: DesignControlsProps) {
-  const customIconInputRef = useRef<HTMLInputElement | null>(null);
   const [customIconError, setCustomIconError] = useState<string | null>(null);
+  const [backgroundImageError, setBackgroundImageError] = useState<
+    string | null
+  >(null);
+  const [isBackgroundPickerBusy, setIsBackgroundPickerBusy] = useState(false);
+  const [isIconPickerBusy, setIsIconPickerBusy] = useState(false);
   const updateValue = <Key extends keyof CampaignDesignValues>(
     key: Key,
     value: CampaignDesignValues[Key],
@@ -58,50 +50,43 @@ export function DesignControls({
     updateValue(key, value.toUpperCase() as CampaignDesignValues[typeof key]);
   };
 
-  const updateCustomIcon = (file: File | null) => {
-    if (!file) return;
-    setCustomIconError(null);
+  const selectShopifyBackgroundImage = async () => {
+    setBackgroundImageError(null);
+    setIsBackgroundPickerBusy(true);
 
-    const iconMimeType = getCustomIconMimeType(file);
+    try {
+      const option = await pickAndResolveShopifyFile("background");
 
-    if (!iconMimeType) {
-      setCustomIconError("Use an SVG, PNG, JPG, or JPEG icon.");
-      return;
+      if (option) {
+        updateValue("backgroundImageUrl", option.url);
+      }
+    } catch (error) {
+      setBackgroundImageError(getPickerErrorMessage(error));
+    } finally {
+      setIsBackgroundPickerBusy(false);
     }
+  };
 
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      let result = typeof reader.result === "string" ? reader.result : "";
+  const selectShopifyCustomIcon = async () => {
+    setCustomIconError(null);
+    setIsIconPickerBusy(true);
 
-      if (
-        result &&
-        !customIconDataUrlPattern.test(result) &&
-        /^data:[^;]*;base64,/i.test(result)
-      ) {
-        result = result.replace(
-          /^data:[^;]*;base64,/i,
-          `data:${iconMimeType};base64,`,
-        );
+    try {
+      const option = await pickAndResolveShopifyFile("icon");
+
+      if (option) {
+        onChange({
+          ...values,
+          showIcon: true,
+          icon: "CUSTOM",
+          customIconUrl: option.url,
+        });
       }
-
-      if (!result || result.length > customIconMaxDataUrlLength) {
-        setCustomIconError("Keep the icon under 110 KB.");
-        return;
-      }
-
-      if (!customIconDataUrlPattern.test(result)) {
-        setCustomIconError("Upload a valid SVG, PNG, JPG, or JPEG icon.");
-        return;
-      }
-
-      onChange({
-        ...values,
-        showIcon: true,
-        icon: "CUSTOM",
-        customIconUrl: result,
-      });
-    });
-    reader.readAsDataURL(file);
+    } catch (error) {
+      setCustomIconError(getPickerErrorMessage(error));
+    } finally {
+      setIsIconPickerBusy(false);
+    }
   };
 
   const updateIcon = (icon: CampaignDesignValues["icon"]) => {
@@ -128,7 +113,9 @@ export function DesignControls({
                 }
                 key={option.value}
                 type="button"
-                onClick={() => updateValue("layout", option.value)}
+                onClick={() =>
+                  onChange(applyLayoutDefaults({ ...values }, option.value))
+                }
               >
                 <LayoutPreview layout={option.value} />
                 <span>{option.label}</span>
@@ -142,12 +129,17 @@ export function DesignControls({
           <TemplatePicker
             value={values.templateKey}
             onChange={(template) =>
-              onChange({
-                ...values,
-                ...template,
-                customCss: values.customCss,
-                layout: values.layout,
-              })
+              onChange(
+                applyLayoutDefaults(
+                  {
+                    ...values,
+                    ...template,
+                    customCss: values.customCss,
+                    layout: values.layout,
+                  },
+                  values.layout,
+                ),
+              )
             }
           />
           <input name="templateKey" type="hidden" value={values.templateKey} />
@@ -181,6 +173,7 @@ export function DesignControls({
               type="hidden"
               value={values.backgroundColor}
             />
+            <input name="backgroundImageUrl" type="hidden" value="" />
             <DesignField
               error={errors.gradientAngle}
               label="Gradient angle degree"
@@ -223,6 +216,37 @@ export function DesignControls({
               onChange={(value) => updateColor("gradientEndColor", value)}
             />
           </>
+        ) : values.backgroundType === "IMAGE" ? (
+          <>
+            <input
+              name="gradientStartColor"
+              type="hidden"
+              value={values.gradientStartColor}
+            />
+            <input
+              name="gradientEndColor"
+              type="hidden"
+              value={values.gradientEndColor}
+            />
+            <input
+              name="gradientAngle"
+              type="hidden"
+              value={values.gradientAngle}
+            />
+            <ImageBackgroundPicker
+              error={backgroundImageError ?? errors.backgroundImageUrl}
+              isPicking={isBackgroundPickerBusy}
+              value={values.backgroundImageUrl}
+              onPickFromShopify={selectShopifyBackgroundImage}
+            />
+            <ColorField
+              error={errors.backgroundColor}
+              label="Fallback color"
+              name="backgroundColor"
+              value={values.backgroundColor}
+              onChange={(value) => updateColor("backgroundColor", value)}
+            />
+          </>
         ) : (
           <ColorField
             error={errors.backgroundColor}
@@ -250,6 +274,7 @@ export function DesignControls({
               type="hidden"
               value={values.gradientAngle}
             />
+            <input name="backgroundImageUrl" type="hidden" value="" />
           </>
         )}
 
@@ -326,6 +351,15 @@ export function DesignControls({
             name="contentGap"
             value={values.contentGap}
             onChange={(value) => updateNumber("contentGap", value)}
+          />
+          <NumberField
+            error={errors.contentMaxWidth}
+            label="Content max width"
+            max={1440}
+            min={280}
+            name="contentMaxWidth"
+            value={values.contentMaxWidth}
+            onChange={(value) => updateNumber("contentMaxWidth", value)}
           />
         </div>
       </DesignPanel>
@@ -437,11 +471,94 @@ export function DesignControls({
           <input name="timerFormat" type="hidden" value={values.timerFormat} />
         </DesignGroup>
 
+        <DesignGroup label="Timer labels">
+          <div className="counterpulse-design-toggle-row">
+            <span>Timer labels</span>
+            <ToggleSwitch
+              checked={values.timerShowLabels}
+              name="timerShowLabels"
+              onChange={(checked) => updateValue("timerShowLabels", checked)}
+            />
+          </div>
+          <div className="counterpulse-timer-label-grid">
+            <input
+              aria-label="Days label"
+              disabled={!values.timerShowLabels}
+              maxLength={12}
+              name="timerDaysLabel"
+              value={values.timerDaysLabel}
+              onChange={(event) =>
+                updateValue("timerDaysLabel", event.target.value)
+              }
+            />
+            <input
+              aria-label="Hours label"
+              disabled={!values.timerShowLabels}
+              maxLength={12}
+              name="timerHoursLabel"
+              value={values.timerHoursLabel}
+              onChange={(event) =>
+                updateValue("timerHoursLabel", event.target.value)
+              }
+            />
+            <input
+              aria-label="Minutes label"
+              disabled={!values.timerShowLabels}
+              maxLength={12}
+              name="timerMinutesLabel"
+              value={values.timerMinutesLabel}
+              onChange={(event) =>
+                updateValue("timerMinutesLabel", event.target.value)
+              }
+            />
+            <input
+              aria-label="Seconds label"
+              disabled={!values.timerShowLabels}
+              maxLength={12}
+              name="timerSecondsLabel"
+              value={values.timerSecondsLabel}
+              onChange={(event) =>
+                updateValue("timerSecondsLabel", event.target.value)
+              }
+            />
+          </div>
+          {!values.timerShowLabels && (
+            <>
+              <input
+                name="timerDaysLabel"
+                type="hidden"
+                value={values.timerDaysLabel}
+              />
+              <input
+                name="timerHoursLabel"
+                type="hidden"
+                value={values.timerHoursLabel}
+              />
+              <input
+                name="timerMinutesLabel"
+                type="hidden"
+                value={values.timerMinutesLabel}
+              />
+              <input
+                name="timerSecondsLabel"
+                type="hidden"
+                value={values.timerSecondsLabel}
+              />
+            </>
+          )}
+          <ToggleField
+            checked={values.timerHideZeroDays}
+            label="Hide Days when value is 00"
+            name="timerHideZeroDays"
+            onChange={(checked) => updateValue("timerHideZeroDays", checked)}
+          />
+        </DesignGroup>
+
         <ToggleField
-          checked={values.timerShowLabels}
-          label="Show timer labels"
-          name="timerShowLabels"
-          onChange={(checked) => updateValue("timerShowLabels", checked)}
+          checked={values.timerShowSeconds}
+          label="Show seconds"
+          name="timerShowSeconds"
+          onChange={(checked) => updateValue("timerShowSeconds", checked)}
         />
 
         <DesignGroup error={errors.timerStyle} label="Type">
@@ -539,7 +656,7 @@ export function DesignControls({
         )}
       </DesignPanel>
 
-      <DesignPanel title="Behavior">
+      <DesignPanel title="Elements">
         <div className="counterpulse-form-grid counterpulse-form-grid--wide">
           <DesignField label="Icon" error={errors.icon}>
             <select
@@ -563,9 +680,12 @@ export function DesignControls({
             >
               <div className="counterpulse-icon-upload">
                 <button
+                  aria-label="Choose custom icon"
                   className="counterpulse-icon-upload__target"
+                  disabled={isIconPickerBusy}
+                  title="Choose custom icon"
                   type="button"
-                  onClick={() => customIconInputRef.current?.click()}
+                  onClick={selectShopifyCustomIcon}
                 >
                   {values.customIconUrl ? (
                     <span className="counterpulse-icon-upload__preview">
@@ -573,36 +693,13 @@ export function DesignControls({
                     </span>
                   ) : (
                     <span className="counterpulse-icon-upload__empty">
-                      <EditIcon />
+                      {isIconPickerBusy ? "..." : <EditIcon />}
                     </span>
                   )}
                   <span className="counterpulse-icon-upload__overlay">
                     <EditIcon />
                   </span>
                 </button>
-                <input
-                  accept="image/svg+xml,image/png,image/jpeg,.svg,.png,.jpg,.jpeg"
-                  aria-label="Upload custom icon"
-                  className="counterpulse-icon-upload__input"
-                  ref={customIconInputRef}
-                  type="file"
-                  onChange={(event) =>
-                    updateCustomIcon(event.currentTarget.files?.[0] ?? null)
-                  }
-                />
-                {values.customIconUrl ? (
-                  <button
-                    aria-label="Remove custom icon"
-                    className="counterpulse-icon-upload__remove"
-                    type="button"
-                    onClick={() => {
-                      setCustomIconError(null);
-                      updateValue("customIconUrl", "");
-                    }}
-                  >
-                    x
-                  </button>
-                ) : null}
               </div>
             </DesignGroup>
           ) : null}
@@ -633,26 +730,28 @@ export function DesignControls({
             onChange={(value) => updateColor("buttonTextColor", value)}
           />
         </div>
+      </DesignPanel>
 
+      <DesignPanel title="Behavior">
         <div className="counterpulse-toggle-grid">
-          <DesignField label="Position" error={errors.positionMode}>
-            <select
-              name="positionMode"
-              value={values.positionMode}
-              onChange={(event) =>
-                updateValue(
-                  "positionMode",
-                  event.target.value as CampaignDesignValues["positionMode"],
-                )
-              }
-            >
-              {designPositionModeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </DesignField>
+          <input
+            name="positionMode"
+            type="hidden"
+            value={values.positionMode}
+          />
+          {errors.positionMode && (
+            <span className="counterpulse-form-error">
+              {errors.positionMode}
+            </span>
+          )}
+          <ToggleField
+            checked={values.positionMode === "OVERLAY"}
+            label="Float over page"
+            name="positionOverlay"
+            onChange={(checked) =>
+              updateValue("positionMode", checked ? "OVERLAY" : "FLOW")
+            }
+          />
           <input
             name="positionSticky"
             type="hidden"
@@ -675,6 +774,12 @@ export function DesignControls({
             label="Closable banner"
             name="showCloseButton"
             onChange={(checked) => updateValue("showCloseButton", checked)}
+          />
+          <ToggleField
+            checked={values.showButton}
+            label="Show button"
+            name="showButton"
+            onChange={(checked) => updateValue("showButton", checked)}
           />
           <ToggleField
             checked={values.showIcon}
@@ -715,6 +820,53 @@ type NumberDesignKey = {
     : never;
 }[keyof CampaignDesignValues];
 
+function applyLayoutDefaults(
+  values: CampaignDesignValues,
+  layout: CampaignDesignValues["layout"],
+): CampaignDesignValues {
+  if (layout === "BALANCED") {
+    return {
+      ...values,
+      layout,
+      showButton: false,
+      timerStyle: "BOXES",
+      timerFontSize: Math.min(values.timerFontSize, 24),
+      titleFontSize: Math.min(values.titleFontSize, 18),
+      subheadingFontSize: Math.min(values.subheadingFontSize, 12),
+      legendFontSize: Math.min(values.legendFontSize, 11),
+      paddingBlock: Math.min(values.paddingBlock, 14),
+      paddingInline: Math.min(values.paddingInline, 18),
+      contentGap: Math.min(values.contentGap, 8),
+    };
+  }
+
+  if (layout === "INLINE") {
+    return {
+      ...values,
+      layout,
+      showButton: false,
+      timerFormat: "COLON",
+      timerShowLabels: false,
+      titleFontSize: Math.min(values.titleFontSize, 14),
+      timerFontSize: Math.min(values.timerFontSize, 16),
+      paddingBlock: Math.min(values.paddingBlock, 10),
+    };
+  }
+
+  if (layout === "CTA_RIGHT" || layout === "CTA_LEFT" || layout === "CTA_TOP") {
+    return {
+      ...values,
+      layout,
+      showButton: true,
+    };
+  }
+
+  return {
+    ...values,
+    layout,
+  };
+}
+
 function DesignPanel({
   title,
   children,
@@ -730,11 +882,206 @@ function DesignPanel({
   );
 }
 
-function getCustomIconMimeType(file: File) {
-  if (customIconFileTypes.has(file.type)) return file.type;
+async function pickAndResolveShopifyFile(usage: "background" | "icon") {
+  const fileId = await pickShopifyFile(usage);
 
-  const extension = file.name.toLowerCase().split(".").pop();
-  return extension ? (customIconFileExtensions.get(extension) ?? null) : null;
+  if (!fileId) return null;
+
+  return resolveShopifyFileWithDirectApi(fileId, usage);
+}
+
+async function pickShopifyFile(usage: "background" | "icon") {
+  const invoke = window.shopify?.intents?.invoke;
+
+  if (!invoke) {
+    throw new Error(
+      "Shopify file picker is not available in this admin session.",
+    );
+  }
+
+  const activity = await invoke("pick:shopify/File", {
+    data: {
+      mediaTypes:
+        usage === "icon" ? ["MediaImage", "GenericFile"] : ["MediaImage"],
+      multiSelect: false,
+    },
+  });
+  const response = await activity.complete;
+
+  if (response.code === "closed") return null;
+
+  if (response.code === "error") {
+    throw new Error(response.message || "Shopify file picker failed.");
+  }
+
+  const ids = Array.isArray(response.data?.ids) ? response.data.ids : [];
+  const fileId = ids.find((id): id is string => typeof id === "string");
+
+  if (!fileId) {
+    throw new Error("Shopify did not return a selected file ID.");
+  }
+
+  return fileId;
+}
+
+async function resolveShopifyFileWithDirectApi(
+  fileId: string,
+  usage: "background" | "icon",
+) {
+  const response = await fetch("shopify:admin/api/graphql.json", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: `#graphql
+        query CounterPulseDesignFile($id: ID!) {
+          node(id: $id) {
+            __typename
+            ... on MediaImage {
+              id
+              alt
+              image {
+                url
+                altText
+                width
+                height
+              }
+              preview {
+                image {
+                  url
+                }
+              }
+            }
+            ... on GenericFile {
+              id
+              alt
+              mimeType
+              url
+              preview {
+                image {
+                  url
+                }
+              }
+            }
+          }
+        }`,
+      variables: { id: fileId },
+    }),
+  });
+  const payload = await readShopifyJson<ShopifyDesignFileResponse>(response);
+
+  if (!response.ok || payload.errors?.length) {
+    throw new Error(
+      payload.errors
+        ?.map((error) => error.message)
+        .filter(Boolean)
+        .join(" ") || "Selected Shopify file could not load.",
+    );
+  }
+
+  const option = readShopifyDesignFileOption(payload.data?.node, usage);
+
+  if (!option) {
+    throw new Error("Choose a supported Shopify image file.");
+  }
+
+  return option;
+}
+
+function getPickerErrorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "Shopify file picker could not be opened.";
+}
+
+type ShopifyDesignFileNode = {
+  __typename?: string;
+  id?: string | null;
+  alt?: string | null;
+  mimeType?: string | null;
+  url?: string | null;
+  image?: {
+    url?: string | null;
+    altText?: string | null;
+    width?: number | null;
+    height?: number | null;
+  } | null;
+  preview?: {
+    image?: {
+      url?: string | null;
+    } | null;
+  } | null;
+};
+
+type ShopifyDesignFileResponse = {
+  data?: {
+    node?: ShopifyDesignFileNode | null;
+  };
+  errors?: Array<{ message?: string }>;
+};
+
+async function readShopifyJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(
+      "Shopify did not return file data. Confirm Direct API Access is enabled and redeploy the app configuration.",
+    );
+  }
+}
+
+function readShopifyDesignFileOption(
+  node: ShopifyDesignFileNode | null | undefined,
+  usage: "background" | "icon",
+): CampaignDesignImageOption | null {
+  const id = node?.id?.trim() ?? "";
+  const mimeType = node?.mimeType?.trim().toLowerCase() ?? "";
+  const mediaImageUrl = node?.image?.url?.trim() ?? "";
+  const genericFileUrl = node?.url?.trim() ?? "";
+  const url = mediaImageUrl || genericFileUrl;
+  const previewUrl = node?.preview?.image?.url?.trim() || url;
+  const alt = node?.image?.altText?.trim() || node?.alt?.trim() || "";
+  const label =
+    alt ||
+    buildShopifyImageLabel(node?.image?.width, node?.image?.height) ||
+    "Shopify image";
+
+  if (!id || !isSafeImageUrl(url)) return null;
+
+  if (
+    usage === "icon" &&
+    node?.__typename === "GenericFile" &&
+    !isSupportedIconMimeType(mimeType)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    label,
+    url,
+    previewUrl: isSafeImageUrl(previewUrl) ? previewUrl : url,
+    ...(alt ? { alt } : {}),
+  };
+}
+
+function isSupportedIconMimeType(mimeType: string) {
+  return ["image/svg+xml", "image/png", "image/jpeg", "image/jpg"].includes(
+    mimeType,
+  );
+}
+
+function buildShopifyImageLabel(width?: number | null, height?: number | null) {
+  if (!width || !height) return "";
+  return `${width}x${height}`;
+}
+
+function isSafeImageUrl(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
 }
 
 function DesignGroup({
@@ -770,6 +1117,39 @@ function DesignField({
       {children}
       {error && <span className="counterpulse-form-error">{error}</span>}
     </label>
+  );
+}
+
+function ImageBackgroundPicker({
+  value,
+  error,
+  isPicking,
+  onPickFromShopify,
+}: {
+  value: string;
+  error?: string;
+  isPicking: boolean;
+  onPickFromShopify: () => void;
+}) {
+  return (
+    <DesignGroup label="Shopify image" error={error}>
+      <div className="counterpulse-library-picker">
+        <div className="counterpulse-library-picker__preview">
+          {value ? <img alt="" src={value} /> : <span>No image selected</span>}
+        </div>
+        <div className="counterpulse-library-picker__actions">
+          <button
+            className="counterpulse-button-secondary counterpulse-button-secondary--small"
+            disabled={isPicking}
+            type="button"
+            onClick={onPickFromShopify}
+          >
+            {isPicking ? "Opening library..." : "Choose from Shopify library"}
+          </button>
+        </div>
+      </div>
+      <input name="backgroundImageUrl" type="hidden" value={value} />
+    </DesignGroup>
   );
 }
 
@@ -836,6 +1216,28 @@ function NumberField({
         <span>px</span>
       </div>
     </DesignField>
+  );
+}
+
+function ToggleSwitch({
+  name,
+  checked,
+  onChange,
+}: {
+  name: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="counterpulse-switch">
+      <input
+        checked={checked}
+        name={name}
+        type="checkbox"
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span aria-hidden="true" />
+    </label>
   );
 }
 

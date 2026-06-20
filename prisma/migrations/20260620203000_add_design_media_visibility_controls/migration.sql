@@ -1,0 +1,4 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "backgroundImageUrl" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "CampaignDesign" ADD COLUMN "timerShowSeconds" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "CampaignDesign" ADD COLUMN "contentMaxWidth" INTEGER NOT NULL DEFAULT 960;
+ALTER TABLE "CampaignDesign" ADD COLUMN "showButton" BOOLEAN NOT NULL DEFAULT true;

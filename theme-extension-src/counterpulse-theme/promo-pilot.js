@@ -50,8 +50,10 @@
       debug(error);
     });
 
-  function fetchCampaigns(placement) {
-    var url = buildCampaignUrl(placement);
+  renderInlineSnippets();
+
+  function fetchCampaigns(placement, campaignId) {
+    var url = buildCampaignUrl(placement, campaignId);
     var cached = campaignCache[url];
     var now = Date.now();
 
@@ -119,7 +121,7 @@
     return pendingFetches[url];
   }
 
-  function buildCampaignUrl(placement) {
+  function buildCampaignUrl(placement, campaignId) {
     var params = new URLSearchParams({
       shop: config.shop,
       path: config.path,
@@ -140,6 +142,7 @@
       params.set("collectionIds", config.collectionIds.join(","));
     }
     if (config.utmSource) params.set("utmSource", config.utmSource);
+    if (campaignId) params.set("campaignId", campaignId);
     appendBehaviorTargetingParams(params);
 
     if (cartSubtotal !== null) {
@@ -178,7 +181,30 @@
     return value + "/api/storefront/campaigns";
   }
 
-  function renderCampaign(campaign) {
+  function renderInlineSnippets() {
+    [].slice
+      .call(document.querySelectorAll("[data-counterpulse-campaign-id]"))
+      .forEach(function (slot, index) {
+        var campaignId = slot.dataset.counterpulseCampaignId || "";
+
+        if (!campaignId || slot.dataset.counterpulseRenderStarted === "true") {
+          return;
+        }
+
+        slot.dataset.counterpulseRenderStarted = "true";
+        slot.dataset.counterpulseSlotIndex = String(index);
+
+        fetchCampaigns("CUSTOM_SELECTOR", campaignId).then(
+          function (campaigns) {
+            if (campaigns[0]) {
+              renderCampaign(campaigns[0], slot);
+            }
+          },
+        );
+      });
+  }
+
+  function renderCampaign(campaign, targetContainer) {
     if (
       !campaign ||
       !campaign.placement ||
@@ -192,14 +218,20 @@
     var icon;
 
     if (design.mobileEnabled === false && config.device === "mobile") return;
-    if (timerState.isExpired && !(campaign.texts || {}).expiredText) return;
-    if (renderedCampaigns[campaign.placement + ":" + campaign.id]) return;
+    if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) return;
+    var renderKey =
+      (targetContainer
+        ? "snippet:" + targetContainer.dataset.counterpulseSlotIndex
+        : campaign.placement) +
+      ":" +
+      campaign.id;
+
+    if (renderedCampaigns[renderKey]) return;
 
     var bar = document.createElement("section");
-    var container = getPlacementContainer(
-      campaign.placement,
-      campaign.placementSelector,
-    );
+    var container = targetContainer
+      ? getSnippetContainer(targetContainer)
+      : getPlacementContainer(campaign.placement, campaign.placementSelector);
 
     if (!container) return;
 
@@ -242,7 +274,11 @@
       );
     }
 
-    if (!timerState.isExpired && (campaign.texts || {}).ctaText) {
+    if (
+      !timerState.isExpired &&
+      design.showButton !== false &&
+      (campaign.texts || {}).ctaText
+    ) {
       bar.appendChild(
         renderCta(campaign.texts.ctaText, campaign.texts.ctaUrl, campaign),
       );
@@ -253,7 +289,7 @@
     }
 
     container.appendChild(bar);
-    renderedCampaigns[campaign.placement + ":" + campaign.id] = true;
+    renderedCampaigns[renderKey] = true;
     startCountdown(bar, campaign);
     emitImpression(campaign);
   }
@@ -280,10 +316,7 @@
   }
 
   function setDesignProperties(bar, design) {
-    bar.style.setProperty(
-      "--pp-bg",
-      safeColor(design.backgroundColor, "#111827"),
-    );
+    bar.style.setProperty("--pp-bg", getBackground(design));
     bar.style.setProperty("--pp-text", safeColor(design.textColor, "#ffffff"));
     bar.style.setProperty(
       "--pp-accent",
@@ -305,8 +338,52 @@
       "--pp-radius",
       clamp(design.borderRadius, 0, 24, 0) + "px",
     );
+    bar.style.setProperty(
+      "--pp-content-max-width",
+      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-padding-block",
+      clamp(design.paddingBlock, 4, 48, 11) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-padding-inline",
+      clamp(design.paddingInline, 8, 64, 16) + "px",
+    );
     bar.style.setProperty("--pp-justify", getJustifyContent(design.alignment));
     bar.style.setProperty("--pp-align", getTextAlign(design.alignment));
+  }
+
+  function getBackground(design) {
+    if (
+      design &&
+      design.backgroundType === "IMAGE" &&
+      isSafeImageUrl(design.backgroundImageUrl)
+    ) {
+      return (
+        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
+        escapeCssUrl(design.backgroundImageUrl) +
+        '") center / cover no-repeat'
+      );
+    }
+
+    if (design && design.backgroundType === "GRADIENT") {
+      return (
+        "linear-gradient(" +
+        clamp(design.gradientAngle, 0, 360, 90) +
+        "deg, " +
+        safeColor(design.gradientStartColor, "#252237") +
+        ", " +
+        safeColor(design.gradientEndColor, "#4c4861") +
+        ")"
+      );
+    }
+
+    return safeColor(design.backgroundColor, "#111827");
+  }
+
+  function escapeCssUrl(value) {
+    return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
   function getPlacementContainer(placement, selector) {
@@ -340,6 +417,16 @@
     } else {
       document.body.insertBefore(container, document.body.firstChild);
     }
+
+    return container;
+  }
+
+  function getSnippetContainer(target) {
+    var container = document.createElement("div");
+
+    container.className =
+      "pp-container pp-container--custom-selector pp-container--snippet";
+    target.appendChild(container);
 
     return container;
   }
@@ -466,6 +553,15 @@
     return button;
   }
 
+  function getExpiredBehavior(campaign) {
+    return (campaign.timer || {}).expiredBehavior || "UNPUBLISH_TIMER";
+  }
+
+  function shouldHideExpiredCampaign(campaign) {
+    var behavior = getExpiredBehavior(campaign);
+    return behavior === "UNPUBLISH_TIMER" || behavior === "HIDE_TIMER";
+  }
+
   function startCountdown(bar, campaign) {
     if (!bar.querySelector(".pp-countdown")) return;
 
@@ -476,6 +572,7 @@
         ".pp-message span:not(.pp-countdown)",
       );
       var expiredText = (campaign.texts || {}).expiredText || "";
+      var expiredBehavior = getExpiredBehavior(campaign);
 
       if (!countdown) return;
 
@@ -483,9 +580,16 @@
         countdown.remove();
         bar.classList.add("pp-bar--expired");
 
-        if (expiredText && subheadline) {
+        if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
+          if (!subheadline) {
+            subheadline = document.createElement("span");
+            bar.querySelector(".pp-message")?.appendChild(subheadline);
+          }
           subheadline.textContent = expiredText;
-        } else if (!expiredText) {
+        } else if (
+          expiredBehavior === "HIDE_TIMER" ||
+          expiredBehavior === "UNPUBLISH_TIMER"
+        ) {
           bar.remove();
         }
 
@@ -530,7 +634,16 @@
     if (
       startedAt &&
       endsAt &&
-      shouldReuseStorage(startedAt, now, campaign.timezone, timer.resetBehavior)
+      shouldReuseStorage(
+        startedAt,
+        now,
+        campaign.timezone,
+        timer.resetBehavior,
+      ) &&
+      !(
+        timer.expiredBehavior === "REPEAT_COUNTDOWN" &&
+        endsAt.getTime() <= now.getTime()
+      )
     ) {
       return buildTimerState(now, endsAt);
     }
@@ -848,6 +961,7 @@
   function formatTimeRemaining(ms, design) {
     var totalSeconds = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(totalSeconds / 86400);
+    var showDays = !design || design.timerHideZeroDays === false || days > 0;
     var hours = Math.floor((totalSeconds % 86400) / 3600);
     var minutes = Math.floor((totalSeconds % 3600) / 60);
     var seconds = totalSeconds % 60;
@@ -855,20 +969,38 @@
 
     if (design && design.timerFormat === "UNITS") {
       units = [];
-      if (days > 0) units.push(formatTimerUnit(days, "Day", design));
+      if (showDays) {
+        units.push(
+          formatTimerUnit(days, timerUnitLabel(design, "days"), design),
+        );
+      }
       units.push(
         formatTimerUnit(
-          days > 0 ? hours : Math.floor(totalSeconds / 3600),
-          "Hr",
+          showDays ? hours : Math.floor(totalSeconds / 3600),
+          timerUnitLabel(design, "hours"),
           design,
         ),
       );
-      units.push(formatTimerUnit(minutes, "Min", design));
-      units.push(formatTimerUnit(seconds, "Sec", design));
+      units.push(
+        formatTimerUnit(minutes, timerUnitLabel(design, "minutes"), design),
+      );
+      if (!design || design.timerShowSeconds !== false) {
+        units.push(
+          formatTimerUnit(seconds, timerUnitLabel(design, "seconds"), design),
+        );
+      }
       return units.join(" ");
     }
 
-    if (days > 0) {
+    if (design && design.timerShowSeconds === false) {
+      if (showDays) {
+        return [pad(days), pad(hours), pad(minutes)].join(":");
+      }
+
+      return pad(hours) + ":" + pad(minutes);
+    }
+
+    if (showDays) {
       return [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":");
     }
 
@@ -877,7 +1009,14 @@
 
   function formatTimerUnit(value, label, design) {
     if (design && design.timerShowLabels === false) return pad(value);
-    return pad(value) + " " + label + (value === 1 ? "" : "s");
+    return pad(value) + " " + label;
+  }
+
+  function timerUnitLabel(design, unit) {
+    if (unit === "days") return design.timerDaysLabel || "Days";
+    if (unit === "hours") return design.timerHoursLabel || "Hrs";
+    if (unit === "minutes") return design.timerMinutesLabel || "Mins";
+    return design.timerSecondsLabel || "Secs";
   }
 
   function parseDate(value) {
@@ -1031,6 +1170,13 @@
       (value.charAt(0) === "/" ||
         /^https?:\/\//i.test(value) ||
         /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
+    );
+  }
+
+  function isSafeImageUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
     );
   }
 

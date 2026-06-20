@@ -366,10 +366,10 @@
     var texts = campaign.texts || {};
     var card;
 
-    if (timerState.isExpired && !texts.expiredText) {
+    if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) {
       updateDebug(
         root,
-        "Campana recibida, pero esta expirada y no tiene expiredText para mostrar.",
+        "Campana recibida, pero el timer expiro y debe ocultarse.",
       );
       return;
     }
@@ -421,7 +421,7 @@
       card.appendChild(window.CPcb(campaign.discount.discountCode, campaign));
     }
 
-    if (!timerState.isExpired) {
+    if (!timerState.isExpired && (campaign.design || {}).showButton !== false) {
       renderCta(campaign).forEach(function (cta) {
         card.appendChild(cta);
       });
@@ -565,6 +565,15 @@
     return countdown;
   }
 
+  function getExpiredBehavior(campaign) {
+    return (campaign.timer || {}).expiredBehavior || "UNPUBLISH_TIMER";
+  }
+
+  function shouldHideExpiredCampaign(campaign) {
+    var behavior = getExpiredBehavior(campaign);
+    return behavior === "UNPUBLISH_TIMER" || behavior === "HIDE_TIMER";
+  }
+
   function tick(card, campaign, config) {
     if (!card.querySelector(".pp-countdown")) return;
 
@@ -575,12 +584,20 @@
         ".pp-message span:not(.pp-countdown)",
       );
       var expiredText = (campaign.texts || {}).expiredText || "";
+      var expiredBehavior = getExpiredBehavior(campaign);
 
       if (!countdown) return;
       if (state.isExpired) {
         countdown.remove();
         card.classList.add("pp-bar--expired");
-        if (expiredText && subheadline) subheadline.textContent = expiredText;
+        if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
+          if (subheadline) subheadline.textContent = expiredText;
+        } else if (
+          expiredBehavior === "HIDE_TIMER" ||
+          expiredBehavior === "UNPUBLISH_TIMER"
+        ) {
+          card.remove();
+        }
         return;
       }
 
@@ -615,12 +632,17 @@
     var startedAt = parseDate(stored && stored.startedAt);
     var endsAt = parseDate(stored && stored.endsAt);
 
-    if (startedAt && endsAt && endsAt.getTime() > now.getTime()) {
-      return buildTimerState(now, endsAt);
-    }
+    if (startedAt && endsAt) {
+      if (endsAt.getTime() > now.getTime()) {
+        return buildTimerState(now, endsAt);
+      }
 
-    if (startedAt && endsAt && timer.resetBehavior === "NEVER") {
-      return buildTimerState(now, endsAt);
+      if (
+        timer.resetBehavior === "NEVER" ||
+        timer.expiredBehavior !== "REPEAT_COUNTDOWN"
+      ) {
+        return buildTimerState(now, endsAt);
+      }
     }
 
     if (!Number.isFinite(duration) || duration <= 0) {
@@ -771,10 +793,7 @@
   }
 
   function setDesign(element, design, alignment) {
-    element.style.setProperty(
-      "--pp-bg",
-      safeColor(design.backgroundColor, "#111827"),
-    );
+    element.style.setProperty("--pp-bg", getBackground(design));
     element.style.setProperty(
       "--pp-text",
       safeColor(design.textColor, "#ffffff"),
@@ -798,6 +817,18 @@
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 24, 4) + "px",
+    );
+    element.style.setProperty(
+      "--pp-content-max-width",
+      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-block",
+      clamp(design.paddingBlock, 4, 48, 12) + "px",
+    );
+    element.style.setProperty(
+      "--pp-padding-inline",
+      clamp(design.paddingInline, 8, 64, 14) + "px",
     );
     element.style.setProperty(
       "--pp-justify",
@@ -988,6 +1019,7 @@
   function formatTime(ms, design) {
     var total = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(total / 86400);
+    var showDays = !design || design.timerHideZeroDays === false || days > 0;
     var hours = Math.floor((total % 86400) / 3600);
     var minutes = Math.floor((total % 3600) / 60);
     var seconds = total % 60;
@@ -995,27 +1027,49 @@
 
     if (design && design.timerFormat === "UNITS") {
       units = [];
-      if (days > 0) units.push(formatTimerUnit(days, "Day", design));
+      if (showDays) {
+        units.push(
+          formatTimerUnit(days, timerUnitLabel(design, "days"), design),
+        );
+      }
       units.push(
         formatTimerUnit(
-          days > 0 ? hours : Math.floor(total / 3600),
-          "Hr",
+          showDays ? hours : Math.floor(total / 3600),
+          timerUnitLabel(design, "hours"),
           design,
         ),
       );
-      units.push(formatTimerUnit(minutes, "Min", design));
-      units.push(formatTimerUnit(seconds, "Sec", design));
+      units.push(
+        formatTimerUnit(minutes, timerUnitLabel(design, "minutes"), design),
+      );
+      if (!design || design.timerShowSeconds !== false) {
+        units.push(
+          formatTimerUnit(seconds, timerUnitLabel(design, "seconds"), design),
+        );
+      }
       return units.join(" ");
     }
 
-    if (days > 0)
+    if (design && design.timerShowSeconds === false) {
+      if (showDays) return [pad(days), pad(hours), pad(minutes)].join(":");
+      return pad(hours) + ":" + pad(minutes);
+    }
+
+    if (showDays)
       return [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":");
     return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
   }
 
   function formatTimerUnit(value, label, design) {
     if (design && design.timerShowLabels === false) return pad(value);
-    return pad(value) + " " + label + (value === 1 ? "" : "s");
+    return pad(value) + " " + label;
+  }
+
+  function timerUnitLabel(design, unit) {
+    if (unit === "days") return design.timerDaysLabel || "Days";
+    if (unit === "hours") return design.timerHoursLabel || "Hrs";
+    if (unit === "minutes") return design.timerMinutesLabel || "Mins";
+    return design.timerSecondsLabel || "Secs";
   }
 
   function safeQuerySelector(selector) {
@@ -1036,6 +1090,45 @@
 
   function safeColor(value, fallback) {
     return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
+  }
+
+  function getBackground(design) {
+    if (
+      design &&
+      design.backgroundType === "IMAGE" &&
+      isSafeImageUrl(design.backgroundImageUrl)
+    ) {
+      return (
+        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
+        escapeCssUrl(design.backgroundImageUrl) +
+        '") center / cover no-repeat'
+      );
+    }
+
+    if (design && design.backgroundType === "GRADIENT") {
+      return (
+        "linear-gradient(" +
+        clamp(design.gradientAngle, 0, 360, 90) +
+        "deg, " +
+        safeColor(design.gradientStartColor, "#252237") +
+        ", " +
+        safeColor(design.gradientEndColor, "#4c4861") +
+        ")"
+      );
+    }
+
+    return safeColor(design.backgroundColor, "#111827");
+  }
+
+  function isSafeImageUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
+    );
+  }
+
+  function escapeCssUrl(value) {
+    return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
   function clamp(value, min, max, fallback) {

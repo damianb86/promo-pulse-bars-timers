@@ -10,6 +10,7 @@ import type {
 } from "../lib/delivery-promise";
 import type {
   TimerMode,
+  TimerExpiredBehavior,
   TimerResetBehavior,
   TimerSettingsInput,
 } from "../lib/timer";
@@ -29,6 +30,7 @@ export type CampaignViewModelInput = {
   timerSettings?: {
     mode: string;
     durationMinutes?: number | null;
+    expiredBehavior?: string | null;
     recurringDays?: unknown;
     resetBehavior?: string | null;
   } | null;
@@ -194,6 +196,9 @@ function buildTimerViewModel(
     durationMinutes: campaign.timerSettings?.durationMinutes ?? null,
     recurringDays: campaign.timerSettings?.recurringDays ?? [],
     resetBehavior: toTimerResetBehavior(campaign.timerSettings?.resetBehavior),
+    expiredBehavior: toTimerExpiredBehavior(
+      campaign.timerSettings?.expiredBehavior,
+    ),
   };
 }
 
@@ -293,6 +298,21 @@ function toTimerResetBehavior(
   }
 
   return "NEVER";
+}
+
+function toTimerExpiredBehavior(
+  value: string | null | undefined,
+): TimerExpiredBehavior {
+  if (
+    value === "HIDE_TIMER" ||
+    value === "REPEAT_COUNTDOWN" ||
+    value === "SHOW_CUSTOM_TITLE" ||
+    value === "DO_NOTHING"
+  ) {
+    return value;
+  }
+
+  return "UNPUBLISH_TIMER";
 }
 
 function toAfterCutoffBehavior(

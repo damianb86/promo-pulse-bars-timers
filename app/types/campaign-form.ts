@@ -24,6 +24,31 @@ export const countrySelectionOptions = [
 
 export type ProductSelectionValue = (typeof productSelectionOptions)[number];
 export type CountrySelectionValue = (typeof countrySelectionOptions)[number];
+export type CampaignTimerModeValue =
+  | "FIXED_DATE"
+  | "EVERGREEN_SESSION"
+  | "RECURRING_DAILY";
+export type CampaignTimerResetBehaviorValue =
+  | "NEVER"
+  | "ON_SESSION_END"
+  | "DAILY"
+  | "WEEKLY";
+export type CampaignTimerExpiredBehaviorValue =
+  | "UNPUBLISH_TIMER"
+  | "HIDE_TIMER"
+  | "REPEAT_COUNTDOWN"
+  | "SHOW_CUSTOM_TITLE"
+  | "DO_NOTHING";
+
+export type CampaignCountryOption = {
+  code: string;
+  name: string;
+};
+
+export type CampaignTargetingOptions = {
+  countries: CampaignCountryOption[];
+  productTags: string[];
+};
 
 export type CampaignFormValues = {
   goal: CampaignGoalValue;
@@ -38,6 +63,13 @@ export type CampaignFormValues = {
   subheadline: string;
   ctaText: string;
   ctaUrl: string;
+  expiredText: string;
+  timerMode: CampaignTimerModeValue;
+  timerDurationMinutes: string;
+  timerResetBehavior: CampaignTimerResetBehaviorValue;
+  timerExpiredBehavior: CampaignTimerExpiredBehaviorValue;
+  timerRecurringHour: string;
+  timerRecurringMinute: string;
   productSelection: ProductSelectionValue;
   productIds: string;
   excludeProductIds: string;
@@ -67,6 +99,13 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   subheadline: "",
   ctaText: "",
   ctaUrl: "",
+  expiredText: "This offer has ended.",
+  timerMode: "FIXED_DATE",
+  timerDurationMinutes: "120",
+  timerResetBehavior: "ON_SESSION_END",
+  timerExpiredBehavior: "UNPUBLISH_TIMER",
+  timerRecurringHour: "23",
+  timerRecurringMinute: "59",
   productSelection: "ALL_PRODUCTS",
   productIds: "",
   excludeProductIds: "",
@@ -75,6 +114,56 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   customSelector: "",
   countrySelection: "ALL_WORLD",
   countries: "",
+};
+
+export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
+  const mode = values.timerMode;
+  const durationMinutes =
+    mode === "EVERGREEN_SESSION"
+      ? clampInteger(Number(values.timerDurationMinutes), 1, 10080, 120)
+      : null;
+  const recurringHour = clampInteger(
+    Number(values.timerRecurringHour),
+    0,
+    23,
+    23,
+  );
+  const recurringMinute = clampInteger(
+    Number(values.timerRecurringMinute),
+    0,
+    59,
+    59,
+  );
+
+  return {
+    mode,
+    durationMinutes,
+    recurringDays:
+      mode === "RECURRING_DAILY"
+        ? [{ cutoffHour: recurringHour, cutoffMinute: recurringMinute }]
+        : [],
+    resetBehavior:
+      values.timerExpiredBehavior === "REPEAT_COUNTDOWN"
+        ? "ON_SESSION_END"
+        : values.timerResetBehavior,
+    expiredBehavior: values.timerExpiredBehavior,
+  };
+}
+
+function clampInteger(
+  value: number,
+  min: number,
+  max: number,
+  fallback: number,
+) {
+  if (!Number.isFinite(value)) return fallback;
+
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+export const emptyCampaignTargetingOptions: CampaignTargetingOptions = {
+  countries: [],
+  productTags: [],
 };
 
 export function buildCampaignTargetingValues(

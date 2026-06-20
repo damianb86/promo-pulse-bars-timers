@@ -26,6 +26,7 @@
 }
 
 .pp-bar {
+  position: relative;
   width: min(100%, 960px);
   box-sizing: border-box;
   display: flex;
@@ -33,7 +34,7 @@
   align-items: center;
   justify-content: var(--pp-justify, center);
   gap: 10px;
-  padding: 11px 16px;
+  padding: var(--pp-padding-block, 11px) var(--pp-padding-inline, 16px);
   border-radius: var(--pp-radius, 0);
   background: var(--pp-bg, #111827);
   color: var(--pp-text, #ffffff);
@@ -46,6 +47,10 @@
 
 .pp-bar--full-width {
   width: 100%;
+}
+
+.pp-bar--full-width > :not(.pp-close) {
+  max-width: min(100%, var(--pp-content-max-width, 960px));
 }
 
 .pp-bar--overlay {
@@ -203,14 +208,21 @@
 }
 
 .pp-close {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
   border: 0;
-  padding: 4px;
+  border-radius: 999px;
+  padding: 0;
   background: transparent;
   color: var(--pp-text, #ffffff);
   cursor: pointer;
+  display: grid;
+  place-items: center;
   font: inherit;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   opacity: 0.72;
@@ -259,7 +271,7 @@
   justify-content: var(--pp-justify, center);
   gap: 10px;
   margin: 12px 0;
-  padding: 12px 14px;
+  padding: var(--pp-padding-block, 12px) var(--pp-padding-inline, 14px);
   border: 1px solid var(--pp-accent, #22c55e);
   border-radius: var(--pp-radius, 4px);
   background: var(--pp-bg, #111827);
@@ -287,7 +299,7 @@
   justify-content: var(--pp-justify, center);
   gap: 10px;
   margin: 12px 0;
-  padding: 12px 14px;
+  padding: var(--pp-padding-block, 12px) var(--pp-padding-inline, 14px);
   border: 1px solid var(--pp-accent, #22c55e);
   border-radius: var(--pp-radius, 4px);
   background: var(--pp-bg, #111827);
@@ -325,7 +337,7 @@
   max-width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--pp-accent, #22c55e);
-  padding: 6px 9px;
+  padding: var(--pp-padding-block, 6px) var(--pp-padding-inline, 9px);
   background: var(--pp-bg, #111827);
   color: var(--pp-text, #ffffff);
   font-size: var(--pp-font-size, 13px);

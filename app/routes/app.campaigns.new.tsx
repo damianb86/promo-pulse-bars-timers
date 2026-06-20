@@ -26,6 +26,7 @@ import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
+import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import { createExperiment } from "../services/experiments";
 import {
   canCreateCampaign,
@@ -45,10 +46,13 @@ import type {
   CampaignSuggestion,
 } from "../types/ai-campaign";
 import {
+  buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
   defaultCampaignFormValues,
+  emptyCampaignTargetingOptions,
   type CampaignFormErrors,
   type CampaignFormValues,
+  type CampaignTargetingOptions,
 } from "../types/campaign-form";
 import type { StorefrontLocale } from "../types/localization";
 import { defaultBadgeSettingsValues } from "../types/badge";
@@ -69,10 +73,13 @@ type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
   defaults: CampaignFormValues;
+  targetingOptions: CampaignTargetingOptions;
   lockedTargetingFeatures: {
     advanced: string;
     basic: string;
     geo: string;
+    recurringTimers: string;
+    scheduling: string;
   };
   templateSourceName?: string;
 };
@@ -80,7 +87,7 @@ type LoaderData = {
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticateAdmin(request);
+  const { admin, session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const settings = await getShopSettingsOrDefaults(shop.id);
   const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
@@ -104,7 +111,7 @@ export const loader = async ({
       ? buildCampaignFormDefaultsFromTemplate(template)
       : {
           ...defaultCampaignFormValues,
-          startsAt: toDateTimeLocalValue(new Date()),
+          startsAt: "",
           endsAt: toDateTimeLocalValue(
             new Date(Date.now() + 24 * 60 * 60 * 1000),
           ),
@@ -114,7 +121,10 @@ export const loader = async ({
       advanced: getLockedFeatureReason(shop, "advanced_targeting"),
       basic: getLockedFeatureReason(shop, "basic_targeting"),
       geo: getLockedFeatureReason(shop, "geo_market_targeting"),
+      recurringTimers: getLockedFeatureReason(shop, "recurring_timers"),
+      scheduling: getLockedFeatureReason(shop, "scheduling"),
     },
+    targetingOptions: await loadTargetingOptions(admin),
     templateSourceName: template?.eventName,
   };
 };
@@ -177,6 +187,7 @@ export const action = async ({
     formData.get("aiSuggestionJson"),
   );
   const targeting = buildCampaignTargetingValues(parsed.values);
+  const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
 
   try {
     const createGate = await canCreateCampaign(shop);
@@ -206,6 +217,7 @@ export const action = async ({
     const planErrors = await validateCampaignPlanAccess(shop, {
       ...parsed.values,
       targeting,
+      timerSettings,
     });
 
     if (planErrors.length > 0) {
@@ -251,9 +263,19 @@ export const action = async ({
               subheadline: parsed.values.subheadline,
               ctaText: parsed.values.ctaText,
               ctaUrl: parsed.values.ctaUrl,
+              expiredText: parsed.values.expiredText,
             },
           },
         }),
+      },
+      timerSettings: {
+        create: {
+          mode: timerSettings.mode,
+          durationMinutes: timerSettings.durationMinutes,
+          recurringDays: timerSettings.recurringDays,
+          resetBehavior: timerSettings.resetBehavior,
+          expiredBehavior: timerSettings.expiredBehavior,
+        },
       },
       ...(parsed.values.type === "FREE_SHIPPING_GOAL" ||
       parsed.values.goal === "FREE_SHIPPING"
@@ -359,6 +381,7 @@ export default function CreateCampaignPage() {
     aiLockedReason,
     defaults,
     lockedTargetingFeatures,
+    targetingOptions,
     templateSourceName,
   } = useLoaderData<typeof loader>();
 
@@ -370,6 +393,7 @@ export default function CreateCampaignPage() {
             key={JSON.stringify(actionData?.values ?? defaults)}
             mode="create"
             lockedTargetingFeatures={lockedTargetingFeatures}
+            targetingOptions={targetingOptions}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
           />
@@ -464,4 +488,15 @@ function toDateTimeLocalValue(date: Date) {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
 
   return localDate.toISOString().slice(0, 16);
+}
+
+async function loadTargetingOptions(
+  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"],
+) {
+  try {
+    return await loadCampaignTargetingOptions(admin);
+  } catch (error) {
+    console.error("Failed to load campaign targeting options", error);
+    return emptyCampaignTargetingOptions;
+  }
 }

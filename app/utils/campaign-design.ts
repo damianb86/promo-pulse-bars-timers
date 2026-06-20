@@ -118,6 +118,15 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     errors.backgroundType = "Choose a valid background type.";
   }
 
+  if (values.backgroundType === "IMAGE" && !values.backgroundImageUrl.trim()) {
+    errors.backgroundImageUrl = "Choose a Shopify image or paste an image URL.";
+  } else if (
+    values.backgroundImageUrl &&
+    !isSafeBackgroundImageUrl(values.backgroundImageUrl)
+  ) {
+    errors.backgroundImageUrl = "Use a valid image URL.";
+  }
+
   if (
     !Number.isInteger(values.gradientAngle) ||
     values.gradientAngle < 0 ||
@@ -186,6 +195,11 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     errors.timerFormat = "Choose a valid timer format.";
   }
 
+  validateLabel(values, errors, "timerDaysLabel", "Days label");
+  validateLabel(values, errors, "timerHoursLabel", "Hours label");
+  validateLabel(values, errors, "timerMinutesLabel", "Minutes label");
+  validateLabel(values, errors, "timerSecondsLabel", "Seconds label");
+
   validateIntegerRange(
     values,
     errors,
@@ -219,6 +233,14 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     "Horizontal padding",
   );
   validateIntegerRange(values, errors, "contentGap", 0, 32, "Content gap");
+  validateIntegerRange(
+    values,
+    errors,
+    "contentMaxWidth",
+    280,
+    1440,
+    "Content max width",
+  );
 
   if (
     !designPositionModeOptions.some(
@@ -287,6 +309,24 @@ function validateIntegerRange(
   }
 }
 
+function validateLabel(
+  values: CampaignDesignValues,
+  errors: CampaignDesignErrors,
+  field: keyof CampaignDesignValues,
+  label: string,
+) {
+  const value = values[field];
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    errors[field] = `${label} is required.`;
+    return;
+  }
+
+  if (value.length > 12) {
+    errors[field] = `${label} must be 12 characters or fewer.`;
+  }
+}
+
 function getRelativeLuminance(hexColor: string) {
   const [red, green, blue] = hexToRgb(hexColor).map(toLinearRgb);
 
@@ -313,4 +353,8 @@ function isSafeCustomIconUrl(value: string) {
     /^https?:\/\//i.test(value) ||
     /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value)
   );
+}
+
+function isSafeBackgroundImageUrl(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
 }

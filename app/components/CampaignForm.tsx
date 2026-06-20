@@ -1,15 +1,20 @@
 import {
   type ChangeEvent,
+  type KeyboardEvent,
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
-import { CampaignPreview } from "./CampaignPreview";
-import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
+import {
+  CampaignPreviewPanel,
+  type PreviewPlacement,
+} from "./CampaignPreviewPanel";
+import type { PreviewDevice } from "./DevicePreviewToggle";
 import { TimezoneCombobox } from "./TimezoneCombobox";
 import {
   campaignGoalOptions,
@@ -17,22 +22,35 @@ import {
   campaignStatusOptions,
   campaignTypeOptions,
   placementTypeOptions,
+  type CampaignGoalValue,
+  type CampaignTypeValue,
+  type PlacementTypeValue,
 } from "../types/campaign-options";
 import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
 } from "../types/campaign-design";
 import type {
+  CampaignTargetingOptions,
   CampaignFormErrors,
   CampaignFormValues,
+  CampaignTimerExpiredBehaviorValue,
+  CampaignTimerModeValue,
   CountrySelectionValue,
   ProductSelectionValue,
+} from "../types/campaign-form";
+import {
+  buildCampaignTimerSettingsValues,
+  emptyCampaignTargetingOptions,
+  splitCampaignList,
 } from "../types/campaign-form";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
   campaignId?: string;
+  confirmOnSubmit?: boolean;
   design?: CampaignDesignValues;
+  designHiddenInputs?: ReactNode;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
@@ -40,20 +58,32 @@ type CampaignFormProps = {
     advanced: string;
     basic: string;
     geo: string;
+    recurringTimers?: string;
+    scheduling?: string;
   };
   mode: "create" | "edit";
   showTopbar?: boolean;
+  targetingOptions?: CampaignTargetingOptions;
+  onDesignChange?: (values: CampaignDesignValues) => void;
+  onValuesChange?: (values: CampaignFormValues) => void;
 };
 
-type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
+type ResourceFieldName = "productIds" | "excludeProductIds" | "collectionIds";
 
-type PreviewPlacement =
-  | "TOP_BAR"
-  | "BOTTOM_BAR"
-  | "PRODUCT_PAGE"
-  | "CART_PAGE"
-  | "CART_DRAWER"
-  | "PRODUCT_BADGE";
+type ResourceChip = {
+  id: string;
+  label: string;
+};
+
+type ShopifyResourcePickerType = "product" | "collection";
+
+type ShopifyResourcePickerResult = Array<{
+  id?: string;
+  title?: string;
+  handle?: string;
+}>;
+
+type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
 
 const builderTabs: Array<{
   key: BuilderTabKey;
@@ -104,6 +134,41 @@ const builderTabs: Array<{
   },
 ];
 
+const timerModeOptions: Array<{
+  description: string;
+  disabledFeature?: "recurringTimers";
+  label: string;
+  value: CampaignTimerModeValue;
+}> = [
+  {
+    description: "Timer that ends at the specific date.",
+    label: "Countdown to a date",
+    value: "FIXED_DATE",
+  },
+  {
+    description: "Individual fixed minutes countdown for each buyer session.",
+    label: "Fixed minutes",
+    value: "EVERGREEN_SESSION",
+  },
+  {
+    description: "E.g. every day until the configured cutoff time.",
+    disabledFeature: "recurringTimers",
+    label: "Daily recurring timer",
+    value: "RECURRING_DAILY",
+  },
+];
+
+const timerExpiredBehaviorOptions: Array<{
+  label: string;
+  value: CampaignTimerExpiredBehaviorValue;
+}> = [
+  { label: "Unpublish timer", value: "UNPUBLISH_TIMER" },
+  { label: "Hide the timer for the buyer", value: "HIDE_TIMER" },
+  { label: "Repeat the countdown", value: "REPEAT_COUNTDOWN" },
+  { label: "Show custom title", value: "SHOW_CUSTOM_TITLE" },
+  { label: "Do nothing", value: "DO_NOTHING" },
+];
+
 const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
   FLASH_SALE: "Flash sale",
   FREE_SHIPPING: "Free shipping",
@@ -114,29 +179,299 @@ const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
   ANNOUNCEMENT: "Announcement",
 };
 
+type CampaignSetupPreset = {
+  design?: Partial<CampaignDesignValues>;
+  form?: Partial<CampaignFormValues>;
+  goal?: CampaignGoalValue;
+  placementType: PlacementTypeValue;
+  productSelection?: ProductSelectionValue;
+  type?: CampaignTypeValue;
+};
+
+const countdownBarDesignPreset: Partial<CampaignDesignValues> = {
+  alignment: "CENTER",
+  backgroundType: "GRADIENT",
+  borderRadius: 0,
+  borderSize: 0,
+  contentGap: 8,
+  contentMaxWidth: 980,
+  fullWidth: true,
+  gradientAngle: 90,
+  gradientEndColor: "#B975F4",
+  gradientStartColor: "#45E4D9",
+  icon: "FIRE",
+  layout: "INLINE",
+  paddingBlock: 10,
+  paddingInline: 18,
+  positionMode: "FLOW",
+  positionSticky: true,
+  showButton: true,
+  showIcon: true,
+  timerFormat: "COLON",
+  timerShowLabels: false,
+  timerStyle: "PLAIN",
+};
+
+const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
+  {
+    COUNTDOWN_BAR: {
+      design: countdownBarDesignPreset,
+      form: {
+        timerExpiredBehavior: "UNPUBLISH_TIMER",
+        timerMode: "FIXED_DATE",
+      },
+      placementType: "TOP_BAR",
+      productSelection: "ALL_PRODUCTS",
+    },
+    PRODUCT_TIMER: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 8,
+        contentMaxWidth: 560,
+        fullWidth: false,
+        icon: "CLOCK",
+        layout: "BALANCED",
+        paddingBlock: 16,
+        paddingInline: 18,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: true,
+        timerFormat: "UNITS",
+        timerShowLabels: true,
+        timerStyle: "BOXES",
+      },
+      form: {
+        timerExpiredBehavior: "UNPUBLISH_TIMER",
+        timerMode: "FIXED_DATE",
+      },
+      placementType: "PRODUCT_PAGE",
+    },
+    CART_TIMER: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 8,
+        contentMaxWidth: 420,
+        fullWidth: false,
+        icon: "CLOCK",
+        layout: "STANDARD",
+        paddingBlock: 12,
+        paddingInline: 14,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: true,
+        timerFormat: "UNITS",
+        timerShowLabels: true,
+        timerStyle: "GROUPED",
+      },
+      form: {
+        timerDurationMinutes: "120",
+        timerExpiredBehavior: "HIDE_TIMER",
+        timerMode: "EVERGREEN_SESSION",
+        timerResetBehavior: "ON_SESSION_END",
+      },
+      goal: "CART_RESCUE",
+      placementType: "CART_DRAWER",
+      productSelection: "ALL_PRODUCTS",
+    },
+    FREE_SHIPPING_GOAL: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 8,
+        contentMaxWidth: 420,
+        fullWidth: false,
+        icon: "TRUCK",
+        layout: "STANDARD",
+        paddingBlock: 12,
+        paddingInline: 14,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: true,
+        timerFormat: "UNITS",
+        timerShowLabels: true,
+        timerStyle: "PLAIN",
+      },
+      form: {
+        timerDurationMinutes: "120",
+        timerExpiredBehavior: "HIDE_TIMER",
+        timerMode: "EVERGREEN_SESSION",
+        timerResetBehavior: "ON_SESSION_END",
+      },
+      goal: "FREE_SHIPPING",
+      placementType: "CART_DRAWER",
+      productSelection: "ALL_PRODUCTS",
+    },
+    DELIVERY_CUTOFF: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 8,
+        contentMaxWidth: 560,
+        fullWidth: false,
+        icon: "CLOCK",
+        layout: "BALANCED",
+        paddingBlock: 14,
+        paddingInline: 18,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: true,
+        timerFormat: "UNITS",
+        timerShowLabels: true,
+        timerStyle: "GROUPED",
+      },
+      form: {
+        timerExpiredBehavior: "UNPUBLISH_TIMER",
+        timerMode: "FIXED_DATE",
+      },
+      goal: "DELIVERY_CUTOFF",
+      placementType: "PRODUCT_PAGE",
+    },
+    LOW_STOCK: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 6,
+        contentMaxWidth: 520,
+        fullWidth: false,
+        icon: "TAG",
+        layout: "INLINE",
+        paddingBlock: 10,
+        paddingInline: 14,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: true,
+        timerFormat: "UNITS",
+        timerShowLabels: false,
+        timerStyle: "PLAIN",
+      },
+      form: {
+        timerExpiredBehavior: "DO_NOTHING",
+        timerMode: "FIXED_DATE",
+      },
+      goal: "LOW_STOCK_URGENCY",
+      placementType: "PRODUCT_PAGE",
+    },
+    PRODUCT_BADGE: {
+      design: {
+        alignment: "CENTER",
+        borderRadius: 999,
+        contentMaxWidth: 320,
+        fullWidth: false,
+        icon: "NONE",
+        layout: "INLINE",
+        paddingBlock: 6,
+        paddingInline: 12,
+        positionMode: "FLOW",
+        positionSticky: false,
+        showButton: false,
+        showIcon: false,
+        timerFormat: "COLON",
+        timerShowLabels: false,
+        timerShowSeconds: false,
+        timerStyle: "PLAIN",
+      },
+      form: {
+        timerExpiredBehavior: "DO_NOTHING",
+        timerMode: "FIXED_DATE",
+      },
+      goal: "PRODUCT_BADGE",
+      placementType: "COLLECTION_CARD",
+      productSelection: "ALL_PRODUCTS",
+    },
+  };
+
+const campaignGoalSetupPresets: Record<CampaignGoalValue, CampaignSetupPreset> =
+  {
+    FLASH_SALE: {
+      ...campaignTypeSetupPresets.COUNTDOWN_BAR,
+      type: "COUNTDOWN_BAR",
+    },
+    FREE_SHIPPING: {
+      ...campaignTypeSetupPresets.FREE_SHIPPING_GOAL,
+      type: "FREE_SHIPPING_GOAL",
+    },
+    CART_RESCUE: {
+      ...campaignTypeSetupPresets.CART_TIMER,
+      type: "CART_TIMER",
+    },
+    DELIVERY_CUTOFF: {
+      ...campaignTypeSetupPresets.DELIVERY_CUTOFF,
+      type: "DELIVERY_CUTOFF",
+    },
+    LOW_STOCK_URGENCY: {
+      ...campaignTypeSetupPresets.LOW_STOCK,
+      type: "LOW_STOCK",
+    },
+    PRODUCT_BADGE: {
+      ...campaignTypeSetupPresets.PRODUCT_BADGE,
+      type: "PRODUCT_BADGE",
+    },
+    ANNOUNCEMENT: {
+      design: {
+        ...countdownBarDesignPreset,
+        icon: "NONE",
+        showIcon: false,
+        timerShowSeconds: false,
+      },
+      form: {
+        timerExpiredBehavior: "DO_NOTHING",
+        timerMode: "FIXED_DATE",
+      },
+      placementType: "TOP_BAR",
+      productSelection: "ALL_PRODUCTS",
+      type: "COUNTDOWN_BAR",
+    },
+  };
+
 export function CampaignForm({
   campaignId,
+  confirmOnSubmit = true,
   design = defaultCampaignDesignValues,
+  designHiddenInputs,
   values,
   errors = {},
   formId,
   lockedTargetingFeatures,
   mode,
   showTopbar = true,
+  targetingOptions = emptyCampaignTargetingOptions,
+  onDesignChange,
+  onValuesChange,
 }: CampaignFormProps) {
   const navigation = useNavigation();
+  const formRef = useRef<HTMLFormElement | null>(null);
   const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
+  const [campaignPreviewPlacement, setCampaignPreviewPlacement] =
+    useState<PreviewPlacement>(() => toPreviewPlacement(values.placementType));
   const [formValues, setFormValues] = useState(() => values);
+  const [localDesignValues, setLocalDesignValues] = useState(() => design);
+  const [submitAction, setSubmitAction] = useState("saveDraft");
   const [aiSuggestionJson, setAiSuggestionJson] = useState("");
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
   );
   const [timerIdCopied, setTimerIdCopied] = useState(false);
+  const [embedHtmlCopied, setEmbedHtmlCopied] = useState(false);
+  const [pickerError, setPickerError] = useState("");
+  const [tagQuery, setTagQuery] = useState("");
+  const [countryQuery, setCountryQuery] = useState("");
+  const [resourceLabels, setResourceLabels] = useState<
+    Record<ResourceFieldName, ResourceChip[]>
+  >(() => ({
+    collectionIds: buildResourceChips(values.collectionIds),
+    excludeProductIds: buildResourceChips(values.excludeProductIds),
+    productIds: buildResourceChips(values.productIds),
+  }));
   const isSubmitting = navigation.state === "submitting";
+  const effectiveDesign = onDesignChange ? design : localDesignValues;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
+  const recurringTimersLocked = lockedTargetingFeatures?.recurringTimers ?? "";
+  const schedulingLocked = lockedTargetingFeatures?.scheduling ?? "";
   const statusOptions =
     mode === "edit" ? campaignEditableStatusOptions : campaignStatusOptions;
   const statusLabel =
@@ -165,7 +500,48 @@ export function CampaignForm({
     )?.label ?? "Top bar";
   const activeTabMeta =
     builderTabs.find((tab) => tab.key === activeTab) ?? builderTabs[0];
-  const previewPlacement = toPreviewPlacement(formValues.placementType);
+  const selectedProductTags = splitCampaignList(formValues.productTags);
+  const selectedCountries = splitCampaignList(formValues.countries).map(
+    (country) => country.toUpperCase(),
+  );
+  const matchingProductTags = useMemo(
+    () =>
+      targetingOptions.productTags
+        .filter(
+          (tag) =>
+            !selectedProductTags.includes(tag) &&
+            tag.toLowerCase().includes(tagQuery.trim().toLowerCase()),
+        )
+        .slice(0, 8),
+    [selectedProductTags, tagQuery, targetingOptions.productTags],
+  );
+  const matchingCountries = useMemo(
+    () =>
+      targetingOptions.countries
+        .filter(
+          (country) =>
+            !selectedCountries.includes(country.code) &&
+            [country.code, country.name]
+              .join(" ")
+              .toLowerCase()
+              .includes(countryQuery.trim().toLowerCase()),
+        )
+        .slice(0, 10),
+    [countryQuery, selectedCountries, targetingOptions.countries],
+  );
+  const countryLabelsByCode = useMemo(
+    () =>
+      new Map(
+        targetingOptions.countries.map((country) => [
+          country.code,
+          country.name,
+        ]),
+      ),
+    [targetingOptions.countries],
+  );
+  const campaignEmbedHtml = campaignId
+    ? `<div class="pp-campaign-slot" data-counterpulse-campaign-id="${campaignId}"></div>`
+    : "";
   const previewViewModel = useMemo(
     () =>
       buildCampaignViewModel({
@@ -183,12 +559,13 @@ export function CampaignForm({
             subheadline: formValues.subheadline,
             ctaText: formValues.ctaText || "Shop now",
             ctaUrl: formValues.ctaUrl || "#",
-            expiredText: "This offer has ended.",
+            expiredText: formValues.expiredText || "This offer has ended.",
           },
         ],
-        design,
+        design: effectiveDesign,
+        timerSettings: buildCampaignTimerSettingsValues(formValues),
       }),
-    [activeGoalLabel, design, formValues],
+    [activeGoalLabel, effectiveDesign, formValues],
   );
   const summaryRows = useMemo(
     () => [
@@ -241,6 +618,22 @@ export function CampaignForm({
     }));
   };
 
+  const selectCampaignType = (type: CampaignTypeValue) => {
+    const preset = campaignTypeSetupPresets[type];
+
+    setFormValues((currentValues) =>
+      applySetupPreset(
+        {
+          ...currentValues,
+          type,
+          goal: preset.goal ?? currentValues.goal,
+        },
+        preset,
+      ),
+    );
+    updateDesignValues(applyDesignSetupPreset(effectiveDesign, preset.design));
+  };
+
   const selectProductSelection = (productSelection: ProductSelectionValue) => {
     setFormValues((currentValues) => ({
       ...currentValues,
@@ -261,6 +654,37 @@ export function CampaignForm({
     }));
   };
 
+  const selectTimerMode = (timerMode: CampaignTimerModeValue) => {
+    if (timerMode === "RECURRING_DAILY" && recurringTimersLocked) return;
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      timerMode,
+      startsAt: timerMode === "FIXED_DATE" ? currentValues.startsAt : "",
+      endsAt: timerMode === "FIXED_DATE" ? currentValues.endsAt : "",
+      timerExpiredBehavior:
+        timerMode === "FIXED_DATE"
+          ? currentValues.timerExpiredBehavior === "HIDE_TIMER"
+            ? "UNPUBLISH_TIMER"
+            : currentValues.timerExpiredBehavior
+          : currentValues.timerExpiredBehavior === "UNPUBLISH_TIMER"
+            ? "HIDE_TIMER"
+            : currentValues.timerExpiredBehavior,
+    }));
+  };
+
+  const selectTimerStart = (mode: "NOW" | "SCHEDULED") => {
+    if (mode === "SCHEDULED" && schedulingLocked) return;
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      startsAt:
+        mode === "NOW"
+          ? ""
+          : currentValues.startsAt || toDateTimeLocalInputValue(new Date()),
+    }));
+  };
+
   const copyTimerId = () => {
     if (!campaignId || !navigator.clipboard) return;
 
@@ -273,12 +697,241 @@ export function CampaignForm({
       .catch(() => setTimerIdCopied(false));
   };
 
-  const selectGoal = (goal: CampaignFormValues["goal"]) => {
+  const copyEmbedHtml = () => {
+    if (!campaignEmbedHtml || !navigator.clipboard) return;
+
+    navigator.clipboard
+      .writeText(campaignEmbedHtml)
+      .then(() => {
+        setEmbedHtmlCopied(true);
+        window.setTimeout(() => setEmbedHtmlCopied(false), 1800);
+      })
+      .catch(() => setEmbedHtmlCopied(false));
+  };
+
+  const setListField = (
+    field: ResourceFieldName | "productTags" | "countries",
+    items: string[],
+  ) => {
     setFormValues((currentValues) => ({
       ...currentValues,
-      goal,
+      [field]: items.join("\n"),
     }));
   };
+
+  const setManualListField =
+    (field: ResourceFieldName | "productTags" | "countries") =>
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        [field]: event.currentTarget.value,
+      }));
+
+      if (
+        field === "productIds" ||
+        field === "excludeProductIds" ||
+        field === "collectionIds"
+      ) {
+        setResourceLabels((currentLabels) => ({
+          ...currentLabels,
+          [field]: buildResourceChips(event.currentTarget.value),
+        }));
+      }
+    };
+
+  const openResourcePicker = async (
+    type: ShopifyResourcePickerType,
+    field: ResourceFieldName,
+  ) => {
+    const shopify = getShopifyBridge();
+
+    if (!shopify?.resourcePicker) {
+      setPickerError(
+        "Shopify Resource Picker is not available in this context. Use manual IDs below.",
+      );
+      return;
+    }
+
+    setPickerError("");
+
+    const selected = await shopify.resourcePicker({
+      action: "select",
+      multiple: true,
+      selectionIds: splitCampaignList(formValues[field]).map((id) => ({ id })),
+      type,
+    });
+
+    if (!selected) return;
+
+    const chips = selected
+      .map((resource) => ({
+        id: resource.id ?? "",
+        label:
+          resource.title ?? resource.handle ?? shortResourceId(resource.id),
+      }))
+      .filter((chip): chip is ResourceChip => Boolean(chip.id));
+
+    setResourceLabels((currentLabels) => ({
+      ...currentLabels,
+      [field]: chips,
+    }));
+    setListField(
+      field,
+      chips.map((chip) => chip.id),
+    );
+  };
+
+  const removeResourceChip = (field: ResourceFieldName, id: string) => {
+    const nextIds = splitCampaignList(formValues[field]).filter(
+      (item) => item !== id,
+    );
+
+    setResourceLabels((currentLabels) => ({
+      ...currentLabels,
+      [field]: currentLabels[field].filter((chip) => chip.id !== id),
+    }));
+    setListField(field, nextIds);
+  };
+
+  const resourceChipsFor = (field: ResourceFieldName) => {
+    const labelsById = new Map(
+      resourceLabels[field].map((chip) => [chip.id, chip.label]),
+    );
+
+    return splitCampaignList(formValues[field]).map((id) => ({
+      id,
+      label: labelsById.get(id) ?? shortResourceId(id),
+    }));
+  };
+
+  const addProductTag = (tag: string) => {
+    if (!tag || selectedProductTags.includes(tag)) return;
+
+    setListField("productTags", [...selectedProductTags, tag]);
+    setTagQuery("");
+  };
+
+  const removeProductTag = (tag: string) => {
+    setListField(
+      "productTags",
+      selectedProductTags.filter((selectedTag) => selectedTag !== tag),
+    );
+  };
+
+  const selectFirstMatchingTag = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    if (matchingProductTags[0]) {
+      addProductTag(matchingProductTags[0]);
+    }
+  };
+
+  const addCountry = (code: string) => {
+    const normalizedCode = code.toUpperCase();
+
+    if (!normalizedCode || selectedCountries.includes(normalizedCode)) return;
+
+    setListField("countries", [...selectedCountries, normalizedCode]);
+    setCountryQuery("");
+  };
+
+  const removeCountry = (code: string) => {
+    setListField(
+      "countries",
+      selectedCountries.filter((selectedCode) => selectedCode !== code),
+    );
+  };
+
+  const selectFirstMatchingCountry = (
+    event: KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    if (matchingCountries[0]) {
+      addCountry(matchingCountries[0].code);
+    }
+  };
+
+  const selectGoal = (goal: CampaignFormValues["goal"]) => {
+    const preset = campaignGoalSetupPresets[goal];
+
+    setFormValues((currentValues) =>
+      applySetupPreset(
+        {
+          ...currentValues,
+          goal,
+          type: preset.type ?? currentValues.type,
+        },
+        preset,
+      ),
+    );
+    updateDesignValues(applyDesignSetupPreset(effectiveDesign, preset.design));
+  };
+
+  const updateDesignValues = (nextDesign: CampaignDesignValues) => {
+    if (onDesignChange) {
+      onDesignChange(nextDesign);
+      return;
+    }
+
+    setLocalDesignValues(nextDesign);
+  };
+
+  useEffect(() => {
+    if (!onDesignChange) {
+      setLocalDesignValues(design);
+    }
+  }, [design, onDesignChange]);
+
+  useEffect(() => {
+    setCampaignPreviewPlacement(toPreviewPlacement(formValues.placementType));
+  }, [formValues.placementType]);
+
+  useEffect(() => {
+    onValuesChange?.(formValues);
+  }, [formValues, onValuesChange]);
+
+  useEffect(() => {
+    const submitWithAction = (action: "saveDraft" | "publishCampaign") => {
+      setSubmitAction(action);
+      window.setTimeout(() => formRef.current?.requestSubmit(), 0);
+    };
+    const handleSaveRequest = () => submitWithAction("saveDraft");
+    const handlePublishRequest = () => submitWithAction("publishCampaign");
+    const handleDiscardRequest = () => {
+      setFormValues(values);
+      setSubmitAction("saveDraft");
+    };
+
+    window.addEventListener("counterpulse:campaign-save", handleSaveRequest);
+    window.addEventListener(
+      "counterpulse:campaign-publish",
+      handlePublishRequest,
+    );
+    window.addEventListener(
+      "counterpulse:campaign-discard",
+      handleDiscardRequest,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "counterpulse:campaign-save",
+        handleSaveRequest,
+      );
+      window.removeEventListener(
+        "counterpulse:campaign-publish",
+        handlePublishRequest,
+      );
+      window.removeEventListener(
+        "counterpulse:campaign-discard",
+        handleDiscardRequest,
+      );
+    };
+  }, [values]);
 
   useEffect(() => {
     const handleReviewRequest = () => setActiveTab("review");
@@ -315,12 +968,13 @@ export function CampaignForm({
     <>
       <Form
         data-campaign-form
+        ref={formRef}
         id={formId}
         method="post"
         className="counterpulse-create-form"
-        onSubmit={confirmSubmit.onSubmit}
+        onSubmit={confirmOnSubmit ? confirmSubmit.onSubmit : undefined}
       >
-        <input name="_action" type="hidden" value="saveBasics" />
+        <input name="_action" type="hidden" value={submitAction} />
         <input
           data-ai-suggestion-json
           name="aiSuggestionJson"
@@ -328,6 +982,7 @@ export function CampaignForm({
           type="hidden"
           value={aiSuggestionJson}
         />
+        {designHiddenInputs}
 
         {errors.form && (
           <AppAlert tone="critical" title="Campaign could not be saved">
@@ -500,7 +1155,11 @@ export function CampaignForm({
                   <select
                     name="type"
                     value={formValues.type}
-                    onChange={updateField("type")}
+                    onChange={(event) =>
+                      selectCampaignType(
+                        event.currentTarget.value as CampaignTypeValue,
+                      )
+                    }
                   >
                     {campaignTypeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -630,6 +1289,11 @@ export function CampaignForm({
 
             <BuilderPanel activeTab={activeTab} tabKey="placement">
               <div className="counterpulse-targeting-grid">
+                {pickerError && (
+                  <div className="counterpulse-targeting-warning">
+                    {pickerError}
+                  </div>
+                )}
                 <section
                   className="counterpulse-targeting-card"
                   aria-labelledby="campaign-products-heading"
@@ -662,21 +1326,21 @@ export function CampaignForm({
                         <UpgradeText reason={advancedTargetingLocked} />
                       )}
                     {showProductExclusions ? (
-                      <div className="counterpulse-targeting-field">
-                        <label htmlFor="campaign-excluded-product-ids">
-                          Excluded product IDs
-                        </label>
-                        <textarea
-                          id="campaign-excluded-product-ids"
-                          name="excludeProductIds"
-                          rows={3}
-                          value={formValues.excludeProductIds}
-                          placeholder="gid://shopify/Product/123456789"
-                          readOnly={Boolean(advancedTargetingLocked)}
-                          onChange={updateField("excludeProductIds")}
-                        />
-                        <small>Separate IDs with commas or new lines.</small>
-                      </div>
+                      <ResourcePickerField
+                        chips={resourceChipsFor("excludeProductIds")}
+                        disabled={Boolean(advancedTargetingLocked)}
+                        label="Excluded products"
+                        name="excludeProductIds"
+                        pickerLabel="Select products to exclude"
+                        value={formValues.excludeProductIds}
+                        onManualChange={setManualListField("excludeProductIds")}
+                        onOpenPicker={() =>
+                          openResourcePicker("product", "excludeProductIds")
+                        }
+                        onRemove={(id) =>
+                          removeResourceChip("excludeProductIds", id)
+                        }
+                      />
                     ) : (
                       <input
                         type="hidden"
@@ -700,19 +1364,19 @@ export function CampaignForm({
                     value="SPECIFIC_PRODUCTS"
                     onSelect={() => selectProductSelection("SPECIFIC_PRODUCTS")}
                   >
-                    <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-product-ids">Product IDs</label>
-                      <textarea
-                        id="campaign-product-ids"
-                        name="productIds"
-                        rows={3}
-                        value={formValues.productIds}
-                        placeholder="gid://shopify/Product/123456789"
-                        onChange={updateField("productIds")}
-                      />
-                      <small>Separate IDs with commas or new lines.</small>
-                      <FieldError message={errors.productIds} />
-                    </div>
+                    <ResourcePickerField
+                      chips={resourceChipsFor("productIds")}
+                      error={errors.productIds}
+                      label="Included products"
+                      name="productIds"
+                      pickerLabel="Select products"
+                      value={formValues.productIds}
+                      onManualChange={setManualListField("productIds")}
+                      onOpenPicker={() =>
+                        openResourcePicker("product", "productIds")
+                      }
+                      onRemove={(id) => removeResourceChip("productIds", id)}
+                    />
                   </TargetingRadioOption>
 
                   <TargetingRadioOption
@@ -727,21 +1391,19 @@ export function CampaignForm({
                     value="COLLECTIONS"
                     onSelect={() => selectProductSelection("COLLECTIONS")}
                   >
-                    <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-collection-ids">
-                        Collection IDs
-                      </label>
-                      <textarea
-                        id="campaign-collection-ids"
-                        name="collectionIds"
-                        rows={3}
-                        value={formValues.collectionIds}
-                        placeholder="gid://shopify/Collection/987654321"
-                        onChange={updateField("collectionIds")}
-                      />
-                      <small>Separate IDs with commas or new lines.</small>
-                      <FieldError message={errors.collectionIds} />
-                    </div>
+                    <ResourcePickerField
+                      chips={resourceChipsFor("collectionIds")}
+                      error={errors.collectionIds}
+                      label="Included collections"
+                      name="collectionIds"
+                      pickerLabel="Select collections"
+                      value={formValues.collectionIds}
+                      onManualChange={setManualListField("collectionIds")}
+                      onOpenPicker={() =>
+                        openResourcePicker("collection", "collectionIds")
+                      }
+                      onRemove={(id) => removeResourceChip("collectionIds", id)}
+                    />
                   </TargetingRadioOption>
 
                   <TargetingRadioOption
@@ -756,21 +1418,18 @@ export function CampaignForm({
                     value="TAGS"
                     onSelect={() => selectProductSelection("TAGS")}
                   >
-                    <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-product-tags">
-                        Product tags
-                      </label>
-                      <textarea
-                        id="campaign-product-tags"
-                        name="productTags"
-                        rows={3}
-                        value={formValues.productTags}
-                        placeholder="sale, limited, preorder"
-                        onChange={updateField("productTags")}
-                      />
-                      <small>Separate tags with commas or new lines.</small>
-                      <FieldError message={errors.productTags} />
-                    </div>
+                    <TagSelectorField
+                      error={errors.productTags}
+                      matchingTags={matchingProductTags}
+                      query={tagQuery}
+                      selectedTags={selectedProductTags}
+                      onAddTag={addProductTag}
+                      onManualChange={setManualListField("productTags")}
+                      onQueryChange={setTagQuery}
+                      onRemoveTag={removeProductTag}
+                      onSelectFirst={selectFirstMatchingTag}
+                      value={formValues.productTags}
+                    />
                   </TargetingRadioOption>
 
                   <TargetingRadioOption
@@ -823,6 +1482,16 @@ export function CampaignForm({
                       Countdown timer app blocks can use this ID to render this
                       exact campaign.
                     </p>
+                    {campaignEmbedHtml && (
+                      <div className="counterpulse-snippet-box">
+                        <span>HTML snippet</span>
+                        <code>{campaignEmbedHtml}</code>
+                        <button type="button" onClick={copyEmbedHtml}>
+                          Copy HTML
+                        </button>
+                        {embedHtmlCopied && <small>HTML copied</small>}
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -862,21 +1531,19 @@ export function CampaignForm({
                       selectCountrySelection("SPECIFIC_COUNTRIES")
                     }
                   >
-                    <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-country-codes">
-                        Country codes
-                      </label>
-                      <textarea
-                        id="campaign-country-codes"
-                        name="countries"
-                        rows={3}
-                        value={formValues.countries}
-                        placeholder="US, CA, GB"
-                        onChange={updateField("countries")}
-                      />
-                      <small>Use ISO 2-letter country codes.</small>
-                      <FieldError message={errors.countries} />
-                    </div>
+                    <CountrySelectorField
+                      countries={matchingCountries}
+                      countryLabelsByCode={countryLabelsByCode}
+                      error={errors.countries}
+                      query={countryQuery}
+                      selectedCountries={selectedCountries}
+                      value={formValues.countries}
+                      onAddCountry={addCountry}
+                      onManualChange={setManualListField("countries")}
+                      onQueryChange={setCountryQuery}
+                      onRemoveCountry={removeCountry}
+                      onSelectFirst={selectFirstMatchingCountry}
+                    />
                   </TargetingRadioOption>
                 </section>
               </div>
@@ -962,66 +1629,293 @@ export function CampaignForm({
             </BuilderPanel>
 
             <BuilderPanel activeTab={activeTab} tabKey="schedule">
-              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-                <FormField label="Start date/time" error={errors.startsAt}>
-                  <input
-                    type="datetime-local"
-                    name="startsAt"
-                    value={formValues.startsAt}
-                    onChange={updateField("startsAt")}
-                  />
-                  <small className="counterpulse-field-hint">
-                    Leave blank to start as soon as the campaign is active.
-                  </small>
-                </FormField>
+              <div className="counterpulse-schedule-stack">
+                <section className="counterpulse-targeting-card">
+                  <div className="counterpulse-targeting-card__header">
+                    <h3>Timer Type</h3>
+                  </div>
 
-                <FormField label="End date/time" error={errors.endsAt}>
-                  <input
-                    type="datetime-local"
-                    name="endsAt"
-                    value={formValues.endsAt}
-                    onChange={updateField("endsAt")}
-                  />
-                </FormField>
+                  <div className="counterpulse-radio-stack">
+                    {timerModeOptions.map((option) => {
+                      const lockReason =
+                        option.disabledFeature === "recurringTimers"
+                          ? recurringTimersLocked
+                          : "";
 
-                <div className="counterpulse-form-field--full">
-                  <TimezoneCombobox
-                    error={errors.timezone}
-                    info={
-                      <FieldInfoButton
-                        label="Timezone"
-                        title="Timezone used by campaign timers"
+                      return (
+                        <label
+                          className={[
+                            "counterpulse-radio counterpulse-radio--stacked",
+                            lockReason ? "is-disabled" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          key={option.value}
+                        >
+                          <input
+                            checked={formValues.timerMode === option.value}
+                            disabled={Boolean(lockReason)}
+                            name="timerMode"
+                            type="radio"
+                            value={option.value}
+                            onChange={() => selectTimerMode(option.value)}
+                          />
+                          <span>
+                            <strong>{option.label}</strong>
+                            <small>{option.description}</small>
+                            {lockReason && <UpgradeText reason={lockReason} />}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <input
+                    name="timerMode"
+                    type="hidden"
+                    value={formValues.timerMode}
+                  />
+                  <input
+                    name="timerResetBehavior"
+                    type="hidden"
+                    value={formValues.timerResetBehavior}
+                  />
+
+                  {formValues.timerMode === "EVERGREEN_SESSION" ? (
+                    <FormField
+                      label="Minutes"
+                      error={errors.timerDurationMinutes}
+                      fullWidth
+                    >
+                      <input
+                        inputMode="numeric"
+                        min={1}
+                        max={10080}
+                        name="timerDurationMinutes"
+                        type="number"
+                        value={formValues.timerDurationMinutes}
+                        onChange={updateField("timerDurationMinutes")}
+                      />
+                    </FormField>
+                  ) : (
+                    <input
+                      name="timerDurationMinutes"
+                      type="hidden"
+                      value={formValues.timerDurationMinutes}
+                    />
+                  )}
+
+                  {formValues.timerMode === "RECURRING_DAILY" ? (
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField
+                        label="Daily cutoff hour"
+                        error={errors.timerRecurringHour}
                       >
-                        <CampaignInfoContent
-                          intro="Timezone controls how scheduled starts, ends, delivery cutoff, and recurring timer calculations are interpreted."
-                          items={[
-                            [
-                              "UTC offset first",
-                              "The selector is ordered by UTC offset and shows one representative region per offset.",
-                            ],
-                            [
-                              "Why it matters",
-                              "A timer promising a real deadline should use the same timezone as the offer or fulfillment operation.",
-                            ],
-                            [
-                              "Existing saved zones",
-                              "If a campaign already uses a more specific IANA zone, it is preserved until you choose another option.",
-                            ],
-                          ]}
+                        <input
+                          inputMode="numeric"
+                          max={23}
+                          min={0}
+                          name="timerRecurringHour"
+                          type="number"
+                          value={formValues.timerRecurringHour}
+                          onChange={updateField("timerRecurringHour")}
                         />
-                      </FieldInfoButton>
-                    }
-                    label="Timezone"
-                    name="timezone"
-                    value={formValues.timezone}
-                    onChange={(timezone) =>
-                      setFormValues((currentValues) => ({
-                        ...currentValues,
-                        timezone,
-                      }))
-                    }
-                  />
-                </div>
+                      </FormField>
+                      <FormField label="Minute">
+                        <input
+                          inputMode="numeric"
+                          max={59}
+                          min={0}
+                          name="timerRecurringMinute"
+                          type="number"
+                          value={formValues.timerRecurringMinute}
+                          onChange={updateField("timerRecurringMinute")}
+                        />
+                      </FormField>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        name="timerRecurringHour"
+                        type="hidden"
+                        value={formValues.timerRecurringHour}
+                      />
+                      <input
+                        name="timerRecurringMinute"
+                        type="hidden"
+                        value={formValues.timerRecurringMinute}
+                      />
+                    </>
+                  )}
+
+                  {formValues.timerMode === "FIXED_DATE" ? (
+                    <>
+                      <div className="counterpulse-targeting-option">
+                        <label>
+                          <input
+                            checked={!formValues.startsAt}
+                            name="timerStartsMode"
+                            type="radio"
+                            value="NOW"
+                            onChange={() => selectTimerStart("NOW")}
+                          />
+                          <span>
+                            <strong>Right now</strong>
+                          </span>
+                        </label>
+                      </div>
+                      <div
+                        className={[
+                          "counterpulse-targeting-option",
+                          schedulingLocked ? "is-disabled" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <label>
+                          <input
+                            checked={Boolean(formValues.startsAt)}
+                            disabled={Boolean(schedulingLocked)}
+                            name="timerStartsMode"
+                            type="radio"
+                            value="SCHEDULED"
+                            onChange={() => selectTimerStart("SCHEDULED")}
+                          />
+                          <span>
+                            <strong>Schedule to start later</strong>
+                            {schedulingLocked && (
+                              <UpgradeText reason={schedulingLocked} />
+                            )}
+                          </span>
+                        </label>
+                      </div>
+
+                      {formValues.startsAt ? (
+                        <FormField
+                          label="Start date/time"
+                          error={errors.startsAt}
+                          fullWidth
+                        >
+                          <input
+                            type="datetime-local"
+                            name="startsAt"
+                            value={formValues.startsAt}
+                            onChange={updateField("startsAt")}
+                          />
+                        </FormField>
+                      ) : (
+                        <input name="startsAt" type="hidden" value="" />
+                      )}
+
+                      <FormField
+                        label="End date"
+                        error={errors.endsAt}
+                        fullWidth
+                      >
+                        <input
+                          type="datetime-local"
+                          name="endsAt"
+                          value={formValues.endsAt}
+                          onChange={updateField("endsAt")}
+                        />
+                      </FormField>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        name="startsAt"
+                        type="hidden"
+                        value={formValues.startsAt}
+                      />
+                      <input
+                        name="endsAt"
+                        type="hidden"
+                        value={formValues.endsAt}
+                      />
+                    </>
+                  )}
+
+                  <FormField
+                    label="Once it ends"
+                    error={errors.timerExpiredBehavior}
+                    fullWidth
+                  >
+                    <select
+                      name="timerExpiredBehavior"
+                      value={formValues.timerExpiredBehavior}
+                      onChange={(event) =>
+                        setFormValues((currentValues) => ({
+                          ...currentValues,
+                          timerExpiredBehavior: event.currentTarget
+                            .value as CampaignTimerExpiredBehaviorValue,
+                        }))
+                      }
+                    >
+                      {timerExpiredBehaviorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+
+                  {formValues.timerExpiredBehavior === "SHOW_CUSTOM_TITLE" ? (
+                    <FormField
+                      label="Custom title"
+                      error={errors.expiredText}
+                      fullWidth
+                    >
+                      <input
+                        name="expiredText"
+                        value={formValues.expiredText}
+                        placeholder="This offer has ended."
+                        onChange={updateField("expiredText")}
+                      />
+                    </FormField>
+                  ) : (
+                    <input
+                      name="expiredText"
+                      type="hidden"
+                      value={formValues.expiredText}
+                    />
+                  )}
+                </section>
+
+                <TimezoneCombobox
+                  error={errors.timezone}
+                  info={
+                    <FieldInfoButton
+                      label="Timezone"
+                      title="Timezone used by campaign timers"
+                    >
+                      <CampaignInfoContent
+                        intro="Timezone controls scheduled starts, fixed end dates, daily recurring cutoffs, and delivery promises."
+                        items={[
+                          [
+                            "UTC offset first",
+                            "The selector is ordered by UTC offset and shows one representative region per offset.",
+                          ],
+                          [
+                            "Why it matters",
+                            "A timer promising a real deadline should use the same timezone as the offer or fulfillment operation.",
+                          ],
+                          [
+                            "Existing saved zones",
+                            "If a campaign already uses a more specific IANA zone, it is preserved until you choose another option.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                  label="Timezone"
+                  name="timezone"
+                  value={formValues.timezone}
+                  onChange={(timezone) =>
+                    setFormValues((currentValues) => ({
+                      ...currentValues,
+                      timezone,
+                    }))
+                  }
+                />
               </div>
             </BuilderPanel>
 
@@ -1050,40 +1944,85 @@ export function CampaignForm({
             className="counterpulse-create-side-panel"
             aria-label="Live campaign preview"
           >
-            <div className="counterpulse-preview-panel">
-              <div className="counterpulse-preview-toolbar">
-                <DevicePreviewToggle
-                  value={previewDevice}
-                  onChange={setPreviewDevice}
-                />
-              </div>
-              <CampaignPreview
-                design={design}
-                device={previewDevice}
-                placement={previewPlacement}
-                viewModel={previewViewModel}
-              />
-              <dl className="counterpulse-preview-meta">
-                <div>
-                  <dt>Goal</dt>
-                  <dd>{activeGoalLabel}</dd>
-                </div>
-                <div>
-                  <dt>Type</dt>
-                  <dd>{activeTypeLabel}</dd>
-                </div>
-                <div>
-                  <dt>Placement</dt>
-                  <dd>{activePlacementLabel}</dd>
-                </div>
-              </dl>
-            </div>
+            <CampaignPreviewPanel
+              className="counterpulse-campaign-preview-panel"
+              design={effectiveDesign}
+              device={previewDevice}
+              placement={campaignPreviewPlacement}
+              viewModel={previewViewModel}
+              onDeviceChange={setPreviewDevice}
+              onPlacementChange={setCampaignPreviewPlacement}
+              meta={
+                <dl className="counterpulse-preview-meta">
+                  <div>
+                    <dt>Goal</dt>
+                    <dd>{activeGoalLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Type</dt>
+                    <dd>{activeTypeLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Placement</dt>
+                    <dd>{activePlacementLabel}</dd>
+                  </div>
+                </dl>
+              }
+            />
           </aside>
         </div>
       </Form>
-      {confirmSubmit.modal}
+      {confirmOnSubmit ? confirmSubmit.modal : null}
     </>
   );
+}
+
+function applySetupPreset(
+  values: CampaignFormValues,
+  preset: CampaignSetupPreset,
+): CampaignFormValues {
+  const productSelection =
+    preset.productSelection ??
+    (preset.placementType === "CUSTOM_SELECTOR"
+      ? "CUSTOM_POSITION"
+      : values.productSelection === "CUSTOM_POSITION"
+        ? "ALL_PRODUCTS"
+        : values.productSelection);
+
+  return {
+    ...values,
+    ...preset.form,
+    ...(preset.goal ? { goal: preset.goal } : {}),
+    ...(preset.type ? { type: preset.type } : {}),
+    startsAt:
+      preset.form?.timerMode && preset.form.timerMode !== "FIXED_DATE"
+        ? ""
+        : (preset.form?.startsAt ?? values.startsAt),
+    endsAt:
+      preset.form?.timerMode && preset.form.timerMode !== "FIXED_DATE"
+        ? ""
+        : (preset.form?.endsAt ?? values.endsAt),
+    placementType: preset.placementType,
+    productSelection,
+  };
+}
+
+function applyDesignSetupPreset(
+  values: CampaignDesignValues,
+  preset: CampaignSetupPreset["design"],
+): CampaignDesignValues {
+  if (!preset) return values;
+
+  const nextValues = {
+    ...values,
+    ...preset,
+  };
+
+  if (preset.icon && preset.icon !== "CUSTOM") {
+    nextValues.customIconUrl = "";
+  }
+
+  return nextValues;
 }
 
 function BuilderPanel({
@@ -1173,6 +2112,238 @@ function TargetingRadioOption({
       {checked && children && (
         <div className="counterpulse-targeting-option__content">{children}</div>
       )}
+    </div>
+  );
+}
+
+function ResourcePickerField({
+  chips,
+  disabled = false,
+  error,
+  label,
+  name,
+  onManualChange,
+  onOpenPicker,
+  onRemove,
+  pickerLabel,
+  value,
+}: {
+  chips: ResourceChip[];
+  disabled?: boolean;
+  error?: string;
+  label: string;
+  name: ResourceFieldName;
+  onManualChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onOpenPicker: () => void;
+  onRemove: (id: string) => void;
+  pickerLabel: string;
+  value: string;
+}) {
+  return (
+    <div className="counterpulse-targeting-field">
+      <input name={name} type="hidden" value={value} />
+      <span>{label}</span>
+      <button
+        className="counterpulse-picker-button"
+        type="button"
+        disabled={disabled}
+        onClick={onOpenPicker}
+      >
+        {pickerLabel}
+      </button>
+      <ChipList
+        chips={chips}
+        emptyLabel="No items selected"
+        onRemove={onRemove}
+      />
+      <details className="counterpulse-manual-entry">
+        <summary>Paste IDs manually</summary>
+        <textarea
+          rows={3}
+          value={value}
+          placeholder="gid://shopify/Product/123456789"
+          onChange={onManualChange}
+        />
+      </details>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
+function TagSelectorField({
+  error,
+  matchingTags,
+  onAddTag,
+  onManualChange,
+  onQueryChange,
+  onRemoveTag,
+  onSelectFirst,
+  query,
+  selectedTags,
+  value,
+}: {
+  error?: string;
+  matchingTags: string[];
+  onAddTag: (tag: string) => void;
+  onManualChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onQueryChange: (value: string) => void;
+  onRemoveTag: (tag: string) => void;
+  onSelectFirst: (event: KeyboardEvent<HTMLInputElement>) => void;
+  query: string;
+  selectedTags: string[];
+  value: string;
+}) {
+  return (
+    <div className="counterpulse-targeting-field">
+      <input name="productTags" type="hidden" value={value} />
+      <label htmlFor="campaign-product-tag-search">Product tags</label>
+      <div className="counterpulse-combo-field">
+        <input
+          id="campaign-product-tag-search"
+          value={query}
+          placeholder="Search product tags"
+          onChange={(event) => onQueryChange(event.currentTarget.value)}
+          onKeyDown={onSelectFirst}
+        />
+        {query.trim() && (
+          <div className="counterpulse-combo-results">
+            {matchingTags.length > 0 ? (
+              matchingTags.map((tag) => (
+                <button key={tag} type="button" onClick={() => onAddTag(tag)}>
+                  {tag}
+                </button>
+              ))
+            ) : (
+              <span>No matching tags from Shopify</span>
+            )}
+          </div>
+        )}
+      </div>
+      <ChipList
+        chips={selectedTags.map((tag) => ({ id: tag, label: tag }))}
+        emptyLabel="No tags selected"
+        onRemove={onRemoveTag}
+      />
+      <details className="counterpulse-manual-entry">
+        <summary>Paste tags manually</summary>
+        <textarea
+          rows={3}
+          value={value}
+          placeholder="sale, limited, preorder"
+          onChange={onManualChange}
+        />
+      </details>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
+function CountrySelectorField({
+  countries,
+  countryLabelsByCode,
+  error,
+  onAddCountry,
+  onManualChange,
+  onQueryChange,
+  onRemoveCountry,
+  onSelectFirst,
+  query,
+  selectedCountries,
+  value,
+}: {
+  countries: CampaignTargetingOptions["countries"];
+  countryLabelsByCode: Map<string, string>;
+  error?: string;
+  onAddCountry: (code: string) => void;
+  onManualChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onQueryChange: (value: string) => void;
+  onRemoveCountry: (code: string) => void;
+  onSelectFirst: (event: KeyboardEvent<HTMLInputElement>) => void;
+  query: string;
+  selectedCountries: string[];
+  value: string;
+}) {
+  return (
+    <div className="counterpulse-targeting-field">
+      <input name="countries" type="hidden" value={value} />
+      <label htmlFor="campaign-country-search">Countries</label>
+      <div className="counterpulse-combo-field">
+        <input
+          id="campaign-country-search"
+          value={query}
+          placeholder="Search Shopify countries"
+          onChange={(event) => onQueryChange(event.currentTarget.value)}
+          onKeyDown={onSelectFirst}
+        />
+        {query.trim() && (
+          <div className="counterpulse-combo-results">
+            {countries.length > 0 ? (
+              countries.map((country) => (
+                <button
+                  key={country.code}
+                  type="button"
+                  onClick={() => onAddCountry(country.code)}
+                >
+                  {country.name} <span>{country.code}</span>
+                </button>
+              ))
+            ) : (
+              <span>No matching countries from Shopify</span>
+            )}
+          </div>
+        )}
+      </div>
+      <ChipList
+        chips={selectedCountries.map((code) => ({
+          id: code,
+          label: countryLabelsByCode.get(code)
+            ? `${countryLabelsByCode.get(code)} (${code})`
+            : code,
+        }))}
+        emptyLabel="No countries selected"
+        onRemove={onRemoveCountry}
+      />
+      <details className="counterpulse-manual-entry">
+        <summary>Paste country codes manually</summary>
+        <textarea
+          rows={3}
+          value={value}
+          placeholder="US, CA, GB"
+          onChange={onManualChange}
+        />
+      </details>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
+function ChipList({
+  chips,
+  emptyLabel,
+  onRemove,
+}: {
+  chips: ResourceChip[];
+  emptyLabel: string;
+  onRemove: (id: string) => void;
+}) {
+  if (chips.length === 0) {
+    return <small>{emptyLabel}</small>;
+  }
+
+  return (
+    <div className="counterpulse-chip-list">
+      {chips.map((chip) => (
+        <span className="counterpulse-chip" key={chip.id}>
+          {chip.label}
+          <button
+            aria-label={`Remove ${chip.label}`}
+            type="button"
+            onClick={() => onRemove(chip.id)}
+          >
+            x
+          </button>
+        </span>
+      ))}
     </div>
   );
 }
@@ -1345,6 +2516,41 @@ function toPreviewPlacement(
 
 function formatDateTimeLabel(value: string, fallback: string) {
   return value ? value.replace("T", " ") : fallback;
+}
+
+function toDateTimeLocalInputValue(date: Date) {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function buildResourceChips(value: string): ResourceChip[] {
+  return splitCampaignList(value).map((id) => ({
+    id,
+    label: shortResourceId(id),
+  }));
+}
+
+function shortResourceId(value: string | undefined) {
+  if (!value) return "";
+  const parts = value.split("/").filter(Boolean);
+
+  return parts[parts.length - 1] ?? value;
+}
+
+function getShopifyBridge() {
+  return (
+    window as Window & {
+      shopify?: {
+        resourcePicker?: (options: {
+          action?: "add" | "select";
+          multiple?: boolean | number;
+          selectionIds?: Array<{ id: string }>;
+          type: ShopifyResourcePickerType;
+        }) => Promise<ShopifyResourcePickerResult | undefined>;
+      };
+    }
+  ).shopify;
 }
 
 function FormField({

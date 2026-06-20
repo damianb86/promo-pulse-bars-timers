@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData, useNavigation } from "react-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   AdvancedDiscountRuleStatus,
   AdvancedDiscountRuleType,
@@ -62,6 +63,7 @@ import {
 import {
   clearDiscountSyncForShop,
   getCampaignForShop,
+  publishCampaignForShop,
   updateBadgeSettingsForShop,
   updateCampaignBasicsForShop,
   updateCampaignBehaviorTargetingForShop,
@@ -79,9 +81,14 @@ import {
   parseCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
 import {
+  loadCampaignDesignFileOption,
+  loadCampaignDesignMediaOptions,
+} from "../services/campaign-design-media.server";
+import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
+import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import {
   hasCampaignTranslationErrors,
   parseCampaignTranslationsFormData,
@@ -190,9 +197,13 @@ import {
 } from "../types/behavior-targeting";
 import type {
   CampaignDesignErrors,
+  CampaignDesignMediaOptions,
   CampaignDesignValues,
 } from "../types/campaign-design";
-import { defaultCampaignDesignValues } from "../types/campaign-design";
+import {
+  defaultCampaignDesignValues,
+  emptyCampaignDesignMediaOptions,
+} from "../types/campaign-design";
 import {
   campaignEditableStatusOptions,
   campaignGoalOptions,
@@ -206,9 +217,12 @@ import {
   type PlacementTypeValue,
 } from "../types/campaign-options";
 import {
+  buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
+  emptyCampaignTargetingOptions,
   type CampaignFormErrors,
   type CampaignFormValues,
+  type CampaignTargetingOptions,
   type CountrySelectionValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
@@ -250,8 +264,10 @@ import {
 type LoaderData = {
   id: string;
   values: CampaignFormValues;
+  targetingOptions: CampaignTargetingOptions;
   badgeValues: BadgeSettingsValues;
   designValues: CampaignDesignValues;
+  designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
   deliveryCutoffValues: DeliveryCutoffSettingsValues;
   discountApiError: string;
@@ -267,6 +283,12 @@ type LoaderData = {
   hasFreeShippingGoal: boolean;
   hasLowStock: boolean;
   translationsViewModel: CampaignTranslationsViewModel;
+  publication: {
+    hasPublishedVersion: boolean;
+    hasUnpublishedChanges: boolean;
+    lastSavedAt: string;
+    publishedAt: string | null;
+  };
   isProPlan: boolean;
   lockedFeatures: {
     badge: string;
@@ -279,6 +301,8 @@ type LoaderData = {
     experiments: string;
     emailTimers: string;
     multiLanguage: string;
+    recurringTimers: string;
+    scheduling: string;
     uniqueCodes: string;
     behaviorTargeting: string;
     basicTargeting: string;
@@ -373,6 +397,8 @@ export const loader = async ({
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
     emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
+    recurringTimers: getLockedFeatureReason(shop, "recurring_timers"),
+    scheduling: getLockedFeatureReason(shop, "scheduling"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
     behaviorTargeting: canUsePremiumFeature(shop, "BEHAVIORAL_TARGETING")
       .reason,
@@ -439,6 +465,8 @@ export const loader = async ({
       subheadline: translation?.subheadline ?? "",
       ctaText: translation?.ctaText ?? "",
       ctaUrl: translation?.ctaUrl ?? "",
+      expiredText: translation?.expiredText ?? "This offer has ended.",
+      ...toCampaignTimerFormValues(campaign.timerSettings),
       productSelection,
       productIds: targetingListText(campaign.targeting?.productIds),
       excludeProductIds: targetingListText(
@@ -450,7 +478,9 @@ export const loader = async ({
       countrySelection,
       countries: targetingListText(campaign.targeting?.countries),
     },
+    targetingOptions: await loadTargetingOptions(admin),
     designValues,
+    designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
       name: campaign.name,
       type: campaign.type,
@@ -494,6 +524,16 @@ export const loader = async ({
       goal: campaign.goal,
       translations: campaign.translations,
     }),
+    publication: {
+      hasPublishedVersion: Boolean(campaign.publishedAt),
+      hasUnpublishedChanges: Boolean(
+        campaign.publishedAt && campaign.lastSavedAt > campaign.publishedAt,
+      ),
+      lastSavedAt: campaign.lastSavedAt.toISOString(),
+      publishedAt: campaign.publishedAt
+        ? campaign.publishedAt.toISOString()
+        : null,
+    },
     isProPlan: effectivePlan === "PRO",
     lockedFeatures,
     advancedBadgeRules: advancedBadgeRules.map(toAdvancedBadgeRuleRow),
@@ -527,6 +567,37 @@ export const action = async ({
   const formData = await request.formData();
   const intent = String(formData.get("_action") ?? "saveBasics");
   const effectivePlan = getEffectiveShopPlan(shop);
+
+  if (intent === "resolveDesignFile") {
+    const fileId = readFormString(formData, "fileId");
+    const usage =
+      readFormString(formData, "usage") === "icon" ? "icon" : "background";
+
+    if (!fileId) {
+      return Response.json(
+        { error: "Selected file ID is required." },
+        { status: 400 },
+      );
+    }
+
+    try {
+      return Response.json({
+        file: await loadCampaignDesignFileOption(admin, fileId, usage),
+      });
+    } catch (error) {
+      console.error("Failed to resolve campaign design file", error);
+
+      return Response.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Selected file could not be loaded.",
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   if (intent === "saveDesign") {
     const parsed = parseCampaignDesignFormData(formData, effectivePlan);
@@ -1398,15 +1469,23 @@ export const action = async ({
   const parsed = parseCampaignFormData(formData, {
     allowInactiveStatuses: true,
   });
+  const parsedDesign = parseCampaignDesignFormData(formData, effectivePlan);
+  const isPublishRequest = intent === "publishCampaign";
 
-  if (hasCampaignFormErrors(parsed.errors)) {
+  if (
+    hasCampaignFormErrors(parsed.errors) ||
+    hasCampaignDesignErrors(parsedDesign.errors)
+  ) {
     return {
       errors: parsed.errors,
       values: parsed.values,
+      designErrors: parsedDesign.errors,
+      designValues: parsedDesign.values,
     };
   }
 
   const targeting = buildCampaignTargetingValues(parsed.values);
+  const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
 
   try {
     const planErrors = await validateCampaignPlanAccess(
@@ -1414,6 +1493,7 @@ export const action = async ({
       {
         ...parsed.values,
         targeting,
+        timerSettings,
       },
       {
         campaignId: id,
@@ -1423,6 +1503,7 @@ export const action = async ({
     if (planErrors.length > 0) {
       return {
         values: parsed.values,
+        designValues: parsedDesign.values,
         errors: {
           form: planErrors.join(" "),
         },
@@ -1444,16 +1525,31 @@ export const action = async ({
       subheadline: parsed.values.subheadline,
       ctaText: parsed.values.ctaText,
       ctaUrl: parsed.values.ctaUrl,
+      expiredText: parsed.values.expiredText,
+      timerSettings,
     });
+    await updateCampaignDesignForShop(id, shop.id, parsedDesign.values);
 
-    return redirect("/app/campaigns");
+    if (isPublishRequest) {
+      await publishCampaignForShop(id, shop.id);
+    }
+
+    return redirect(`/app/campaigns/${id}`);
   } catch (error) {
-    console.error("Failed to update campaign", error);
+    console.error(
+      isPublishRequest
+        ? "Failed to publish campaign"
+        : "Failed to update campaign draft",
+      error,
+    );
 
     return {
       values: parsed.values,
+      designValues: parsedDesign.values,
       errors: {
-        form: "Campaign could not be updated. Check the fields and try again.",
+        form: isPublishRequest
+          ? "Campaign could not be published. Check the fields and try again."
+          : "Campaign draft could not be saved. Check the fields and try again.",
       },
     };
   }
@@ -1463,7 +1559,9 @@ export default function EditCampaignPage() {
   const {
     id,
     values,
+    targetingOptions,
     designValues,
+    designMediaOptions,
     designViewModel,
     badgeValues,
     deliveryCutoffValues,
@@ -1488,14 +1586,59 @@ export default function EditCampaignPage() {
     hasFreeShippingGoal,
     hasLowStock,
     translationsViewModel,
+    publication,
     isProPlan,
     lockedFeatures,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionData | undefined;
   const navigation = useNavigation();
   const activeCampaignValues = actionData?.values ?? values;
+  const activeDesignValues = actionData?.designValues ?? designValues;
   const translationValues =
     actionData?.translationValues ?? translationsViewModel.values;
+  const [draftCampaignValues, setDraftCampaignValues] =
+    useState(activeCampaignValues);
+  const [draftDesignValues, setDraftDesignValues] =
+    useState(activeDesignValues);
+  const [discardVersion, setDiscardVersion] = useState(0);
+  const persistedDraftKey = useMemo(
+    () =>
+      JSON.stringify({
+        campaign: activeCampaignValues,
+        design: activeDesignValues,
+      }),
+    [activeCampaignValues, activeDesignValues],
+  );
+  const currentDraftKey = useMemo(
+    () =>
+      JSON.stringify({
+        campaign: draftCampaignValues,
+        design: draftDesignValues,
+      }),
+    [draftCampaignValues, draftDesignValues],
+  );
+  const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
+  const submittingAction = readNavigationAction(navigation.formData);
+  const isSavingDraft = submittingAction === "saveDraft";
+  const isPublishing = submittingAction === "publishCampaign";
+  const discardDraft = () => {
+    setDraftCampaignValues(activeCampaignValues);
+    setDraftDesignValues(activeDesignValues);
+    setDiscardVersion((version) => version + 1);
+    window.dispatchEvent(new CustomEvent("counterpulse:campaign-discard"));
+  };
+
+  useEffect(() => {
+    setDraftCampaignValues(activeCampaignValues);
+    setDraftDesignValues(activeDesignValues);
+  }, [persistedDraftKey]);
+
+  useShopifySaveBar({
+    dirty: hasUnsavedChanges,
+    disabled: navigation.state === "submitting",
+    saving: isSavingDraft,
+  });
+
   const campaignStatusLabel = formatCampaignOption(activeCampaignValues.status);
   const campaignGoalLabel =
     campaignGoalOptions.find(
@@ -1507,265 +1650,392 @@ export default function EditCampaignPage() {
     )?.label ?? formatCampaignOption(activeCampaignValues.placementType);
 
   return (
-    <s-page inlineSize="large" heading="Edit campaign">
-      <CampaignEditorLayout
-        actionBar={{
-          campaignSectionKey: "campaign",
-          formId: "campaign-basics-form",
-          goalLabel: campaignGoalLabel,
-          isSubmitting: navigation.state === "submitting",
-          placementLabel: campaignPlacementLabel,
-          statusLabel: campaignStatusLabel,
-          submitLabel: "Update campaign",
+    <>
+      <CampaignDraftSaveBar
+        disabled={navigation.state === "submitting"}
+        saving={isSavingDraft}
+        onDiscard={discardDraft}
+        onSave={() => {
+          window.dispatchEvent(new CustomEvent("counterpulse:campaign-save"));
         }}
-        sections={[
-          {
-            key: "campaign",
-            label: "Campaign",
-            description:
-              "Configure the campaign goal, copy, schedule, status, and primary storefront placement.",
-            content: (
-              <CampaignForm
-                campaignId={id}
-                design={actionData?.designValues ?? designValues}
-                formId="campaign-basics-form"
-                key={JSON.stringify(actionData?.values ?? values)}
-                lockedTargetingFeatures={{
-                  advanced: lockedFeatures.advancedTargeting,
-                  basic: lockedFeatures.basicTargeting,
-                  geo: lockedFeatures.geoMarketTargeting,
-                }}
-                mode="edit"
-                showTopbar={false}
-                values={actionData?.values ?? values}
-                errors={actionData?.errors}
-              />
-            ),
-          },
-          {
-            key: "offers",
-            label: "Offers",
-            description:
-              "Choose between shared discounts, unique visitor codes, advanced discount rules, and email countdown assets.",
-            content: (
-              <OffersEditor
-                advancedRulesCount={advancedDiscountRules.length}
-                campaignType={activeCampaignValues.type}
-                campaignTypeLabel={formatCampaignOption(
-                  activeCampaignValues.type,
-                )}
-                discountMode={
-                  (actionData?.discountValues ?? discountValues).mode
-                }
-                uniquePoolsCount={uniqueCodePools.length}
-                sections={[
-                  {
-                    key: "basic-discount",
-                    label: "Basic discount",
-                    description:
-                      "Shared Shopify code or linked existing discount.",
-                    content: (
-                      <DiscountSettingsEditor
-                        apiError={discountApiError}
-                        discountOptions={discountOptions}
-                        errors={actionData?.discountErrors}
-                        lockedReason={lockedFeatures.discountSync}
-                        notice={actionData?.discountNotice}
-                        values={actionData?.discountValues ?? discountValues}
-                      />
-                    ),
-                  },
-                  {
-                    key: "unique-codes",
-                    label: "Unique codes",
-                    description:
-                      "One generated discount code per visitor/session.",
-                    content: (
-                      <UniqueCodesEditor
-                        codes={uniqueCodes}
-                        errors={actionData?.uniqueCodeErrors}
-                        lockedReason={lockedFeatures.uniqueCodes}
-                        notice={actionData?.uniqueCodeNotice}
-                        pools={uniqueCodePools}
-                        stats={uniqueCodeStats}
-                        values={
-                          actionData?.uniqueCodeValues ??
-                          actionData?.discountValues ??
-                          discountValues
-                        }
-                      />
-                    ),
-                  },
-                  {
-                    key: "advanced-rules",
-                    label: "Advanced rules",
-                    description:
-                      "Shopify Functions logic for complex cart offers.",
-                    content: (
-                      <AdvancedDiscountRulesEditor
-                        errors={actionData?.advancedDiscountErrors}
-                        lockedReason={lockedFeatures.advancedDiscounts}
-                        notice={actionData?.advancedDiscountNotice}
-                        rules={advancedDiscountRules}
-                      />
-                    ),
-                  },
-                  {
-                    key: "email-timer",
-                    label: "Email timer",
-                    description: "Countdown image URL for email campaigns.",
-                    content: (
-                      <EmailTimerEditor
-                        errors={actionData?.emailTimerErrors}
-                        lockedReason={lockedFeatures.emailTimers}
-                        timers={emailTimers}
-                      />
-                    ),
-                  },
-                ]}
-              />
-            ),
-          },
-          {
-            key: "experiments",
-            label: "A/B testing",
-            description:
-              "Create variants, choose the primary metric, review performance, and apply a winner when ready.",
-            content: (
-              <ExperimentsEditor
-                errors={actionData?.experimentErrors}
-                experiments={experiments}
-                lockedReason={lockedFeatures.experiments}
-                notice={actionData?.experimentNotice}
-              />
-            ),
-          },
-          {
-            key: "targeting",
-            label: "Targeting",
-            description:
-              "Define which visitors are eligible based on consent-safe behavior and campaign history.",
-            content: (
-              <BehaviorTargetingEditor
-                errors={actionData?.behaviorTargetingErrors}
-                lockedReason={lockedFeatures.behaviorTargeting}
-                notice={actionData?.behaviorTargetingNotice}
-                values={
-                  actionData?.behaviorTargetingValues ?? behaviorTargetingValues
-                }
-              />
-            ),
-          },
-          {
-            key: "markets",
-            label: "Markets",
-            description:
-              "Override campaign text, currency, thresholds, and delivery rules by market, country, or locale.",
-            content: (
-              <CampaignMarketsEditor
-                apiError={marketApiError}
-                errors={actionData?.marketErrors}
-                lockedReason={lockedFeatures.markets}
-                markets={marketOptions}
-                notice={actionData?.marketNotice}
-                rules={marketRules}
-              />
-            ),
-          },
-          {
-            key: "merchandising",
-            label: "Merchandising",
-            description:
-              "Configure product badges, real stock messaging, delivery cutoff promises, and free-shipping goals.",
-            content:
-              hasBadge ||
-              hasDeliveryCutoff ||
-              hasFreeShippingGoal ||
-              hasLowStock ? (
-                <>
-                  <LowStockSettingsEditor
-                    enabled={hasLowStock}
-                    errors={actionData?.lowStockErrors}
-                    values={actionData?.lowStockValues ?? lowStockValues}
-                  />
-                  <BadgeSettingsEditor
-                    enabled={hasBadge}
-                    errors={actionData?.badgeErrors}
-                    lockedReason={lockedFeatures.badge}
-                    values={actionData?.badgeValues ?? badgeValues}
-                  />
-                  {hasBadge && (
-                    <AdvancedBadgeRulesEditor
-                      errors={actionData?.advancedBadgeErrors}
-                      lockedReason={lockedFeatures.advancedBadges}
-                      notice={actionData?.advancedBadgeNotice}
-                      rules={advancedBadgeRules}
-                    />
-                  )}
-                  <DeliveryCutoffSettingsEditor
-                    enabled={hasDeliveryCutoff}
-                    errors={actionData?.deliveryCutoffErrors}
-                    lockedReason={lockedFeatures.deliveryCutoff}
-                    values={
-                      actionData?.deliveryCutoffValues ?? deliveryCutoffValues
-                    }
-                  />
-                  <FreeShippingSettingsEditor
-                    enabled={hasFreeShippingGoal}
-                    errors={actionData?.freeShippingErrors}
-                    values={
-                      actionData?.freeShippingValues ?? freeShippingValues
-                    }
-                  />
-                </>
-              ) : (
-                <s-section heading="Merchandising">
-                  <s-paragraph>
-                    Merchandising settings are hidden for this campaign type.
-                    Choose a badge, low-stock, delivery-cutoff, or free-shipping
-                    campaign type to configure those panels.
-                  </s-paragraph>
-                </s-section>
-              ),
-          },
-          {
-            key: "design",
-            label: "Design",
-            description:
-              "Adjust visual style and preview the widget across storefront placements before saving.",
-            content: (
-              <CampaignDesignEditor
-                errors={actionData?.designErrors}
-                initialDesign={actionData?.designValues ?? designValues}
-                isProPlan={isProPlan}
-                lockedCustomCssReason={lockedFeatures.customCss}
-                viewModel={designViewModel}
-              />
-            ),
-          },
-          {
-            key: "translations",
-            label: "Translations",
-            description:
-              "Edit localized campaign copy and review fallback text for every enabled storefront language.",
-            content: lockedFeatures.multiLanguage ? (
-              <PlanUpgradeCallout
-                message={lockedFeatures.multiLanguage}
-                title="Translations are locked"
-              />
-            ) : (
-              <CampaignTranslationsEditor
-                errors={actionData?.translationErrors}
-                initialValues={translationValues}
-                key={`${id}:${JSON.stringify(translationValues)}`}
-                resolvedValues={translationsViewModel.resolvedValues}
-              />
-            ),
-          },
-        ]}
       />
-    </s-page>
+      <s-page inlineSize="large" heading="Edit campaign">
+        <CampaignEditorLayout
+          actionBar={{
+            campaignSectionKey: "campaign",
+            formId: "campaign-basics-form",
+            goalLabel: campaignGoalLabel,
+            isSubmitting: navigation.state === "submitting",
+            isPublishing,
+            onPublish: () => {
+              window.dispatchEvent(
+                new CustomEvent("counterpulse:campaign-publish"),
+              );
+            },
+            placementLabel: campaignPlacementLabel,
+            publicationLabel: buildPublicationLabel(publication),
+            publishLabel: publication.hasPublishedVersion
+              ? "Publish changes"
+              : "Publish",
+            statusLabel: campaignStatusLabel,
+          }}
+          sections={[
+            {
+              key: "campaign",
+              label: "Campaign",
+              description:
+                "Configure the campaign goal, copy, schedule, status, product eligibility, geolocation rules, and storefront placement. These settings determine whether the campaign can render before design, offers, or experiments are applied.",
+              content: (
+                <CampaignForm
+                  campaignId={id}
+                  confirmOnSubmit={false}
+                  design={draftDesignValues}
+                  designHiddenInputs={
+                    <CampaignDesignDraftHiddenInputs
+                      values={draftDesignValues}
+                    />
+                  }
+                  formId="campaign-basics-form"
+                  key={`${JSON.stringify(activeCampaignValues)}:${discardVersion}`}
+                  lockedTargetingFeatures={{
+                    advanced: lockedFeatures.advancedTargeting,
+                    basic: lockedFeatures.basicTargeting,
+                    geo: lockedFeatures.geoMarketTargeting,
+                    recurringTimers: lockedFeatures.recurringTimers,
+                    scheduling: lockedFeatures.scheduling,
+                  }}
+                  mode="edit"
+                  showTopbar={false}
+                  targetingOptions={targetingOptions}
+                  values={activeCampaignValues}
+                  errors={actionData?.errors}
+                  onDesignChange={setDraftDesignValues}
+                  onValuesChange={setDraftCampaignValues}
+                />
+              ),
+            },
+            {
+              key: "offers",
+              label: "Offers",
+              description:
+                "Connect the promotion to real Shopify discount behavior. Use basic discounts for shared codes, unique codes for per-visitor offers, advanced rules for complex cart logic, and email timers for off-store campaigns.",
+              content: (
+                <OffersEditor
+                  advancedRulesCount={advancedDiscountRules.length}
+                  campaignType={activeCampaignValues.type}
+                  campaignTypeLabel={formatCampaignOption(
+                    activeCampaignValues.type,
+                  )}
+                  discountMode={
+                    (actionData?.discountValues ?? discountValues).mode
+                  }
+                  uniquePoolsCount={uniqueCodePools.length}
+                  sections={[
+                    {
+                      key: "basic-discount",
+                      label: "Basic discount",
+                      description:
+                        "Shared Shopify code or linked existing discount.",
+                      content: (
+                        <DiscountSettingsEditor
+                          apiError={discountApiError}
+                          discountOptions={discountOptions}
+                          errors={actionData?.discountErrors}
+                          lockedReason={lockedFeatures.discountSync}
+                          notice={actionData?.discountNotice}
+                          values={actionData?.discountValues ?? discountValues}
+                        />
+                      ),
+                    },
+                    {
+                      key: "unique-codes",
+                      label: "Unique codes",
+                      description:
+                        "One generated discount code per visitor/session.",
+                      content: (
+                        <UniqueCodesEditor
+                          codes={uniqueCodes}
+                          errors={actionData?.uniqueCodeErrors}
+                          lockedReason={lockedFeatures.uniqueCodes}
+                          notice={actionData?.uniqueCodeNotice}
+                          pools={uniqueCodePools}
+                          stats={uniqueCodeStats}
+                          values={
+                            actionData?.uniqueCodeValues ??
+                            actionData?.discountValues ??
+                            discountValues
+                          }
+                        />
+                      ),
+                    },
+                    {
+                      key: "advanced-rules",
+                      label: "Advanced rules",
+                      description:
+                        "Shopify Functions logic for complex cart offers.",
+                      content: (
+                        <AdvancedDiscountRulesEditor
+                          errors={actionData?.advancedDiscountErrors}
+                          lockedReason={lockedFeatures.advancedDiscounts}
+                          notice={actionData?.advancedDiscountNotice}
+                          rules={advancedDiscountRules}
+                        />
+                      ),
+                    },
+                    {
+                      key: "email-timer",
+                      label: "Email timer",
+                      description: "Countdown image URL for email campaigns.",
+                      content: (
+                        <EmailTimerEditor
+                          errors={actionData?.emailTimerErrors}
+                          lockedReason={lockedFeatures.emailTimers}
+                          timers={emailTimers}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              ),
+            },
+            {
+              key: "experiments",
+              label: "A/B testing",
+              description:
+                "Create variants, define traffic split and the primary metric, review performance, and apply a winner when the result is clear enough to replace the live campaign.",
+              content: (
+                <ExperimentsEditor
+                  errors={actionData?.experimentErrors}
+                  experiments={experiments}
+                  lockedReason={lockedFeatures.experiments}
+                  notice={actionData?.experimentNotice}
+                />
+              ),
+            },
+            {
+              key: "targeting",
+              label: "Targeting",
+              description:
+                "Define behavior-based eligibility using consent-safe visitor history. Use this when the campaign should depend on previous campaign exposure, cart intent, or high-intent browsing behavior.",
+              content: (
+                <BehaviorTargetingEditor
+                  errors={actionData?.behaviorTargetingErrors}
+                  lockedReason={lockedFeatures.behaviorTargeting}
+                  notice={actionData?.behaviorTargetingNotice}
+                  values={
+                    actionData?.behaviorTargetingValues ??
+                    behaviorTargetingValues
+                  }
+                />
+              ),
+            },
+            {
+              key: "markets",
+              label: "Markets",
+              description:
+                "Override campaign copy, currency, thresholds, and delivery promises by Shopify market, country, locale, or currency so one campaign can adapt across storefront contexts.",
+              content: (
+                <CampaignMarketsEditor
+                  apiError={marketApiError}
+                  errors={actionData?.marketErrors}
+                  lockedReason={lockedFeatures.markets}
+                  markets={marketOptions}
+                  notice={actionData?.marketNotice}
+                  rules={marketRules}
+                />
+              ),
+            },
+            {
+              key: "merchandising",
+              label: "Merchandising",
+              description:
+                "Configure product-facing merchandising modules: badges, real stock messaging, delivery cutoff promises, and free-shipping progress. Only settings relevant to this campaign type are shown.",
+              content:
+                hasBadge ||
+                hasDeliveryCutoff ||
+                hasFreeShippingGoal ||
+                hasLowStock ? (
+                  <>
+                    <LowStockSettingsEditor
+                      enabled={hasLowStock}
+                      errors={actionData?.lowStockErrors}
+                      values={actionData?.lowStockValues ?? lowStockValues}
+                    />
+                    <BadgeSettingsEditor
+                      enabled={hasBadge}
+                      errors={actionData?.badgeErrors}
+                      lockedReason={lockedFeatures.badge}
+                      values={actionData?.badgeValues ?? badgeValues}
+                    />
+                    {hasBadge && (
+                      <AdvancedBadgeRulesEditor
+                        errors={actionData?.advancedBadgeErrors}
+                        lockedReason={lockedFeatures.advancedBadges}
+                        notice={actionData?.advancedBadgeNotice}
+                        rules={advancedBadgeRules}
+                      />
+                    )}
+                    <DeliveryCutoffSettingsEditor
+                      enabled={hasDeliveryCutoff}
+                      errors={actionData?.deliveryCutoffErrors}
+                      lockedReason={lockedFeatures.deliveryCutoff}
+                      values={
+                        actionData?.deliveryCutoffValues ?? deliveryCutoffValues
+                      }
+                    />
+                    <FreeShippingSettingsEditor
+                      enabled={hasFreeShippingGoal}
+                      errors={actionData?.freeShippingErrors}
+                      values={
+                        actionData?.freeShippingValues ?? freeShippingValues
+                      }
+                    />
+                  </>
+                ) : (
+                  <s-section heading="Merchandising">
+                    <s-paragraph>
+                      Merchandising settings are hidden for this campaign type.
+                      Choose a badge, low-stock, delivery-cutoff, or
+                      free-shipping campaign type to configure those panels.
+                    </s-paragraph>
+                  </s-section>
+                ),
+            },
+            {
+              key: "design",
+              label: "Design",
+              description:
+                "Control visual presets, layouts, colors, gradients, typography, timer treatment, icon behavior, width, positioning, and the live placement preview used to validate the final storefront presentation.",
+              content: (
+                <CampaignDesignEditor
+                  designMediaOptions={designMediaOptions}
+                  errors={actionData?.designErrors}
+                  design={draftDesignValues}
+                  isProPlan={isProPlan}
+                  lockedCustomCssReason={lockedFeatures.customCss}
+                  onChange={setDraftDesignValues}
+                  viewModel={designViewModel}
+                />
+              ),
+            },
+            {
+              key: "translations",
+              label: "Translations",
+              description:
+                "Edit localized customer-facing copy for supported storefront languages. Storefront rendering resolves these translations by locale before falling back to the default copy.",
+              content: lockedFeatures.multiLanguage ? (
+                <PlanUpgradeCallout
+                  message={lockedFeatures.multiLanguage}
+                  title="Translations are locked"
+                />
+              ) : (
+                <CampaignTranslationsEditor
+                  errors={actionData?.translationErrors}
+                  initialValues={translationValues}
+                  key={`${id}:${JSON.stringify(translationValues)}`}
+                  resolvedValues={translationsViewModel.resolvedValues}
+                />
+              ),
+            },
+          ]}
+        />
+      </s-page>
+    </>
   );
+}
+
+const campaignDraftSaveBarId = "counterpulse-campaign-draft-save-bar";
+
+function CampaignDraftSaveBar({
+  disabled,
+  onDiscard,
+  onSave,
+  saving,
+}: {
+  disabled: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  return (
+    <ui-save-bar id={campaignDraftSaveBarId}>
+      <button
+        disabled={disabled}
+        type="button"
+        variant="primary"
+        onClick={onSave}
+      >
+        {saving ? "Saving..." : "Save"}
+      </button>
+      <button disabled={disabled} type="button" onClick={onDiscard}>
+        Discard
+      </button>
+    </ui-save-bar>
+  );
+}
+
+function useShopifySaveBar({
+  dirty,
+  disabled,
+  saving,
+}: {
+  dirty: boolean;
+  disabled: boolean;
+  saving: boolean;
+}) {
+  useEffect(() => {
+    const saveBar = window.shopify?.saveBar;
+
+    if (!saveBar) return;
+
+    if (dirty && !disabled) {
+      void saveBar.show(campaignDraftSaveBarId);
+      return;
+    }
+
+    if (!saving) {
+      void saveBar.hide(campaignDraftSaveBarId);
+    }
+  }, [dirty, disabled, saving]);
+
+  useEffect(
+    () => () => {
+      void window.shopify?.saveBar?.hide(campaignDraftSaveBarId);
+    },
+    [],
+  );
+}
+
+function CampaignDesignDraftHiddenInputs({
+  values,
+}: {
+  values: CampaignDesignValues;
+}) {
+  return (
+    <>
+      {Object.entries(values).map(([key, value]) => (
+        <input
+          key={key}
+          name={key}
+          type="hidden"
+          value={typeof value === "boolean" ? String(value) : String(value)}
+        />
+      ))}
+    </>
+  );
+}
+
+function readNavigationAction(formData: FormData | undefined) {
+  const action = formData?.get("_action");
+
+  return typeof action === "string" ? action : "";
+}
+
+function buildPublicationLabel(publication: LoaderData["publication"]) {
+  if (!publication.hasPublishedVersion) return "Not published";
+  if (publication.hasUnpublishedChanges) return "Unpublished changes";
+
+  return "Published";
 }
 
 function toDateTimeLocalValue(date: Date | string | null) {
@@ -1775,6 +2045,73 @@ function toDateTimeLocalValue(date: Date | string | null) {
   if (Number.isNaN(parsedDate.getTime())) return "";
 
   return parsedDate.toISOString().slice(0, 16);
+}
+
+function toCampaignTimerFormValues(
+  timerSettings: {
+    durationMinutes?: number | null;
+    expiredBehavior?: string | null;
+    mode?: string | null;
+    recurringDays?: unknown;
+    resetBehavior?: string | null;
+  } | null,
+): Pick<
+  CampaignFormValues,
+  | "timerDurationMinutes"
+  | "timerExpiredBehavior"
+  | "timerMode"
+  | "timerRecurringHour"
+  | "timerRecurringMinute"
+  | "timerResetBehavior"
+> {
+  const recurringCutoff = readRecurringCutoff(timerSettings?.recurringDays);
+
+  return {
+    timerMode:
+      timerSettings?.mode === "EVERGREEN_SESSION" ||
+      timerSettings?.mode === "RECURRING_DAILY"
+        ? timerSettings.mode
+        : "FIXED_DATE",
+    timerDurationMinutes: String(timerSettings?.durationMinutes ?? 120),
+    timerResetBehavior:
+      timerSettings?.resetBehavior === "NEVER" ||
+      timerSettings?.resetBehavior === "DAILY" ||
+      timerSettings?.resetBehavior === "WEEKLY"
+        ? timerSettings.resetBehavior
+        : "ON_SESSION_END",
+    timerExpiredBehavior:
+      timerSettings?.expiredBehavior === "HIDE_TIMER" ||
+      timerSettings?.expiredBehavior === "REPEAT_COUNTDOWN" ||
+      timerSettings?.expiredBehavior === "SHOW_CUSTOM_TITLE" ||
+      timerSettings?.expiredBehavior === "DO_NOTHING"
+        ? timerSettings.expiredBehavior
+        : "UNPUBLISH_TIMER",
+    timerRecurringHour: String(recurringCutoff.hour),
+    timerRecurringMinute: String(recurringCutoff.minute),
+  };
+}
+
+function readRecurringCutoff(value: unknown) {
+  const firstRule = Array.isArray(value) ? value[0] : value;
+
+  if (!firstRule || typeof firstRule !== "object") {
+    return { hour: 23, minute: 59 };
+  }
+
+  const rule = firstRule as {
+    cutoffHour?: unknown;
+    cutoffMinute?: unknown;
+    hour?: unknown;
+    minute?: unknown;
+  };
+  const hour = Number(rule.cutoffHour ?? rule.hour);
+  const minute = Number(rule.cutoffMinute ?? rule.minute);
+
+  return {
+    hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 23,
+    minute:
+      Number.isInteger(minute) && minute >= 0 && minute <= 59 ? minute : 59,
+  };
 }
 
 function parseTotalCodesToGenerate(
@@ -1913,6 +2250,28 @@ function readEmailTimerExpiredBehavior(value: string) {
   }
 
   return null;
+}
+
+async function loadTargetingOptions(
+  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"],
+) {
+  try {
+    return await loadCampaignTargetingOptions(admin);
+  } catch (error) {
+    console.error("Failed to load campaign targeting options", error);
+    return emptyCampaignTargetingOptions;
+  }
+}
+
+async function loadDesignMediaOptions(
+  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"],
+) {
+  try {
+    return await loadCampaignDesignMediaOptions(admin);
+  } catch (error) {
+    console.error("Failed to load campaign design media options", error);
+    return emptyCampaignDesignMediaOptions;
+  }
 }
 
 function parseMarketRuleFormData(formData: FormData): {

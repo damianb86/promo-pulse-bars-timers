@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -40,21 +41,21 @@ export function DiscountSettingsEditor({
       )}
 
       {apiError && (
-        <s-banner tone="warning" heading="Discount API access unavailable">
+        <AppAlert tone="warning" title="Discount API access unavailable">
           <s-paragraph>{apiError}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Discount saved">
+        <AppAlert tone="info" title="Discount saved">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Discount could not be saved">
+        <AppAlert tone="critical" title="Discount could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -36,12 +37,12 @@ export function DeliveryCutoffSettingsEditor({
       )}
 
       {errors?.form && (
-        <s-banner
+        <AppAlert
           tone="critical"
-          heading="Delivery cutoff settings could not be saved"
+          title="Delivery cutoff settings could not be saved"
         >
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

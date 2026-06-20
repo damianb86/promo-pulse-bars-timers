@@ -46,11 +46,13 @@ test("campaign CRUD actions work from the admin UI", async ({
     page.getByRole("row", { name: /E2E CRUD Campaign Updated copy/ }),
   ).toBeVisible();
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("row", { name: /E2E CRUD Campaign Updated copy/ })
     .getByRole("button", { name: "Delete" })
     .click();
+  const confirmDialog = page.getByRole("dialog", { name: "Delete campaign?" });
+  await expect(confirmDialog).toBeVisible();
+  await confirmDialog.getByRole("button", { name: "Delete campaign" }).click();
   await expect(
     page.getByRole("row", { name: /E2E CRUD Campaign Updated copy/ }),
   ).toHaveCount(0);

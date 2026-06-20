@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -74,15 +75,15 @@ export function UniqueCodesEditor({
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Unique codes updated">
+        <AppAlert tone="info" title="Unique codes updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Unique codes could not be updated">
+        <AppAlert tone="critical" title="Unique codes could not be updated">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

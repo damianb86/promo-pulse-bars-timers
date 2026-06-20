@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { AppAlert, AppToast } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -42,18 +43,18 @@ export function AiCampaignBuilder({
       ) : (
         <>
           {errors.form && (
-            <s-banner tone="critical" heading="Suggestion could not be created">
+            <AppAlert tone="critical" title="Suggestion could not be created">
               <s-paragraph>{errors.form}</s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           {templateSourceName && (
-            <s-banner tone="info" heading="Template context loaded">
+            <AppAlert tone="info" title="Template context loaded">
               <s-paragraph>
                 Generate variants from {templateSourceName}, then review before
                 applying or saving.
               </s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           <Form method="post" className="counterpulse-form">
@@ -152,11 +153,11 @@ export function AiCampaignBuilder({
                 </h3>
 
                 {suggestion.safety.warnings.length > 0 && (
-                  <s-banner tone="warning" heading="Review generated copy">
+                  <AppAlert tone="warning" title="Review generated copy">
                     {suggestion.safety.warnings.map((warning) => (
                       <s-paragraph key={warning}>{warning}</s-paragraph>
                     ))}
-                  </s-banner>
+                  </AppAlert>
                 )}
 
                 <div className="counterpulse-form-grid">
@@ -218,11 +219,11 @@ export function AiCampaignBuilder({
                 </div>
 
                 {applied && (
-                  <s-banner tone="success" heading="Suggestion applied">
+                  <AppToast tone="success" title="Suggestion applied">
                     <s-paragraph>
                       Review the campaign fields before saving.
                     </s-paragraph>
-                  </s-banner>
+                  </AppToast>
                 )}
               </div>
             </s-box>

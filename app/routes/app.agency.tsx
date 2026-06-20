@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AppAlert, AppToast } from "../components/Notifications";
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
@@ -189,26 +190,26 @@ export default function AgencyDashboardPage() {
       ) : (
         <>
           {data.warning && (
-            <s-banner tone="warning" heading="Shop context reset">
+            <AppAlert tone="warning" title="Shop context reset">
               <s-paragraph>{data.warning}</s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           {actionData?.notice && (
-            <s-banner tone="success" heading="Agency action complete">
+            <AppToast tone="success" title="Agency action complete">
               <s-paragraph>
                 {actionData.notice}{" "}
                 {actionData.draftHref && (
                   <Link to={actionData.draftHref}>Open draft</Link>
                 )}
               </s-paragraph>
-            </s-banner>
+            </AppToast>
           )}
 
           {actionData?.error && (
-            <s-banner tone="critical" heading="Agency action failed">
+            <AppAlert tone="critical" title="Agency action failed">
               <s-paragraph>{actionData.error}</s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           <s-section heading="Shop context">

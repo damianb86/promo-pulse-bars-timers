@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -71,18 +72,15 @@ export function AdvancedDiscountRulesEditor({
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Advanced discount updated">
+        <AppAlert tone="info" title="Advanced discount updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner
-          tone="critical"
-          heading="Advanced discount could not be saved"
-        >
+        <AppAlert tone="critical" title="Advanced discount could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

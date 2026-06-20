@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
@@ -56,15 +57,15 @@ export function AdvancedBadgeRulesEditor({
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Badge rules updated">
+        <AppAlert tone="info" title="Badge rules updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Badge rule could not be saved">
+        <AppAlert tone="critical" title="Badge rule could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

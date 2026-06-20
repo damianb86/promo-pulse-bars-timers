@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -31,9 +32,9 @@ export function CampaignTranslationsEditor({
   return (
     <s-section heading="Translations">
       {errors?.form && (
-        <s-banner tone="critical" heading="Translations could not be saved">
+        <AppAlert tone="critical" title="Translations could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <Form method="post" className="counterpulse-translations">

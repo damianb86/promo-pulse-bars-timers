@@ -5,7 +5,10 @@ type RateLimitBucket = {
 
 const buckets = new Map<string, RateLimitBucket>();
 const windowMs = 60_000;
-const maxRequestsPerWindow = 120;
+const maxRequestsPerWindow =
+  process.env.E2E_TEST_MODE === "true" && process.env.NODE_ENV !== "production"
+    ? 1_000
+    : 120;
 
 export function checkStorefrontRateLimit(key: string, now = Date.now()) {
   cleanupExpiredBuckets(now);

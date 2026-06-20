@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import type {
@@ -25,12 +26,9 @@ export function LowStockSettingsEditor({
   return (
     <s-section heading="Low Stock Message">
       {errors?.form && (
-        <s-banner
-          tone="critical"
-          heading="Low stock settings could not be saved"
-        >
+        <AppAlert tone="critical" title="Low stock settings could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <Form method="post" className="counterpulse-form">

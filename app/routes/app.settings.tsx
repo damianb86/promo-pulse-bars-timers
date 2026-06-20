@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AppAlert, AppToast } from "../components/Notifications";
 import {
   Form,
   useActionData,
@@ -81,15 +82,15 @@ export default function SettingsPage() {
   return (
     <s-page inlineSize="large" heading="Settings">
       {actionData?.notice && (
-        <s-banner tone="success" heading="Settings saved">
+        <AppToast tone="success" title="Settings saved">
           <s-paragraph>{actionData.notice}</s-paragraph>
-        </s-banner>
+        </AppToast>
       )}
 
       {errors.form && (
-        <s-banner tone="critical" heading="Settings could not be saved">
+        <AppAlert tone="critical" title="Settings could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <s-section>

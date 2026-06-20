@@ -1,4 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { type ReactNode, useRef, useState } from "react";
+import { AppAlert, ConfirmModal } from "../components/Notifications";
 import {
   Form,
   Link,
@@ -164,9 +166,9 @@ export default function CampaignsPage() {
       </Link>
 
       {(error || actionData?.error) && (
-        <s-banner tone="critical" heading="Campaigns need attention">
+        <AppAlert tone="critical" title="Campaigns need attention">
           <s-paragraph>{error ?? actionData?.error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <s-section heading="Filters">
@@ -300,35 +302,52 @@ function CampaignActionButton({
   campaignId: string;
   disabled: boolean;
   destructive?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const requiresConfirmation = action === "delete";
+
   return (
-    <Form
-      method="post"
-      onSubmit={(event) => {
-        if (
-          action === "delete" &&
-          !window.confirm("Delete this campaign permanently?")
-        ) {
-          event.preventDefault();
-        }
-      }}
-    >
-      <input type="hidden" name="_action" value={action} />
-      <input type="hidden" name="campaignId" value={campaignId} />
-      <button
-        className={
-          destructive
-            ? "counterpulse-button-danger"
-            : "counterpulse-button-secondary"
-        }
-        data-testid={`campaign-${action}-button`}
-        disabled={disabled}
-        type="submit"
-      >
-        {children}
-      </button>
-    </Form>
+    <>
+      <Form method="post" ref={formRef}>
+        <input type="hidden" name="_action" value={action} />
+        <input type="hidden" name="campaignId" value={campaignId} />
+        <button
+          className={
+            destructive
+              ? "counterpulse-button-danger"
+              : "counterpulse-button-secondary"
+          }
+          data-testid={`campaign-${action}-button`}
+          disabled={disabled}
+          type={requiresConfirmation ? "button" : "submit"}
+          onClick={
+            requiresConfirmation ? () => setIsConfirmOpen(true) : undefined
+          }
+        >
+          {children}
+        </button>
+      </Form>
+
+      {requiresConfirmation && (
+        <ConfirmModal
+          confirmLabel="Delete campaign"
+          open={isConfirmOpen}
+          title="Delete campaign?"
+          onCancel={() => setIsConfirmOpen(false)}
+          onConfirm={() => {
+            setIsConfirmOpen(false);
+            formRef.current?.requestSubmit();
+          }}
+        >
+          <p>
+            This permanently removes the campaign and its configuration.
+            Existing storefront displays will stop using it.
+          </p>
+        </ConfirmModal>
+      )}
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -59,9 +60,9 @@ export function EmailTimerEditor({
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Email timer could not be created">
+        <AppAlert tone="critical" title="Email timer could not be created">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (
@@ -92,7 +93,10 @@ export function EmailTimerEditor({
             </FormField>
 
             <FormField label="Expired behavior">
-              <select name="emailTimerExpiredBehavior" defaultValue="SHOW_EXPIRED">
+              <select
+                name="emailTimerExpiredBehavior"
+                defaultValue="SHOW_EXPIRED"
+              >
                 {expiredBehaviorOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}

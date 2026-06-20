@@ -1,4 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { AppAlert } from "../components/Notifications";
 import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
@@ -130,9 +131,9 @@ export default function AnalyticsPage() {
   return (
     <s-page inlineSize="large" heading="Analytics">
       {error && (
-        <s-banner tone="critical" heading="Analytics need attention">
+        <AppAlert tone="critical" title="Analytics need attention">
           <s-paragraph>{error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {lockedAnalyticsReason && (

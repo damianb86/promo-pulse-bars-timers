@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AppAlert } from "../components/Notifications";
 import {
   Form,
   Link,
@@ -166,9 +167,9 @@ export default function TemplateLibraryPage() {
       ) : (
         <>
           {actionData?.error && (
-            <s-banner tone="critical" heading="Template action failed">
+            <AppAlert tone="critical" title="Template action failed">
               <s-paragraph>{actionData.error}</s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           <TemplateFilters

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -67,21 +68,21 @@ export function CampaignMarketsEditor({
       )}
 
       {apiError && (
-        <s-banner tone="warning" heading="Shopify Markets could not be loaded">
+        <AppAlert tone="warning" title="Shopify Markets could not be loaded">
           <s-paragraph>{apiError}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Markets updated">
+        <AppAlert tone="info" title="Markets updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Market rule could not be saved">
+        <AppAlert tone="critical" title="Market rule could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (
@@ -101,7 +102,11 @@ export function CampaignMarketsEditor({
             </FormField>
 
             <FormField label="Country" error={errors?.countryCode}>
-              <input name="marketRuleCountryCode" placeholder="US" maxLength={2} />
+              <input
+                name="marketRuleCountryCode"
+                placeholder="US"
+                maxLength={2}
+              />
             </FormField>
 
             <FormField label="Locale" error={errors?.locale}>
@@ -259,7 +264,11 @@ export function CampaignMarketsEditor({
                           type="hidden"
                           value="deleteMarketRule"
                         />
-                        <input name="marketRuleId" type="hidden" value={rule.id} />
+                        <input
+                          name="marketRuleId"
+                          type="hidden"
+                          value={rule.id}
+                        />
                         <button className="counterpulse-button" type="submit">
                           Delete
                         </button>

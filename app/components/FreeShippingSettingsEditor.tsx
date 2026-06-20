@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -26,12 +27,12 @@ export function FreeShippingSettingsEditor({
   return (
     <s-section heading="Free Shipping Goal">
       {errors?.form && (
-        <s-banner
+        <AppAlert
           tone="critical"
-          heading="Free shipping settings could not be saved"
+          title="Free shipping settings could not be saved"
         >
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <Form method="post" className="counterpulse-form">

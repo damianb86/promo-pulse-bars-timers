@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { DesignControls } from "./DesignControls";
@@ -62,9 +63,9 @@ export function CampaignDesignEditor({
   return (
     <s-section heading="Design & Preview">
       {errors?.form && (
-        <s-banner tone="critical" heading="Design could not be saved">
+        <AppAlert tone="critical" title="Design could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {lockedCustomCssReason && (

@@ -1,4 +1,5 @@
 import { type ChangeEvent, type ReactNode, useMemo, useState } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { CampaignPreview } from "./CampaignPreview";
@@ -206,9 +207,9 @@ export function CampaignForm({
       />
 
       {errors.form && (
-        <s-banner tone="critical" heading="Campaign could not be saved">
+        <AppAlert tone="critical" title="Campaign could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <div className="counterpulse-create-topbar" aria-label="Campaign status">

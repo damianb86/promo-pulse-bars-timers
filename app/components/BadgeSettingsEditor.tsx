@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -38,9 +39,9 @@ export function BadgeSettingsEditor({
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Badge settings could not be saved">
+        <AppAlert tone="critical" title="Badge settings could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

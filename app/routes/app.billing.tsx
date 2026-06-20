@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AppAlert } from "../components/Notifications";
 import {
   Form,
   useActionData,
@@ -98,15 +99,15 @@ export default function BillingPage() {
   return (
     <s-page inlineSize="large" heading="Billing">
       {actionData?.notice && (
-        <s-banner tone="info" heading="Billing status">
+        <AppAlert tone="info" title="Billing status">
           <s-paragraph>{actionData.notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {actionData?.error && (
-        <s-banner tone="critical" heading="Billing action failed">
+        <AppAlert tone="critical" title="Billing action failed">
           <s-paragraph>{actionData.error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <s-section>

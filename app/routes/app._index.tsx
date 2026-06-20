@@ -6,6 +6,7 @@ import type {
 import { Link, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
+import { AppAlert, AppToast } from "../components/Notifications";
 import { CampaignStatusBadge } from "../components/CampaignStatusBadge";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
@@ -118,21 +119,21 @@ export default function Dashboard() {
       </Link>
 
       {error && (
-        <s-banner tone="warning" heading="Dashboard data needs attention">
+        <AppAlert tone="warning" title="Dashboard data needs attention">
           <s-paragraph>{error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {actionData?.notice && (
-        <s-banner tone="success" heading="Checklist updated">
+        <AppToast tone="success" title="Checklist updated">
           <s-paragraph>{actionData.notice}</s-paragraph>
-        </s-banner>
+        </AppToast>
       )}
 
       {actionData?.error && (
-        <s-banner tone="critical" heading="Checklist update failed">
+        <AppAlert tone="critical" title="Checklist update failed">
           <s-paragraph>{actionData.error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       <s-section>

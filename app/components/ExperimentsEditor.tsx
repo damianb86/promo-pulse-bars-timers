@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -112,15 +113,15 @@ export function ExperimentsEditor({
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Experiments updated">
+        <AppAlert tone="info" title="Experiments updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Experiments could not be updated">
+        <AppAlert tone="critical" title="Experiments could not be updated">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

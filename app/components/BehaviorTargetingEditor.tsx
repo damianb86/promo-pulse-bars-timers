@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -43,15 +44,15 @@ export function BehaviorTargetingEditor({
       )}
 
       {notice && (
-        <s-banner tone="info" heading="Behavior targeting updated">
+        <AppAlert tone="info" title="Behavior targeting updated">
           <s-paragraph>{notice}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {errors?.form && (
-        <s-banner tone="critical" heading="Behavior targeting could not be saved">
+        <AppAlert tone="critical" title="Behavior targeting could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {!lockedReason && (

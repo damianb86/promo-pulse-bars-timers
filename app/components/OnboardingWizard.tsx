@@ -1,4 +1,5 @@
 import { type CSSProperties, useMemo, useState } from "react";
+import { AppAlert, AppToast } from "./Notifications";
 import { Form, Link } from "react-router";
 
 import { campaignDesignTemplates } from "../types/campaign-design";
@@ -175,15 +176,15 @@ export function OnboardingWizard({
       <input name="ctaUrl" type="hidden" value={ctaUrl} />
 
       {actionData?.notice && (
-        <s-banner tone="success" heading="Checklist updated">
+        <AppToast tone="success" title="Checklist updated">
           <s-paragraph>{actionData.notice}</s-paragraph>
-        </s-banner>
+        </AppToast>
       )}
 
       {actionData?.error && (
-        <s-banner tone="critical" heading="Setup could not continue">
+        <AppAlert tone="critical" title="Setup could not continue">
           <s-paragraph>{actionData.error}</s-paragraph>
-        </s-banner>
+        </AppAlert>
       )}
 
       {step === 0 ? (

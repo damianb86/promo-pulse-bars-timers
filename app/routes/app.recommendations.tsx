@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AppAlert, AppToast } from "../components/Notifications";
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
@@ -178,20 +179,20 @@ export default function RecommendationsPage() {
       ) : (
         <>
           {actionData?.notice && (
-            <s-banner tone="success" heading="Recommendations updated">
+            <AppToast tone="success" title="Recommendations updated">
               <s-paragraph>
                 {actionData.notice}{" "}
                 {actionData.draftHref && (
                   <Link to={actionData.draftHref}>Open draft</Link>
                 )}
               </s-paragraph>
-            </s-banner>
+            </AppToast>
           )}
 
           {actionData?.error && (
-            <s-banner tone="critical" heading="Recommendation action failed">
+            <AppAlert tone="critical" title="Recommendation action failed">
               <s-paragraph>{actionData.error}</s-paragraph>
-            </s-banner>
+            </AppAlert>
           )}
 
           <s-section heading="Recommended next actions">

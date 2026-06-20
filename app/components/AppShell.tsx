@@ -11,7 +11,6 @@ const navigationItems = [
   { label: "Dashboard", href: "/app" },
   { label: "Guided setup", href: "/app/onboarding" },
   { label: "Campaigns", href: "/app/campaigns" },
-  { label: "Create campaign", href: "/app/campaigns/new" },
   { label: "Analytics", href: "/app/analytics" },
   { label: "Reports", href: "/app/reports" },
   { label: "Recommendations", href: "/app/recommendations" },

@@ -147,6 +147,21 @@ export default function CampaignsPage() {
   const location = useLocation();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const hasActiveFilters = Boolean(
+    filters.query.trim() || filters.status || filters.type,
+  );
+  const statusCounts = campaigns.reduce<Record<CampaignStatusValue, number>>(
+    (counts, campaign) => {
+      counts[campaign.status] += 1;
+      return counts;
+    },
+    {
+      ACTIVE: 0,
+      DRAFT: 0,
+      EXPIRED: 0,
+      PAUSED: 0,
+    },
+  );
   const isCampaignsIndexRoute =
     location.pathname.replace(/\/+$/, "") === "/app/campaigns";
 
@@ -156,138 +171,270 @@ export default function CampaignsPage() {
 
   return (
     <s-page inlineSize="large" heading="Campaigns">
-      <Link
-        className="counterpulse-button"
-        data-testid="campaign-create-button"
-        slot="primary-action"
-        to="/app/campaigns/new"
-      >
-        Create campaign
-      </Link>
-
       {(error || actionData?.error) && (
         <AppAlert tone="critical" title="Campaigns need attention">
           <s-paragraph>{error ?? actionData?.error}</s-paragraph>
         </AppAlert>
       )}
 
-      <s-section heading="Filters">
-        <Form method="get" className="counterpulse-toolbar">
-          <label className="counterpulse-form-field">
-            <span>Search by name</span>
-            <input name="q" defaultValue={filters.query} />
-          </label>
-          <label className="counterpulse-form-field">
-            <span>Status</span>
-            <select name="status" defaultValue={filters.status}>
-              {campaignListStatusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="counterpulse-form-field">
-            <span>Type</span>
-            <select name="type" defaultValue={filters.type}>
-              <option value="">All types</option>
-              {campaignTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="counterpulse-button" type="submit">
-            Apply
-          </button>
-        </Form>
+      <s-section>
+        <div className="counterpulse-campaigns-header">
+          <div>
+            <p className="counterpulse-kicker">Campaign workspace</p>
+            <s-heading>Campaigns</s-heading>
+            <s-paragraph>
+              Review promotions, control publishing status, and create new
+              campaign drafts from the same workspace.
+            </s-paragraph>
+            <div className="counterpulse-campaigns-header__meta">
+              <span>{formatCampaignCount(campaigns.length)} showing</span>
+              {hasActiveFilters && <span>Filtered view</span>}
+            </div>
+          </div>
+          <div className="counterpulse-campaigns-header__actions">
+            <Link
+              className="counterpulse-button"
+              data-testid="campaign-create-button"
+              to="/app/campaigns/new"
+            >
+              Create campaign
+            </Link>
+          </div>
+        </div>
       </s-section>
 
-      <s-section heading="Campaign list">
+      <s-section heading="Campaign overview">
+        <div className="counterpulse-campaigns-metrics">
+          <CampaignMetric
+            caption="Current list"
+            label="Showing"
+            value={campaigns.length}
+          />
+          <CampaignMetric
+            caption="Eligible if schedule and targeting match"
+            label="Active"
+            value={statusCounts.ACTIVE}
+          />
+          <CampaignMetric
+            caption="Ready to finish before publishing"
+            label="Draft"
+            value={statusCounts.DRAFT}
+          />
+          <CampaignMetric
+            caption="Paused or expired"
+            label="Not running"
+            value={statusCounts.PAUSED + statusCounts.EXPIRED}
+          />
+        </div>
+      </s-section>
+
+      <s-section>
+        <div className="counterpulse-campaigns-filter-panel">
+          <div className="counterpulse-campaigns-filter-header">
+            <div>
+              <p className="counterpulse-kicker">Filters</p>
+              <h2>Find campaigns</h2>
+              <p>
+                Narrow the list by name, lifecycle status, or campaign type
+                before editing live promotions.
+              </p>
+            </div>
+            {hasActiveFilters && (
+              <Link
+                className="counterpulse-button-secondary"
+                to="/app/campaigns"
+              >
+                Clear filters
+              </Link>
+            )}
+          </div>
+          <Form
+            method="get"
+            className="counterpulse-toolbar counterpulse-campaigns-toolbar"
+          >
+            <label className="counterpulse-form-field">
+              <span>Search by name</span>
+              <input name="q" defaultValue={filters.query} />
+            </label>
+            <label className="counterpulse-form-field">
+              <span>Status</span>
+              <select name="status" defaultValue={filters.status}>
+                {campaignListStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="counterpulse-form-field">
+              <span>Type</span>
+              <select name="type" defaultValue={filters.type}>
+                <option value="">All types</option>
+                {campaignTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="counterpulse-button" type="submit">
+              Apply
+            </button>
+          </Form>
+        </div>
+      </s-section>
+
+      <s-section>
+        <div className="counterpulse-campaigns-list-header">
+          <div>
+            <p className="counterpulse-kicker">Campaign list</p>
+            <h2>Manage campaigns</h2>
+            <p>
+              Keep draft, active, and paused campaigns easy to compare before
+              changing behavior on the storefront.
+            </p>
+          </div>
+        </div>
         {campaigns.length === 0 ? (
           <EmptyStateCard
             title="No campaigns found"
-            message="Create a campaign or adjust filters to see existing promotions."
-            actionLabel="Create campaign"
-            actionHref="/app/campaigns/new"
+            message={
+              hasActiveFilters
+                ? "No campaigns match the current filters."
+                : "Create a campaign to start managing promotional messages."
+            }
+            actionLabel={hasActiveFilters ? "Clear filters" : undefined}
+            actionHref={hasActiveFilters ? "/app/campaigns" : undefined}
           />
         ) : (
-          <table className="counterpulse-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Placements</th>
-                <th>Updated</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((campaign) => (
-                <tr key={campaign.id}>
-                  <td>
-                    <Link to={`/app/campaigns/${campaign.id}`}>
-                      {campaign.name}
-                    </Link>
-                  </td>
-                  <td>
-                    <CampaignStatusBadge status={campaign.status} />
-                  </td>
-                  <td>{formatCampaignOption(campaign.type)}</td>
-                  <td>{campaign.placements.join(", ") || "No placement"}</td>
-                  <td>{formatUpdatedDate(campaign.updatedAt)}</td>
-                  <td>
-                    <div className="counterpulse-row-actions">
-                      <Link
-                        className="counterpulse-button-secondary"
-                        data-testid="campaign-edit-button"
-                        to={`/app/campaigns/${campaign.id}`}
-                      >
-                        Edit
-                      </Link>
-                      <CampaignActionButton
-                        action="duplicate"
-                        campaignId={campaign.id}
-                        disabled={isSubmitting}
-                      >
-                        Duplicate
-                      </CampaignActionButton>
-                      {campaign.status === "ACTIVE" ? (
-                        <CampaignActionButton
-                          action="pause"
-                          campaignId={campaign.id}
-                          disabled={isSubmitting}
-                        >
-                          Pause
-                        </CampaignActionButton>
-                      ) : (
-                        <CampaignActionButton
-                          action="activate"
-                          campaignId={campaign.id}
-                          disabled={isSubmitting}
-                        >
-                          Activate
-                        </CampaignActionButton>
-                      )}
-                      <CampaignActionButton
-                        action="delete"
-                        campaignId={campaign.id}
-                        disabled={isSubmitting}
-                        destructive
-                      >
-                        Delete
-                      </CampaignActionButton>
-                    </div>
-                  </td>
+          <div className="counterpulse-campaigns-table-shell">
+            <table
+              aria-label="Campaigns"
+              className="counterpulse-table counterpulse-campaigns-table"
+            >
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Status</th>
+                  <th>Placements</th>
+                  <th>Updated</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {campaigns.map((campaign) => (
+                  <tr key={campaign.id}>
+                    <td data-label="Campaign">
+                      <div className="counterpulse-campaign-title">
+                        <Link
+                          className="counterpulse-campaign-title__link"
+                          to={`/app/campaigns/${campaign.id}`}
+                        >
+                          {campaign.name}
+                        </Link>
+                        <span className="counterpulse-campaign-title__meta">
+                          {formatCampaignOption(campaign.type)}
+                        </span>
+                      </div>
+                    </td>
+                    <td data-label="Status">
+                      <CampaignStatusBadge status={campaign.status} />
+                    </td>
+                    <td data-label="Placements">
+                      <CampaignPlacementChips
+                        placements={campaign.placements}
+                      />
+                    </td>
+                    <td data-label="Updated">
+                      <span className="counterpulse-muted">
+                        {formatUpdatedDate(campaign.updatedAt)}
+                      </span>
+                    </td>
+                    <td data-label="Actions">
+                      <div className="counterpulse-row-actions">
+                        <Link
+                          className="counterpulse-button-secondary"
+                          data-testid="campaign-edit-button"
+                          to={`/app/campaigns/${campaign.id}`}
+                        >
+                          Edit
+                        </Link>
+                        <CampaignActionButton
+                          action="duplicate"
+                          campaignId={campaign.id}
+                          disabled={isSubmitting}
+                        >
+                          Duplicate
+                        </CampaignActionButton>
+                        {campaign.status === "ACTIVE" ? (
+                          <CampaignActionButton
+                            action="pause"
+                            campaignId={campaign.id}
+                            disabled={isSubmitting}
+                          >
+                            Pause
+                          </CampaignActionButton>
+                        ) : (
+                          <CampaignActionButton
+                            action="activate"
+                            campaignId={campaign.id}
+                            disabled={isSubmitting}
+                          >
+                            Activate
+                          </CampaignActionButton>
+                        )}
+                        <CampaignActionButton
+                          action="delete"
+                          campaignId={campaign.id}
+                          disabled={isSubmitting}
+                          destructive
+                        >
+                          Delete
+                        </CampaignActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </s-section>
     </s-page>
+  );
+}
+
+function CampaignMetric({
+  caption,
+  label,
+  value,
+}: {
+  caption: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="counterpulse-campaigns-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{caption}</small>
+    </div>
+  );
+}
+
+function CampaignPlacementChips({ placements }: { placements: string[] }) {
+  if (placements.length === 0) {
+    return <span className="counterpulse-muted">No placement</span>;
+  }
+
+  return (
+    <div className="counterpulse-placement-chips">
+      {placements.map((placement) => (
+        <span className="counterpulse-placement-chip" key={placement}>
+          {placement}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -392,4 +539,8 @@ function formatUpdatedDate(value: string) {
     timeZone: "UTC",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatCampaignCount(value: number) {
+  return `${value} ${value === 1 ? "campaign" : "campaigns"}`;
 }

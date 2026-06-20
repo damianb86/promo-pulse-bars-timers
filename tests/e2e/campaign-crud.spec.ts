@@ -7,6 +7,28 @@ import {
   test,
 } from "./fixtures";
 
+test("campaigns page owns the create campaign action", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app/campaigns");
+
+  const createButton = page.getByTestId("campaign-create-button");
+  await expect(createButton).toBeVisible();
+  await expect(createButton).toHaveAttribute("href", "/app/campaigns/new");
+  await expect(page.getByRole("link", { name: "Create campaign" })).toHaveCount(
+    1,
+  );
+
+  await createButton.click();
+  await page.waitForURL("/app/campaigns/new");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("campaign CRUD actions work from the admin UI", async ({
   page,
   resetDb,

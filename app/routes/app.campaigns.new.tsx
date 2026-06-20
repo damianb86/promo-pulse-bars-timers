@@ -330,7 +330,7 @@ export default function CreateCampaignPage() {
     useLoaderData<typeof loader>();
 
   return (
-    <s-page heading="Create campaign">
+    <s-page inlineSize="large" heading="Create campaign">
       <div className="counterpulse-create-workspace">
         <div className="counterpulse-create-workspace__main">
           <CampaignForm

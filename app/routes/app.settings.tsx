@@ -79,7 +79,7 @@ export default function SettingsPage() {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <s-page heading="Settings">
+    <s-page inlineSize="large" heading="Settings">
       {actionData?.notice && (
         <s-banner tone="success" heading="Settings saved">
           <s-paragraph>{actionData.notice}</s-paragraph>

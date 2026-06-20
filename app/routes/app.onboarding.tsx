@@ -137,7 +137,7 @@ export default function OnboardingPage() {
     | undefined;
 
   return (
-    <s-page heading="Guided setup">
+    <s-page inlineSize="large" heading="Guided setup">
       <OnboardingWizard {...loaderData} actionData={actionData} />
     </s-page>
   );

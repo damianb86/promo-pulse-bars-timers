@@ -164,7 +164,7 @@ export default function AgencyDashboardPage() {
   );
 
   return (
-    <s-page heading="Agency">
+    <s-page inlineSize="large" heading="Agency">
       <s-section>
         <div className="counterpulse-dashboard-header">
           <div>

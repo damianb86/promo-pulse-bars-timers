@@ -366,10 +366,8 @@ export const loader = async ({
     emailTimers: canUsePremiumFeature(shop, "EMAIL_TIMERS").reason,
     multiLanguage: getLockedFeatureReason(shop, "multi_language"),
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
-    behaviorTargeting: canUsePremiumFeature(
-      shop,
-      "BEHAVIORAL_TARGETING",
-    ).reason,
+    behaviorTargeting: canUsePremiumFeature(shop, "BEHAVIORAL_TARGETING")
+      .reason,
   };
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
@@ -1462,7 +1460,7 @@ export default function EditCampaignPage() {
     actionData?.translationValues ?? translationsViewModel.values;
 
   return (
-    <s-page heading="Edit campaign">
+    <s-page inlineSize="large" heading="Edit campaign">
       <CampaignEditorLayout
         details={
           <CampaignForm

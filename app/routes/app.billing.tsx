@@ -96,7 +96,7 @@ export default function BillingPage() {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <s-page heading="Billing">
+    <s-page inlineSize="large" heading="Billing">
       {actionData?.notice && (
         <s-banner tone="info" heading="Billing status">
           <s-paragraph>{actionData.notice}</s-paragraph>

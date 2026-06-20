@@ -128,7 +128,7 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <s-page heading="Analytics">
+    <s-page inlineSize="large" heading="Analytics">
       {error && (
         <s-banner tone="critical" heading="Analytics need attention">
           <s-paragraph>{error}</s-paragraph>

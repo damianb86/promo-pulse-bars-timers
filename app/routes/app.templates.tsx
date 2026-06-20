@@ -119,7 +119,10 @@ export const action = async ({
   }
 
   try {
-    const campaign = await createDraftCampaignFromTemplate(shop.id, templateKey);
+    const campaign = await createDraftCampaignFromTemplate(
+      shop.id,
+      templateKey,
+    );
     const embeddedSearch = new URL(request.url).search;
 
     return redirect(`/app/campaigns/${campaign.id}${embeddedSearch}`);
@@ -138,7 +141,7 @@ export default function TemplateLibraryPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
 
   return (
-    <s-page heading="Template Library">
+    <s-page inlineSize="large" heading="Template Library">
       <s-section>
         <div className="counterpulse-dashboard-header">
           <div>
@@ -204,7 +207,10 @@ function TemplateFilters({
 }) {
   return (
     <s-section heading="Filters">
-      <Form method="get" className="counterpulse-toolbar counterpulse-toolbar--wide">
+      <Form
+        method="get"
+        className="counterpulse-toolbar counterpulse-toolbar--wide"
+      >
         <label className="counterpulse-form-field">
           <span>Goal</span>
           <select name="goal" defaultValue={filters.goal ?? ""}>
@@ -279,7 +285,9 @@ function TemplateCard({ template }: { template: TemplateRow }) {
           <div className="counterpulse-muted">{template.headline}</div>
         </div>
         <div className="counterpulse-recommendation__meta">
-          <s-badge tone="neutral">{formatCampaignOption(template.type)}</s-badge>
+          <s-badge tone="neutral">
+            {formatCampaignOption(template.type)}
+          </s-badge>
           <s-badge tone="info">
             {template.countryCode ?? "Global"} / {template.locale}
           </s-badge>
@@ -334,7 +342,6 @@ function readTexts(value: unknown) {
 
   return {
     headline: typeof input.headline === "string" ? input.headline : "",
-    subheadline:
-      typeof input.subheadline === "string" ? input.subheadline : "",
+    subheadline: typeof input.subheadline === "string" ? input.subheadline : "",
   };
 }

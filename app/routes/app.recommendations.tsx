@@ -143,7 +143,7 @@ export default function RecommendationsPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
 
   return (
-    <s-page heading="Recommendations">
+    <s-page inlineSize="large" heading="Recommendations">
       <Form method="post" slot="primary-action">
         <input name="_action" type="hidden" value="refresh" />
         <button className="counterpulse-button" type="submit">

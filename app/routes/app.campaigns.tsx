@@ -153,7 +153,7 @@ export default function CampaignsPage() {
   }
 
   return (
-    <s-page heading="Campaigns">
+    <s-page inlineSize="large" heading="Campaigns">
       <Link
         className="counterpulse-button"
         data-testid="campaign-create-button"

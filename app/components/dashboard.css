@@ -1,3 +1,34 @@
+.counterpulse-app-surface,
+html,
+body,
+s-page {
+  width: 100%;
+  max-width: none;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+s-page {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
+s-page::part(base),
+s-page::part(container),
+s-page::part(content),
+s-page::part(main),
+s-page::part(page) {
+  width: 100%;
+  max-width: none;
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
 .counterpulse-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

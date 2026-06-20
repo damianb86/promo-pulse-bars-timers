@@ -108,7 +108,7 @@ export default function Dashboard() {
         : "warning";
 
   return (
-    <s-page heading="Promo Pulse: Bars & Timers">
+    <s-page inlineSize="large" heading="Promo Pulse: Bars & Timers">
       <Link
         className="counterpulse-button"
         slot="primary-action"

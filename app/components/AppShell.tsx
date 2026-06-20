@@ -37,7 +37,7 @@ export function AppShell({ apiKey, children }: AppShellProps) {
           </a>
         ))}
       </NavMenu>
-      {children}
+      <div className="counterpulse-app-surface">{children}</div>
     </AppProvider>
   );
 }

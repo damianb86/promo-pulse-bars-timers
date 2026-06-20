@@ -1,6 +1,6 @@
 export default function SetupPage() {
   return (
-    <s-page heading="Setup">
+    <s-page inlineSize="large" heading="Setup">
       <s-section heading="Project baseline">
         <s-unordered-list>
           <s-list-item>Shopify React Router app template</s-list-item>

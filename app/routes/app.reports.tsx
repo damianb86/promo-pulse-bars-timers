@@ -88,7 +88,7 @@ export default function ReportsPage() {
   const report = data.report;
 
   return (
-    <s-page heading="Reports">
+    <s-page inlineSize="large" heading="Reports">
       <s-section>
         <div className="counterpulse-dashboard-header">
           <div>

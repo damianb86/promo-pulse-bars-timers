@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Form, Link, useNavigation } from "react-router";
+import { Form, useNavigation } from "react-router";
 
 import {
   campaignGoalOptions,
@@ -22,11 +22,12 @@ type CampaignFormProps = {
 export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
-
-  if (mode === "edit") {
-    return <LegacyCampaignForm values={values} errors={errors} mode={mode} />;
-  }
-
+  const statusOptions =
+    mode === "edit" ? campaignEditableStatusOptions : campaignStatusOptions;
+  const statusLabel =
+    statusOptions.find((option) => option.value === values.status)?.label ??
+    "Draft";
+  const submitLabel = mode === "create" ? "Save campaign" : "Update campaign";
   const activeGoalLabel =
     campaignGoalOptions.find((option) => option.value === values.goal)?.label ??
     "Flash sale";
@@ -55,7 +56,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
 
       <div className="counterpulse-create-topbar" aria-label="Campaign status">
         <div className="counterpulse-create-status">
-          <span>Draft</span>
+          <span>{statusLabel}</span>
           <span>Premium features available</span>
           <span>Autosave off</span>
         </div>
@@ -68,7 +69,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
             data-testid="campaign-save-button"
             type="submit"
           >
-            {isSubmitting ? "Saving..." : "Save campaign"}
+            {isSubmitting ? "Saving..." : submitLabel}
           </button>
         </div>
       </div>
@@ -162,7 +163,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                 name="status"
                 defaultValue={values.status}
               >
-                {campaignStatusOptions.map((option) => (
+                {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -315,164 +316,6 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
           placementLabel={activePlacementLabel}
         />
       </div>
-    </Form>
-  );
-}
-
-function LegacyCampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
-
-  return (
-    <Form data-campaign-form method="post" className="counterpulse-form">
-      <input name="_action" type="hidden" value="saveBasics" />
-      <input
-        data-ai-suggestion-json
-        defaultValue=""
-        name="aiSuggestionJson"
-        type="hidden"
-      />
-
-      {errors.form && (
-        <s-banner tone="critical" heading="Campaign could not be saved">
-          <s-paragraph>{errors.form}</s-paragraph>
-        </s-banner>
-      )}
-
-      <s-section heading="Step 1: Campaign goal">
-        <FieldError message={errors.goal} />
-        <div className="counterpulse-option-grid">
-          {campaignGoalOptions.map((option) => (
-            <label className="counterpulse-choice" key={option.value}>
-              <input
-                type="radio"
-                name="goal"
-                value={option.value}
-                defaultChecked={values.goal === option.value}
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </s-section>
-
-      <s-section heading="Step 2: Campaign type">
-        <FormField label="Campaign type" error={errors.type}>
-          <select name="type" defaultValue={values.type}>
-            {campaignTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </FormField>
-
-        <FormField label="Primary placement" error={errors.placementType}>
-          <select name="placementType" defaultValue={values.placementType}>
-            {placementTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </FormField>
-      </s-section>
-
-      <s-section heading="Step 3: Name + schedule">
-        <div className="counterpulse-form-grid">
-          <FormField label="Campaign name" error={errors.name}>
-            <input
-              data-testid="campaign-name-input"
-              name="name"
-              defaultValue={values.name}
-            />
-          </FormField>
-
-          <FormField label="Status" error={errors.status}>
-            <select
-              data-testid="campaign-status-select"
-              name="status"
-              defaultValue={values.status}
-            >
-              {(mode === "edit"
-                ? campaignEditableStatusOptions
-                : campaignStatusOptions
-              ).map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          <FormField label="Start date/time" error={errors.startsAt}>
-            <input
-              type="datetime-local"
-              name="startsAt"
-              defaultValue={values.startsAt}
-            />
-          </FormField>
-
-          <FormField label="End date/time" error={errors.endsAt}>
-            <input
-              type="datetime-local"
-              name="endsAt"
-              defaultValue={values.endsAt}
-            />
-          </FormField>
-
-          <FormField label="Timezone" error={errors.timezone}>
-            <input name="timezone" defaultValue={values.timezone} />
-          </FormField>
-        </div>
-      </s-section>
-
-      <s-section heading="Step 4: Basic message">
-        <div className="counterpulse-form-grid">
-          <FormField label="Headline" error={errors.headline}>
-            <input name="headline" defaultValue={values.headline} />
-          </FormField>
-
-          <FormField label="CTA text" error={errors.ctaText}>
-            <input name="ctaText" defaultValue={values.ctaText} />
-          </FormField>
-
-          <FormField label="CTA URL" error={errors.ctaUrl}>
-            <input
-              name="ctaUrl"
-              defaultValue={values.ctaUrl}
-              placeholder="/collections/sale"
-            />
-          </FormField>
-
-          <FormField label="Subheadline" error={errors.subheadline} fullWidth>
-            <textarea
-              name="subheadline"
-              defaultValue={values.subheadline}
-              rows={3}
-            />
-          </FormField>
-        </div>
-      </s-section>
-
-      <s-section heading="Step 5: Save campaign">
-        <div className="counterpulse-actions">
-          <button
-            className="counterpulse-button"
-            data-testid="campaign-save-button"
-            type="submit"
-          >
-            {isSubmitting
-              ? "Saving..."
-              : mode === "create"
-                ? "Save campaign"
-                : "Update campaign"}
-          </button>
-          <Link className="counterpulse-button-secondary" to="/app/campaigns">
-            Cancel
-          </Link>
-        </div>
-      </s-section>
     </Form>
   );
 }

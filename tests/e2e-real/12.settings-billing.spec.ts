@@ -20,10 +20,7 @@ test.describe("real settings and billing", () => {
     await app.getByLabel("Support email").fill(supportEmail);
     await app.getByRole("button", { name: /save settings/i }).click();
     await expect(
-      app
-        .locator('s-banner[tone="success"]')
-        .filter({ hasText: /settings saved/i })
-        .first(),
+      app.getByRole("status").filter({ hasText: /settings saved/i }).first(),
     ).toBeVisible({ timeout: 20_000 });
 
     await page.reload({ waitUntil: "domcontentloaded" });

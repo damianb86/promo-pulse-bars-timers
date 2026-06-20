@@ -32,6 +32,7 @@ import {
 } from "@prisma/client";
 
 import prisma from "../db.server";
+import { publishCampaignForShop } from "../models/campaign.server";
 
 export const E2E_DEMO_SHOP_DOMAIN = "demo-shop.myshopify.com";
 export const E2E_AUTH_COOKIE = "counterpulse_e2e_shop";
@@ -142,6 +143,7 @@ export async function resetE2ETestDatabase(
 
   if (scenario !== "empty") {
     await seedScenario(shop.id, scenario);
+    await publishE2EActiveCampaigns();
   }
 
   const campaignCount = await prisma.campaign.count({
@@ -168,6 +170,17 @@ function parseCookieHeader(header: string) {
     cookies[rawKey] = decodeURIComponent(rawValue.join("="));
     return cookies;
   }, {});
+}
+
+async function publishE2EActiveCampaigns() {
+  const campaigns = await prisma.campaign.findMany({
+    where: { status: CampaignStatus.ACTIVE },
+    select: { id: true, shopId: true },
+  });
+
+  for (const campaign of campaigns) {
+    await publishCampaignForShop(campaign.id, campaign.shopId);
+  }
 }
 
 async function seedScenario(shopId: string, scenario: E2ETestScenario) {
@@ -1412,6 +1425,7 @@ function flashSaleDesign() {
     accentColor: "#FDE047",
     buttonColor: "#FFFFFF",
     buttonTextColor: "#7F1D1D",
+    closeButtonColor: "#FFFFFF",
     fontSize: 15,
     borderRadius: 6,
     borderSize: 0,

@@ -1005,6 +1005,7 @@ async function applyDesignOverride(
       "accentColor",
       "buttonColor",
       "buttonTextColor",
+      "closeButtonColor",
       "customCss",
       "customIconUrl",
     ]),

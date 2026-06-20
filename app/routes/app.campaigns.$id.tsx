@@ -375,7 +375,10 @@ export const loader = async ({
   const translation =
     campaign.translations.find((item) => item.locale === "en") ??
     campaign.translations[0];
-  const placement = campaign.placements[0];
+  const enabledPlacements = campaign.placements.filter(
+    (placement) => placement.enabled,
+  );
+  const placement = enabledPlacements[0] ?? campaign.placements[0];
   const designValues = toCampaignDesignValues(campaign.design);
   const hasFreeShippingGoal =
     campaign.type === "FREE_SHIPPING_GOAL" || campaign.goal === "FREE_SHIPPING";
@@ -406,10 +409,7 @@ export const loader = async ({
     geoMarketTargeting: getLockedFeatureReason(shop, "geo_market_targeting"),
     advancedTargeting: getLockedFeatureReason(shop, "advanced_targeting"),
   };
-  const productSelection = inferProductSelection(
-    placement?.placementType,
-    campaign.targeting,
-  );
+  const productSelection = inferProductSelection(campaign.targeting);
   const countrySelection = inferCountrySelection(campaign.targeting);
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
@@ -461,6 +461,16 @@ export const loader = async ({
       placementType: placement
         ? toPlacementType(placement.placementType)
         : getDefaultPlacementForCampaignType(toCampaignType(campaign.type)),
+      placementTypes:
+        enabledPlacements.length > 0
+          ? enabledPlacements.map((item) => toPlacementType(item.placementType))
+          : [
+              placement
+                ? toPlacementType(placement.placementType)
+                : getDefaultPlacementForCampaignType(
+                    toCampaignType(campaign.type),
+                  ),
+            ],
       headline: translation?.headline ?? "",
       subheadline: translation?.subheadline ?? "",
       ctaText: translation?.ctaText ?? "",
@@ -1519,6 +1529,7 @@ export const action = async ({
       endsAt: parsed.endsAt,
       timezone: parsed.values.timezone,
       placementType: parsed.values.placementType,
+      placementTypes: parsed.values.placementTypes,
       customSelector: parsed.values.customSelector,
       targeting,
       headline: parsed.values.headline,
@@ -1618,6 +1629,28 @@ export default function EditCampaignPage() {
     [draftCampaignValues, draftDesignValues],
   );
   const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
+  const draftPreviewViewModel = useMemo(
+    () => ({
+      ...designViewModel,
+      type: draftCampaignValues.type,
+      timezone: draftCampaignValues.timezone || designViewModel.timezone,
+      headline: draftCampaignValues.headline || designViewModel.headline,
+      subheadline: draftCampaignValues.subheadline,
+      ctaText: draftCampaignValues.ctaText || designViewModel.ctaText,
+      ctaUrl: draftCampaignValues.ctaUrl || designViewModel.ctaUrl,
+      expiredText:
+        draftCampaignValues.expiredText || designViewModel.expiredText,
+      placements:
+        draftCampaignValues.placementTypes.length > 0
+          ? draftCampaignValues.placementTypes
+          : [draftCampaignValues.placementType],
+      timer: {
+        ...buildCampaignTimerSettingsValues(draftCampaignValues),
+        endsAt: draftCampaignValues.endsAt || null,
+      },
+    }),
+    [designViewModel, draftCampaignValues],
+  );
   const submittingAction = readNavigationAction(navigation.formData);
   const isSavingDraft = submittingAction === "saveDraft";
   const isPublishing = submittingAction === "publishCampaign";
@@ -1629,9 +1662,13 @@ export default function EditCampaignPage() {
   };
 
   useEffect(() => {
-    setDraftCampaignValues(activeCampaignValues);
-    setDraftDesignValues(activeDesignValues);
-  }, [persistedDraftKey]);
+    const syncDraft = window.setTimeout(() => {
+      setDraftCampaignValues(activeCampaignValues);
+      setDraftDesignValues(activeDesignValues);
+    }, 0);
+
+    return () => window.clearTimeout(syncDraft);
+  }, [activeCampaignValues, activeDesignValues, persistedDraftKey]);
 
   useShopifySaveBar({
     dirty: hasUnsavedChanges,
@@ -1644,10 +1681,9 @@ export default function EditCampaignPage() {
     campaignGoalOptions.find(
       (option) => option.value === activeCampaignValues.goal,
     )?.label ?? formatCampaignOption(activeCampaignValues.goal);
-  const campaignPlacementLabel =
-    placementTypeOptions.find(
-      (option) => option.value === activeCampaignValues.placementType,
-    )?.label ?? formatCampaignOption(activeCampaignValues.placementType);
+  const campaignPlacementLabel = formatPlacementSelectionLabel(
+    activeCampaignValues.placementTypes,
+  );
 
   return (
     <>
@@ -1914,7 +1950,7 @@ export default function EditCampaignPage() {
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
                   onChange={setDraftDesignValues}
-                  viewModel={designViewModel}
+                  viewModel={draftPreviewViewModel}
                 />
               ),
             },
@@ -2044,7 +2080,11 @@ function toDateTimeLocalValue(date: Date | string | null) {
 
   if (Number.isNaN(parsedDate.getTime())) return "";
 
-  return parsedDate.toISOString().slice(0, 16);
+  const localDate = new Date(
+    parsedDate.getTime() - parsedDate.getTimezoneOffset() * 60000,
+  );
+
+  return localDate.toISOString().slice(0, 16);
 }
 
 function toCampaignTimerFormValues(
@@ -3262,6 +3302,16 @@ function toPlacementType(value: string): PlacementTypeValue {
   return "TOP_BAR";
 }
 
+function formatPlacementSelectionLabel(placements: PlacementTypeValue[]) {
+  const labels = placements.map(
+    (placement) =>
+      placementTypeOptions.find((option) => option.value === placement)
+        ?.label ?? formatCampaignOption(placement),
+  );
+
+  return labels.length > 0 ? labels.join(" + ") : "No placement";
+}
+
 type CampaignTargetingRecord = {
   countries?: unknown;
   productIds?: unknown;
@@ -3271,10 +3321,8 @@ type CampaignTargetingRecord = {
 } | null;
 
 function inferProductSelection(
-  placementType: string | null | undefined,
   targeting: CampaignTargetingRecord,
 ): ProductSelectionValue {
-  if (placementType === "CUSTOM_SELECTOR") return "CUSTOM_POSITION";
   if (targetingStringList(targeting?.productIds).length > 0) {
     return "SPECIFIC_PRODUCTS";
   }

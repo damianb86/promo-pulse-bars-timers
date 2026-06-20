@@ -35,8 +35,24 @@ export function CampaignDesignEditor({
   onChange,
   viewModel,
 }: CampaignDesignEditorProps) {
+  const actualPlacements = useMemo(
+    () =>
+      Array.from(
+        new Set(viewModel.placements.map(toPreviewPlacementFromCampaign)),
+      ),
+    [viewModel.placements],
+  );
   const [device, setDevice] = useState<PreviewDevice>("desktop");
-  const [placement, setPlacement] = useState<PreviewPlacement>("PRODUCT_PAGE");
+  const [placementOverride, setPlacementOverride] = useState<{
+    key: string;
+    placement: PreviewPlacement;
+  } | null>(null);
+  const actualPlacementKey = actualPlacements.join("|");
+  const primaryPlacement = actualPlacements[0] ?? "PRODUCT_PAGE";
+  const placement =
+    placementOverride?.key === actualPlacementKey
+      ? placementOverride.placement
+      : primaryPlacement;
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -44,6 +60,12 @@ export function CampaignDesignEditor({
     }),
     [design, viewModel],
   );
+  const selectPreviewPlacement = (nextPlacement: PreviewPlacement) => {
+    setPlacementOverride({
+      key: actualPlacementKey,
+      placement: nextPlacement,
+    });
+  };
 
   return (
     <s-section heading="Design & Preview">
@@ -72,15 +94,27 @@ export function CampaignDesignEditor({
         </div>
 
         <CampaignPreviewPanel
+          actualPlacements={actualPlacements}
           className="counterpulse-design-editor__preview"
           design={design}
           device={device}
           placement={placement}
           viewModel={previewViewModel}
           onDeviceChange={setDevice}
-          onPlacementChange={setPlacement}
+          onPlacementChange={selectPreviewPlacement}
         />
       </div>
     </s-section>
   );
+}
+
+function toPreviewPlacementFromCampaign(value: string): PreviewPlacement {
+  if (value === "BOTTOM_BAR") return "BOTTOM_BAR";
+  if (value === "PRODUCT_PAGE") return "PRODUCT_PAGE";
+  if (value === "CART_PAGE") return "CART_PAGE";
+  if (value === "CART_DRAWER") return "CART_DRAWER";
+  if (value === "COLLECTION_CARD") return "PRODUCT_BADGE";
+  if (value === "CUSTOM_SELECTOR") return "PRODUCT_PAGE";
+
+  return "TOP_BAR";
 }

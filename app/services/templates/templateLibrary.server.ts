@@ -324,6 +324,7 @@ export function buildCampaignFormDefaultsFromTemplate(
     timezone: settings.timezone ?? "UTC",
     status: "DRAFT" as const,
     placementType: placementType as PlacementTypeValue,
+    placementTypes: [placementType as PlacementTypeValue],
     headline: texts.headline ?? template.eventName,
     subheadline: texts.subheadline ?? "",
     ctaText: texts.ctaText ?? "",
@@ -479,6 +480,9 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     buttonTextColor:
       readString(input.buttonTextColor) ||
       defaultCampaignDesignValues.buttonTextColor,
+    closeButtonColor:
+      readString(input.closeButtonColor) ||
+      defaultCampaignDesignValues.closeButtonColor,
     fontSize: readInteger(input.fontSize, defaultCampaignDesignValues.fontSize),
     borderRadius: readInteger(
       input.borderRadius,
@@ -598,6 +602,19 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.positionSticky,
       defaultCampaignDesignValues.positionSticky,
     ),
+    entranceAnimation:
+      readEnum(input.entranceAnimation, ["NONE", "FADE", "SLIDE", "POP"]) ??
+      defaultCampaignDesignValues.entranceAnimation,
+    exitAnimation:
+      readEnum(input.exitAnimation, ["NONE", "FADE", "SLIDE", "POP"]) ??
+      defaultCampaignDesignValues.exitAnimation,
+    animationDurationMs: readInteger(
+      input.animationDurationMs,
+      defaultCampaignDesignValues.animationDurationMs,
+    ),
+    timerTickAnimation:
+      readEnum(input.timerTickAnimation, ["NONE", "FADE", "FLIP", "PULSE"]) ??
+      defaultCampaignDesignValues.timerTickAnimation,
     mobileEnabled: readBoolean(
       input.mobileEnabled,
       defaultCampaignDesignValues.mobileEnabled,

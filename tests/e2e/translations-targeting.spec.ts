@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   test,
 } from "./fixtures";
 
@@ -37,6 +38,7 @@ test("Spanish translations and locale/country targeting affect storefront API", 
   await expect(
     page.locator('input[name="translation.es.headline"]'),
   ).toHaveValue("Oferta solo para Argentina");
+  await publishCurrentCampaign(page);
 
   const matching = await page.request.get(
     "/api/storefront/campaigns?shop=demo-shop.myshopify.com&placement=TOP_BAR&locale=es&country=AR",

@@ -12,6 +12,7 @@ export function DevicePreviewToggle({
   return (
     <div className="counterpulse-segmented" aria-label="Preview device">
       <button
+        aria-pressed={value === "desktop"}
         className={value === "desktop" ? "is-active" : ""}
         type="button"
         onClick={() => onChange("desktop")}
@@ -20,6 +21,7 @@ export function DevicePreviewToggle({
         Desktop
       </button>
       <button
+        aria-pressed={value === "mobile"}
         className={value === "mobile" ? "is-active" : ""}
         type="button"
         onClick={() => onChange("mobile")}

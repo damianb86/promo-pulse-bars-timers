@@ -179,6 +179,7 @@
     card.className =
       "pp-product-card" +
       (config.compactMode ? " pp-product-card--compact" : "");
+    applyMotionClasses(card, design);
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "region");
     card.setAttribute(
@@ -308,7 +309,11 @@
   }
 
   function renderCountdown(ms, design) {
-    var countdown = node("span", "pp-countdown", formatTime(ms, design));
+    var countdown = node(
+      "span",
+      "pp-countdown" + timerTickClass(design),
+      formatTime(ms, design),
+    );
 
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
@@ -403,10 +408,11 @@
         return;
       }
 
-      countdown.textContent = formatTime(
-        state.remainingMs,
-        campaign.design || {},
-      );
+      var nextText = formatTime(state.remainingMs, campaign.design || {});
+      if (countdown.textContent !== nextText) {
+        countdown.textContent = nextText;
+        replayCountdownTick(countdown);
+      }
     }, 1000);
   }
 
@@ -589,6 +595,37 @@
       "--pp-align",
       textAlign(alignment || design.alignment),
     );
+    element.style.setProperty(
+      "--pp-motion-duration",
+      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
+    );
+  }
+
+  function applyMotionClasses(element, design) {
+    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
+      element.classList.add(
+        "pp-surface--enter-" + String(design.entranceAnimation).toLowerCase(),
+      );
+    }
+  }
+
+  function timerTickClass(design) {
+    return design.timerTickAnimation && design.timerTickAnimation !== "NONE"
+      ? " pp-countdown--tick-" + String(design.timerTickAnimation).toLowerCase()
+      : "";
+  }
+
+  function replayCountdownTick(countdown) {
+    if (
+      !countdown ||
+      !/\bpp-countdown--tick-(fade|flip|pulse)\b/.test(countdown.className)
+    ) {
+      return;
+    }
+
+    countdown.classList.remove("pp-countdown--ticking");
+    void countdown.offsetWidth;
+    countdown.classList.add("pp-countdown--ticking");
   }
 
   function zonedParts(date, timezone) {

@@ -383,6 +383,7 @@ export async function validateCampaignPlanAccess(
     status?: string;
     type: CampaignTypeValue;
     placementType: PlacementTypeValue;
+    placementTypes?: PlacementTypeValue[];
     startsAt?: string;
     targeting?: Parameters<typeof getCampaignPlanViolations>[1]["targeting"];
     timerSettings?: Parameters<
@@ -393,7 +394,20 @@ export async function validateCampaignPlanAccess(
 ) {
   const errors: string[] = [];
 
-  for (const feature of getRequiredCampaignFeatures(campaign)) {
+  const placementsToCheck =
+    campaign.placementTypes && campaign.placementTypes.length > 0
+      ? campaign.placementTypes
+      : [campaign.placementType];
+  const requiredFeatures = new Set<PlanFeatureKey>();
+
+  placementsToCheck.forEach((placementType) => {
+    getRequiredCampaignFeatures({
+      ...campaign,
+      placementType,
+    }).forEach((feature) => requiredFeatures.add(feature));
+  });
+
+  for (const feature of requiredFeatures) {
     const featureGate = canUseFeature(shop, feature);
 
     if (!featureGate.allowed) {

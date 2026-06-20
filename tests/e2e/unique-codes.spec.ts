@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   test,
 } from "./fixtures";
 import type { Page, Response } from "@playwright/test";
@@ -59,6 +60,7 @@ test("unique codes can be generated and assigned per visitor", async ({
   await expect(
     page.getByRole("row", { name: /STG2 Percentage 15 Active 2/ }),
   ).toBeVisible();
+  await publishCurrentCampaign(page);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
   const widget = page.locator(".pp-unique-code").first();

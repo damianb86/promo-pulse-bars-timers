@@ -239,6 +239,16 @@
       "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace("_", "-");
     if (design.fullWidth) bar.classList.add("pp-bar--full-width");
     if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
+    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
+      bar.classList.add(
+        "pp-bar--enter-" + String(design.entranceAnimation).toLowerCase(),
+      );
+    }
+    if (design.exitAnimation && design.exitAnimation !== "NONE") {
+      bar.classList.add(
+        "pp-bar--exit-" + String(design.exitAnimation).toLowerCase(),
+      );
+    }
     bar.dataset.campaignId = campaign.id;
     bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
@@ -285,7 +295,7 @@
     }
 
     if (design.showCloseButton) {
-      bar.appendChild(renderCloseButton(bar));
+      bar.appendChild(renderCloseButton(bar, design));
     }
 
     container.appendChild(bar);
@@ -331,6 +341,13 @@
       safeColor(design.buttonTextColor, "#111827"),
     );
     bar.style.setProperty(
+      "--pp-close",
+      safeColor(
+        design.closeButtonColor,
+        safeColor(design.textColor, "#ffffff"),
+      ),
+    );
+    bar.style.setProperty(
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
@@ -352,6 +369,10 @@
     );
     bar.style.setProperty("--pp-justify", getJustifyContent(design.alignment));
     bar.style.setProperty("--pp-align", getTextAlign(design.alignment));
+    bar.style.setProperty(
+      "--pp-motion-duration",
+      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
+    );
   }
 
   function getBackground(design) {
@@ -500,8 +521,13 @@
 
   function renderCountdown(timerState, design) {
     var countdown = document.createElement("span");
+    var tickClass =
+      design.timerTickAnimation && design.timerTickAnimation !== "NONE"
+        ? " pp-countdown--tick-" +
+          String(design.timerTickAnimation).toLowerCase()
+        : "";
 
-    countdown.className = "pp-countdown";
+    countdown.className = "pp-countdown" + tickClass;
     countdown.dataset.testid = "promo-timer";
     countdown.textContent = formatTimeRemaining(timerState.remainingMs, design);
     countdown.setAttribute("aria-live", "polite");
@@ -539,7 +565,7 @@
     return cta;
   }
 
-  function renderCloseButton(bar) {
+  function renderCloseButton(bar, design) {
     var button = document.createElement("button");
 
     button.className = "pp-close";
@@ -547,10 +573,41 @@
     button.setAttribute("aria-label", "Close");
     button.innerHTML = "&times;";
     button.addEventListener("click", function () {
-      bar.remove();
+      removeBar(bar, design);
     });
 
     return button;
+  }
+
+  function removeBar(bar, design) {
+    var duration = clamp((design || {}).animationDurationMs, 0, 1500, 220);
+
+    if (
+      !(design || {}).exitAnimation ||
+      (design || {}).exitAnimation === "NONE" ||
+      duration === 0
+    ) {
+      bar.remove();
+      return;
+    }
+
+    bar.classList.add("pp-bar--closing");
+    window.setTimeout(function () {
+      bar.remove();
+    }, duration);
+  }
+
+  function replayCountdownTick(countdown) {
+    if (
+      !countdown ||
+      !/\bpp-countdown--tick-(fade|flip|pulse)\b/.test(countdown.className)
+    ) {
+      return;
+    }
+
+    countdown.classList.remove("pp-countdown--ticking");
+    void countdown.offsetWidth;
+    countdown.classList.add("pp-countdown--ticking");
   }
 
   function getExpiredBehavior(campaign) {
@@ -590,16 +647,20 @@
           expiredBehavior === "HIDE_TIMER" ||
           expiredBehavior === "UNPUBLISH_TIMER"
         ) {
-          bar.remove();
+          removeBar(bar, campaign.design || {});
         }
 
         return;
       }
 
-      countdown.textContent = formatTimeRemaining(
+      var nextText = formatTimeRemaining(
         timerState.remainingMs,
         campaign.design || {},
       );
+      if (countdown.textContent !== nextText) {
+        countdown.textContent = nextText;
+        replayCountdownTick(countdown);
+      }
     }, 1000);
   }
 

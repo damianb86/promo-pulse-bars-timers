@@ -239,16 +239,14 @@ export const action = async ({
       endsAt: parsed.endsAt,
       timezone: parsed.values.timezone,
       placements: {
-        create: [
-          {
-            placementType: parsed.values.placementType,
-            customSelector:
-              parsed.values.placementType === "CUSTOM_SELECTOR"
-                ? parsed.values.customSelector || null
-                : null,
-            enabled: true,
-          },
-        ],
+        create: parsed.values.placementTypes.map((placementType) => ({
+          placementType,
+          customSelector:
+            placementType === "CUSTOM_SELECTOR"
+              ? parsed.values.customSelector || null
+              : null,
+          enabled: true,
+        })),
       },
       targeting: {
         create: toTargetingWriteData(targeting),

@@ -3,11 +3,13 @@ import {
   defaultCampaignDesignValues,
   designAlignmentOptions,
   designBackgroundTypeOptions,
+  designBannerAnimationOptions,
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
   designPositionModeOptions,
   designTimerFormatOptions,
+  designTimerTickAnimationOptions,
   designTimerStyleOptions,
   findCampaignDesignTemplate,
   type CampaignDesignErrors,
@@ -24,6 +26,7 @@ const colorFields: Array<keyof CampaignDesignValues> = [
   "accentColor",
   "buttonColor",
   "buttonTextColor",
+  "closeButtonColor",
   "borderColor",
   "titleColor",
   "subheadingColor",
@@ -248,6 +251,39 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     )
   ) {
     errors.positionMode = "Choose a valid position mode.";
+  }
+
+  if (
+    !designBannerAnimationOptions.some(
+      (option) => option.value === values.entranceAnimation,
+    )
+  ) {
+    errors.entranceAnimation = "Choose a valid entrance effect.";
+  }
+
+  if (
+    !designBannerAnimationOptions.some(
+      (option) => option.value === values.exitAnimation,
+    )
+  ) {
+    errors.exitAnimation = "Choose a valid close effect.";
+  }
+
+  validateIntegerRange(
+    values,
+    errors,
+    "animationDurationMs",
+    0,
+    1500,
+    "Animation duration",
+  );
+
+  if (
+    !designTimerTickAnimationOptions.some(
+      (option) => option.value === values.timerTickAnimation,
+    )
+  ) {
+    errors.timerTickAnimation = "Choose a valid timer change effect.";
   }
 
   if (

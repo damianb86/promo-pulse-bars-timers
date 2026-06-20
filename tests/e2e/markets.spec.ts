@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   test,
 } from "./fixtures";
 
@@ -45,6 +46,7 @@ test("advanced market rules override storefront free shipping by market", async 
   ]);
 
   await expect(page.getByText("country: ES")).toBeVisible();
+  await publishCurrentCampaign(page);
 
   const esResponse = await page.request.get("/api/storefront/campaigns", {
     params: {

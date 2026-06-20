@@ -26,6 +26,7 @@ const previewPlacementOptions: Array<{
 ];
 
 type CampaignPreviewPanelProps = {
+  actualPlacements?: PreviewPlacement[];
   className?: string;
   design: CampaignDesignValues;
   device: PreviewDevice;
@@ -37,6 +38,7 @@ type CampaignPreviewPanelProps = {
 };
 
 export function CampaignPreviewPanel({
+  actualPlacements = [],
   className = "",
   design,
   device,
@@ -46,6 +48,8 @@ export function CampaignPreviewPanel({
   onDeviceChange,
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
+  const actualPlacementSet = new Set(actualPlacements);
+
   return (
     <div
       className={["counterpulse-preview-panel", className]
@@ -65,9 +69,11 @@ export function CampaignPreviewPanel({
             {previewPlacementOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
+                {actualPlacementSet.has(option.value) ? " *" : ""}
               </option>
             ))}
           </select>
+          {actualPlacements.length > 0 && <small>* Campaign placement</small>}
         </label>
       </div>
       <CampaignPreview

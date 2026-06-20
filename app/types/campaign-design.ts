@@ -20,6 +20,8 @@ export type DesignFontFamilyValue =
 export type DesignTimerStyleValue = "PLAIN" | "GROUPED" | "BOXES";
 export type DesignTimerFormatValue = "UNITS" | "COLON";
 export type DesignPositionModeValue = "FLOW" | "OVERLAY";
+export type DesignBannerAnimationValue = "NONE" | "FADE" | "SLIDE" | "POP";
+export type DesignTimerTickAnimationValue = "NONE" | "FADE" | "FLIP" | "PULSE";
 export type CampaignDesignIconValue =
   | "FIRE"
   | "CLOCK"
@@ -42,6 +44,7 @@ export type CampaignDesignValues = {
   accentColor: string;
   buttonColor: string;
   buttonTextColor: string;
+  closeButtonColor: string;
   fontSize: number;
   borderRadius: number;
   borderSize: number;
@@ -75,6 +78,10 @@ export type CampaignDesignValues = {
   fullWidth: boolean;
   positionMode: DesignPositionModeValue;
   positionSticky: boolean;
+  entranceAnimation: DesignBannerAnimationValue;
+  exitAnimation: DesignBannerAnimationValue;
+  animationDurationMs: number;
+  timerTickAnimation: DesignTimerTickAnimationValue;
   mobileEnabled: boolean;
   customCss: string;
   alignment: DesignAlignmentValue;
@@ -124,6 +131,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   accentColor: "#2563EB",
   buttonColor: "#111827",
   buttonTextColor: "#FFFFFF",
+  closeButtonColor: "#111827",
   fontSize: 14,
   borderRadius: 4,
   borderSize: 1,
@@ -157,6 +165,10 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   fullWidth: false,
   positionMode: "FLOW",
   positionSticky: false,
+  entranceAnimation: "FADE",
+  exitAnimation: "FADE",
+  animationDurationMs: 220,
+  timerTickAnimation: "NONE",
   mobileEnabled: true,
   customCss: "",
   alignment: "CENTER",
@@ -178,6 +190,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     gradientEndColor: "#B975F4",
     gradientAngle: 135,
     textColor: "#173A7A",
+    closeButtonColor: "#173A7A",
     titleColor: "#173A7A",
     subheadingColor: "#173A7A",
     timerColor: "#FFFFFF",
@@ -202,6 +215,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     layout: "BALANCED",
     backgroundColor: "#313E50",
     textColor: "#F8FAFC",
+    closeButtonColor: "#F8FAFC",
     titleColor: "#F8FAFC",
     subheadingColor: "#C8D0DC",
     timerColor: "#FFFFFF",
@@ -229,6 +243,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     gradientEndColor: "#FF35A2",
     gradientAngle: 90,
     textColor: "#FFFFFF",
+    closeButtonColor: "#FFFFFF",
     titleColor: "#172554",
     subheadingColor: "#FFFFFF",
     timerColor: "#FFFFFF",
@@ -258,6 +273,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Black Friday",
     backgroundColor: "#050505",
     textColor: "#FFFFFF",
+    closeButtonColor: "#FFFFFF",
     accentColor: "#F59E0B",
     buttonColor: "#F59E0B",
     buttonTextColor: "#050505",
@@ -278,6 +294,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Flash Sale",
     backgroundColor: "#7F1D1D",
     textColor: "#FFFFFF",
+    closeButtonColor: "#FFFFFF",
     accentColor: "#FDE047",
     buttonColor: "#FFFFFF",
     buttonTextColor: "#7F1D1D",
@@ -305,6 +322,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Free Shipping",
     backgroundColor: "#ECFDF5",
     textColor: "#064E3B",
+    closeButtonColor: "#064E3B",
     accentColor: "#10B981",
     buttonColor: "#047857",
     buttonTextColor: "#FFFFFF",
@@ -327,6 +345,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Delivery Cutoff",
     backgroundColor: "#EFF6FF",
     textColor: "#1E3A8A",
+    closeButtonColor: "#1E3A8A",
     accentColor: "#2563EB",
     buttonColor: "#2563EB",
     buttonTextColor: "#FFFFFF",
@@ -349,6 +368,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Low Stock",
     backgroundColor: "#FFF7ED",
     textColor: "#7C2D12",
+    closeButtonColor: "#7C2D12",
     accentColor: "#EA580C",
     buttonColor: "#C2410C",
     buttonTextColor: "#FFFFFF",
@@ -371,6 +391,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Premium Dark",
     backgroundColor: "#111827",
     textColor: "#F9FAFB",
+    closeButtonColor: "#F9FAFB",
     accentColor: "#A78BFA",
     buttonColor: "#F9FAFB",
     buttonTextColor: "#111827",
@@ -398,6 +419,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     label: "Holiday",
     backgroundColor: "#F0FDF4",
     textColor: "#14532D",
+    closeButtonColor: "#14532D",
     accentColor: "#DC2626",
     buttonColor: "#166534",
     buttonTextColor: "#FFFFFF",
@@ -456,6 +478,26 @@ export const designBackgroundTypeOptions: Array<{
   { value: "SOLID", label: "Single color background" },
   { value: "GRADIENT", label: "Gradient background" },
   { value: "IMAGE", label: "Image background" },
+];
+
+export const designBannerAnimationOptions: Array<{
+  value: DesignBannerAnimationValue;
+  label: string;
+}> = [
+  { value: "NONE", label: "None" },
+  { value: "FADE", label: "Fade" },
+  { value: "SLIDE", label: "Slide" },
+  { value: "POP", label: "Pop" },
+];
+
+export const designTimerTickAnimationOptions: Array<{
+  value: DesignTimerTickAnimationValue;
+  label: string;
+}> = [
+  { value: "NONE", label: "None" },
+  { value: "FADE", label: "Fade" },
+  { value: "FLIP", label: "Flip" },
+  { value: "PULSE", label: "Pulse" },
 ];
 
 export const designFontFamilyOptions: Array<{

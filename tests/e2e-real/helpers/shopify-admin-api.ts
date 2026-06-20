@@ -1,6 +1,11 @@
 import type { APIRequestContext } from "@playwright/test";
 
-import { DISCOUNT_CODE_PREFIX, E2E_PREFIX, e2eProductTitle, getConfig } from "./env";
+import {
+  DISCOUNT_CODE_PREFIX,
+  E2E_PREFIX,
+  e2eProductTitle,
+  getConfig,
+} from "./env";
 
 type GraphqlResponse<T> = {
   data?: T;
@@ -130,7 +135,9 @@ export async function cleanupE2EDiscounts(request: APIRequestContext) {
       .filter((node) => {
         const code = node.codeDiscount?.codes?.nodes[0]?.code ?? "";
         const title = node.codeDiscount?.title ?? "";
-        return code.startsWith(DISCOUNT_CODE_PREFIX) || title.startsWith(E2E_PREFIX);
+        return (
+          code.startsWith(DISCOUNT_CODE_PREFIX) || title.startsWith(E2E_PREFIX)
+        );
       })
       .map((node) => node.id) ?? [];
 
@@ -151,6 +158,98 @@ export async function cleanupE2EDiscounts(request: APIRequestContext) {
       { id },
     );
   }
+}
+
+export async function createE2EOrder(request: APIRequestContext) {
+  const orderLabel = `${E2E_PREFIX} Generated Order ${Date.now()}`;
+  const email = `pp-e2e+${Date.now()}@example.com`;
+  const amount = 12.34;
+  const currencyCode = "USD";
+  const mutation = `
+    mutation CreateRealE2EOrder($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
+      orderCreate(order: $order, options: $options) {
+        order {
+          id
+          email
+          displayFinancialStatus
+          lineItems(first: 5) {
+            nodes {
+              title
+              quantity
+            }
+          }
+          totalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+  `;
+  const result = await adminGraphql<{
+    orderCreate: {
+      order: {
+        displayFinancialStatus: string;
+        email: string | null;
+        id: string;
+        lineItems: { nodes: Array<{ quantity: number; title: string }> };
+        totalPriceSet: {
+          shopMoney: { amount: string; currencyCode: string };
+        };
+      } | null;
+      userErrors: Array<{ field?: string[]; message: string }>;
+    };
+  }>(request, mutation, {
+    order: {
+      currency: currencyCode,
+      email,
+      lineItems: [
+        {
+          priceSet: {
+            shopMoney: {
+              amount,
+              currencyCode,
+            },
+          },
+          quantity: 1,
+          title: orderLabel,
+        },
+      ],
+      transactions: [
+        {
+          amountSet: {
+            shopMoney: {
+              amount,
+              currencyCode,
+            },
+          },
+          kind: "SALE",
+          status: "SUCCESS",
+        },
+      ],
+    },
+    options: {
+      sendFulfillmentReceipt: false,
+      sendReceipt: false,
+    },
+  });
+
+  const errors = result.data?.orderCreate.userErrors ?? [];
+  if (errors.length > 0 || !result.data?.orderCreate.order) {
+    throw new Error(
+      `Shopify Admin API could not create ${E2E_PREFIX} order: ${errors
+        .map((error) => error.message)
+        .join(", ")}`,
+    );
+  }
+
+  return result.data.orderCreate.order;
 }
 
 async function findPrefixedProduct(request: APIRequestContext) {
@@ -201,8 +300,8 @@ async function publishProductBestEffort(
     `,
   );
 
-  const onlineStore = publications.data?.publications.nodes.find((publication) =>
-    /online store/i.test(publication.name),
+  const onlineStore = publications.data?.publications.nodes.find(
+    (publication) => /online store/i.test(publication.name),
   );
 
   if (!onlineStore) return;
@@ -223,7 +322,7 @@ async function publishProductBestEffort(
   );
 }
 
-async function adminGraphql<T>(
+export async function adminGraphql<T>(
   request: APIRequestContext,
   query: string,
   variables: Record<string, unknown> = {},

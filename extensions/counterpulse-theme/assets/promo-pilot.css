@@ -217,7 +217,7 @@
   border-radius: 999px;
   padding: 0;
   background: transparent;
-  color: var(--pp-text, #ffffff);
+  color: var(--pp-close, var(--pp-text, #ffffff));
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -256,6 +256,139 @@
 
 .pp-bar--expired {
   opacity: 0.78;
+}
+
+.pp-bar--enter-fade,
+.pp-surface--enter-fade {
+  animation: pp-surface-fade-in var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+.pp-bar--enter-slide,
+.pp-surface--enter-slide {
+  animation: pp-surface-slide-in var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+.pp-bar--enter-pop,
+.pp-surface--enter-pop {
+  animation: pp-surface-pop-in var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+.pp-bar--closing.pp-bar--exit-fade {
+  animation: pp-surface-fade-out var(--pp-motion-duration, 220ms) ease-in both;
+}
+
+.pp-bar--closing.pp-bar--exit-slide {
+  animation: pp-surface-slide-out var(--pp-motion-duration, 220ms) ease-in both;
+}
+
+.pp-bar--closing.pp-bar--exit-pop {
+  animation: pp-surface-pop-out var(--pp-motion-duration, 220ms) ease-in both;
+}
+
+.pp-countdown--ticking.pp-countdown--tick-fade {
+  animation: pp-countdown-fade var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+.pp-countdown--ticking.pp-countdown--tick-flip {
+  animation: pp-countdown-flip var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+.pp-countdown--ticking.pp-countdown--tick-pulse {
+  animation: pp-countdown-pulse var(--pp-motion-duration, 220ms) ease-out both;
+}
+
+@keyframes pp-surface-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pp-surface-slide-in {
+  from {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes pp-surface-pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes pp-surface-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes pp-surface-slide-out {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -10px;
+  }
+}
+
+@keyframes pp-surface-pop-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes pp-countdown-fade {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pp-countdown-flip {
+  from {
+    opacity: 0.5;
+    rotate: x 72deg;
+  }
+  to {
+    opacity: 1;
+    rotate: x 0deg;
+  }
+}
+
+@keyframes pp-countdown-pulse {
+  0% {
+    scale: 1;
+  }
+  45% {
+    scale: 1.06;
+  }
+  100% {
+    scale: 1;
+  }
 }
 
 .pp-product-timer {
@@ -380,6 +513,19 @@
   color: inherit;
   font-size: 0.9em;
   opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-bar--enter-fade,
+  .pp-bar--enter-slide,
+  .pp-bar--enter-pop,
+  .pp-bar--closing,
+  .pp-surface--enter-fade,
+  .pp-surface--enter-slide,
+  .pp-surface--enter-pop,
+  .pp-countdown--ticking {
+    animation: none !important;
+  }
 }
 
 .pp-debug {

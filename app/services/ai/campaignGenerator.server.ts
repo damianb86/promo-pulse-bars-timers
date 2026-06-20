@@ -488,6 +488,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       templateKey: "free-shipping",
       backgroundColor: "#ECFDF5",
       textColor: "#064E3B",
+      closeButtonColor: "#064E3B",
       accentColor: "#10B981",
       buttonColor: "#047857",
       buttonTextColor: "#FFFFFF",
@@ -503,6 +504,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       templateKey: "delivery-cutoff",
       backgroundColor: "#EFF6FF",
       textColor: "#1E3A8A",
+      closeButtonColor: "#1E3A8A",
       accentColor: "#2563EB",
       buttonColor: "#2563EB",
       buttonTextColor: "#FFFFFF",
@@ -518,6 +520,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       templateKey: "premium-dark",
       backgroundColor: "#111827",
       textColor: "#F9FAFB",
+      closeButtonColor: "#F9FAFB",
       accentColor: "#D4AF37",
       buttonColor: "#F9FAFB",
       buttonTextColor: "#111827",
@@ -533,6 +536,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       templateKey: "flash-sale",
       backgroundColor: "#7F1D1D",
       textColor: "#FFFFFF",
+      closeButtonColor: "#FFFFFF",
       accentColor: "#FDE047",
       buttonColor: "#FFFFFF",
       buttonTextColor: "#7F1D1D",
@@ -550,6 +554,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       templateKey: "holiday",
       backgroundColor: "#F0FDF4",
       textColor: "#14532D",
+      closeButtonColor: "#14532D",
       accentColor: "#DC2626",
       buttonColor: "#166534",
       buttonTextColor: "#FFFFFF",
@@ -565,6 +570,7 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
       input.brandTone === "minimal" ? "clean-minimal" : "premium-dark",
     backgroundColor: input.brandTone === "minimal" ? "#FFFFFF" : "#111827",
     textColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
+    closeButtonColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
     accentColor: input.brandTone === "minimal" ? "#2563EB" : "#A78BFA",
     buttonColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
     buttonTextColor: input.brandTone === "minimal" ? "#FFFFFF" : "#111827",
@@ -1027,6 +1033,9 @@ function sanitizePartialDesign(
     ...(isHexColor(design.buttonTextColor)
       ? { buttonTextColor: design.buttonTextColor }
       : {}),
+    ...(isHexColor(design.closeButtonColor)
+      ? { closeButtonColor: design.closeButtonColor }
+      : {}),
     ...(typeof design.fontSize === "number"
       ? { fontSize: clampInteger(design.fontSize, 11, 22) }
       : {}),
@@ -1122,6 +1131,33 @@ function sanitizePartialDesign(
       : {}),
     ...(typeof design.positionSticky === "boolean"
       ? { positionSticky: design.positionSticky }
+      : {}),
+    ...(design.entranceAnimation === "NONE" ||
+    design.entranceAnimation === "FADE" ||
+    design.entranceAnimation === "SLIDE" ||
+    design.entranceAnimation === "POP"
+      ? { entranceAnimation: design.entranceAnimation }
+      : {}),
+    ...(design.exitAnimation === "NONE" ||
+    design.exitAnimation === "FADE" ||
+    design.exitAnimation === "SLIDE" ||
+    design.exitAnimation === "POP"
+      ? { exitAnimation: design.exitAnimation }
+      : {}),
+    ...(typeof design.animationDurationMs === "number"
+      ? {
+          animationDurationMs: clampInteger(
+            design.animationDurationMs,
+            0,
+            1500,
+          ),
+        }
+      : {}),
+    ...(design.timerTickAnimation === "NONE" ||
+    design.timerTickAnimation === "FADE" ||
+    design.timerTickAnimation === "FLIP" ||
+    design.timerTickAnimation === "PULSE"
+      ? { timerTickAnimation: design.timerTickAnimation }
       : {}),
     ...(typeof design.mobileEnabled === "boolean"
       ? { mobileEnabled: design.mobileEnabled }

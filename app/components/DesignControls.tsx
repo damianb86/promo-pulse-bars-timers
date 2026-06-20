@@ -3,9 +3,11 @@ import { useState, type ReactNode } from "react";
 import {
   designAlignmentOptions,
   designBackgroundTypeOptions,
+  designBannerAnimationOptions,
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
+  designTimerTickAnimationOptions,
   designTimerFormatOptions,
   designTimerStyleOptions,
   type CampaignDesignErrors,
@@ -95,6 +97,14 @@ export function DesignControls({
       icon,
       showIcon: icon === "NONE" ? values.showIcon : true,
       customIconUrl: icon === "CUSTOM" ? values.customIconUrl : "",
+    });
+  };
+
+  const updateFullWidth = (checked: boolean) => {
+    onChange({
+      ...values,
+      fullWidth: checked,
+      borderRadius: checked ? 0 : values.borderRadius,
     });
   };
 
@@ -476,6 +486,7 @@ export function DesignControls({
             <span>Timer labels</span>
             <ToggleSwitch
               checked={values.timerShowLabels}
+              label="Show timer labels"
               name="timerShowLabels"
               onChange={(checked) => updateValue("timerShowLabels", checked)}
             />
@@ -729,6 +740,13 @@ export function DesignControls({
             value={values.buttonTextColor}
             onChange={(value) => updateColor("buttonTextColor", value)}
           />
+          <ColorField
+            error={errors.closeButtonColor}
+            label="Close icon"
+            name="closeButtonColor"
+            value={values.closeButtonColor}
+            onChange={(value) => updateColor("closeButtonColor", value)}
+          />
         </div>
       </DesignPanel>
 
@@ -761,7 +779,7 @@ export function DesignControls({
             checked={values.fullWidth}
             label="Full width"
             name="fullWidth"
-            onChange={(checked) => updateValue("fullWidth", checked)}
+            onChange={updateFullWidth}
           />
           <ToggleField
             checked={values.mobileEnabled}
@@ -787,6 +805,76 @@ export function DesignControls({
             name="showIcon"
             onChange={(checked) => updateValue("showIcon", checked)}
           />
+        </div>
+      </DesignPanel>
+
+      <DesignPanel title="Motion">
+        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+          <DesignField label="Entrance effect" error={errors.entranceAnimation}>
+            <select
+              name="entranceAnimation"
+              value={values.entranceAnimation}
+              onChange={(event) =>
+                updateValue(
+                  "entranceAnimation",
+                  event.target
+                    .value as CampaignDesignValues["entranceAnimation"],
+                )
+              }
+            >
+              {designBannerAnimationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+          <DesignField label="Close effect" error={errors.exitAnimation}>
+            <select
+              name="exitAnimation"
+              value={values.exitAnimation}
+              onChange={(event) =>
+                updateValue(
+                  "exitAnimation",
+                  event.target.value as CampaignDesignValues["exitAnimation"],
+                )
+              }
+            >
+              {designBannerAnimationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+          <NumberField
+            error={errors.animationDurationMs}
+            label="Duration ms"
+            max={1500}
+            min={0}
+            name="animationDurationMs"
+            value={values.animationDurationMs}
+            onChange={(value) => updateNumber("animationDurationMs", value)}
+          />
+          <DesignField label="Timer change" error={errors.timerTickAnimation}>
+            <select
+              name="timerTickAnimation"
+              value={values.timerTickAnimation}
+              onChange={(event) =>
+                updateValue(
+                  "timerTickAnimation",
+                  event.target
+                    .value as CampaignDesignValues["timerTickAnimation"],
+                )
+              }
+            >
+              {designTimerTickAnimationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
         </div>
       </DesignPanel>
 
@@ -1221,16 +1309,19 @@ function NumberField({
 
 function ToggleSwitch({
   name,
+  label,
   checked,
   onChange,
 }: {
   name: string;
+  label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
     <label className="counterpulse-switch">
       <input
+        aria-label={label}
         checked={checked}
         name={name}
         type="checkbox"

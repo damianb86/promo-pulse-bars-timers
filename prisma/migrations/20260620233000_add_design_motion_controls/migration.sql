@@ -1,0 +1,4 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "entranceAnimation" TEXT NOT NULL DEFAULT 'FADE';
+ALTER TABLE "CampaignDesign" ADD COLUMN "exitAnimation" TEXT NOT NULL DEFAULT 'FADE';
+ALTER TABLE "CampaignDesign" ADD COLUMN "animationDurationMs" INTEGER NOT NULL DEFAULT 220;
+ALTER TABLE "CampaignDesign" ADD COLUMN "timerTickAnimation" TEXT NOT NULL DEFAULT 'NONE';

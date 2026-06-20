@@ -2,6 +2,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   test,
 } from "./fixtures";
 import { readAnalyticsSummary } from "./stage2-helpers";
@@ -70,6 +71,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
   await expect(
     page.getByRole("row", { name: /E2E A\/B Experiment Running/ }),
   ).toBeVisible();
+  await publishCurrentCampaign(page);
 
   await page.goto(
     "/__test/storefront?visitorId=stage2-experiment-treatment-visitor&sessionId=stage2-experiment-session",
@@ -100,6 +102,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
   await expect(
     page.getByRole("row", { name: /E2E A\/B Experiment Paused/ }),
   ).toBeVisible();
+  await publishCurrentCampaign(page);
 
   await page.goto(
     "/__test/storefront?visitorId=stage2-experiment-treatment-visitor&sessionId=stage2-experiment-session",

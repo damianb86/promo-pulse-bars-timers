@@ -381,6 +381,7 @@ function buildCrossShopCampaignDraft(
               accentColor: campaign.design.accentColor,
               buttonColor: campaign.design.buttonColor,
               buttonTextColor: campaign.design.buttonTextColor,
+              closeButtonColor: campaign.design.closeButtonColor,
               fontSize: campaign.design.fontSize,
               borderRadius: campaign.design.borderRadius,
               borderSize: campaign.design.borderSize,

@@ -95,21 +95,21 @@ model ShopOnboardingChecklist {
 }
 
 model Campaign {
-  id        String         @id @default(cuid())
-  shopId    String
-  name      String
-  status    CampaignStatus @default(DRAFT)
-  type      CampaignType
-  goal      CampaignGoal
-  startsAt  DateTime?
-  endsAt    DateTime?
-  timezone  String         @default("UTC")
-  priority  Int            @default(0)
-  lastSavedAt       DateTime @default(now())
+  id                String         @id @default(cuid())
+  shopId            String
+  name              String
+  status            CampaignStatus @default(DRAFT)
+  type              CampaignType
+  goal              CampaignGoal
+  startsAt          DateTime?
+  endsAt            DateTime?
+  timezone          String         @default("UTC")
+  priority          Int            @default(0)
+  lastSavedAt       DateTime       @default(now())
   publishedAt       DateTime?
   publishedSnapshot Json?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   shop                   Shop                     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   placements             CampaignPlacement[]
@@ -176,60 +176,65 @@ model CampaignTargeting {
 }
 
 model CampaignDesign {
-  campaignId              String               @id
-  templateKey             String               @default("clean-minimal")
-  layout                  DesignLayout         @default(STANDARD)
-  backgroundType          DesignBackgroundType @default(SOLID)
-  backgroundColor         String               @default("#111827")
-  backgroundImageUrl      String               @default("")
-  gradientStartColor      String               @default("#252237")
-  gradientEndColor        String               @default("#4C4861")
-  gradientAngle           Int                  @default(90)
-  textColor               String               @default("#FFFFFF")
-  accentColor             String               @default("#22C55E")
-  buttonColor             String               @default("#FFFFFF")
-  buttonTextColor         String               @default("#111827")
-  fontSize                Int                  @default(14)
-  borderRadius            Int                  @default(0)
-  borderSize              Int                  @default(0)
-  borderColor             String               @default("#E5E7EB")
-  fontFamily              DesignFontFamily     @default(THEME)
-  titleFontSize           Int                  @default(22)
-  titleColor              String               @default("#FFFFFF")
-  subheadingFontSize      Int                  @default(14)
-  subheadingColor         String               @default("#D1D5DB")
-  timerFontSize           Int                  @default(38)
-  timerColor              String               @default("#FFFFFF")
-  legendFontSize          Int                  @default(12)
-  legendColor             String               @default("#D1D5DB")
-  timerStyle              DesignTimerStyle     @default(PLAIN)
-  timerFormat             DesignTimerFormat    @default(UNITS)
-  timerShowLabels         Boolean              @default(true)
-  timerShowSeconds        Boolean              @default(true)
-  timerDaysLabel          String               @default("Days")
-  timerHoursLabel         String               @default("Hrs")
-  timerMinutesLabel       String               @default("Mins")
-  timerSecondsLabel       String               @default("Secs")
-  timerHideZeroDays       Boolean              @default(true)
-  timerSurfaceColor       String               @default("#FFFFFF")
-  timerSurfaceBorderColor String               @default("#D1D5DB")
-  timerSurfaceBorderSize  Int                  @default(0)
-  timerSurfaceRadius      Int                  @default(8)
-  paddingBlock            Int                  @default(20)
-  paddingInline           Int                  @default(24)
-  contentGap              Int                  @default(8)
-  contentMaxWidth         Int                  @default(960)
-  fullWidth               Boolean              @default(false)
-  positionMode            DesignPositionMode   @default(FLOW)
-  positionSticky          Boolean              @default(true)
+  campaignId              String                   @id
+  templateKey             String                   @default("clean-minimal")
+  layout                  DesignLayout             @default(STANDARD)
+  backgroundType          DesignBackgroundType     @default(SOLID)
+  backgroundColor         String                   @default("#111827")
+  backgroundImageUrl      String                   @default("")
+  gradientStartColor      String                   @default("#252237")
+  gradientEndColor        String                   @default("#4C4861")
+  gradientAngle           Int                      @default(90)
+  textColor               String                   @default("#FFFFFF")
+  accentColor             String                   @default("#22C55E")
+  buttonColor             String                   @default("#FFFFFF")
+  buttonTextColor         String                   @default("#111827")
+  closeButtonColor        String                   @default("#111827")
+  fontSize                Int                      @default(14)
+  borderRadius            Int                      @default(0)
+  borderSize              Int                      @default(0)
+  borderColor             String                   @default("#E5E7EB")
+  fontFamily              DesignFontFamily         @default(THEME)
+  titleFontSize           Int                      @default(22)
+  titleColor              String                   @default("#FFFFFF")
+  subheadingFontSize      Int                      @default(14)
+  subheadingColor         String                   @default("#D1D5DB")
+  timerFontSize           Int                      @default(38)
+  timerColor              String                   @default("#FFFFFF")
+  legendFontSize          Int                      @default(12)
+  legendColor             String                   @default("#D1D5DB")
+  timerStyle              DesignTimerStyle         @default(PLAIN)
+  timerFormat             DesignTimerFormat        @default(UNITS)
+  timerShowLabels         Boolean                  @default(true)
+  timerShowSeconds        Boolean                  @default(true)
+  timerDaysLabel          String                   @default("Days")
+  timerHoursLabel         String                   @default("Hrs")
+  timerMinutesLabel       String                   @default("Mins")
+  timerSecondsLabel       String                   @default("Secs")
+  timerHideZeroDays       Boolean                  @default(true)
+  timerSurfaceColor       String                   @default("#FFFFFF")
+  timerSurfaceBorderColor String                   @default("#D1D5DB")
+  timerSurfaceBorderSize  Int                      @default(0)
+  timerSurfaceRadius      Int                      @default(8)
+  paddingBlock            Int                      @default(20)
+  paddingInline           Int                      @default(24)
+  contentGap              Int                      @default(8)
+  contentMaxWidth         Int                      @default(960)
+  fullWidth               Boolean                  @default(false)
+  positionMode            DesignPositionMode       @default(FLOW)
+  positionSticky          Boolean                  @default(true)
+  entranceAnimation       DesignBannerAnimation    @default(FADE)
+  exitAnimation           DesignBannerAnimation    @default(FADE)
+  animationDurationMs     Int                      @default(220)
+  timerTickAnimation      DesignTimerTickAnimation @default(NONE)
   customCss               String?
-  mobileEnabled           Boolean              @default(true)
-  alignment               DesignAlignment      @default(CENTER)
-  showCloseButton         Boolean              @default(true)
-  showButton              Boolean              @default(true)
-  showIcon                Boolean              @default(true)
-  icon                    CampaignDesignIcon   @default(NONE)
-  customIconUrl           String               @default("")
+  mobileEnabled           Boolean                  @default(true)
+  alignment               DesignAlignment          @default(CENTER)
+  showCloseButton         Boolean                  @default(true)
+  showButton              Boolean                  @default(true)
+  showIcon                Boolean                  @default(true)
+  icon                    CampaignDesignIcon       @default(NONE)
+  customIconUrl           String                   @default("")
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -1025,6 +1030,20 @@ enum DesignTimerFormat {
 enum DesignPositionMode {
   FLOW
   OVERLAY
+}
+
+enum DesignBannerAnimation {
+  NONE
+  FADE
+  SLIDE
+  POP
+}
+
+enum DesignTimerTickAnimation {
+  NONE
+  FADE
+  FLIP
+  PULSE
 }
 
 enum CampaignDesignIcon {

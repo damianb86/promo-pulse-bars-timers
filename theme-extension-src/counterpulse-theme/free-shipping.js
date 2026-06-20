@@ -527,6 +527,10 @@
       color(design.buttonTextColor, "#111827"),
     );
     element.style.setProperty(
+      "--pp-close",
+      color(design.closeButtonColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );

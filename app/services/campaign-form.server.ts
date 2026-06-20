@@ -84,15 +84,8 @@ export function parseCampaignFormData(
     productSelections,
     defaultCampaignFormValues.productSelection,
   ) as ProductSelectionValue;
-  const placementType =
-    productSelection === "CUSTOM_POSITION"
-      ? "CUSTOM_SELECTOR"
-      : (readOption(
-          formData,
-          "placementType",
-          placementTypes,
-          getDefaultPlacementForCampaignType(type),
-        ) as PlacementTypeValue);
+  const placementTypesValue = readPlacementTypes(formData, type);
+  const placementType = placementTypesValue[0];
 
   const values: CampaignFormValues = {
     goal: readOption(
@@ -115,6 +108,7 @@ export function parseCampaignFormData(
       defaultCampaignFormValues.status,
     ) as EditableCampaignStatusValue,
     placementType,
+    placementTypes: placementTypesValue,
     headline: readString(formData, "headline"),
     subheadline: readString(formData, "subheadline"),
     ctaText: readString(formData, "ctaText"),
@@ -233,7 +227,7 @@ export function parseCampaignFormData(
   }
 
   if (
-    values.productSelection === "CUSTOM_POSITION" &&
+    values.placementTypes.includes("CUSTOM_SELECTOR") &&
     values.customSelector.length > 120
   ) {
     errors.customSelector = "Keep the selector under 120 characters.";
@@ -241,7 +235,7 @@ export function parseCampaignFormData(
 
   if (values.status === "ACTIVE") {
     for (const error of validateActivationCandidate({
-      placements: [{ enabled: true }],
+      placements: values.placementTypes.map(() => ({ enabled: true })),
       translations: [{ headline: values.headline }],
     })) {
       if (error.includes("headline")) {
@@ -277,6 +271,46 @@ function readOption(
 ) {
   const value = readString(formData, key);
   return allowedValues.has(value) ? value : fallback;
+}
+
+function readPlacementTypes(
+  formData: FormData,
+  type: CampaignTypeValue,
+): PlacementTypeValue[] {
+  const values = formData
+    .getAll("placementTypes")
+    .filter((value): value is string => typeof value === "string")
+    .filter(isPlacementTypeValue);
+
+  const rawLegacyPlacement = formData.get("placementType");
+  const legacyPlacement =
+    typeof rawLegacyPlacement === "string" &&
+    isPlacementTypeValue(rawLegacyPlacement)
+      ? rawLegacyPlacement
+      : null;
+
+  if (values.length > 0) {
+    const uniqueValues = Array.from(new Set(values));
+
+    return legacyPlacement && legacyPlacement !== uniqueValues[0]
+      ? [legacyPlacement]
+      : uniqueValues;
+  }
+
+  const productSelection = readOption(
+    formData,
+    "productSelection",
+    productSelections,
+    defaultCampaignFormValues.productSelection,
+  );
+
+  if (productSelection === "CUSTOM_POSITION") return ["CUSTOM_SELECTOR"];
+
+  return [legacyPlacement ?? getDefaultPlacementForCampaignType(type)];
+}
+
+function isPlacementTypeValue(value: string): value is PlacementTypeValue {
+  return placementTypes.has(value as PlacementTypeValue);
 }
 
 function parseOptionalDate(

@@ -333,6 +333,7 @@ function toCampaignDesignCreateInput(template: CampaignDesignTemplate) {
     accentColor: template.accentColor,
     buttonColor: template.buttonColor,
     buttonTextColor: template.buttonTextColor,
+    closeButtonColor: template.closeButtonColor,
     fontSize: template.fontSize,
     borderRadius: template.borderRadius,
     borderSize: template.borderSize,

@@ -1,4 +1,10 @@
-import { type ReactNode, useId, useMemo, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 
 type TimezoneOption = {
   label: string;
@@ -155,7 +161,9 @@ export function TimezoneCombobox({
                   key={optionItem.value}
                   role="option"
                   type="button"
-                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseDown={(event: MouseEvent<HTMLButtonElement>) =>
+                    event.preventDefault()
+                  }
                   onClick={() => selectOption(optionItem)}
                 >
                   <span>{optionItem.label}</span>

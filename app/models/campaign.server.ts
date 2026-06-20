@@ -55,6 +55,7 @@ type CampaignBasicsInput = {
   endsAt: Date | null;
   timezone: string;
   placementType: PlacementTypeValue;
+  placementTypes?: PlacementTypeValue[];
   customSelector: string;
   targeting: CampaignTargetingRules;
   headline: string;
@@ -205,12 +206,23 @@ export function toTargetingWriteData(
   };
 }
 
+function normalizePlacementTypes(
+  placementTypes: PlacementTypeValue[],
+): PlacementTypeValue[] {
+  const uniquePlacements = Array.from(new Set(placementTypes));
+
+  return uniquePlacements.length > 0 ? uniquePlacements : ["TOP_BAR"];
+}
+
 export async function updateCampaignBasicsForShop(
   id: string,
   shopId: string,
   input: CampaignBasicsInput,
 ) {
   await assertCampaignBelongsToShop(id, shopId);
+  const placementTypes = normalizePlacementTypes(
+    input.placementTypes ?? [input.placementType],
+  );
 
   return prisma.$transaction(async (tx) => {
     await tx.campaign.update({
@@ -231,17 +243,21 @@ export async function updateCampaignBasicsForShop(
       where: { campaignId: id },
     });
 
-    await tx.campaignPlacement.create({
-      data: {
-        campaignId: id,
-        placementType: input.placementType,
-        customSelector:
-          input.placementType === "CUSTOM_SELECTOR"
-            ? input.customSelector.trim() || null
-            : null,
-        enabled: true,
-      },
-    });
+    await Promise.all(
+      placementTypes.map((placementType) =>
+        tx.campaignPlacement.create({
+          data: {
+            campaignId: id,
+            placementType: placementType as PlacementType,
+            customSelector:
+              placementType === "CUSTOM_SELECTOR"
+                ? input.customSelector.trim() || null
+                : null,
+            enabled: true,
+          },
+        }),
+      ),
+    );
 
     await tx.campaignTargeting.upsert({
       where: { campaignId: id },
@@ -575,6 +591,7 @@ function toCampaignDesignWriteData(input: CampaignDesignValues) {
     accentColor: input.accentColor,
     buttonColor: input.buttonColor,
     buttonTextColor: input.buttonTextColor,
+    closeButtonColor: input.closeButtonColor,
     fontSize: input.fontSize,
     borderRadius: input.borderRadius,
     borderSize: input.borderSize,
@@ -608,6 +625,10 @@ function toCampaignDesignWriteData(input: CampaignDesignValues) {
     fullWidth: input.fullWidth,
     positionMode: input.positionMode,
     positionSticky: input.positionSticky,
+    entranceAnimation: input.entranceAnimation,
+    exitAnimation: input.exitAnimation,
+    animationDurationMs: input.animationDurationMs,
+    timerTickAnimation: input.timerTickAnimation,
     customCss: input.customCss,
     mobileEnabled: input.mobileEnabled,
     alignment: input.alignment,
@@ -862,6 +883,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 accentColor: campaign.design.accentColor,
                 buttonColor: campaign.design.buttonColor,
                 buttonTextColor: campaign.design.buttonTextColor,
+                closeButtonColor: campaign.design.closeButtonColor,
                 fontSize: campaign.design.fontSize,
                 borderRadius: campaign.design.borderRadius,
                 borderSize: campaign.design.borderSize,
@@ -896,6 +918,10 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 fullWidth: campaign.design.fullWidth,
                 positionMode: campaign.design.positionMode,
                 positionSticky: campaign.design.positionSticky,
+                entranceAnimation: campaign.design.entranceAnimation,
+                exitAnimation: campaign.design.exitAnimation,
+                animationDurationMs: campaign.design.animationDurationMs,
+                timerTickAnimation: campaign.design.timerTickAnimation,
                 customCss: campaign.design.customCss,
                 mobileEnabled: campaign.design.mobileEnabled,
                 alignment: campaign.design.alignment,

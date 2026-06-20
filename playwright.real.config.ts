@@ -58,6 +58,7 @@ export default defineConfig({
         "**/11.templates-ai.spec.ts",
         "**/12.settings-billing.spec.ts",
         "**/14.design-timer-configuration.spec.ts",
+        "**/15.order-create.spec.ts",
         "**/99.cleanup.spec.ts",
       ],
       use: {

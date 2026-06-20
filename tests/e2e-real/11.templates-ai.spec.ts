@@ -30,7 +30,7 @@ test.describe("real templates and AI builder", () => {
     );
 
     await useTemplate.click();
-    await expect(app.getByRole("button", { name: /update campaign/i })).toBeVisible({
+    await expect(app.getByTestId("campaign-publish-button")).toBeVisible({
       timeout: 30_000,
     });
     const campaignStatus = app.getByTestId("campaign-status-select");

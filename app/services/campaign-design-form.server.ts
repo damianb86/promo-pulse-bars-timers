@@ -5,9 +5,11 @@ import {
   type CampaignDesignErrors,
   type CampaignDesignValues,
   type DesignBackgroundTypeValue,
+  type DesignBannerAnimationValue,
   type DesignPositionModeValue,
   type DesignFontFamilyValue,
   type DesignLayoutValue,
+  type DesignTimerTickAnimationValue,
   type DesignTimerFormatValue,
   type DesignTimerStyleValue,
   type CampaignDesignIconValue,
@@ -65,6 +67,9 @@ export function parseCampaignDesignFormData(
     buttonTextColor:
       readString(formData, "buttonTextColor") ||
       defaultCampaignDesignValues.buttonTextColor,
+    closeButtonColor:
+      readString(formData, "closeButtonColor") ||
+      defaultCampaignDesignValues.closeButtonColor,
     fontSize: readInteger(
       formData,
       "fontSize",
@@ -172,6 +177,14 @@ export function parseCampaignDesignFormData(
     fullWidth: readBoolean(formData, "fullWidth"),
     positionMode: readPositionMode(formData),
     positionSticky: readBoolean(formData, "positionSticky"),
+    entranceAnimation: readBannerAnimation(formData, "entranceAnimation"),
+    exitAnimation: readBannerAnimation(formData, "exitAnimation"),
+    animationDurationMs: readInteger(
+      formData,
+      "animationDurationMs",
+      defaultCampaignDesignValues.animationDurationMs,
+    ),
+    timerTickAnimation: readTimerTickAnimation(formData),
     mobileEnabled: readBoolean(formData, "mobileEnabled"),
     customCss: sanitizeCustomCss(
       readString(formData, "customCss"),
@@ -294,6 +307,31 @@ function readPositionMode(formData: FormData): DesignPositionModeValue {
   }
 
   return defaultCampaignDesignValues.positionMode;
+}
+
+function readBannerAnimation(
+  formData: FormData,
+  key: "entranceAnimation" | "exitAnimation",
+): DesignBannerAnimationValue {
+  const value = readString(formData, key);
+
+  if (["NONE", "FADE", "SLIDE", "POP"].includes(value)) {
+    return value as DesignBannerAnimationValue;
+  }
+
+  return defaultCampaignDesignValues[key];
+}
+
+function readTimerTickAnimation(
+  formData: FormData,
+): DesignTimerTickAnimationValue {
+  const value = readString(formData, "timerTickAnimation");
+
+  if (["NONE", "FADE", "FLIP", "PULSE"].includes(value)) {
+    return value as DesignTimerTickAnimationValue;
+  }
+
+  return defaultCampaignDesignValues.timerTickAnimation;
 }
 
 function readAlignment(formData: FormData): DesignAlignmentValue {

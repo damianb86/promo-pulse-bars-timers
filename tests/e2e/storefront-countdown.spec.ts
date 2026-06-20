@@ -14,7 +14,9 @@ test("storefront embed renders countdown and records CTA click", async ({
 
   const bar = page.locator(".pp-bar").first();
   await expect(bar).toContainText("Sale ends soon");
-  await expect(bar.locator(".pp-countdown")).toHaveText(/\d{2}:\d{2}:\d{2}/);
+  await expect(bar.locator(".pp-countdown")).toHaveText(
+    /\d{2} Hrs \d{2} Mins \d{2} Secs/,
+  );
 
   await page
     .locator(".pp-cta")

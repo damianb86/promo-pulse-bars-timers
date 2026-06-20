@@ -31,6 +31,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.DATABASE_URL || "file:./e2e.sqlite",
       E2E_TEST_MODE: "true",
+      HMR_PORT: String(port + 1000),
       NODE_ENV: "development",
       PORT: String(port),
       PROMO_PULSE_DEV_PLAN: "AGENCY",

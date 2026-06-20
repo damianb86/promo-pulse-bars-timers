@@ -8,8 +8,10 @@ import {
   uniqueName,
 } from "./helpers/env";
 import {
+  clickCampaignEditorTab,
   createUniqueCodeCampaign,
   openCampaignEditor,
+  publishCampaignDraft,
 } from "./helpers/admin-app";
 import { getAppFrameOrPage } from "./helpers/auth";
 import { expectNoConsoleErrors } from "./helpers/assertions";
@@ -46,6 +48,9 @@ test.describe("real unique codes", () => {
       );
     }
 
+    await clickCampaignEditorTab(app, "offers");
+    await app.locator("#offer-tab-unique-codes").click();
+
     const uniqueCodesForm = app
       .locator('form:has(input[name="_action"][value="generateUniqueCodes"])')
       .first();
@@ -60,10 +65,26 @@ test.describe("real unique codes", () => {
     await uniqueCodesForm
       .locator('input[name="totalCodesToGenerate"]')
       .fill("25");
-    await app.getByRole("button", { name: /generate codes/i }).click();
-    await expect(app.getByText(/generated|unique codes updated/i)).toBeVisible({
-      timeout: 30_000,
+    await uniqueCodesForm
+      .getByRole("button", { name: /generate codes/i })
+      .click();
+
+    const generateDialog = app.getByRole("dialog", {
+      name: /generate unique visitor codes/i,
     });
+    if (await generateDialog.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await generateDialog
+        .getByRole("button", { name: /^generate codes$/i })
+        .click();
+    }
+
+    await expect(
+      app
+        .getByRole("status")
+        .filter({ hasText: /generated|unique codes updated/i })
+        .first(),
+    ).toBeVisible({ timeout: 30_000 });
+    await publishCampaignDraft(page);
 
     const storefrontPath = realE2ECacheBustPath("unique_codes");
     await openStorefront(page, storefrontPath);

@@ -336,14 +336,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     expect(prismaMock.campaign.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
+          publishedAt: { not: null },
           shopId: "shop-1",
-          status: CampaignStatus.ACTIVE,
-          placements: {
-            some: {
-              placementType: PlacementType.TOP_BAR,
-              enabled: true,
-            },
-          },
         }),
       }),
     );

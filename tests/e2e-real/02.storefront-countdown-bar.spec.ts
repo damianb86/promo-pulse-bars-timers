@@ -50,7 +50,10 @@ test.describe("real storefront countdown bar", () => {
     await expect(bar).toBeVisible({ timeout: 30_000 });
     await expect(
       bar.locator('[data-testid="promo-timer"], .pp-countdown').first(),
-    ).toHaveText(/\d{1,2}:\d{2}:\d{2}/, { timeout: 30_000 });
+    ).toHaveText(
+      /^(?:(?:\d+\s+Days?\s+)?(?:[01]?\d|2[0-3])\s+Hrs\s+[0-5]?\d\s+Mins\s+[0-5]?\d\s+Secs|(?:[01]?\d|2[0-3]):[0-5]\d:[0-5]\d)$/,
+      { timeout: 30_000 },
+    );
 
     const cta = bar.locator(".pp-cta").first();
     if (await cta.isVisible().catch(() => false)) {

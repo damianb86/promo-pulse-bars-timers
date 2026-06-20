@@ -59,6 +59,7 @@ export type CampaignFormValues = {
   timezone: string;
   status: EditableCampaignStatusValue;
   placementType: PlacementTypeValue;
+  placementTypes: PlacementTypeValue[];
   headline: string;
   subheadline: string;
   ctaText: string;
@@ -95,6 +96,7 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   timezone: "UTC",
   status: "DRAFT",
   placementType: "TOP_BAR",
+  placementTypes: ["TOP_BAR"],
   headline: "",
   subheadline: "",
   ctaText: "",

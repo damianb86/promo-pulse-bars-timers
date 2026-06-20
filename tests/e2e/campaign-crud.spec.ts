@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectOnlyCampaignPlacement,
   selectTimezone,
   test,
 } from "./fixtures";
@@ -44,16 +45,15 @@ test("campaign CRUD actions work from the admin UI", async ({
   });
 
   await page.getByLabel("Campaign name").fill("E2E CRUD Campaign Updated");
-  await page.getByRole("button", { name: "Update campaign" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    confirmAction(page, "Update campaign"),
+    page.locator("ui-save-bar").getByRole("button", { name: "Save" }).click(),
   ]);
-  await page.waitForURL("/app/campaigns");
+  await page.goto("/app/campaigns");
 
   let row = page.getByRole("row", { name: /E2E CRUD Campaign Updated/ });
   await expect(row).toContainText("Draft");
@@ -158,8 +158,8 @@ test("campaign builder tabs preview and layout are interactive", async ({
   await expect(
     page.getByRole("heading", { name: "Storefront placement" }),
   ).toBeVisible();
-  await form.getByRole("button", { name: /Product page/ }).click();
-  await expect(form.getByLabel("Primary placement")).toHaveValue(
+  await selectOnlyCampaignPlacement(form, "PRODUCT_PAGE");
+  await expect(form.locator('input[name="placementType"]')).toHaveValue(
     "PRODUCT_PAGE",
   );
   await expect(preview).toContainText("Product page");

@@ -88,7 +88,7 @@ test("campaign editor can configure post-purchase placements", async ({
 
   await page.goto(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { exact: true, name: "Placement" }).click();
-  await expect(page.getByLabel("Primary placement")).toHaveValue(
+  await expect(page.locator('input[name="placementType"]')).toHaveValue(
     "ORDER_STATUS_PAGE",
   );
 });

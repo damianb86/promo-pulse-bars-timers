@@ -146,6 +146,23 @@ test.describe("real design and timer configuration", () => {
     await controls
       .locator('select[name="fontFamily"]')
       .selectOption("HUMANIST");
+    await controls.locator('input[name="closeButtonColor"]').fill("#00FF88");
+    await controls
+      .locator('select[name="entranceAnimation"]')
+      .selectOption("SLIDE");
+    await controls.locator('select[name="exitAnimation"]').selectOption("POP");
+    await controls.locator('input[name="animationDurationMs"]').fill("480");
+    await controls
+      .locator('select[name="timerTickAnimation"]')
+      .selectOption("PULSE");
+    await expect(preview.locator(".counterpulse-preview-close")).toHaveCSS(
+      "color",
+      "rgb(0, 255, 136)",
+    );
+    await expect(preview).toHaveClass(
+      /counterpulse-preview-promo--enter-slide/,
+    );
+    await expect(preview).toHaveClass(/counterpulse-preview-promo--exit-pop/);
 
     await controls.getByRole("button", { name: "Boxes" }).click();
     await controls.getByRole("button", { name: "Units" }).click();
@@ -184,6 +201,9 @@ test.describe("real design and timer configuration", () => {
     await expect(
       preview.locator(".counterpulse-preview-timer--colon"),
     ).toHaveText(/\d{2}:\d{2}:\d{2}/);
+    await expect(
+      preview.locator(".counterpulse-preview-timer--tick-pulse"),
+    ).toBeVisible();
 
     await ensureCheckbox(controls.locator('input[name="fullWidth"]'), true);
     await ensureCheckbox(
@@ -220,6 +240,21 @@ test.describe("real design and timer configuration", () => {
     await expect(
       reloadedControls.locator('select[name="fontFamily"]'),
     ).toHaveValue("HUMANIST");
+    await expect(
+      reloadedControls.locator('input[name="closeButtonColor"]'),
+    ).toHaveValue("#00FF88");
+    await expect(
+      reloadedControls.locator('select[name="entranceAnimation"]'),
+    ).toHaveValue("SLIDE");
+    await expect(
+      reloadedControls.locator('select[name="exitAnimation"]'),
+    ).toHaveValue("POP");
+    await expect(
+      reloadedControls.locator('input[name="animationDurationMs"]'),
+    ).toHaveValue("480");
+    await expect(
+      reloadedControls.locator('select[name="timerTickAnimation"]'),
+    ).toHaveValue("PULSE");
     await expect(
       reloadedControls.locator('input[name="timerStyle"]'),
     ).toHaveValue("PLAIN");

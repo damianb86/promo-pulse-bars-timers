@@ -124,11 +124,14 @@ export const test = base.extend<E2EFixtures>({
         .getByRole("combobox", { name: /^Status$/ })
         .selectOption(values.status);
       await page.getByRole("tab", { name: "Placement" }).click();
-      await page.getByLabel("Primary placement").selectOption(values.placement);
+      await selectOnlyCampaignPlacement(page, values.placement);
       await page.getByRole("tab", { name: "Schedule" }).click();
-      await page
-        .getByLabel("End date/time")
-        .fill(toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+      const endDate = page.getByLabel("End date");
+      if ((await endDate.count()) > 0) {
+        await endDate.fill(
+          toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+        );
+      }
       await selectTimezone(page, "Timezone", "UTC-05", "America/New_York");
       await page.getByRole("tab", { name: "Message" }).click();
       await page.locator('input[name="headline"]').fill(values.headline);
@@ -155,6 +158,58 @@ export const test = base.extend<E2EFixtures>({
 });
 
 export { expect } from "@playwright/test";
+
+export async function selectOnlyCampaignPlacement(
+  scope: Locator | Page,
+  placement: string,
+) {
+  const label = placementLabel(placement);
+  const target = scope.getByRole("button", {
+    name: new RegExp(`^${escapeRegExp(label)}\\b`),
+  });
+
+  await target.click();
+
+  if (placement !== "TOP_BAR") {
+    const topBar = scope.getByRole("button", { name: /^Top bar\b/ });
+
+    if ((await topBar.getAttribute("aria-pressed")) === "true") {
+      await topBar.click();
+    }
+  }
+}
+
+export async function publishCurrentCampaign(page: Page) {
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    page.getByTestId("campaign-publish-button").click(),
+  ]);
+}
+
+function placementLabel(value: string) {
+  const labels: Record<string, string> = {
+    BOTTOM_BAR: "Bottom bar",
+    CART_DRAWER: "Cart drawer",
+    CART_PAGE: "Cart page",
+    COLLECTION_CARD: "Collection card",
+    CUSTOM_SELECTOR: "Custom selector",
+    ORDER_STATUS_PAGE: "Order status page",
+    PASSWORD_PAGE: "Password page",
+    PRODUCT_PAGE: "Product page",
+    THANK_YOU_PAGE: "Thank you page",
+    TOP_BAR: "Top bar",
+  };
+
+  return labels[value] ?? value;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export function expectNoConsoleErrors(page: Page) {
   expect(

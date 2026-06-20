@@ -83,7 +83,13 @@ type ShopifyResourcePickerResult = Array<{
   handle?: string;
 }>;
 
-type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
+type BuilderTabKey =
+  | "setup"
+  | "message"
+  | "placement"
+  | "targeting"
+  | "schedule"
+  | "review";
 
 const builderTabs: Array<{
   key: BuilderTabKey;
@@ -114,7 +120,15 @@ const builderTabs: Array<{
     title: "Storefront placement",
     pill: "Surface",
     description:
-      "Choose where the campaign should render. Keep placement aligned with the campaign goal.",
+      "Choose the storefront surfaces where this campaign is allowed to render. Select more than one when the same campaign should appear in several places.",
+  },
+  {
+    key: "targeting",
+    label: "Targeting",
+    title: "Product and audience targeting",
+    pill: "Eligibility",
+    description:
+      "Limit which products, collections, tags, or countries can show this campaign. These filters are separate from where the widget is placed.",
   },
   {
     key: "schedule",
@@ -444,8 +458,13 @@ export function CampaignForm({
   const formRef = useRef<HTMLFormElement | null>(null);
   const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
-  const [campaignPreviewPlacement, setCampaignPreviewPlacement] =
-    useState<PreviewPlacement>(() => toPreviewPlacement(values.placementType));
+  const [
+    campaignPreviewPlacementOverride,
+    setCampaignPreviewPlacementOverride,
+  ] = useState<{
+    key: string;
+    placement: PreviewPlacement;
+  } | null>(null);
   const [formValues, setFormValues] = useState(() => values);
   const [localDesignValues, setLocalDesignValues] = useState(() => design);
   const [submitAction, setSubmitAction] = useState("saveDraft");
@@ -494,10 +513,9 @@ export function CampaignForm({
   const activeTypeLabel =
     campaignTypeOptions.find((option) => option.value === formValues.type)
       ?.label ?? "Countdown bar";
-  const activePlacementLabel =
-    placementTypeOptions.find(
-      (option) => option.value === formValues.placementType,
-    )?.label ?? "Top bar";
+  const activePlacementLabel = formatPlacementSelectionLabel(
+    formValues.placementTypes,
+  );
   const activeTabMeta =
     builderTabs.find((tab) => tab.key === activeTab) ?? builderTabs[0];
   const selectedProductTags = splitCampaignList(formValues.productTags);
@@ -542,6 +560,25 @@ export function CampaignForm({
   const campaignEmbedHtml = campaignId
     ? `<div class="pp-campaign-slot" data-counterpulse-campaign-id="${campaignId}"></div>`
     : "";
+  const previewPlacements = useMemo(
+    () =>
+      Array.from(new Set(formValues.placementTypes.map(toPreviewPlacement))),
+    [formValues.placementTypes],
+  );
+  const campaignPreviewPlacementKey = formValues.placementTypes.join("|");
+  const defaultCampaignPreviewPlacement = toPreviewPlacement(
+    formValues.placementType,
+  );
+  const campaignPreviewPlacement =
+    campaignPreviewPlacementOverride?.key === campaignPreviewPlacementKey
+      ? campaignPreviewPlacementOverride.placement
+      : defaultCampaignPreviewPlacement;
+  const selectCampaignPreviewPlacement = (nextPlacement: PreviewPlacement) => {
+    setCampaignPreviewPlacementOverride({
+      key: campaignPreviewPlacementKey,
+      placement: nextPlacement,
+    });
+  };
   const previewViewModel = useMemo(
     () =>
       buildCampaignViewModel({
@@ -549,9 +586,10 @@ export function CampaignForm({
         type: formValues.type,
         endsAt: formValues.endsAt || null,
         timezone: formValues.timezone || "UTC",
-        placements: [
-          { placementType: formValues.placementType, enabled: true },
-        ],
+        placements: formValues.placementTypes.map((placementType) => ({
+          placementType,
+          enabled: true,
+        })),
         translations: [
           {
             locale: "en",
@@ -603,19 +641,46 @@ export function CampaignForm({
       }));
     };
 
-  const selectPlacement = (
+  const togglePlacement = (
     placementType: CampaignFormValues["placementType"],
   ) => {
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      placementType,
-      productSelection:
-        placementType === "CUSTOM_SELECTOR"
-          ? "CUSTOM_POSITION"
-          : currentValues.productSelection === "CUSTOM_POSITION"
-            ? "ALL_PRODUCTS"
-            : currentValues.productSelection,
-    }));
+    const willSelectPlacement =
+      !formValues.placementTypes.includes(placementType);
+
+    setFormValues((currentValues) => {
+      const isSelected = currentValues.placementTypes.includes(placementType);
+      const placementTypes = isSelected
+        ? currentValues.placementTypes.filter((item) => item !== placementType)
+        : [
+            placementType,
+            ...currentValues.placementTypes.filter(
+              (item) => item !== placementType,
+            ),
+          ];
+      const normalizedPlacementTypes =
+        placementTypes.length > 0
+          ? placementTypes
+          : currentValues.placementTypes;
+      const primaryPlacement =
+        normalizedPlacementTypes[0] ?? currentValues.placementType;
+
+      return {
+        ...currentValues,
+        placementType: primaryPlacement,
+        placementTypes: normalizedPlacementTypes,
+      };
+    });
+
+    if (
+      willSelectPlacement &&
+      (placementType === "TOP_BAR" || placementType === "BOTTOM_BAR")
+    ) {
+      updateDesignValues({
+        ...effectiveDesign,
+        borderRadius: 0,
+        fullWidth: true,
+      });
+    }
   };
 
   const selectCampaignType = (type: CampaignTypeValue) => {
@@ -638,12 +703,6 @@ export function CampaignForm({
     setFormValues((currentValues) => ({
       ...currentValues,
       productSelection,
-      placementType:
-        productSelection === "CUSTOM_POSITION"
-          ? "CUSTOM_SELECTOR"
-          : currentValues.placementType === "CUSTOM_SELECTOR"
-            ? "PRODUCT_PAGE"
-            : currentValues.placementType,
     }));
   };
 
@@ -883,13 +942,15 @@ export function CampaignForm({
 
   useEffect(() => {
     if (!onDesignChange) {
-      setLocalDesignValues(design);
-    }
-  }, [design, onDesignChange]);
+      const syncDesign = window.setTimeout(() => {
+        setLocalDesignValues(design);
+      }, 0);
 
-  useEffect(() => {
-    setCampaignPreviewPlacement(toPreviewPlacement(formValues.placementType));
-  }, [formValues.placementType]);
+      return () => window.clearTimeout(syncDesign);
+    }
+
+    return undefined;
+  }, [design, onDesignChange]);
 
   useEffect(() => {
     onValuesChange?.(formValues);
@@ -1288,6 +1349,137 @@ export function CampaignForm({
             </BuilderPanel>
 
             <BuilderPanel activeTab={activeTab} tabKey="placement">
+              <section
+                className="counterpulse-targeting-card"
+                aria-labelledby="campaign-placement-heading"
+              >
+                <div className="counterpulse-targeting-card__header">
+                  <h3 id="campaign-placement-heading">Campaign placements</h3>
+                  <p>
+                    Select every storefront surface where this campaign should
+                    be eligible to render. The first selected placement is used
+                    as the default preview surface.
+                  </p>
+                </div>
+
+                <div className="counterpulse-placement-grid">
+                  {placementTypeOptions.map((option) => {
+                    const isSelected = formValues.placementTypes.includes(
+                      option.value,
+                    );
+
+                    return (
+                      <button
+                        aria-pressed={isSelected}
+                        className={
+                          isSelected
+                            ? "counterpulse-placement-tile is-selected"
+                            : "counterpulse-placement-tile"
+                        }
+                        key={option.value}
+                        type="button"
+                        onClick={() => togglePlacement(option.value)}
+                      >
+                        <span aria-hidden="true">
+                          {placementInitial(option.label)}
+                        </span>
+                        <strong>{option.label}</strong>
+                        {isSelected && <small>Selected</small>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formValues.placementTypes.map((placementType) => (
+                  <input
+                    key={placementType}
+                    name="placementTypes"
+                    type="hidden"
+                    value={placementType}
+                  />
+                ))}
+                <input
+                  name="placementType"
+                  type="hidden"
+                  value={formValues.placementType}
+                />
+                <FieldError message={errors.placementType} />
+              </section>
+
+              {formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
+                <section
+                  className="counterpulse-targeting-card"
+                  aria-labelledby="campaign-custom-placement-heading"
+                >
+                  <div className="counterpulse-targeting-card__header">
+                    <h3 id="campaign-custom-placement-heading">
+                      Custom selector
+                    </h3>
+                    <p>
+                      Use this when the campaign should render in a theme
+                      selector controlled by the app embed.
+                    </p>
+                  </div>
+                  <div className="counterpulse-placement-custom">
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-custom-selector">
+                        Theme selector
+                      </label>
+                      <input
+                        id="campaign-custom-selector"
+                        name="customSelector"
+                        value={formValues.customSelector}
+                        placeholder=".product-form__buttons"
+                        onChange={updateField("customSelector")}
+                      />
+                      <small>
+                        Promo Pulse will inject the timer inside this selector
+                        when the app embed is active.
+                      </small>
+                      <FieldError message={errors.customSelector} />
+                    </div>
+                  </div>
+                </section>
+              )}
+              {!formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
+                <input
+                  name="customSelector"
+                  type="hidden"
+                  value={formValues.customSelector}
+                />
+              )}
+
+              <div className="counterpulse-timer-id-box">
+                <div>
+                  <span>Timer ID</span>
+                  <code>{campaignId ?? "Available after save"}</code>
+                </div>
+                <button
+                  aria-label="Copy timer ID"
+                  type="button"
+                  disabled={!campaignId}
+                  onClick={copyTimerId}
+                >
+                  <CopyIcon />
+                </button>
+                {timerIdCopied && <small>Copied</small>}
+                <p>
+                  Countdown timer app blocks can use this ID to render this
+                  exact campaign.
+                </p>
+                {campaignEmbedHtml && (
+                  <div className="counterpulse-snippet-box">
+                    <span>HTML snippet</span>
+                    <code>{campaignEmbedHtml}</code>
+                    <button type="button" onClick={copyEmbedHtml}>
+                      Copy HTML
+                    </button>
+                    {embedHtmlCopied && <small>HTML copied</small>}
+                  </div>
+                )}
+              </div>
+            </BuilderPanel>
+
+            <BuilderPanel activeTab={activeTab} tabKey="targeting">
               <div className="counterpulse-targeting-grid">
                 {pickerError && (
                   <div className="counterpulse-targeting-warning">
@@ -1299,7 +1491,7 @@ export function CampaignForm({
                   aria-labelledby="campaign-products-heading"
                 >
                   <div className="counterpulse-targeting-card__header">
-                    <h3 id="campaign-products-heading">Select Products</h3>
+                    <h3 id="campaign-products-heading">Product eligibility</h3>
                   </div>
 
                   <TargetingRadioOption
@@ -1431,68 +1623,6 @@ export function CampaignForm({
                       value={formValues.productTags}
                     />
                   </TargetingRadioOption>
-
-                  <TargetingRadioOption
-                    checked={formValues.productSelection === "CUSTOM_POSITION"}
-                    description="Add timer anywhere using app blocks or the selector below."
-                    disabled={Boolean(
-                      advancedTargetingLocked &&
-                      formValues.productSelection !== "CUSTOM_POSITION",
-                    )}
-                    lockReason={advancedTargetingLocked}
-                    name="productSelection"
-                    title="Custom position"
-                    value="CUSTOM_POSITION"
-                    onSelect={() => selectProductSelection("CUSTOM_POSITION")}
-                  >
-                    <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-custom-selector">
-                        Theme selector
-                      </label>
-                      <input
-                        id="campaign-custom-selector"
-                        name="customSelector"
-                        value={formValues.customSelector}
-                        placeholder=".product-form__buttons"
-                        onChange={updateField("customSelector")}
-                      />
-                      <small>
-                        Promo Pulse will inject the timer inside this selector
-                        when the app embed is active.
-                      </small>
-                      <FieldError message={errors.customSelector} />
-                    </div>
-                  </TargetingRadioOption>
-
-                  <div className="counterpulse-timer-id-box">
-                    <div>
-                      <span>Timer ID</span>
-                      <code>{campaignId ?? "Available after save"}</code>
-                    </div>
-                    <button
-                      aria-label="Copy timer ID"
-                      type="button"
-                      disabled={!campaignId}
-                      onClick={copyTimerId}
-                    >
-                      <CopyIcon />
-                    </button>
-                    {timerIdCopied && <small>Copied</small>}
-                    <p>
-                      Countdown timer app blocks can use this ID to render this
-                      exact campaign.
-                    </p>
-                    {campaignEmbedHtml && (
-                      <div className="counterpulse-snippet-box">
-                        <span>HTML snippet</span>
-                        <code>{campaignEmbedHtml}</code>
-                        <button type="button" onClick={copyEmbedHtml}>
-                          Copy HTML
-                        </button>
-                        {embedHtmlCopied && <small>HTML copied</small>}
-                      </div>
-                    )}
-                  </div>
                 </section>
 
                 <section
@@ -1547,85 +1677,6 @@ export function CampaignForm({
                   </TargetingRadioOption>
                 </section>
               </div>
-
-              <div className="counterpulse-placement-grid">
-                {placementTypeOptions.map((option) => (
-                  <button
-                    aria-pressed={option.value === formValues.placementType}
-                    className={
-                      option.value === formValues.placementType
-                        ? "counterpulse-placement-tile is-selected"
-                        : "counterpulse-placement-tile"
-                    }
-                    key={option.value}
-                    type="button"
-                    onClick={() => selectPlacement(option.value)}
-                  >
-                    <span aria-hidden="true">
-                      {placementInitial(option.label)}
-                    </span>
-                    <strong>{option.label}</strong>
-                  </button>
-                ))}
-              </div>
-              <FormField
-                label="Primary placement"
-                error={errors.placementType}
-                fullWidth
-                info={
-                  <FieldInfoButton
-                    label="Primary placement"
-                    title="Campaign placements"
-                  >
-                    <CampaignInfoContent
-                      intro="Placement controls where the widget is allowed to appear. The theme extension or app proxy still needs to be installed for that surface."
-                      items={[
-                        [
-                          "Top or bottom bar",
-                          "Sitewide bars for announcements, flash sales, and global urgency.",
-                        ],
-                        [
-                          "Product page",
-                          "Product detail surface for product timers, delivery cutoff, stock, or badges.",
-                        ],
-                        [
-                          "Collection card",
-                          "Product-card badge surface. Use carefully because theme support varies.",
-                        ],
-                        [
-                          "Cart page or cart drawer",
-                          "Cart surfaces for free shipping goals, cart rescue, and unique code reminders.",
-                        ],
-                        [
-                          "Thank you or order status",
-                          "Post-purchase surfaces controlled by Shopify checkout extensions.",
-                        ],
-                        [
-                          "Custom selector",
-                          "Advanced placement using configured selectors. Test it on the real theme.",
-                        ],
-                      ]}
-                    />
-                  </FieldInfoButton>
-                }
-              >
-                <select
-                  name="placementType"
-                  value={formValues.placementType}
-                  onChange={(event) =>
-                    selectPlacement(
-                      event.currentTarget
-                        .value as CampaignFormValues["placementType"],
-                    )
-                  }
-                >
-                  {placementTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
             </BuilderPanel>
 
             <BuilderPanel activeTab={activeTab} tabKey="schedule">
@@ -1752,6 +1803,7 @@ export function CampaignForm({
                       <div className="counterpulse-targeting-option">
                         <label>
                           <input
+                            aria-label="Right now"
                             checked={!formValues.startsAt}
                             name="timerStartsMode"
                             type="radio"
@@ -1773,6 +1825,7 @@ export function CampaignForm({
                       >
                         <label>
                           <input
+                            aria-label="Schedule to start later"
                             checked={Boolean(formValues.startsAt)}
                             disabled={Boolean(schedulingLocked)}
                             name="timerStartsMode"
@@ -1945,13 +1998,14 @@ export function CampaignForm({
             aria-label="Live campaign preview"
           >
             <CampaignPreviewPanel
+              actualPlacements={previewPlacements}
               className="counterpulse-campaign-preview-panel"
               design={effectiveDesign}
               device={previewDevice}
               placement={campaignPreviewPlacement}
               viewModel={previewViewModel}
               onDeviceChange={setPreviewDevice}
-              onPlacementChange={setCampaignPreviewPlacement}
+              onPlacementChange={selectCampaignPreviewPlacement}
               meta={
                 <dl className="counterpulse-preview-meta">
                   <div>
@@ -1981,13 +2035,7 @@ function applySetupPreset(
   values: CampaignFormValues,
   preset: CampaignSetupPreset,
 ): CampaignFormValues {
-  const productSelection =
-    preset.productSelection ??
-    (preset.placementType === "CUSTOM_SELECTOR"
-      ? "CUSTOM_POSITION"
-      : values.productSelection === "CUSTOM_POSITION"
-        ? "ALL_PRODUCTS"
-        : values.productSelection);
+  const productSelection = preset.productSelection ?? values.productSelection;
 
   return {
     ...values,
@@ -2003,6 +2051,7 @@ function applySetupPreset(
         ? ""
         : (preset.form?.endsAt ?? values.endsAt),
     placementType: preset.placementType,
+    placementTypes: [preset.placementType],
     productSelection,
   };
 }
@@ -2502,6 +2551,16 @@ function placementInitial(label: string) {
     .toUpperCase();
 }
 
+function formatPlacementSelectionLabel(placements: PlacementTypeValue[]) {
+  const labels = placements.map(
+    (placement) =>
+      placementTypeOptions.find((option) => option.value === placement)
+        ?.label ?? placement,
+  );
+
+  return labels.length > 0 ? labels.join(" + ") : "No placement";
+}
+
 function toPreviewPlacement(
   placementType: CampaignFormValues["placementType"],
 ): PreviewPlacement {
@@ -2510,6 +2569,7 @@ function toPreviewPlacement(
   if (placementType === "CART_PAGE") return "CART_PAGE";
   if (placementType === "CART_DRAWER") return "CART_DRAWER";
   if (placementType === "COLLECTION_CARD") return "PRODUCT_BADGE";
+  if (placementType === "CUSTOM_SELECTOR") return "PRODUCT_PAGE";
 
   return "TOP_BAR";
 }

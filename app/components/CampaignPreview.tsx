@@ -377,6 +377,7 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-accent": design.accentColor,
     "--cp-button": design.buttonColor,
     "--cp-button-text": design.buttonTextColor,
+    "--cp-close": design.closeButtonColor,
     "--cp-font-size": `${design.fontSize}px`,
     "--cp-font-family": fontFamilies[design.fontFamily],
     "--cp-radius": `${design.borderRadius}px`,
@@ -399,6 +400,7 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-padding-block": `${design.paddingBlock}px`,
     "--cp-padding-inline": `${design.paddingInline}px`,
     "--cp-gap": `${design.contentGap}px`,
+    "--cp-motion-duration": `${design.animationDurationMs}ms`,
   } as CSSProperties;
 }
 
@@ -512,6 +514,8 @@ function PromoSurface({
           .replace("_", "-")}`,
         design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
         `counterpulse-preview-promo--position-${design.positionMode.toLowerCase()}`,
+        `counterpulse-preview-promo--enter-${design.entranceAnimation.toLowerCase()}`,
+        `counterpulse-preview-promo--exit-${design.exitAnimation.toLowerCase()}`,
       ].join(" ")}
       style={style}
     >
@@ -594,17 +598,21 @@ function TimerDisplay({
   if (!visibleTimerParts.length) return null;
 
   if (design.timerFormat === "COLON") {
+    const timerText = formatTimerPartsAsColon(visibleTimerParts);
+
     return (
       <div
+        key={timerText}
         className={[
           "counterpulse-preview-timer",
           "counterpulse-preview-timer--colon",
           `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
+          `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
           compact ? "counterpulse-preview-timer--compact" : "",
         ].join(" ")}
         suppressHydrationWarning
       >
-        {formatTimerPartsAsColon(visibleTimerParts)}
+        {timerText}
       </div>
     );
   }
@@ -612,7 +620,12 @@ function TimerDisplay({
   if (compact && design.timerStyle === "PLAIN") {
     return (
       <span
-        className="counterpulse-preview-timer counterpulse-preview-timer--inline-plain"
+        key={visibleTimerParts.map((part) => part.value).join(":")}
+        className={[
+          "counterpulse-preview-timer",
+          "counterpulse-preview-timer--inline-plain",
+          `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
+        ].join(" ")}
         suppressHydrationWarning
       >
         {visibleTimerParts
@@ -631,13 +644,14 @@ function TimerDisplay({
       className={[
         "counterpulse-preview-timer",
         `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
+        `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
         compact ? "counterpulse-preview-timer--compact" : "",
       ].join(" ")}
       suppressHydrationWarning
     >
       {visibleTimerParts.map((part) => (
         <span className="counterpulse-preview-timer-unit" key={part.label}>
-          <strong>{part.value}</strong>
+          <strong key={part.value}>{part.value}</strong>
           {design.timerShowLabels ? <small>{part.label}</small> : null}
         </span>
       ))}

@@ -4,6 +4,10 @@ const env = {
   ...process.env,
   DATABASE_URL: process.env.DATABASE_URL || "file:./e2e.sqlite",
   E2E_TEST_MODE: "true",
+  HMR_PORT:
+    process.env.HMR_PORT ||
+    process.env.E2E_HMR_PORT ||
+    String(Number(process.env.PORT || process.env.E2E_PORT || "31338") + 1000),
   NODE_ENV: "development",
   PORT: process.env.PORT || process.env.E2E_PORT || "31338",
   PROMO_PULSE_DEV_PLAN: process.env.PROMO_PULSE_DEV_PLAN || "AGENCY",

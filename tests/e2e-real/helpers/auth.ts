@@ -62,6 +62,36 @@ export async function openPromoPulseApp(page: Page, appPath = "/app") {
   }
 }
 
+export async function openPromoPulseAppDirect(page: Page, appPath = "/app") {
+  const config = requireRealE2E();
+  ensureStorageStateExists();
+
+  if (!canNavigateDirectlyToAppUrl(config.appAdminUrl)) {
+    await openPromoPulseApp(page, appPath);
+    return;
+  }
+
+  const targetUrl = resolveAppUrl(
+    config.appAdminUrl,
+    appPath,
+    config.shopDomain,
+  );
+  const expectedPath = safeUrl(targetUrl)?.pathname.replace(/\/+$/, "") ?? "";
+
+  await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("domcontentloaded");
+  await completeDirectAppLoginIfNeeded(page);
+
+  const currentPath = safeUrl(page.url())?.pathname.replace(/\/+$/, "") ?? "";
+  if (expectedPath && !currentPath.startsWith(expectedPath)) {
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("domcontentloaded");
+    await completeDirectAppLoginIfNeeded(page);
+  }
+
+  await waitForAppReady(page, appPath);
+}
+
 export async function getEmbeddedAppRoot(page: Page): Promise<Locator> {
   const app = await getAppFrameOrPage(page);
   return app
@@ -77,10 +107,8 @@ export async function getAppFrameOrPage(page: Page): Promise<AppScope> {
   while (Date.now() < deadline) {
     for (const candidate of page.frames()) {
       if (candidate === page.mainFrame()) continue;
-      if (
-        isConfiguredAppUrl(candidate.url()) &&
-        (await frameLooksLikePromoPulse(candidate))
-      ) {
+      if (await completeDirectAppLoginInScope(candidate)) continue;
+      if (isConfiguredAppUrl(candidate.url())) {
         return candidate;
       }
     }
@@ -94,11 +122,14 @@ export async function getAppFrameOrPage(page: Page): Promise<AppScope> {
       const candidate = await iframeHandle.contentFrame();
 
       if (!candidate) continue;
+      if (await completeDirectAppLoginInScope(candidate)) continue;
+      if (isConfiguredAppUrl(candidate.url())) return candidate;
       if (await frameLooksLikePromoPulse(candidate)) return candidate;
     }
 
     for (const candidate of page.frames()) {
       if (candidate === page.mainFrame()) continue;
+      if (await completeDirectAppLoginInScope(candidate)) continue;
       if (await frameLooksLikePromoPulse(candidate)) {
         return candidate;
       }
@@ -111,6 +142,10 @@ export async function getAppFrameOrPage(page: Page): Promise<AppScope> {
 }
 
 async function frameLooksLikePromoPulse(candidate: Frame) {
+  if (await hasDirectAppLogin(candidate)) {
+    return false;
+  }
+
   const structuralCount = await candidate
     .locator(
       '[data-promo-pulse-app-root], [data-campaign-form], input[name="goal"], input[name="headline"], textarea[name="subheadline"]',
@@ -162,19 +197,52 @@ function resolveAdminEmbeddedAppUrl(appPath: string) {
   return `${adminUrl.origin}/store/${storeHandle}/apps/${config.shopifyAppHandle}${appPath}`;
 }
 
-async function completeDirectAppLoginIfNeeded(page: Page) {
-  const config = getConfig();
-  const shopInput = page.getByLabel(/shop domain/i).first();
+export async function completeDirectAppLoginIfNeeded(page: Page) {
+  if (await completeDirectAppLoginInScope(page)) return true;
 
-  if (!(await shopInput.isVisible({ timeout: 3_000 }).catch(() => false))) {
-    return;
+  for (const frame of page.frames()) {
+    if (frame === page.mainFrame()) continue;
+    if (await completeDirectAppLoginInScope(frame)) return true;
   }
 
-  await shopInput.fill(config.shopDomain);
-  await page.getByRole("button", { name: /^log in$/i }).click();
-  await page.waitForLoadState("domcontentloaded", {
+  return false;
+}
+
+async function completeDirectAppLoginInScope(scope: AppScope) {
+  const loginButton = scope.getByRole("button", { name: /^log in$/i }).first();
+  const hasShopInput = await hasDirectAppLogin(scope);
+  const hasLoginOnlyScreen =
+    !hasShopInput &&
+    (await scope
+      .getByRole("heading", { name: /^log in$/i })
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false)) &&
+    (await loginButton.isVisible({ timeout: 1_000 }).catch(() => false));
+
+  if (!hasShopInput && !hasLoginOnlyScreen) {
+    return false;
+  }
+
+  const config = getConfig();
+  const shopInput = scope.getByLabel(/shop domain/i).first();
+
+  if (hasShopInput) {
+    await shopInput.fill(config.shopDomain);
+  }
+
+  await loginButton.click();
+  await scope.waitForLoadState("domcontentloaded", {
     timeout: config.timeoutMs,
   });
+  return true;
+}
+
+async function hasDirectAppLogin(scope: AppScope) {
+  return scope
+    .getByLabel(/shop domain/i)
+    .first()
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
 }
 
 async function waitForAppReady(page: Page, appPath: string) {
@@ -183,28 +251,62 @@ async function waitForAppReady(page: Page, appPath: string) {
   const deadline = Date.now() + config.timeoutMs;
 
   while (Date.now() < deadline) {
+    if (await completeDirectAppLoginIfNeeded(page)) {
+      continue;
+    }
+
     const app = await getAppFrameOrPage(page);
     const url = safeUrl("url" in app ? app.url() : page.url());
-    const loginVisible = await page
-      .getByLabel(/shop domain/i)
-      .first()
-      .isVisible()
-      .catch(() => false);
 
-    if (loginVisible) {
+    if (await completeDirectAppLoginInScope(app).catch(() => false)) {
       await completeDirectAppLoginIfNeeded(page);
       continue;
     }
 
-    if (
-      await app
+    const hasAppStructure =
+      (await app
         .locator(
-          '[data-promo-pulse-app-root], s-page, [data-campaign-form], input[name="goal"], input[name="headline"]',
+          '[data-promo-pulse-app-root], [data-campaign-form], input[name="goal"], input[name="headline"]',
         )
-        .first()
-        .isVisible()
-        .catch(() => false)
+        .count()
+        .catch(() => 0)) > 0;
+    const hasAppText =
+      isFrameScope(app) &&
+      (await app
+        .getByText(
+          /Campaign workspace|Campaign controls|Generate with AI|Dashboard|Analytics|Reports|Template Library/i,
+        )
+        .count()
+        .catch(() => 0)) > 0;
+
+    if (
+      !hasAppStructure &&
+      isFrameScope(app) &&
+      url &&
+      url?.hostname === safeUrl(config.appAdminUrl)?.hostname
     ) {
+      const bodyTextLength = await app
+        .locator("body")
+        .innerText({ timeout: 1_000 })
+        .then((text) => text.trim().length)
+        .catch(() => 0);
+
+      if (
+        bodyTextLength > 0 &&
+        (!expectedPath || url.pathname.startsWith(expectedPath))
+      ) {
+        return;
+      }
+    }
+
+    /*
+     * Real Shopify Admin renders the app inside an iframe and may wrap
+     * content in custom elements, so count known app markers instead of
+     * relying on first-match visibility.
+     */
+    const isReady = hasAppStructure || hasAppText;
+
+    if (isReady) {
       if (!expectedPath || !url || url.pathname.startsWith(expectedPath)) {
         return;
       }
@@ -217,6 +319,10 @@ async function waitForAppReady(page: Page, appPath: string) {
   throw new Error(
     `Promo Pulse app did not become ready at ${appPath}. Check that Shopify app dev is running and Shopify points to the current app tunnel URL.`,
   );
+}
+
+function isFrameScope(scope: AppScope): scope is Frame {
+  return "parentFrame" in scope;
 }
 
 async function navigateWithinEmbeddedApp(page: Page, appPath: string) {

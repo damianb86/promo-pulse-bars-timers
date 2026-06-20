@@ -14,6 +14,7 @@ test("free shipping settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Free Shipping Goal" }).click();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveFreeShippingSettings"])',
   );
@@ -38,6 +39,7 @@ test("free shipping settings persist from the campaign editor", async ({
     form.getByRole("button", { name: "Save free shipping settings" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
 
   await expect(form.getByLabel("Threshold amount")).toHaveValue("150");
   await expect(form.getByLabel("Currency code")).toHaveValue("EUR");
@@ -69,6 +71,7 @@ test("delivery cutoff settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Delivery Cutoff" }).click();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveDeliveryCutoffSettings"])',
   );
@@ -95,6 +98,7 @@ test("delivery cutoff settings persist from the campaign editor", async ({
     form.getByRole("button", { name: "Save delivery cutoff settings" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
 
   await expect(form.getByLabel("Cutoff hour")).toHaveValue("16");
   await expect(form.getByLabel("Cutoff minute")).toHaveValue("30");
@@ -131,6 +135,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "LOW_STOCK",
   });
 
+  await page.getByRole("tab", { name: "Merchandising" }).click();
   const lowStockForm = page.locator(
     'form:has(input[name="_action"][value="saveLowStockSettings"])',
   );
@@ -149,6 +154,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
       .click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
 
   await expect(lowStockForm.getByLabel("Inventory threshold")).toHaveValue("7");
   await expect(lowStockForm.getByLabel("Show exact quantity")).toBeChecked();
@@ -156,6 +162,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     "Low stock E2E",
   );
 
+  await page.getByRole("tab", { name: "Offers" }).click();
   const discountForm = page.locator(
     'form:has(input[name="_action"][value="saveDiscount"])',
   );
@@ -182,6 +189,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "PRODUCT_BADGE",
   });
 
+  await page.getByRole("tab", { name: "Merchandising" }).click();
   const badgeForm = page.locator(
     'form:has(input[name="_action"][value="saveBadgeSettings"])',
   );
@@ -197,6 +205,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     badgeForm.getByRole("button", { name: "Save badge settings" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Merchandising" }).click();
 
   await expect(badgeForm.getByLabel("Badge text")).toHaveValue("New drop");
   await expect(badgeForm.getByLabel("Badge shape")).toHaveValue("SQUARE");
@@ -227,6 +236,7 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
     }),
     page.getByRole("link", { name: "E2E Unique Visitor Discount" }).click(),
   ]);
+  await page.getByRole("tab", { name: "Offers" }).click();
   const campaignId = new URL(page.url()).pathname.split("/").pop() ?? "";
   const discountForm = page.locator(
     'form:has(input[name="_action"][value="saveDiscount"])',
@@ -256,6 +266,7 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
     discountForm.getByRole("button", { name: "Save discount" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Offers" }).click();
 
   await expect(discountForm.getByLabel("Discount mode")).toHaveValue(
     "UNIQUE_CODES",
@@ -335,6 +346,7 @@ test("advanced discount rules can be created from the campaign editor", async ({
     name: "E2E Advanced Discount Rule",
   });
 
+  await page.getByRole("tab", { name: "Offers" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveAdvancedDiscountRule"])',
   );
@@ -357,6 +369,7 @@ test("advanced discount rules can be created from the campaign editor", async ({
     form.getByRole("button", { name: "Save advanced rule" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Offers" }).click();
 
   await expect(
     page.getByRole("cell", { name: "E2E Tiered Advanced" }),

@@ -59,7 +59,7 @@ test("campaign CRUD actions work from the admin UI", async ({
   expectNoFailedRequests(page);
 });
 
-test("campaign builder tabs switches preview and layout are interactive", async ({
+test("campaign builder tabs preview and layout are interactive", async ({
   page,
   resetDb,
   loginAsDemoShop,
@@ -68,14 +68,21 @@ test("campaign builder tabs switches preview and layout are interactive", async 
   await loginAsDemoShop("/app/campaigns/new");
 
   const form = page.locator("[data-campaign-form]");
-  const preview = form.getByLabel("Campaign preview");
-  const premiumControls = form.getByLabel("Premium features");
+  const preview = form.getByLabel("Live campaign preview");
 
-  await expect(form.getByRole("tab", { name: "Basics" })).toHaveAttribute(
+  await expect(form.getByRole("tab", { name: "Setup" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
+  await expect(
+    form.getByRole("radio", { exact: true, name: "Flash sale" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await form.getByRole("radio", { exact: true, name: "Free shipping" }).click();
+  await expect(
+    form.getByRole("radio", { exact: true, name: "Free shipping" }),
+  ).toHaveAttribute("aria-checked", "true");
 
+  await form.getByRole("tab", { name: "Message" }).click();
   await form
     .locator('input[name="headline"]')
     .fill("Interactive preview headline");
@@ -93,12 +100,12 @@ test("campaign builder tabs switches preview and layout are interactive", async 
   );
 
   const previewBox = await preview.boundingBox();
-  const premiumBox = await premiumControls.boundingBox();
+  const formPanelBox = await form
+    .locator(".counterpulse-create-panel")
+    .boundingBox();
   expect(previewBox).not.toBeNull();
-  expect(premiumBox).not.toBeNull();
-  expect(premiumBox!.y).toBeGreaterThan(previewBox!.y + previewBox!.height - 4);
-  expect(Math.abs(premiumBox!.x - previewBox!.x)).toBeLessThan(2);
-  expect(premiumBox!.width).toBeCloseTo(previewBox!.width, 0);
+  expect(formPanelBox).not.toBeNull();
+  expect(previewBox!.x).toBeGreaterThan(formPanelBox!.x + formPanelBox!.width);
 
   await form.getByRole("tab", { name: "Placement" }).click();
   await expect(form.getByRole("tab", { name: "Placement" })).toHaveAttribute(
@@ -106,7 +113,7 @@ test("campaign builder tabs switches preview and layout are interactive", async 
     "true",
   );
   await expect(
-    page.getByRole("heading", { name: "Surface coverage" }),
+    page.getByRole("heading", { name: "Storefront placement" }),
   ).toBeVisible();
   await form.getByRole("button", { name: /Product page/ }).click();
   await expect(form.getByLabel("Primary placement")).toHaveValue(
@@ -114,37 +121,39 @@ test("campaign builder tabs switches preview and layout are interactive", async 
   );
   await expect(preview).toContainText("Product page");
 
-  const uniqueCodesSwitch = form.getByRole("switch", {
-    name: /Unique discount codes/,
-  });
-  await expect(uniqueCodesSwitch).toHaveAttribute("aria-checked", "false");
-  await uniqueCodesSwitch.click();
-  await expect(uniqueCodesSwitch).toHaveAttribute("aria-checked", "true");
-  await expect(form.getByRole("tab", { name: "Discount" })).toHaveAttribute(
+  await form.getByRole("tab", { name: "Schedule" }).click();
+  await expect(form.getByRole("tab", { name: "Schedule" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await expect(
-    page.getByRole("heading", { name: "Offer controls" }),
-  ).toBeVisible();
-  await expect(form.getByText("Selected")).toBeVisible();
+  const timezoneSelect = form.getByRole("combobox", { name: "Timezone" });
+  await expect(timezoneSelect).not.toHaveValue("");
+  await timezoneSelect.selectOption("UTC");
+  await expect(timezoneSelect).toHaveValue("UTC");
 
-  await form.getByRole("switch", { name: /A\/B testing/ }).click();
-  await expect(form.getByRole("tab", { name: "Experiments" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(
-    page.getByRole("heading", { name: "A/B testing" }),
-  ).toBeVisible();
-
-  await form.getByRole("button", { name: "Preview" }).click();
+  await form.getByRole("button", { name: "Review" }).click();
   await expect(form.getByRole("tab", { name: "Review" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
   await expect(
-    page.getByRole("heading", { name: "Launch review" }),
+    page.getByRole("heading", { name: "Review before saving" }),
+  ).toBeVisible();
+
+  await page.goto("/app/campaigns/new");
+  await expect(page.getByRole("tab", { name: "Campaign" })).not.toBeVisible();
+
+  await page.goto("/app/campaigns/new");
+  await form.getByLabel("Campaign name").fill("E2E Editor Tabs");
+  await form.getByRole("button", { name: "Save campaign" }).click();
+  await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
+  await expect(page.getByRole("tab", { name: "Campaign" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByRole("tab", { name: "A/B testing" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Experiments" }),
   ).toBeVisible();
 
   expectNoConsoleErrors(page);

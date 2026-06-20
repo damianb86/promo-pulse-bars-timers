@@ -543,9 +543,53 @@ s-page::part(page) {
   gap: 8px;
 }
 
-.counterpulse-goal-list .counterpulse-choice {
-  min-height: 42px;
-  padding: 9px 10px;
+.counterpulse-goal-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 68px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #ffffff;
+  color: #202223;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: left;
+}
+
+.counterpulse-goal-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.counterpulse-goal-card__icon {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f3f6f8;
+  color: #5c5f62;
+}
+
+.counterpulse-goal-card[aria-checked="true"] {
+  border-color: #008060;
+  background: #f4fbf7;
+  box-shadow: 0 0 0 1px #008060;
+  color: #005c45;
+}
+
+.counterpulse-goal-card[aria-checked="true"] .counterpulse-goal-card__icon {
+  background: #008060;
+  color: #ffffff;
 }
 
 .counterpulse-placement-matrix {
@@ -665,8 +709,10 @@ s-page::part(page) {
 }
 
 .counterpulse-feature-toggle:focus-visible,
+.counterpulse-goal-card:focus-visible,
 .counterpulse-placement-tile:focus-visible,
 .counterpulse-builder-tabs button:focus-visible,
+.counterpulse-editor-tabs button:focus-visible,
 .counterpulse-preview-toolbar button:focus-visible {
   outline: 2px solid #005bd3;
   outline-offset: 2px;
@@ -788,6 +834,14 @@ s-page::part(page) {
 .counterpulse-preview-toolbar button.is-active {
   border-color: #202223;
   color: #202223;
+}
+
+.counterpulse-field-hint {
+  display: block;
+  margin-top: 4px;
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .counterpulse-storefront-preview,
@@ -1256,10 +1310,55 @@ s-page::part(page) {
   line-height: 20px;
 }
 
-.counterpulse-editor-layout {
+.counterpulse-editor-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+}
+
+.counterpulse-editor-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.counterpulse-editor-tabs button {
+  min-height: 72px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #202223;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.counterpulse-editor-tabs button span,
+.counterpulse-editor-tabs button small {
+  display: block;
+}
+
+.counterpulse-editor-tabs button span {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 20px;
+}
+
+.counterpulse-editor-tabs button small {
+  margin-top: 2px;
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.counterpulse-editor-tabs button.is-active {
+  border-color: #008060;
+  background: #f4fbf7;
+  box-shadow: 0 0 0 1px #008060;
+}
+
+.counterpulse-editor-panel[hidden] {
+  display: none;
 }
 
 .counterpulse-design-editor {
@@ -1688,6 +1787,7 @@ s-page::part(page) {
   .counterpulse-review,
   .counterpulse-template-picker,
   .counterpulse-locale-tabs,
+  .counterpulse-editor-tabs,
   .counterpulse-toggle-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1727,6 +1827,7 @@ s-page::part(page) {
   .counterpulse-review,
   .counterpulse-template-picker,
   .counterpulse-locale-tabs,
+  .counterpulse-editor-tabs,
   .counterpulse-toggle-grid,
   .counterpulse-preview-meta,
   .counterpulse-preview-toolbar,

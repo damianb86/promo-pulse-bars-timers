@@ -14,6 +14,7 @@ test("design changes update live preview and persist", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
   await page.getByRole("button", { name: "Premium Dark" }).click();
   await page.locator('input[name="backgroundColor"]').fill("#123456");
   await page.locator('input[name="fontSize"]').fill("18");
@@ -23,7 +24,9 @@ test("design changes update live preview and persist", async ({
     .getByRole("button", { name: "Mobile" })
     .click();
 
-  const preview = page.locator(".counterpulse-preview-promo").first();
+  const preview = page
+    .locator(".counterpulse-design-editor__preview .counterpulse-preview-promo")
+    .first();
   await expect(preview).toContainText("Sale ends soon");
   await expect(preview).toHaveCSS("background-color", "rgb(18, 52, 86)");
   await Promise.all([
@@ -35,6 +38,7 @@ test("design changes update live preview and persist", async ({
     page.getByRole("button", { name: "Save design" }).click(),
   ]);
   await page.reload();
+  await page.getByRole("tab", { name: "Design" }).click();
 
   await expect(page.locator('input[name="backgroundColor"]')).toHaveValue(
     "#123456",

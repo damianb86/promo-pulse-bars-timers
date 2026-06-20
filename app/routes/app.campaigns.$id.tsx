@@ -1462,134 +1462,192 @@ export default function EditCampaignPage() {
   return (
     <s-page inlineSize="large" heading="Edit campaign">
       <CampaignEditorLayout
-        details={
-          <CampaignForm
-            mode="edit"
-            values={actionData?.values ?? values}
-            errors={actionData?.errors}
-          />
-        }
-        settings={
-          <>
-            <DiscountSettingsEditor
-              apiError={discountApiError}
-              discountOptions={discountOptions}
-              errors={actionData?.discountErrors}
-              lockedReason={lockedFeatures.discountSync}
-              notice={actionData?.discountNotice}
-              values={actionData?.discountValues ?? discountValues}
-            />
-            <UniqueCodesEditor
-              codes={uniqueCodes}
-              errors={actionData?.uniqueCodeErrors}
-              lockedReason={lockedFeatures.uniqueCodes}
-              notice={actionData?.uniqueCodeNotice}
-              pools={uniqueCodePools}
-              stats={uniqueCodeStats}
-              values={
-                actionData?.uniqueCodeValues ??
-                actionData?.discountValues ??
-                discountValues
-              }
-            />
-            <AdvancedDiscountRulesEditor
-              errors={actionData?.advancedDiscountErrors}
-              lockedReason={lockedFeatures.advancedDiscounts}
-              notice={actionData?.advancedDiscountNotice}
-              rules={advancedDiscountRules}
-            />
-            <EmailTimerEditor
-              errors={actionData?.emailTimerErrors}
-              lockedReason={lockedFeatures.emailTimers}
-              timers={emailTimers}
-            />
-            <ExperimentsEditor
-              errors={actionData?.experimentErrors}
-              experiments={experiments}
-              lockedReason={lockedFeatures.experiments}
-              notice={actionData?.experimentNotice}
-            />
-            <BehaviorTargetingEditor
-              errors={actionData?.behaviorTargetingErrors}
-              lockedReason={lockedFeatures.behaviorTargeting}
-              notice={actionData?.behaviorTargetingNotice}
-              values={
-                actionData?.behaviorTargetingValues ?? behaviorTargetingValues
-              }
-            />
-            <CampaignMarketsEditor
-              apiError={marketApiError}
-              errors={actionData?.marketErrors}
-              lockedReason={lockedFeatures.markets}
-              markets={marketOptions}
-              notice={actionData?.marketNotice}
-              rules={marketRules}
-            />
-            {hasBadge ||
-            hasDeliveryCutoff ||
-            hasFreeShippingGoal ||
-            hasLowStock ? (
+        sections={[
+          {
+            key: "campaign",
+            label: "Campaign",
+            description: "Goal, copy, timing, placement",
+            content: (
+              <CampaignForm
+                design={actionData?.designValues ?? designValues}
+                key={JSON.stringify(actionData?.values ?? values)}
+                mode="edit"
+                values={actionData?.values ?? values}
+                errors={actionData?.errors}
+              />
+            ),
+          },
+          {
+            key: "offers",
+            label: "Offers",
+            description: "Discounts, unique codes, email timers",
+            content: (
               <>
-                <LowStockSettingsEditor
-                  enabled={hasLowStock}
-                  errors={actionData?.lowStockErrors}
-                  values={actionData?.lowStockValues ?? lowStockValues}
+                <DiscountSettingsEditor
+                  apiError={discountApiError}
+                  discountOptions={discountOptions}
+                  errors={actionData?.discountErrors}
+                  lockedReason={lockedFeatures.discountSync}
+                  notice={actionData?.discountNotice}
+                  values={actionData?.discountValues ?? discountValues}
                 />
-                <BadgeSettingsEditor
-                  enabled={hasBadge}
-                  errors={actionData?.badgeErrors}
-                  lockedReason={lockedFeatures.badge}
-                  values={actionData?.badgeValues ?? badgeValues}
-                />
-                {hasBadge && (
-                  <AdvancedBadgeRulesEditor
-                    errors={actionData?.advancedBadgeErrors}
-                    lockedReason={lockedFeatures.advancedBadges}
-                    notice={actionData?.advancedBadgeNotice}
-                    rules={advancedBadgeRules}
-                  />
-                )}
-                <DeliveryCutoffSettingsEditor
-                  enabled={hasDeliveryCutoff}
-                  errors={actionData?.deliveryCutoffErrors}
-                  lockedReason={lockedFeatures.deliveryCutoff}
+                <UniqueCodesEditor
+                  codes={uniqueCodes}
+                  errors={actionData?.uniqueCodeErrors}
+                  lockedReason={lockedFeatures.uniqueCodes}
+                  notice={actionData?.uniqueCodeNotice}
+                  pools={uniqueCodePools}
+                  stats={uniqueCodeStats}
                   values={
-                    actionData?.deliveryCutoffValues ?? deliveryCutoffValues
+                    actionData?.uniqueCodeValues ??
+                    actionData?.discountValues ??
+                    discountValues
                   }
                 />
-                <FreeShippingSettingsEditor
-                  enabled={hasFreeShippingGoal}
-                  errors={actionData?.freeShippingErrors}
-                  values={actionData?.freeShippingValues ?? freeShippingValues}
+                <AdvancedDiscountRulesEditor
+                  errors={actionData?.advancedDiscountErrors}
+                  lockedReason={lockedFeatures.advancedDiscounts}
+                  notice={actionData?.advancedDiscountNotice}
+                  rules={advancedDiscountRules}
+                />
+                <EmailTimerEditor
+                  errors={actionData?.emailTimerErrors}
+                  lockedReason={lockedFeatures.emailTimers}
+                  timers={emailTimers}
                 />
               </>
-            ) : null}
-          </>
-        }
-        translations={
-          lockedFeatures.multiLanguage ? (
-            <PlanUpgradeCallout
-              message={lockedFeatures.multiLanguage}
-              title="Translations are locked"
-            />
-          ) : (
-            <CampaignTranslationsEditor
-              errors={actionData?.translationErrors}
-              initialValues={translationValues}
-              key={`${id}:${JSON.stringify(translationValues)}`}
-              resolvedValues={translationsViewModel.resolvedValues}
-            />
-          )
-        }
-        design={
-          <CampaignDesignEditor
-            errors={actionData?.designErrors}
-            initialDesign={actionData?.designValues ?? designValues}
-            isProPlan={isProPlan}
-            lockedCustomCssReason={lockedFeatures.customCss}
-            viewModel={designViewModel}
-          />
-        }
+            ),
+          },
+          {
+            key: "experiments",
+            label: "A/B testing",
+            description: "Variants, metrics, auto-winner",
+            content: (
+              <ExperimentsEditor
+                errors={actionData?.experimentErrors}
+                experiments={experiments}
+                lockedReason={lockedFeatures.experiments}
+                notice={actionData?.experimentNotice}
+              />
+            ),
+          },
+          {
+            key: "targeting",
+            label: "Targeting",
+            description: "Behavior and visitor eligibility",
+            content: (
+              <BehaviorTargetingEditor
+                errors={actionData?.behaviorTargetingErrors}
+                lockedReason={lockedFeatures.behaviorTargeting}
+                notice={actionData?.behaviorTargetingNotice}
+                values={
+                  actionData?.behaviorTargetingValues ?? behaviorTargetingValues
+                }
+              />
+            ),
+          },
+          {
+            key: "markets",
+            label: "Markets",
+            description: "Country, locale, threshold overrides",
+            content: (
+              <CampaignMarketsEditor
+                apiError={marketApiError}
+                errors={actionData?.marketErrors}
+                lockedReason={lockedFeatures.markets}
+                markets={marketOptions}
+                notice={actionData?.marketNotice}
+                rules={marketRules}
+              />
+            ),
+          },
+          {
+            key: "merchandising",
+            label: "Merchandising",
+            description: "Badges, stock, delivery, free shipping",
+            content:
+              hasBadge ||
+              hasDeliveryCutoff ||
+              hasFreeShippingGoal ||
+              hasLowStock ? (
+                <>
+                  <LowStockSettingsEditor
+                    enabled={hasLowStock}
+                    errors={actionData?.lowStockErrors}
+                    values={actionData?.lowStockValues ?? lowStockValues}
+                  />
+                  <BadgeSettingsEditor
+                    enabled={hasBadge}
+                    errors={actionData?.badgeErrors}
+                    lockedReason={lockedFeatures.badge}
+                    values={actionData?.badgeValues ?? badgeValues}
+                  />
+                  {hasBadge && (
+                    <AdvancedBadgeRulesEditor
+                      errors={actionData?.advancedBadgeErrors}
+                      lockedReason={lockedFeatures.advancedBadges}
+                      notice={actionData?.advancedBadgeNotice}
+                      rules={advancedBadgeRules}
+                    />
+                  )}
+                  <DeliveryCutoffSettingsEditor
+                    enabled={hasDeliveryCutoff}
+                    errors={actionData?.deliveryCutoffErrors}
+                    lockedReason={lockedFeatures.deliveryCutoff}
+                    values={
+                      actionData?.deliveryCutoffValues ?? deliveryCutoffValues
+                    }
+                  />
+                  <FreeShippingSettingsEditor
+                    enabled={hasFreeShippingGoal}
+                    errors={actionData?.freeShippingErrors}
+                    values={
+                      actionData?.freeShippingValues ?? freeShippingValues
+                    }
+                  />
+                </>
+              ) : (
+                <s-section heading="Merchandising">
+                  <s-paragraph>
+                    Choose a merchandising campaign type to configure badges,
+                    stock urgency, delivery cutoff, or free shipping goals.
+                  </s-paragraph>
+                </s-section>
+              ),
+          },
+          {
+            key: "design",
+            label: "Design",
+            description: "Visual styling and full preview",
+            content: (
+              <CampaignDesignEditor
+                errors={actionData?.designErrors}
+                initialDesign={actionData?.designValues ?? designValues}
+                isProPlan={isProPlan}
+                lockedCustomCssReason={lockedFeatures.customCss}
+                viewModel={designViewModel}
+              />
+            ),
+          },
+          {
+            key: "translations",
+            label: "Translations",
+            description: "Locale-specific copy",
+            content: lockedFeatures.multiLanguage ? (
+              <PlanUpgradeCallout
+                message={lockedFeatures.multiLanguage}
+                title="Translations are locked"
+              />
+            ) : (
+              <CampaignTranslationsEditor
+                errors={actionData?.translationErrors}
+                initialValues={translationValues}
+                key={`${id}:${JSON.stringify(translationValues)}`}
+                resolvedValues={translationsViewModel.resolvedValues}
+              />
+            ),
+          },
+        ]}
       />
     </s-page>
   );

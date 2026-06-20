@@ -22,6 +22,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "A/B testing" }).click();
   const createExperimentForm = page.locator(
     'form:has(input[name="_action"][value="createExperiment"])',
   );
@@ -87,6 +88,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
     .toMatchObject({ attributedVariants: 1 });
 
   await loginAsDemoShop(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "A/B testing" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>

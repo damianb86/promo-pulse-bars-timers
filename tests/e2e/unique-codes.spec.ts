@@ -4,6 +4,7 @@ import {
   expectNoFailedRequests,
   test,
 } from "./fixtures";
+import type { Page, Response } from "@playwright/test";
 import {
   demoShopDomain,
   escapeRegExp,
@@ -26,6 +27,7 @@ test("unique codes can be generated and assigned per visitor", async ({
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Offers" }).click();
   const uniqueCodesForm = page.locator(
     'form:has(input[name="_action"][value="generateUniqueCodes"])',
   );
@@ -72,9 +74,7 @@ test("unique codes can be generated and assigned per visitor", async ({
     discountForm.getByRole("button", { name: "Save discount" }).click(),
   ]);
 
-  await page.goto(
-    "/__test/storefront?visitorId=stage2-visitor-a&sessionId=stage2-session-a",
-  );
+  await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
   const widget = page.locator(".pp-unique-code").first();
   await expect(widget.locator(".pp-unique-code__value")).toHaveText(/^STG2-/);
   const codeA = (await widget.locator(".pp-unique-code__value").textContent())!;
@@ -90,9 +90,7 @@ test("unique codes can be generated and assigned per visitor", async ({
     .poll(async () => readAnalyticsSummary(page))
     .toMatchObject({ copyCode: 1, applyCodeClicked: 1 });
 
-  await page.goto(
-    "/__test/storefront?visitorId=stage2-visitor-b&sessionId=stage2-session-b",
-  );
+  await gotoStorefront(page, "stage2-visitor-b", "stage2-session-b");
   await expect(page.locator(".pp-unique-code__value").first()).toHaveText(
     /^STG2-/,
   );
@@ -100,9 +98,7 @@ test("unique codes can be generated and assigned per visitor", async ({
     (await page.locator(".pp-unique-code__value").first().textContent()) ?? "";
   expect(codeB).not.toBe(codeA);
 
-  await page.goto(
-    "/__test/storefront?visitorId=stage2-visitor-a&sessionId=stage2-session-a",
-  );
+  await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
   await expect(page.locator(".pp-unique-code__value").first()).toHaveText(
     codeA,
   );
@@ -121,9 +117,7 @@ test("unique codes can be generated and assigned per visitor", async ({
   });
   expect(expireResponse.ok()).toBe(true);
 
-  await page.goto(
-    "/__test/storefront?visitorId=stage2-visitor-a&sessionId=stage2-session-a",
-  );
+  await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
   await expect(page.locator(".pp-unique-code__expired").first()).toContainText(
     /ended|no longer available/i,
   );
@@ -132,3 +126,46 @@ test("unique codes can be generated and assigned per visitor", async ({
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+async function gotoStorefront(
+  page: Page,
+  visitorId: string,
+  sessionId: string,
+) {
+  const optionalCartDrawerResponse = page
+    .waitForResponse(
+      (response) =>
+        isStorefrontCampaignResponse(response, visitorId, "CART_DRAWER"),
+      { timeout: 1500 },
+    )
+    .catch(() => null);
+
+  await Promise.all([
+    page.waitForResponse((response) =>
+      isStorefrontCampaignResponse(response, visitorId, "TOP_BAR"),
+    ),
+    page.waitForResponse((response) =>
+      isStorefrontCampaignResponse(response, visitorId, "BOTTOM_BAR"),
+    ),
+    page.goto(
+      `/__test/storefront?visitorId=${visitorId}&sessionId=${sessionId}`,
+    ),
+  ]);
+  await optionalCartDrawerResponse;
+}
+
+function isStorefrontCampaignResponse(
+  response: Response,
+  visitorId: string,
+  placement: string,
+) {
+  const url = response.url();
+
+  return (
+    response.ok() &&
+    response.request().method() === "GET" &&
+    url.includes("/apps/counterpulse-campaigns") &&
+    url.includes(`visitorId=${visitorId}`) &&
+    url.includes(`placement=${placement}`)
+  );
+}

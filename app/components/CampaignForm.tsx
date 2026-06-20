@@ -1,6 +1,7 @@
 import { type ChangeEvent, type ReactNode, useMemo, useState } from "react";
 import { Form, useNavigation } from "react-router";
 
+import { CampaignPreview } from "./CampaignPreview";
 import {
   campaignGoalOptions,
   campaignEditableStatusOptions,
@@ -8,38 +9,34 @@ import {
   campaignTypeOptions,
   placementTypeOptions,
 } from "../types/campaign-options";
+import {
+  defaultCampaignDesignValues,
+  type CampaignDesignValues,
+} from "../types/campaign-design";
 import type {
   CampaignFormErrors,
   CampaignFormValues,
 } from "../types/campaign-form";
+import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
+  design?: CampaignDesignValues;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   mode: "create" | "edit";
 };
 
-type BuilderTabKey =
-  | "basics"
-  | "placement"
-  | "timer"
-  | "discount"
-  | "targeting"
-  | "design"
-  | "markets"
-  | "experiments"
-  | "ai"
-  | "review";
+type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
 
 type PreviewDevice = "desktop" | "mobile";
 
-type PremiumControlKey =
-  | "uniqueCodes"
-  | "abTesting"
-  | "autoWinner"
-  | "marketOverrides"
-  | "behaviorTargeting"
-  | "aiSuggestions";
+type PreviewPlacement =
+  | "TOP_BAR"
+  | "BOTTOM_BAR"
+  | "PRODUCT_PAGE"
+  | "CART_PAGE"
+  | "CART_DRAWER"
+  | "PRODUCT_BADGE";
 
 const builderTabs: Array<{
   key: BuilderTabKey;
@@ -48,128 +45,59 @@ const builderTabs: Array<{
   pill: string;
 }> = [
   {
-    key: "basics",
-    label: "Basics",
+    key: "setup",
+    label: "Setup",
     title: "Campaign setup",
-    pill: "Core fields",
+    pill: "Intent",
+  },
+  {
+    key: "message",
+    label: "Message",
+    title: "Copy and call to action",
+    pill: "Copy",
   },
   {
     key: "placement",
     label: "Placement",
-    title: "Surface coverage",
-    pill: "Storefront",
+    title: "Storefront placement",
+    pill: "Surface",
   },
   {
-    key: "timer",
-    label: "Timer",
-    title: "Schedule and urgency",
-    pill: "Real dates",
-  },
-  {
-    key: "discount",
-    label: "Discount",
-    title: "Offer controls",
-    pill: "Discounts",
-  },
-  {
-    key: "targeting",
-    label: "Targeting",
-    title: "Audience rules",
-    pill: "Eligibility",
-  },
-  {
-    key: "design",
-    label: "Design",
-    title: "Message and CTA",
-    pill: "Creative",
-  },
-  {
-    key: "markets",
-    label: "Markets",
-    title: "Market overrides",
-    pill: "Localization",
-  },
-  {
-    key: "experiments",
-    label: "Experiments",
-    title: "A/B testing",
-    pill: "Variants",
-  },
-  {
-    key: "ai",
-    label: "AI",
-    title: "AI draft assistant",
-    pill: "Review first",
+    key: "schedule",
+    label: "Schedule",
+    title: "Timing and timezone",
+    pill: "Real time",
   },
   {
     key: "review",
     label: "Review",
-    title: "Launch review",
-    pill: "Compliance",
+    title: "Review before saving",
+    pill: "Checks",
   },
 ];
 
-const premiumControls: Array<{
-  key: PremiumControlKey;
-  title: string;
-  description: string;
-  tab: BuilderTabKey;
-}> = [
-  {
-    key: "uniqueCodes",
-    title: "Unique discount codes",
-    description: "Generate and track visitor codes.",
-    tab: "discount",
-  },
-  {
-    key: "abTesting",
-    title: "A/B testing",
-    description: "Test text, design, discount, and placement.",
-    tab: "experiments",
-  },
-  {
-    key: "autoWinner",
-    title: "Auto-winner",
-    description: "Select a winning variant conservatively.",
-    tab: "experiments",
-  },
-  {
-    key: "marketOverrides",
-    title: "Market overrides",
-    description: "Localize thresholds and copy.",
-    tab: "markets",
-  },
-  {
-    key: "behaviorTargeting",
-    title: "Behavior targeting",
-    description: "Target recent visitor intent.",
-    tab: "targeting",
-  },
-  {
-    key: "aiSuggestions",
-    title: "AI suggestions",
-    description: "Draft safe copy and variants.",
-    tab: "ai",
-  },
-];
+const timezoneOptions = buildTimezoneOptions();
 
-const initialPremiumControlState: Record<PremiumControlKey, boolean> = {
-  uniqueCodes: false,
-  abTesting: false,
-  autoWinner: false,
-  marketOverrides: false,
-  behaviorTargeting: false,
-  aiSuggestions: false,
+const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
+  FLASH_SALE: "Flash sale",
+  FREE_SHIPPING: "Free shipping",
+  CART_RESCUE: "Cart rescue",
+  DELIVERY_CUTOFF: "Delivery cutoff",
+  LOW_STOCK_URGENCY: "Low stock urgency",
+  PRODUCT_BADGE: "Product badge",
+  ANNOUNCEMENT: "Announcement",
 };
 
-export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
+export function CampaignForm({
+  design = defaultCampaignDesignValues,
+  values,
+  errors = {},
+  mode,
+}: CampaignFormProps) {
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] = useState<BuilderTabKey>("basics");
+  const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [formValues, setFormValues] = useState(() => values);
-  const [enabledPremiumControls, setEnabledPremiumControls] = useState(
-    initialPremiumControlState,
-  );
   const isSubmitting = navigation.state === "submitting";
 
   const statusOptions =
@@ -190,23 +118,50 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
     )?.label ?? "Top bar";
   const activeTabMeta =
     builderTabs.find((tab) => tab.key === activeTab) ?? builderTabs[0];
+  const previewPlacement = toPreviewPlacement(formValues.placementType);
+  const previewViewModel = useMemo(
+    () =>
+      buildCampaignViewModel({
+        name: formValues.name || "Campaign preview",
+        type: formValues.type,
+        endsAt: formValues.endsAt || null,
+        timezone: formValues.timezone || "UTC",
+        placements: [
+          { placementType: formValues.placementType, enabled: true },
+        ],
+        translations: [
+          {
+            locale: "en",
+            headline: formValues.headline || activeGoalLabel,
+            subheadline: formValues.subheadline,
+            ctaText: formValues.ctaText || "Shop now",
+            ctaUrl: formValues.ctaUrl || "#",
+            expiredText: "This offer has ended.",
+          },
+        ],
+        design,
+      }),
+    [activeGoalLabel, design, formValues],
+  );
   const summaryRows = useMemo(
     () => [
       ["Goal", activeGoalLabel],
       ["Type", activeTypeLabel],
       ["Placement", activePlacementLabel],
       ["Status", statusLabel],
+      ["Starts", formatDateTimeLabel(formValues.startsAt, "Immediately")],
+      ["Ends", formatDateTimeLabel(formValues.endsAt, "No fixed end")],
+      ["Timezone", formValues.timezone || "UTC"],
     ],
-    [activeGoalLabel, activePlacementLabel, activeTypeLabel, statusLabel],
-  );
-  const validationItems = useMemo(
-    () => [
-      ["No fake scarcity", "Copy must match real offer data."],
-      ["Discount synced", "Use real discount rules after save."],
-      ["Timer matches offer", "Countdown should mirror schedule."],
-      ["Consent-safe tracking", "No PII in visitor tracking."],
+    [
+      activeGoalLabel,
+      activePlacementLabel,
+      activeTypeLabel,
+      formValues.endsAt,
+      formValues.startsAt,
+      formValues.timezone,
+      statusLabel,
     ],
-    [],
   );
 
   const updateField =
@@ -224,16 +179,6 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
       }));
     };
 
-  const activatePremiumControl = (
-    control: (typeof premiumControls)[number],
-  ) => {
-    setEnabledPremiumControls((currentControls) => ({
-      ...currentControls,
-      [control.key]: !currentControls[control.key],
-    }));
-    setActiveTab(control.tab);
-  };
-
   const selectPlacement = (
     placementType: CampaignFormValues["placementType"],
   ) => {
@@ -249,23 +194,6 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
       goal,
     }));
   };
-
-  const previewHeadline =
-    formValues.headline || "Free shipping on orders over $75";
-  const previewSubheadline =
-    formValues.subheadline || "Limited time only. Do not miss out.";
-  const previewCta = formValues.ctaText || "Shop now";
-  const timerSummary = formValues.endsAt
-    ? `Ends ${formValues.endsAt.replace("T", " ")} ${formValues.timezone}`
-    : "No end date configured";
-  const discountSummary =
-    mode === "edit"
-      ? "Use the discount sections below to sync real offers and unique codes."
-      : "Save the campaign first to configure synced discounts.";
-  const aiSummary =
-    mode === "create"
-      ? "Use the AI assistant drawer to generate safe copy, design, and variants."
-      : "AI suggestions can be applied as drafts and reviewed before publishing.";
 
   return (
     <Form data-campaign-form method="post" className="counterpulse-create-form">
@@ -286,8 +214,8 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
       <div className="counterpulse-create-topbar" aria-label="Campaign status">
         <div className="counterpulse-create-status">
           <span>{statusLabel}</span>
-          <span>Premium features available</span>
-          <span>Autosave off</span>
+          <span>{activeGoalLabel}</span>
+          <span>{activePlacementLabel}</span>
         </div>
         <div className="counterpulse-create-actions">
           <button
@@ -295,7 +223,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
             type="button"
             onClick={() => setActiveTab("review")}
           >
-            Preview
+            Review
           </button>
           <button
             className="counterpulse-button"
@@ -329,10 +257,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
       </div>
 
       <div className="counterpulse-create-builder-grid">
-        <section
-          className="counterpulse-create-panel"
-          aria-labelledby="campaign-builder-heading"
-        >
+        <section className="counterpulse-create-panel">
           <div className="counterpulse-panel-heading">
             <div>
               <p className="counterpulse-kicker">{activeTabMeta.label}</p>
@@ -341,7 +266,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
             <span className="counterpulse-pill">{activeTabMeta.pill}</span>
           </div>
 
-          <BuilderPanel activeTab={activeTab} tabKey="basics">
+          <BuilderPanel activeTab={activeTab} tabKey="setup">
             <div className="counterpulse-form-grid counterpulse-form-grid--wide">
               <FormField label="Campaign name" error={errors.name} fullWidth>
                 <input
@@ -351,6 +276,21 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                   placeholder="Spring sale - free shipping countdown"
                   onChange={updateField("name")}
                 />
+              </FormField>
+
+              <FormField label="Status" error={errors.status}>
+                <select
+                  data-testid="campaign-status-select"
+                  name="status"
+                  value={formValues.status}
+                  onChange={updateField("status")}
+                >
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </FormField>
 
               <FormField label="Campaign type" error={errors.type}>
@@ -367,24 +307,17 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                 </select>
               </FormField>
 
-              <FormField label="Primary placement" error={errors.placementType}>
-                <select
-                  name="placementType"
-                  value={formValues.placementType}
-                  onChange={updateField("placementType")}
-                >
-                  {placementTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
               <FormGroup label="Goal" error={errors.goal} fullWidth>
                 <div className="counterpulse-goal-list" role="radiogroup">
                   {campaignGoalOptions.map((option) => (
-                    <label className="counterpulse-choice" key={option.value}>
+                    <button
+                      aria-checked={formValues.goal === option.value}
+                      className="counterpulse-goal-card"
+                      key={option.value}
+                      role="radio"
+                      type="button"
+                      onClick={() => selectGoal(option.value)}
+                    >
                       <input
                         checked={formValues.goal === option.value}
                         type="radio"
@@ -392,58 +325,22 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                         value={option.value}
                         onChange={() => selectGoal(option.value)}
                       />
+                      <span
+                        className="counterpulse-goal-card__icon"
+                        aria-hidden="true"
+                      >
+                        <GoalIcon goal={option.value} />
+                      </span>
                       <span>{option.label}</span>
-                    </label>
+                    </button>
                   ))}
                 </div>
               </FormGroup>
+            </div>
+          </BuilderPanel>
 
-              <FormField label="Status" error={errors.status} fullWidth>
-                <select
-                  data-testid="campaign-status-select"
-                  name="status"
-                  value={formValues.status}
-                  onChange={updateField("status")}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
-              <FormField
-                label="Start date/time"
-                error={errors.startsAt}
-                fullWidth
-              >
-                <input
-                  type="datetime-local"
-                  name="startsAt"
-                  value={formValues.startsAt}
-                  onChange={updateField("startsAt")}
-                />
-              </FormField>
-
-              <FormField label="End date/time" error={errors.endsAt} fullWidth>
-                <input
-                  type="datetime-local"
-                  name="endsAt"
-                  value={formValues.endsAt}
-                  onChange={updateField("endsAt")}
-                />
-              </FormField>
-
-              <FormField label="Timezone" error={errors.timezone} fullWidth>
-                <input
-                  name="timezone"
-                  value={formValues.timezone}
-                  placeholder="UTC"
-                  onChange={updateField("timezone")}
-                />
-              </FormField>
-
+          <BuilderPanel activeTab={activeTab} tabKey="message">
+            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
               <FormField label="Headline" error={errors.headline} fullWidth>
                 <input
                   name="headline"
@@ -461,7 +358,7 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
                 <textarea
                   name="subheadline"
                   value={formValues.subheadline}
-                  rows={3}
+                  rows={4}
                   placeholder="Limited time only. Do not miss out."
                   onChange={updateField("subheadline")}
                 />
@@ -488,153 +385,93 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
           </BuilderPanel>
 
           <BuilderPanel activeTab={activeTab} tabKey="placement">
-            <div className="counterpulse-placement-matrix counterpulse-placement-matrix--flat">
-              <div className="counterpulse-placement-grid">
-                {placementTypeOptions.slice(0, 8).map((option) => (
-                  <button
-                    aria-pressed={option.value === formValues.placementType}
-                    className={
-                      option.value === formValues.placementType
-                        ? "counterpulse-placement-tile is-selected"
-                        : "counterpulse-placement-tile"
-                    }
-                    key={option.value}
-                    type="button"
-                    onClick={() => selectPlacement(option.value)}
-                  >
-                    <span aria-hidden="true">
-                      {placementInitial(option.label)}
-                    </span>
-                    <strong>{option.label}</strong>
-                  </button>
-                ))}
-              </div>
+            <div className="counterpulse-placement-grid">
+              {placementTypeOptions.map((option) => (
+                <button
+                  aria-pressed={option.value === formValues.placementType}
+                  className={
+                    option.value === formValues.placementType
+                      ? "counterpulse-placement-tile is-selected"
+                      : "counterpulse-placement-tile"
+                  }
+                  key={option.value}
+                  type="button"
+                  onClick={() => selectPlacement(option.value)}
+                >
+                  <span aria-hidden="true">
+                    {placementInitial(option.label)}
+                  </span>
+                  <strong>{option.label}</strong>
+                </button>
+              ))}
             </div>
+            <FormField
+              label="Primary placement"
+              error={errors.placementType}
+              fullWidth
+            >
+              <select
+                name="placementType"
+                value={formValues.placementType}
+                onChange={updateField("placementType")}
+              >
+                {placementTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
           </BuilderPanel>
 
-          <BuilderPanel activeTab={activeTab} tabKey="timer">
-            <TabSummaryGrid
-              rows={[
-                ["Schedule", timerSummary],
-                ["Start", formValues.startsAt || "Starts when activated"],
-                ["Timezone", formValues.timezone || "UTC"],
-                [
-                  "Timer policy",
-                  "Only show urgency tied to real campaign dates.",
-                ],
-              ]}
-            />
-          </BuilderPanel>
+          <BuilderPanel activeTab={activeTab} tabKey="schedule">
+            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+              <FormField label="Start date/time" error={errors.startsAt}>
+                <input
+                  type="datetime-local"
+                  name="startsAt"
+                  value={formValues.startsAt}
+                  onChange={updateField("startsAt")}
+                />
+                <small className="counterpulse-field-hint">
+                  Leave blank to start as soon as the campaign is active.
+                </small>
+              </FormField>
 
-          <BuilderPanel activeTab={activeTab} tabKey="discount">
-            <TabSummaryGrid
-              rows={[
-                ["Discount setup", discountSummary],
-                [
-                  "Unique codes",
-                  enabledPremiumControls.uniqueCodes ? "Selected" : "Off",
-                ],
-                ["CTA", previewCta],
-                [
-                  "Apply behavior",
-                  "Use real Shopify discount links when configured.",
-                ],
-              ]}
-            />
-          </BuilderPanel>
+              <FormField label="End date/time" error={errors.endsAt}>
+                <input
+                  type="datetime-local"
+                  name="endsAt"
+                  value={formValues.endsAt}
+                  onChange={updateField("endsAt")}
+                />
+              </FormField>
 
-          <BuilderPanel activeTab={activeTab} tabKey="targeting">
-            <TabSummaryGrid
-              rows={[
-                ["Placement", activePlacementLabel],
-                [
-                  "Behavior targeting",
-                  enabledPremiumControls.behaviorTargeting ? "Selected" : "Off",
-                ],
-                [
-                  "Consent",
-                  "No behavior rules when tracking consent is unavailable.",
-                ],
-                [
-                  "Fallback",
-                  "Campaign remains eligible through basic targeting.",
-                ],
-              ]}
-            />
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="design">
-            <TabSummaryGrid
-              rows={[
-                ["Headline", previewHeadline],
-                ["Subheadline", previewSubheadline],
-                ["CTA", previewCta],
-                ["Creative", "Use the Design & Preview editor after saving."],
-              ]}
-            />
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="markets">
-            <TabSummaryGrid
-              rows={[
-                [
-                  "Market overrides",
-                  enabledPremiumControls.marketOverrides ? "Selected" : "Off",
-                ],
-                [
-                  "Locale",
-                  "Global fallback applies when no market rule matches.",
-                ],
-                ["Currency", "Resolved from storefront market context."],
-                ["Thresholds", "Market thresholds override global settings."],
-              ]}
-            />
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="experiments">
-            <TabSummaryGrid
-              rows={[
-                [
-                  "A/B testing",
-                  enabledPremiumControls.abTesting ? "Selected" : "Off",
-                ],
-                [
-                  "Auto-winner",
-                  enabledPremiumControls.autoWinner ? "Selected" : "Off",
-                ],
-                ["Primary metric", "CTR, add-to-cart, checkout, or revenue."],
-                [
-                  "Assignment",
-                  "Stable by visitor when an experiment is running.",
-                ],
-              ]}
-            />
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="ai">
-            <TabSummaryGrid
-              rows={[
-                [
-                  "AI suggestions",
-                  enabledPremiumControls.aiSuggestions ? "Selected" : "Off",
-                ],
-                ["Mode", aiSummary],
-                [
-                  "Safety",
-                  "No fake stock, fake discounts, or auto-publishing.",
-                ],
-                [
-                  "Review",
-                  "Merchant confirmation is required before applying.",
-                ],
-              ]}
-            />
+              <FormField label="Timezone" error={errors.timezone} fullWidth>
+                <select
+                  name="timezone"
+                  value={formValues.timezone}
+                  onChange={updateField("timezone")}
+                >
+                  {timezoneOptions.map((timezone) => (
+                    <option key={timezone} value={timezone}>
+                      {timezone}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
           </BuilderPanel>
 
           <BuilderPanel activeTab={activeTab} tabKey="review">
             <TabSummaryGrid rows={summaryRows} />
             <div className="counterpulse-validation-strip">
-              {validationItems.map(([title, description]) => (
+              {[
+                ["No fake scarcity", "Copy must match real offer data."],
+                ["Discount synced", "Use real discount rules after save."],
+                ["Timer matches offer", "Countdown should mirror schedule."],
+                ["Consent-safe tracking", "No PII in visitor tracking."],
+              ].map(([title, description]) => (
                 <div className="counterpulse-validation-item" key={title}>
                   <span>OK</span>
                   <div>
@@ -647,24 +484,51 @@ export function CampaignForm({ values, errors = {}, mode }: CampaignFormProps) {
           </BuilderPanel>
         </section>
 
-        <div className="counterpulse-create-side-panel">
-          <CampaignCreationPreview
-            ctaText={formValues.ctaText}
-            device={previewDevice}
-            goalLabel={activeGoalLabel}
-            headline={formValues.headline}
-            placementLabel={activePlacementLabel}
-            subheadline={formValues.subheadline}
-            typeLabel={activeTypeLabel}
-            onDeviceChange={setPreviewDevice}
-          />
-
-          <PremiumFeatureControls
-            activeStates={enabledPremiumControls}
-            controls={premiumControls}
-            onToggle={activatePremiumControl}
-          />
-        </div>
+        <aside
+          className="counterpulse-create-side-panel"
+          aria-label="Live campaign preview"
+        >
+          <div className="counterpulse-preview-panel">
+            <div className="counterpulse-preview-toolbar">
+              <button
+                aria-pressed={previewDevice === "desktop"}
+                className={previewDevice === "desktop" ? "is-active" : ""}
+                type="button"
+                onClick={() => setPreviewDevice("desktop")}
+              >
+                Desktop
+              </button>
+              <button
+                aria-pressed={previewDevice === "mobile"}
+                className={previewDevice === "mobile" ? "is-active" : ""}
+                type="button"
+                onClick={() => setPreviewDevice("mobile")}
+              >
+                Mobile
+              </button>
+            </div>
+            <CampaignPreview
+              design={design}
+              device={previewDevice}
+              placement={previewPlacement}
+              viewModel={previewViewModel}
+            />
+            <dl className="counterpulse-preview-meta">
+              <div>
+                <dt>Goal</dt>
+                <dd>{activeGoalLabel}</dd>
+              </div>
+              <div>
+                <dt>Type</dt>
+                <dd>{activeTypeLabel}</dd>
+              </div>
+              <div>
+                <dt>Placement</dt>
+                <dd>{activePlacementLabel}</dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
       </div>
     </Form>
   );
@@ -693,43 +557,6 @@ function BuilderPanel({
   );
 }
 
-function PremiumFeatureControls({
-  activeStates,
-  controls,
-  onToggle,
-}: {
-  activeStates: Record<PremiumControlKey, boolean>;
-  controls: typeof premiumControls;
-  onToggle: (control: (typeof premiumControls)[number]) => void;
-}) {
-  return (
-    <aside className="counterpulse-feature-panel" aria-label="Premium features">
-      <div className="counterpulse-panel-heading counterpulse-panel-heading--compact">
-        <div>
-          <p className="counterpulse-kicker">Features</p>
-          <h3>Premium controls</h3>
-        </div>
-      </div>
-      {controls.map((control) => (
-        <button
-          aria-checked={activeStates[control.key]}
-          className="counterpulse-feature-toggle"
-          key={control.key}
-          role="switch"
-          type="button"
-          onClick={() => onToggle(control)}
-        >
-          <span aria-hidden="true" />
-          <div>
-            <strong>{control.title}</strong>
-            <small>{control.description}</small>
-          </div>
-        </button>
-      ))}
-    </aside>
-  );
-}
-
 function TabSummaryGrid({ rows }: { rows: string[][] }) {
   return (
     <dl className="counterpulse-tab-summary">
@@ -743,110 +570,90 @@ function TabSummaryGrid({ rows }: { rows: string[][] }) {
   );
 }
 
-function CampaignCreationPreview({
-  headline,
-  subheadline,
-  ctaText,
-  device,
-  typeLabel,
-  goalLabel,
-  placementLabel,
-  onDeviceChange,
-}: {
-  headline: string;
-  subheadline: string;
-  ctaText: string;
-  device: PreviewDevice;
-  typeLabel: string;
-  goalLabel: string;
-  placementLabel: string;
-  onDeviceChange: (device: PreviewDevice) => void;
-}) {
-  const previewHeadline = headline || "Free shipping on orders over $75";
-  const previewSubheadline =
-    subheadline || "Limited time only. Do not miss out.";
-  const previewCta = ctaText || "Shop now";
+function GoalIcon({ goal }: { goal: CampaignFormValues["goal"] }) {
+  const title = goalIconLabels[goal];
 
   return (
-    <aside
-      className={
-        device === "mobile"
-          ? "counterpulse-preview-panel counterpulse-preview-panel--mobile"
-          : "counterpulse-preview-panel"
-      }
-      aria-label="Campaign preview"
+    <svg
+      aria-label={title}
+      fill="none"
+      height="22"
+      role="img"
+      viewBox="0 0 24 24"
+      width="22"
     >
-      <div className="counterpulse-preview-toolbar">
-        <button
-          aria-pressed={device === "desktop"}
-          className={device === "desktop" ? "is-active" : undefined}
-          type="button"
-          onClick={() => onDeviceChange("desktop")}
-        >
-          Desktop
-        </button>
-        <button
-          aria-pressed={device === "mobile"}
-          className={device === "mobile" ? "is-active" : undefined}
-          type="button"
-          onClick={() => onDeviceChange("mobile")}
-        >
-          Mobile
-        </button>
-      </div>
-
-      <div className="counterpulse-storefront-preview">
-        <div className="counterpulse-storefront-bar">
-          <strong>{previewHeadline}</strong>
-          <span>02:14:37</span>
-        </div>
-        <div className="counterpulse-storefront-header">
-          <span>Menu</span>
-          <strong>PULSE</strong>
-          <span>Cart</span>
-        </div>
-        <div className="counterpulse-product-preview">
-          <div className="counterpulse-product-image" />
-          <div>
-            <h3>Ceramic Vase</h3>
-            <p>$48.00</p>
-            <p className="counterpulse-muted">{previewSubheadline}</p>
-            <button type="button">{previewCta}</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="counterpulse-cart-preview">
-        <div className="counterpulse-cart-preview__header">
-          <strong>Your cart</strong>
-          <span>2 items</span>
-        </div>
-        <div className="counterpulse-cart-meter">
-          <span />
-        </div>
-        <p>You are $51.00 away from free shipping.</p>
-      </div>
-
-      <div className="counterpulse-checkout-preview">
-        <strong>Secure checkout</strong>
-        <p>Estimated delivery: May 24 - May 27</p>
-      </div>
-
-      <dl className="counterpulse-preview-meta">
-        <div>
-          <dt>Goal</dt>
-          <dd>{goalLabel}</dd>
-        </div>
-        <div>
-          <dt>Type</dt>
-          <dd>{typeLabel}</dd>
-        </div>
-        <div>
-          <dt>Placement</dt>
-          <dd>{placementLabel}</dd>
-        </div>
-      </dl>
-    </aside>
+      {goal === "FLASH_SALE" && (
+        <path
+          d="M13 2 5 13h6l-1 9 9-13h-6l1-7Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "FREE_SHIPPING" && (
+        <>
+          <path
+            d="M3 7h11v9H3V7Zm11 3h4l3 3v3h-7v-6Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {goal === "CART_RESCUE" && (
+        <path
+          d="M5 5h2l2 10h8l2-7H8m3 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM4 12l-2 2 2 2"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "DELIVERY_CUTOFF" && (
+        <>
+          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 7v5l3 2"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {goal === "LOW_STOCK_URGENCY" && (
+        <path
+          d="M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "PRODUCT_BADGE" && (
+        <path
+          d="M4 7V4h3m10 0h3v3M4 17v3h3m10 0h3v-3M8 8h8v8H8V8Zm2.5 4h3"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "ANNOUNCEMENT" && (
+        <path
+          d="M4 10v4h4l8 4V6l-8 4H4Zm12 0 4-2v8l-4-2"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
   );
 }
 
@@ -857,6 +664,39 @@ function placementInitial(label: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function toPreviewPlacement(
+  placementType: CampaignFormValues["placementType"],
+): PreviewPlacement {
+  if (placementType === "BOTTOM_BAR") return "BOTTOM_BAR";
+  if (placementType === "PRODUCT_PAGE") return "PRODUCT_PAGE";
+  if (placementType === "CART_PAGE") return "CART_PAGE";
+  if (placementType === "CART_DRAWER") return "CART_DRAWER";
+  if (placementType === "COLLECTION_CARD") return "PRODUCT_BADGE";
+
+  return "TOP_BAR";
+}
+
+function buildTimezoneOptions() {
+  const supportedValuesOf = (
+    Intl as typeof Intl & {
+      supportedValuesOf?: (key: "timeZone") => string[];
+    }
+  ).supportedValuesOf;
+  const supportedTimezones =
+    typeof supportedValuesOf === "function"
+      ? supportedValuesOf("timeZone")
+      : [];
+  const timezones = ["UTC", ...supportedTimezones].filter(
+    (timezone, index, list) => list.indexOf(timezone) === index,
+  );
+
+  return timezones.sort((a, b) => a.localeCompare(b));
+}
+
+function formatDateTimeLabel(value: string, fallback: string) {
+  return value ? value.replace("T", " ") : fallback;
 }
 
 function FormField({

@@ -14,6 +14,7 @@ test("Spanish translations and locale/country targeting affect storefront API", 
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Translations" }).click();
   await page.getByRole("tab", { name: /ES Spanish/ }).click();
   await page
     .locator('input[name="translation.es.headline"]')

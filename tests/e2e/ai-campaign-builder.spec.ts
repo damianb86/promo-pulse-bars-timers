@@ -52,6 +52,7 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   await expect(page.getByLabel("Campaign name")).toHaveValue(
     /Summer launch - trail running shoes/,
   );
+  await page.getByRole("tab", { name: "A/B testing" }).click();
   await expect(page.getByText("AI suggested variants")).toBeVisible();
   await expect(
     page.getByRole("row", { name: /AI suggested variants/ }),

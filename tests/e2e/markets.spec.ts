@@ -14,6 +14,7 @@ test("advanced market rules override storefront free shipping by market", async 
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Free Shipping Goal" }).click();
+  await page.getByRole("tab", { name: "Markets" }).click();
 
   const marketForm = page.locator(
     'form:has(input[name="_action"][value="saveMarketRule"])',

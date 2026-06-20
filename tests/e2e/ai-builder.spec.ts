@@ -42,6 +42,7 @@ test("mock AI builder generates a reviewed draft without auto-publishing", async
   await page.getByRole("button", { name: "Save campaign" }).click();
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
   await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
+  await page.getByRole("tab", { name: "A/B testing" }).click();
   await expect(page.getByText("AI suggested variants")).toBeVisible();
   await expect(
     page.getByRole("row", { name: /AI suggested variants/ }),

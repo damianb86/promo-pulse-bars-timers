@@ -6,17 +6,20 @@ test("post-purchase endpoint returns eligible mock campaigns by surface", async 
 }) => {
   await resetDb("post-purchase");
 
-  const thankYouResponse = await page.request.get("/api/post-purchase/campaign", {
-    params: {
-      shop: "demo-shop.myshopify.com",
-      surface: "THANK_YOU_PAGE",
-      appliedDiscountCodes: "SAVE20",
-      currency: "USD",
-      locale: "en-US",
-      mode: "AUTO_ELIGIBLE",
-      showTimer: "true",
+  const thankYouResponse = await page.request.get(
+    "/api/post-purchase/campaign",
+    {
+      params: {
+        shop: "demo-shop.myshopify.com",
+        surface: "THANK_YOU_PAGE",
+        appliedDiscountCodes: "SAVE20",
+        currency: "USD",
+        locale: "en-US",
+        mode: "AUTO_ELIGIBLE",
+        showTimer: "true",
+      },
     },
-  });
+  );
   const thankYouBody = await thankYouResponse.json();
 
   expect(thankYouResponse.ok()).toBe(true);
@@ -84,6 +87,7 @@ test("campaign editor can configure post-purchase placements", async ({
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { exact: true, name: "Placement" }).click();
   await expect(page.getByLabel("Primary placement")).toHaveValue(
     "ORDER_STATUS_PAGE",
   );

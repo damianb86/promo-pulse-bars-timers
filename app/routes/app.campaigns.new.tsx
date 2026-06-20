@@ -96,6 +96,10 @@ export const loader = async ({
       ? buildCampaignFormDefaultsFromTemplate(template)
       : {
           ...defaultCampaignFormValues,
+          startsAt: toDateTimeLocalValue(new Date()),
+          endsAt: toDateTimeLocalValue(
+            new Date(Date.now() + 24 * 60 * 60 * 1000),
+          ),
           timezone: settings.defaultTimezone,
         },
     templateSourceName: template?.eventName,
@@ -334,6 +338,7 @@ export default function CreateCampaignPage() {
       <div className="counterpulse-create-workspace">
         <div className="counterpulse-create-workspace__main">
           <CampaignForm
+            key={JSON.stringify(actionData?.values ?? defaults)}
             mode="create"
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
@@ -423,4 +428,10 @@ function buildTranslationsForSavedCampaign(
       badgeText: translation.badgeText,
     };
   });
+}
+
+function toDateTimeLocalValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+
+  return localDate.toISOString().slice(0, 16);
 }

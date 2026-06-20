@@ -106,17 +106,20 @@ export const test = base.extend<E2EFixtures>({
       };
 
       await page.goto("/app/campaigns/new");
-      await page.getByRole("radio", { exact: true, name: values.goal }).check();
-      await page.getByLabel("Campaign type").selectOption(values.type);
-      await page.getByLabel("Primary placement").selectOption(values.placement);
       await page.getByLabel("Campaign name").fill(values.name);
+      await page.getByRole("radio", { exact: true, name: values.goal }).click();
+      await page.getByLabel("Campaign type").selectOption(values.type);
       await page
         .getByRole("combobox", { name: /^Status$/ })
         .selectOption(values.status);
+      await page.getByRole("tab", { name: "Placement" }).click();
+      await page.getByLabel("Primary placement").selectOption(values.placement);
+      await page.getByRole("tab", { name: "Schedule" }).click();
       await page
         .getByLabel("End date/time")
         .fill(toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)));
-      await page.getByLabel("Timezone").fill("America/New_York");
+      await page.getByLabel("Timezone").selectOption("America/New_York");
+      await page.getByRole("tab", { name: "Message" }).click();
       await page.locator('input[name="headline"]').fill(values.headline);
       await page.getByLabel("CTA text").fill(values.ctaText);
       await page.getByLabel("CTA URL").fill(values.ctaUrl);

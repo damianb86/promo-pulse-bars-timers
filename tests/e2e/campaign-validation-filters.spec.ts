@@ -13,13 +13,14 @@ test("campaign creation shows server validation errors", async ({
   await resetDb();
   await loginAsDemoShop("/app/campaigns/new");
 
-  await page
-    .getByRole("combobox", { name: /^Status$/ })
-    .selectOption("ACTIVE");
+  await page.getByRole("combobox", { name: /^Status$/ }).selectOption("ACTIVE");
+  await page.getByRole("tab", { name: "Message" }).click();
   await page.getByLabel("CTA URL").fill("ftp://example.com");
   await page.getByRole("button", { name: "Save campaign" }).click();
 
+  await page.getByRole("tab", { name: "Setup" }).click();
   await expect(page.getByText("Campaign name is required.")).toBeVisible();
+  await page.getByRole("tab", { name: "Message" }).click();
   await expect(
     page.getByText("An active campaign needs a basic headline translation."),
   ).toBeVisible();
@@ -67,9 +68,7 @@ test("campaign list filters by search, status, and type", async ({
   ).toHaveCount(0);
 
   await page.getByLabel("Search by name").fill("");
-  await page
-    .getByRole("combobox", { name: /^Status$/ })
-    .selectOption("ACTIVE");
+  await page.getByRole("combobox", { name: /^Status$/ }).selectOption("ACTIVE");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(
     page.getByRole("row", { name: /E2E Filter Countdown/ }),

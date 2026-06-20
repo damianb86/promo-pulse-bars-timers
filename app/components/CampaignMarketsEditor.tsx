@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -163,7 +163,30 @@ export function CampaignMarketsEditor({
                 description="Use the broadest selector that is accurate. Market overrides win over global campaign settings."
               />
               <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-                <FormField label="Market">
+                <FormField
+                  label="Market"
+                  info={
+                    <FieldInfoButton label="Market" title="Market scope">
+                      <MarketInfoContent
+                        intro="Market scope controls which Shopify Market this override belongs to."
+                        items={[
+                          [
+                            "Specific market",
+                            "Use when Shopify Markets exposes a market ID and the override should match that market.",
+                          ],
+                          [
+                            "Any market",
+                            "Use when country, locale, or currency are enough to identify the audience.",
+                          ],
+                          [
+                            "Access scopes",
+                            "If Shopify blocks markets access, manual country and currency rules still work as fallback.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <select name="marketRuleMarketId" defaultValue="">
                     <option value="">Any market</option>
                     {markets.map((market) => (
@@ -177,7 +200,27 @@ export function CampaignMarketsEditor({
                   </select>
                 </FormField>
 
-                <FormField label="Country" error={errors?.countryCode}>
+                <FormField
+                  label="Country"
+                  error={errors?.countryCode}
+                  info={
+                    <FieldInfoButton label="Country" title="Country matching">
+                      <MarketInfoContent
+                        intro="Country narrows the override to storefront requests detected for that country."
+                        items={[
+                          [
+                            "Format",
+                            "Use a two-letter ISO country code such as US, ES, MX, or AR.",
+                          ],
+                          [
+                            "Fallback",
+                            "Leave blank when market, locale, or currency should be enough.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <input
                     name="marketRuleCountryCode"
                     placeholder="US"
@@ -185,11 +228,51 @@ export function CampaignMarketsEditor({
                   />
                 </FormField>
 
-                <FormField label="Locale" error={errors?.locale}>
+                <FormField
+                  label="Locale"
+                  error={errors?.locale}
+                  info={
+                    <FieldInfoButton label="Locale" title="Locale matching">
+                      <MarketInfoContent
+                        intro="Locale controls language-specific copy overrides."
+                        items={[
+                          [
+                            "Format",
+                            "Use values such as en, es, es-ES, pt-BR, fr, or de.",
+                          ],
+                          [
+                            "Priority",
+                            "When a locale override matches, localized text wins over global campaign text.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <input name="marketRuleLocale" placeholder="en or es-ES" />
                 </FormField>
 
-                <FormField label="Currency" error={errors?.currencyCode}>
+                <FormField
+                  label="Currency"
+                  error={errors?.currencyCode}
+                  info={
+                    <FieldInfoButton label="Currency" title="Currency matching">
+                      <MarketInfoContent
+                        intro="Currency controls threshold and money display matching for the override."
+                        items={[
+                          [
+                            "Format",
+                            "Use a three-letter ISO currency code such as USD, EUR, MXN, ARS, or BRL.",
+                          ],
+                          [
+                            "Thresholds",
+                            "Free-shipping threshold amounts are interpreted in this currency for matching market contexts.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <input
                     name="marketRuleCurrencyCode"
                     placeholder="USD"
@@ -200,6 +283,26 @@ export function CampaignMarketsEditor({
                 <FormField
                   label="Free shipping threshold"
                   error={errors?.thresholdAmount}
+                  info={
+                    <FieldInfoButton
+                      label="Free shipping threshold"
+                      title="Market threshold"
+                    >
+                      <MarketInfoContent
+                        intro="This overrides the campaign's global free-shipping threshold for matching market requests."
+                        items={[
+                          [
+                            "Market-specific",
+                            "Use different values when shipping economics differ by country or currency.",
+                          ],
+                          [
+                            "Blank state",
+                            "Leave blank to keep the global campaign threshold.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="marketRuleThresholdAmount"
@@ -210,14 +313,34 @@ export function CampaignMarketsEditor({
                   />
                 </FormField>
 
-                <label className="counterpulse-toggle counterpulse-toggle--card">
-                  <input
-                    name="marketRuleEnabled"
-                    type="checkbox"
-                    defaultChecked
-                  />
-                  <span>Campaign active for this market rule</span>
-                </label>
+                <div className="counterpulse-toggle counterpulse-toggle--card">
+                  <label className="counterpulse-toggle-label">
+                    <input
+                      name="marketRuleEnabled"
+                      type="checkbox"
+                      defaultChecked
+                    />
+                    <span>Campaign active for this market rule</span>
+                  </label>
+                  <FieldInfoButton
+                    label="Campaign active for this market rule"
+                    title="Market rule activation"
+                  >
+                    <MarketInfoContent
+                      intro="This toggle controls whether the override can make a campaign eligible for the matched market."
+                      items={[
+                        [
+                          "Enabled",
+                          "The override can apply copy, threshold, and delivery settings.",
+                        ],
+                        [
+                          "Disabled",
+                          "The rule is saved but ignored by storefront eligibility.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                </div>
               </div>
             </div>
 
@@ -231,6 +354,26 @@ export function CampaignMarketsEditor({
                 <FormField
                   label="Headline override"
                   error={errors?.textOverridesJson}
+                  info={
+                    <FieldInfoButton
+                      label="Headline override"
+                      title="Localized copy"
+                    >
+                      <MarketInfoContent
+                        intro="Localized copy fields replace only the campaign text entered here."
+                        items={[
+                          [
+                            "Partial overrides",
+                            "Fill only the fields that differ for this market or locale.",
+                          ],
+                          [
+                            "Fallback",
+                            "Blank fields continue using the global campaign message.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     value={textOverrides.headline}
@@ -287,6 +430,26 @@ export function CampaignMarketsEditor({
                 <FormField
                   label="Cutoff hour"
                   error={errors?.deliverySettingsJson}
+                  info={
+                    <FieldInfoButton
+                      label="Market cutoff hour"
+                      title="Market delivery cutoff"
+                    >
+                      <MarketInfoContent
+                        intro="Market delivery settings override the global delivery cutoff for matching requests."
+                        items={[
+                          [
+                            "Cutoff hour",
+                            "Use 0 through 23 in the market's operating timezone context.",
+                          ],
+                          [
+                            "Delivery days",
+                            "Minimum and maximum days describe the promise shown after matching this override.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     max="23"
@@ -351,7 +514,26 @@ export function CampaignMarketsEditor({
             description="Use these selectors to mirror how a storefront request will resolve market settings."
           />
           <div className="counterpulse-form-grid">
-            <FormField label="Preview market">
+            <FormField
+              label="Preview market"
+              info={
+                <FieldInfoButton label="Preview market" title="Market preview">
+                  <MarketInfoContent
+                    intro="Preview selectors help verify which text, threshold, and delivery settings would resolve for a storefront context."
+                    items={[
+                      [
+                        "No save",
+                        "Changing preview selectors does not change campaign behavior.",
+                      ],
+                      [
+                        "Use case",
+                        "Check fallback behavior before testing on the storefront.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <select defaultValue={markets[0]?.id ?? ""}>
                 {markets.length > 0 ? (
                   markets.map((market) => (
@@ -495,21 +677,51 @@ function PanelHeader({
   );
 }
 
+function MarketInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   children,
   error,
+  info,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  info?: ReactNode;
   label: string;
 }) {
   return (
-    <label className="counterpulse-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <small className="counterpulse-field-error">{error}</small>}
-    </label>
+    </div>
   );
 }
 

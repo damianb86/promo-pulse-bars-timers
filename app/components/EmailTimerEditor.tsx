@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -143,7 +143,34 @@ export function EmailTimerEditor({
                 ))}
               </div>
               <div className="counterpulse-form-grid">
-                <FormField label="Width" error={errors?.width}>
+                <FormField
+                  label="Width"
+                  error={errors?.width}
+                  info={
+                    <FieldInfoButton
+                      label="Email timer width"
+                      title="Email timer image size"
+                    >
+                      <EmailTimerInfoContent
+                        intro="Email timers are rendered as PNG images, so width and height define the actual image subscribers load."
+                        items={[
+                          [
+                            "Compatibility",
+                            "Use standard sizes for Klaviyo, Omnisend, Mailchimp, and responsive email templates.",
+                          ],
+                          [
+                            "Retina and scaling",
+                            "Larger images can look sharper but increase email image weight.",
+                          ],
+                          [
+                            "No JavaScript",
+                            "The countdown updates because the email client reloads the image URL, not because code runs in the email.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <input
                     name="emailTimerWidth"
                     type="number"
@@ -197,7 +224,33 @@ export function EmailTimerEditor({
                         onChange={() => setExpiredBehavior(option.value)}
                       />
                       <label htmlFor={inputId}>
-                        <strong>{option.label}</strong>
+                        <strong className="counterpulse-field-label-row">
+                          <span>{option.label}</span>
+                          {option.value === "SHOW_EXPIRED" && (
+                            <FieldInfoButton
+                              label="Email timer expired behavior"
+                              title="Expired email timer behavior"
+                            >
+                              <EmailTimerInfoContent
+                                intro="Expired behavior decides what the public image URL returns after the campaign deadline."
+                                items={[
+                                  [
+                                    "Show expired image",
+                                    "Keeps a branded fallback visible and makes the expired state explicit.",
+                                  ],
+                                  [
+                                    "Show zero timer",
+                                    "Preserves the timer module while showing that the offer has ended.",
+                                  ],
+                                  [
+                                    "Transparent pixel",
+                                    "Minimizes the expired visual, but email clients cannot truly remove the original image block.",
+                                  ],
+                                ]}
+                              />
+                            </FieldInfoButton>
+                          )}
+                        </strong>
                         <small>{option.description}</small>
                       </label>
                     </div>
@@ -237,7 +290,29 @@ export function EmailTimerEditor({
                     </div>
                   </div>
                   <div className="counterpulse-stack">
-                    <FormField label="Email timer URL">
+                    <FormField
+                      label="Email timer URL"
+                      info={
+                        <FieldInfoButton
+                          label="Email timer URL"
+                          title="Public timer URL"
+                        >
+                          <EmailTimerInfoContent
+                            intro="This URL is safe to paste into email platforms, but it is intentionally public so recipients can load the image."
+                            items={[
+                              [
+                                "Tokenized",
+                                "The URL uses a non-guessable public token and does not expose shop secrets.",
+                              ],
+                              [
+                                "Caching",
+                                "Email clients may cache images, so the timer can update at the cadence allowed by the client.",
+                              ],
+                            ]}
+                          />
+                        </FieldInfoButton>
+                      }
+                    >
                       <input readOnly value={timer.imageUrl} />
                     </FormField>
                     <div className="counterpulse-actions">
@@ -257,7 +332,29 @@ export function EmailTimerEditor({
                 </div>
 
                 <s-box paddingBlockStart="base">
-                  <FormField label="Email snippet">
+                  <FormField
+                    label="Email snippet"
+                    info={
+                      <FieldInfoButton
+                        label="Email snippet"
+                        title="Email HTML snippet"
+                      >
+                        <EmailTimerInfoContent
+                          intro="The snippet is generic HTML that can be inserted into most email builders."
+                          items={[
+                            [
+                              "Editable",
+                              "You can adjust surrounding email layout in the email platform after copying it.",
+                            ],
+                            [
+                              "No script tags",
+                              "The snippet uses only an image tag because most email clients block JavaScript.",
+                            ],
+                          ]}
+                        />
+                      </FieldInfoButton>
+                    }
+                  >
                     <textarea readOnly rows={3} value={timer.snippet} />
                   </FormField>
                   <div className="counterpulse-actions">
@@ -305,21 +402,51 @@ function PanelHeader({
   );
 }
 
+function EmailTimerInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   children,
   error,
+  info,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  info?: ReactNode;
   label: string;
 }) {
   return (
-    <label className="counterpulse-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <small className="counterpulse-field-error">{error}</small>}
-    </label>
+    </div>
   );
 }
 

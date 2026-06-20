@@ -31,6 +31,20 @@ type ConfirmModalProps = {
   onConfirm: () => void;
 };
 
+type InfoModalProps = {
+  children?: ReactNode;
+  closeLabel?: string;
+  open: boolean;
+  title: string;
+  onClose: () => void;
+};
+
+type FieldInfoButtonProps = {
+  children: ReactNode;
+  label: string;
+  title: string;
+};
+
 type ConfirmSubmitOptions = {
   cancelLabel?: string;
   children?: ReactNode;
@@ -139,6 +153,120 @@ export function AppToast({
       >
         {dismissLabel}
       </button>
+    </div>
+  );
+}
+
+export function FieldInfoButton({
+  children,
+  label,
+  title,
+}: FieldInfoButtonProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <span
+        aria-label="More information"
+        className="counterpulse-info-button"
+        data-info-label={label}
+        role="button"
+        tabIndex={0}
+        title={`About ${label}`}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(true);
+        }}
+      >
+        <span aria-hidden="true">i</span>
+      </span>
+      <InfoModal open={open} title={title} onClose={() => setOpen(false)}>
+        {children}
+      </InfoModal>
+    </>
+  );
+}
+
+export function InfoModal({
+  children,
+  closeLabel = "Close",
+  open,
+  title,
+  onClose,
+}: InfoModalProps) {
+  const titleId = useId();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    closeButtonRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="counterpulse-modal-backdrop">
+      <button
+        aria-label="Close"
+        className="counterpulse-modal-backdrop__dismiss"
+        tabIndex={-1}
+        type="button"
+        onClick={onClose}
+      />
+      <div
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="counterpulse-modal counterpulse-modal--info"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <span
+            className="counterpulse-modal__icon counterpulse-modal__icon--info"
+            aria-hidden="true"
+          >
+            <NoticeIcon tone="info" />
+          </span>
+          <div>
+            <h2 id={titleId}>{title}</h2>
+            {children && (
+              <div className="counterpulse-modal__body">{children}</div>
+            )}
+          </div>
+        </div>
+        <div className="counterpulse-modal__actions">
+          <button
+            className="counterpulse-button"
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+          >
+            {closeLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

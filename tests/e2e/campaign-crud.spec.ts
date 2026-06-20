@@ -85,6 +85,19 @@ test("campaign builder tabs preview and layout are interactive", async ({
   await expect(
     form.getByRole("radio", { exact: true, name: "Flash sale" }),
   ).toHaveAttribute("aria-checked", "true");
+
+  await form.getByTitle("About Campaign type").click();
+  let infoDialog = page.getByRole("dialog", { name: "Campaign types" });
+  await expect(infoDialog).toContainText("Countdown bar");
+  await expect(infoDialog).toContainText("Free shipping goal");
+  await infoDialog.getByRole("button", { name: "Close" }).click();
+
+  await form.getByTitle("About Goal").click();
+  infoDialog = page.getByRole("dialog", { name: "Campaign goals" });
+  await expect(infoDialog).toContainText("Cart rescue");
+  await expect(infoDialog).toContainText("Announcement");
+  await infoDialog.getByRole("button", { name: "Close" }).click();
+
   await form.getByRole("radio", { exact: true, name: "Free shipping" }).click();
   await expect(
     form.getByRole("radio", { exact: true, name: "Free shipping" }),
@@ -160,10 +173,22 @@ test("campaign builder tabs preview and layout are interactive", async ({
     "aria-selected",
     "true",
   );
+  await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByTitle("About Discount mode").click();
+  infoDialog = page.getByRole("dialog", { name: "Discount modes" });
+  await expect(infoDialog).toContainText("Unique code per visitor");
+  await infoDialog.getByRole("button", { name: "Close" }).click();
+
   await page.getByRole("tab", { name: "A/B testing" }).click();
   await expect(
     page.getByRole("heading", { name: "Experiments" }),
   ).toBeVisible();
+  await page.getByTitle("About Primary metric").click();
+  infoDialog = page.getByRole("dialog", {
+    name: "Experiment primary metric",
+  });
+  await expect(infoDialog).toContainText("Revenue per visitor");
+  await infoDialog.getByRole("button", { name: "Close" }).click();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

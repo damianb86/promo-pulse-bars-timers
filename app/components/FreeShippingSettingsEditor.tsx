@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -58,7 +58,30 @@ export function FreeShippingSettingsEditor({
         <input name="_action" type="hidden" value="saveFreeShippingSettings" />
 
         <div className="counterpulse-form-grid">
-          <FormField label="Threshold amount" error={errors?.thresholdAmount}>
+          <FormField
+            label="Threshold amount"
+            error={errors?.thresholdAmount}
+            info={
+              <FieldInfoButton
+                label="Free shipping threshold amount"
+                title="Free shipping threshold"
+              >
+                <FreeShippingInfoContent
+                  intro="Threshold amount is the real cart subtotal shoppers must reach before the campaign says free shipping is unlocked."
+                  items={[
+                    [
+                      "Real offer",
+                      "Only use a value that matches the merchant's actual shipping rules.",
+                    ],
+                    [
+                      "Market overrides",
+                      "Use market rules when the threshold differs by country or currency.",
+                    ],
+                  ]}
+                />
+              </FieldInfoButton>
+            }
+          >
             <input
               name="thresholdAmount"
               type="number"
@@ -76,7 +99,30 @@ export function FreeShippingSettingsEditor({
             />
           </FormField>
 
-          <FormField label="Progress style" error={errors?.progressStyle}>
+          <FormField
+            label="Progress style"
+            error={errors?.progressStyle}
+            info={
+              <FieldInfoButton
+                label="Free shipping progress style"
+                title="Progress style"
+              >
+                <FreeShippingInfoContent
+                  intro="Progress style changes how much visual feedback the cart goal shows."
+                  items={[
+                    [
+                      "Compact",
+                      "Best for tight cart drawers or secondary placements.",
+                    ],
+                    [
+                      "Detailed",
+                      "Best when the campaign is a primary cart message and needs clearer progress.",
+                    ],
+                  ]}
+                />
+              </FieldInfoButton>
+            }
+          >
             <select name="progressStyle" defaultValue={values.progressStyle}>
               {freeShippingProgressStyleOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -86,14 +132,34 @@ export function FreeShippingSettingsEditor({
             </select>
           </FormField>
 
-          <label className="counterpulse-toggle">
-            <input
-              name="includeDiscountedSubtotal"
-              type="checkbox"
-              defaultChecked={values.includeDiscountedSubtotal}
-            />
-            <span>Use discounted subtotal when available</span>
-          </label>
+          <div className="counterpulse-toggle">
+            <label className="counterpulse-toggle-label">
+              <input
+                name="includeDiscountedSubtotal"
+                type="checkbox"
+                defaultChecked={values.includeDiscountedSubtotal}
+              />
+              <span>Use discounted subtotal when available</span>
+            </label>
+            <FieldInfoButton
+              label="Use discounted subtotal"
+              title="Discounted subtotal"
+            >
+              <FreeShippingInfoContent
+                intro="This controls whether progress should use the subtotal after discounts when that value is available."
+                items={[
+                  [
+                    "Enabled",
+                    "The free-shipping goal is stricter and reflects the effective cart subtotal.",
+                  ],
+                  [
+                    "Disabled",
+                    "The goal uses the pre-discount subtotal, which may unlock sooner.",
+                  ],
+                ]}
+              />
+            </FieldInfoButton>
+          </div>
 
           <FormField
             label="Empty cart fallback message"
@@ -123,6 +189,30 @@ export function FreeShippingSettingsEditor({
             label="Country/market threshold JSON"
             error={errors?.thresholdRulesJson}
             fullWidth
+            info={
+              <FieldInfoButton
+                label="Country/market threshold JSON"
+                title="Country and market thresholds"
+              >
+                <FreeShippingInfoContent
+                  intro="Use this advanced field only when thresholds differ by country or market and the Markets panel is not enough."
+                  items={[
+                    [
+                      "Country format",
+                      '{"countries":{"US":75,"CA":100}} maps country codes to threshold amounts.',
+                    ],
+                    [
+                      "Market format",
+                      '{"markets":{"EU":80}} maps market identifiers to threshold amounts.',
+                    ],
+                    [
+                      "Fallback",
+                      "If no rule matches, Promo Pulse uses the global threshold amount.",
+                    ],
+                  ]}
+                />
+              </FieldInfoButton>
+            }
           >
             <textarea
               name="thresholdRulesJson"
@@ -144,28 +234,58 @@ export function FreeShippingSettingsEditor({
   );
 }
 
+function FreeShippingInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   label,
   error,
   children,
+  info,
   fullWidth = false,
 }: {
   label: string;
   error?: string;
   children: ReactNode;
+  info?: ReactNode;
   fullWidth?: boolean;
 }) {
   return (
-    <label
+    <div
       className={
         fullWidth
           ? "counterpulse-form-field counterpulse-form-field--full"
           : "counterpulse-form-field"
       }
     >
-      <span>{label}</span>
-      {children}
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <span className="counterpulse-form-error">{error}</span>}
-    </label>
+    </div>
   );
 }

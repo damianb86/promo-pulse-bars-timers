@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -126,14 +126,38 @@ export function BehaviorTargetingEditor({
                 title="Behavior eligibility"
                 description="Behavior targeting only uses Promo Pulse event history and respects consent settings."
               />
-              <label className="counterpulse-toggle counterpulse-toggle--card">
-                <input
-                  name="behaviorEnabled"
-                  type="checkbox"
-                  defaultChecked={values.enabled}
-                />
-                <span>Enable behavior targeting</span>
-              </label>
+              <div className="counterpulse-toggle counterpulse-toggle--card">
+                <label className="counterpulse-toggle-label">
+                  <input
+                    name="behaviorEnabled"
+                    type="checkbox"
+                    defaultChecked={values.enabled}
+                  />
+                  <span>Enable behavior targeting</span>
+                </label>
+                <FieldInfoButton
+                  label="Enable behavior targeting"
+                  title="Behavior targeting"
+                >
+                  <BehaviorInfoContent
+                    intro="Behavior targeting limits campaign eligibility using recent Promo Pulse events from the same visitor ID."
+                    items={[
+                      [
+                        "No PII",
+                        "The profile uses visitor/session IDs and campaign events, not names, email addresses, or customer records.",
+                      ],
+                      [
+                        "Consent-aware",
+                        "When analytics or consent settings disallow tracking, behavior targeting should not make a visitor eligible.",
+                      ],
+                      [
+                        "Fallback",
+                        "If the browser blocks storage or events are missing, the campaign falls back to basic targeting.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              </div>
             </div>
 
             {behaviorGroups.map((group) => (
@@ -181,7 +205,30 @@ export function BehaviorTargetingEditor({
                 title="Campaign-specific rules"
                 description="Used only by saw/clicked campaign segments."
               />
-              <FormField label="Campaign IDs for X rules">
+              <FormField
+                label="Campaign IDs for X rules"
+                info={
+                  <FieldInfoButton
+                    label="Campaign IDs for X rules"
+                    title="Campaign-specific behavior"
+                  >
+                    <BehaviorInfoContent
+                      intro="These IDs are used only by the saw campaign X and clicked campaign X segments."
+                      items={[
+                        [
+                          "Specific campaigns",
+                          "List campaign IDs when this campaign should react to a known previous campaign.",
+                        ],
+                        [
+                          "Blank state",
+                          "Leave blank for general segments such as new visitor, returning visitor, or high intent.",
+                        ],
+                        ["Format", "Use one campaign ID per line."],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
+              >
                 <textarea
                   name="behaviorCampaignIds"
                   rows={4}
@@ -202,7 +249,27 @@ export function BehaviorTargetingEditor({
                 description="Keep these windows conservative so targeting remains predictable."
               />
               <div className="counterpulse-form-grid">
-                <FormField label="Lookback days" error={errors?.lookbackDays}>
+                <FormField
+                  label="Lookback days"
+                  error={errors?.lookbackDays}
+                  info={
+                    <FieldInfoButton label="Lookback days" title="Lookback">
+                      <BehaviorInfoContent
+                        intro="Lookback days controls how far back Promo Pulse reads behavior events for this campaign."
+                        items={[
+                          [
+                            "Short windows",
+                            "More relevant for urgency and cart rescue campaigns.",
+                          ],
+                          [
+                            "Long windows",
+                            "Useful for returning visitor or repeat-intent campaigns, but less precise.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <input
                     name="behaviorLookbackDays"
                     type="number"
@@ -216,6 +283,26 @@ export function BehaviorTargetingEditor({
                 <FormField
                   label="Inactive cart minutes"
                   error={errors?.inactiveCartMinutes}
+                  info={
+                    <FieldInfoButton
+                      label="Inactive cart minutes"
+                      title="Inactive cart window"
+                    >
+                      <BehaviorInfoContent
+                        intro="Inactive cart minutes defines when a cart is considered stale enough to target."
+                        items={[
+                          [
+                            "Example",
+                            "60 means a visitor with cart activity and no recent progress can match after one hour.",
+                          ],
+                          [
+                            "Avoid pressure",
+                            "Use conservative windows so the campaign does not appear immediately after a normal cart action.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="behaviorInactiveCartMinutes"
@@ -230,6 +317,26 @@ export function BehaviorTargetingEditor({
                 <FormField
                   label="High intent event count"
                   error={errors?.highIntentMinEvents}
+                  info={
+                    <FieldInfoButton
+                      label="High intent event count"
+                      title="High intent"
+                    >
+                      <BehaviorInfoContent
+                        intro="High intent is based on a minimum number of qualifying events inside the configured window."
+                        items={[
+                          [
+                            "Signals",
+                            "Product views, campaign clicks, add-to-cart, and checkout events can contribute depending on tracking availability.",
+                          ],
+                          [
+                            "Threshold",
+                            "Higher values target fewer visitors but usually indicate stronger intent.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="behaviorHighIntentMinEvents"
@@ -244,6 +351,26 @@ export function BehaviorTargetingEditor({
                 <FormField
                   label="High intent window minutes"
                   error={errors?.highIntentWindowMinutes}
+                  info={
+                    <FieldInfoButton
+                      label="High intent window minutes"
+                      title="High intent window"
+                    >
+                      <BehaviorInfoContent
+                        intro="This is the time window in which the high-intent event count must be reached."
+                        items={[
+                          [
+                            "Short window",
+                            "Captures intense current-session behavior.",
+                          ],
+                          [
+                            "Long window",
+                            "Captures slower browsing patterns but may be less urgent.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="behaviorHighIntentWindowMinutes"
@@ -290,21 +417,51 @@ function PanelHeader({
   );
 }
 
+function BehaviorInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   children,
   error,
+  info,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  info?: ReactNode;
   label: string;
 }) {
   return (
-    <label className="counterpulse-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <small className="counterpulse-field-error">{error}</small>}
-    </label>
+    </div>
   );
 }
 

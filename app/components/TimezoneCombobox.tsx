@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 
 type TimezoneOption = {
   label: string;
@@ -9,6 +9,7 @@ type TimezoneOption = {
 type TimezoneComboboxProps = {
   defaultValue?: string;
   error?: string;
+  info?: ReactNode;
   label: string;
   name: string;
   onChange?: (value: string) => void;
@@ -65,6 +66,7 @@ const representativeTimezoneOptions: TimezoneOption[] = [
 export function TimezoneCombobox({
   defaultValue = "UTC",
   error,
+  info,
   label,
   name,
   onChange,
@@ -107,7 +109,10 @@ export function TimezoneCombobox({
 
   return (
     <div className={labelClassName}>
-      <label htmlFor={inputId}>{label}</label>
+      <div className="counterpulse-field-label-row">
+        <label htmlFor={inputId}>{label}</label>
+        {info}
+      </div>
       <input name={name} type="hidden" value={selectedValue} />
       <div className="counterpulse-combobox">
         <input

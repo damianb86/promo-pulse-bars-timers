@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -163,7 +163,41 @@ export function AdvancedDiscountRulesEditor({
                   />
                 </FormField>
 
-                <FormField label="Rule type">
+                <FormField
+                  label="Rule type"
+                  info={
+                    <FieldInfoButton
+                      label="Advanced discount rule type"
+                      title="Advanced discount rule types"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="Rule type determines which Shopify Function logic should evaluate the cart."
+                        items={[
+                          [
+                            "Spend X get Y",
+                            "Use when reaching a subtotal or quantity threshold should unlock a configured benefit.",
+                          ],
+                          [
+                            "Tiered discount",
+                            "Use multiple subtotal tiers, such as 10% over 100 and 15% over 200.",
+                          ],
+                          [
+                            "Free gift",
+                            "Use when eligible cart contents should unlock a gift product or gift-like discount.",
+                          ],
+                          [
+                            "Product + shipping combo",
+                            "Use when a product discount and shipping benefit need to be coordinated.",
+                          ],
+                          [
+                            "Cart contents",
+                            "Use when eligibility depends on product IDs, collections, or specific cart composition.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <select name="ruleType" defaultValue="TIERED_DISCOUNT">
                     {ruleTypeOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -173,7 +207,33 @@ export function AdvancedDiscountRulesEditor({
                   </select>
                 </FormField>
 
-                <FormField label="Status">
+                <FormField
+                  label="Status"
+                  info={
+                    <FieldInfoButton
+                      label="Advanced discount status"
+                      title="Rule status"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="Status controls whether a rule is ready for evaluation after it is saved."
+                        items={[
+                          [
+                            "Draft",
+                            "Saved for review. Use this while configuring thresholds and Shopify Function setup.",
+                          ],
+                          [
+                            "Active",
+                            "Eligible for app discount evaluation when the matching Shopify discount exists.",
+                          ],
+                          [
+                            "Paused",
+                            "Temporarily disabled without deleting the configuration.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <select name="ruleStatus" defaultValue="DRAFT">
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -186,6 +246,26 @@ export function AdvancedDiscountRulesEditor({
                 <FormField
                   label="Discount value (%)"
                   error={errors?.discountValue}
+                  info={
+                    <FieldInfoButton
+                      label="Advanced discount value"
+                      title="Discount value"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="This is the default percentage discount used by rule types that do not need per-tier values."
+                        items={[
+                          [
+                            "Tiered rules",
+                            "The tier builder can override this with threshold-specific percentages.",
+                          ],
+                          [
+                            "Cart rules",
+                            "The value applies only when the configured product or cart conditions match.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="discountValue"
@@ -200,6 +280,26 @@ export function AdvancedDiscountRulesEditor({
                 <FormField
                   label="Shipping discount (%)"
                   error={errors?.shippingDiscountValue}
+                  info={
+                    <FieldInfoButton
+                      label="Shipping discount"
+                      title="Shipping discount"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="Use this only when the advanced rule intentionally includes a shipping benefit."
+                        items={[
+                          [
+                            "Optional",
+                            "Leave blank for product-only or order-only discount rules.",
+                          ],
+                          [
+                            "Shopify limitations",
+                            "Combined product and shipping behavior depends on Shopify Function capabilities and discount configuration.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
                 >
                   <input
                     name="shippingDiscountValue"
@@ -228,7 +328,29 @@ export function AdvancedDiscountRulesEditor({
                 description="Leave both fields blank to evaluate the whole cart."
               />
               <div className="counterpulse-stack">
-                <FormField label="Product or variant IDs">
+                <FormField
+                  label="Product or variant IDs"
+                  info={
+                    <FieldInfoButton
+                      label="Product or variant IDs"
+                      title="Product eligibility"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="These IDs limit which cart lines can trigger or receive the advanced discount."
+                        items={[
+                          [
+                            "Accepted format",
+                            "Use Shopify GIDs, one product or variant per line.",
+                          ],
+                          [
+                            "Blank state",
+                            "Leave blank together with collection IDs to evaluate the whole cart.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <textarea
                     name="productIds"
                     rows={4}
@@ -239,7 +361,29 @@ export function AdvancedDiscountRulesEditor({
                   </small>
                 </FormField>
 
-                <FormField label="Collection IDs">
+                <FormField
+                  label="Collection IDs"
+                  info={
+                    <FieldInfoButton
+                      label="Collection IDs"
+                      title="Collection eligibility"
+                    >
+                      <AdvancedDiscountInfoContent
+                        intro="Collection IDs let a rule apply to products in selected Shopify collections."
+                        items={[
+                          [
+                            "Accepted format",
+                            "Use Shopify collection GIDs, one per line.",
+                          ],
+                          [
+                            "Evaluation",
+                            "The function or backend resolver must be able to map cart lines to those collections.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <textarea
                     name="collectionIds"
                     rows={4}
@@ -262,7 +406,35 @@ export function AdvancedDiscountRulesEditor({
                 {thresholdTiers.map((tier, index) => (
                   <div className="counterpulse-tier-row" key={index}>
                     <strong>Tier {index + 1}</strong>
-                    <FormField label={`Tier ${index + 1} minimum subtotal`}>
+                    <FormField
+                      label={`Tier ${index + 1} minimum subtotal`}
+                      info={
+                        index === 0 ? (
+                          <FieldInfoButton
+                            label="Tier minimum subtotal"
+                            title="Spend tiers"
+                          >
+                            <AdvancedDiscountInfoContent
+                              intro="Spend tiers replace raw JSON with structured threshold rows."
+                              items={[
+                                [
+                                  "Minimum subtotal",
+                                  "The cart subtotal that must be reached before the tier can apply.",
+                                ],
+                                [
+                                  "Discount percent",
+                                  "The benefit applied after the subtotal threshold is reached.",
+                                ],
+                                [
+                                  "Generated JSON",
+                                  "Promo Pulse serializes these rows into the hidden rule configuration.",
+                                ],
+                              ]}
+                            />
+                          </FieldInfoButton>
+                        ) : null
+                      }
+                    >
                       <input
                         min="0"
                         step="0.01"
@@ -406,21 +578,51 @@ function PanelHeader({
   );
 }
 
+function AdvancedDiscountInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   children,
   error,
+  info,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  info?: ReactNode;
   label: string;
 }) {
   return (
-    <label className="counterpulse-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <small className="counterpulse-field-error">{error}</small>}
-    </label>
+    </div>
   );
 }
 

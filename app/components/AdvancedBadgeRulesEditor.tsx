@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
@@ -96,7 +96,30 @@ export function AdvancedBadgeRulesEditor({
               <input name="badgeRuleText" defaultValue="Limited offer" />
             </FormField>
 
-            <FormField label="Priority" error={errors?.priority}>
+            <FormField
+              label="Priority"
+              error={errors?.priority}
+              info={
+                <FieldInfoButton
+                  label="Badge rule priority"
+                  title="Badge rule priority"
+                >
+                  <AdvancedBadgeInfoContent
+                    intro="Priority decides which badge wins when multiple rules match the same product."
+                    items={[
+                      [
+                        "Higher priority",
+                        "Use higher numbers for more important badges.",
+                      ],
+                      [
+                        "Duplicate prevention",
+                        "Priority helps avoid showing duplicate or conflicting badges.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <input
                 name="badgeRulePriority"
                 type="number"
@@ -107,7 +130,30 @@ export function AdvancedBadgeRulesEditor({
               />
             </FormField>
 
-            <FormField label="Status">
+            <FormField
+              label="Status"
+              info={
+                <FieldInfoButton
+                  label="Badge rule status"
+                  title="Badge rule status"
+                >
+                  <AdvancedBadgeInfoContent
+                    intro="Status controls whether this rule can display badges on matching products."
+                    items={[
+                      ["Draft", "Saved for review but not intended to render."],
+                      [
+                        "Active",
+                        "Eligible to render when conditions and schedule match.",
+                      ],
+                      [
+                        "Paused",
+                        "Temporarily disabled without deleting the rule.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <select name="badgeRuleStatus" defaultValue="ACTIVE">
                 {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -144,7 +190,26 @@ export function AdvancedBadgeRulesEditor({
 
           <s-box paddingBlockStart="base">
             <div className="counterpulse-form-grid">
-              <FormField label="Product tags">
+              <FormField
+                label="Product tags"
+                info={
+                  <FieldInfoButton label="Product tags" title="Tag conditions">
+                    <AdvancedBadgeInfoContent
+                      intro="Product tags limit the badge to products with matching Shopify tags."
+                      items={[
+                        [
+                          "Format",
+                          "Use comma-separated tags such as sale, vip, preorder.",
+                        ],
+                        [
+                          "Matching",
+                          "The rule matches when product context includes the configured tags.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
+              >
                 <input name="badgeRuleProductTags" placeholder="sale, vip" />
               </FormField>
 
@@ -159,7 +224,29 @@ export function AdvancedBadgeRulesEditor({
                 <input name="badgeRuleVendor" placeholder="Acme" />
               </FormField>
 
-              <FormField label="Inventory below">
+              <FormField
+                label="Inventory below"
+                info={
+                  <FieldInfoButton
+                    label="Inventory below"
+                    title="Inventory condition"
+                  >
+                    <AdvancedBadgeInfoContent
+                      intro="Inventory conditions rely on real Shopify inventory context."
+                      items={[
+                        [
+                          "Threshold",
+                          "The badge can show when available inventory is below this number.",
+                        ],
+                        [
+                          "No fake stock",
+                          "If inventory is unavailable, the rule should not invent scarcity.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
+              >
                 <input
                   name="badgeRuleInventoryBelow"
                   type="number"
@@ -182,7 +269,30 @@ export function AdvancedBadgeRulesEditor({
 
           <s-box paddingBlockStart="base">
             <div className="counterpulse-form-grid">
-              <FormField label="Metafield namespace" error={errors?.metafield}>
+              <FormField
+                label="Metafield namespace"
+                error={errors?.metafield}
+                info={
+                  <FieldInfoButton
+                    label="Metafield namespace"
+                    title="Metafield condition"
+                  >
+                    <AdvancedBadgeInfoContent
+                      intro="Metafield conditions let merchandising teams target badges from structured product data."
+                      items={[
+                        [
+                          "Namespace and key",
+                          "Together they identify the metafield, such as custom.badge_group.",
+                        ],
+                        [
+                          "Value",
+                          "The rule matches when the product metafield equals the configured value.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
+              >
                 <input
                   name="badgeRuleMetafieldNamespace"
                   placeholder="custom"
@@ -220,6 +330,26 @@ export function AdvancedBadgeRulesEditor({
               <FormField
                 label="Translations JSON"
                 error={errors?.textByLocaleJson}
+                info={
+                  <FieldInfoButton
+                    label="Translations JSON"
+                    title="Badge translations"
+                  >
+                    <AdvancedBadgeInfoContent
+                      intro="Translations map storefront locales to localized badge text."
+                      items={[
+                        [
+                          "Format",
+                          '{"es":"Oferta","fr":"Offre"} maps locale codes to badge labels.',
+                        ],
+                        [
+                          "Fallback",
+                          "Locales without a translation use the main badge text.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
               >
                 <textarea
                   name="badgeRuleTextByLocaleJson"
@@ -350,20 +480,50 @@ function DeleteAdvancedBadgeRuleForm({ ruleId }: { ruleId: string }) {
   );
 }
 
+function AdvancedBadgeInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   children,
   error,
+  info,
   label,
 }: {
   children: ReactNode;
   error?: string;
+  info?: ReactNode;
   label: string;
 }) {
   return (
-    <label className="counterpulse-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <small className="counterpulse-field-error">{error}</small>}
-    </label>
+    </div>
   );
 }

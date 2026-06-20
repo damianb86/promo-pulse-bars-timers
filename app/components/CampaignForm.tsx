@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { CampaignPreview } from "./CampaignPreview";
@@ -356,7 +356,35 @@ export function CampaignForm({
                   />
                 </FormField>
 
-                <FormField label="Status" error={errors.status}>
+                <FormField
+                  label="Status"
+                  error={errors.status}
+                  info={
+                    <FieldInfoButton label="Status" title="Campaign status">
+                      <CampaignInfoContent
+                        intro="Status controls whether the campaign can render now or stays hidden while you finish setup."
+                        items={[
+                          [
+                            "Draft",
+                            "Saved configuration only. It will not render on the storefront.",
+                          ],
+                          [
+                            "Active",
+                            "Eligible to render when schedule, placement, plan, and targeting rules match.",
+                          ],
+                          [
+                            "Paused",
+                            "Temporarily hidden without deleting settings or analytics history.",
+                          ],
+                          [
+                            "Expired",
+                            "Ended campaign state. Use it when the promotion should remain archived.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <select
                     data-testid="campaign-status-select"
                     name="status"
@@ -371,7 +399,50 @@ export function CampaignForm({
                   </select>
                 </FormField>
 
-                <FormField label="Campaign type" error={errors.type}>
+                <FormField
+                  label="Campaign type"
+                  error={errors.type}
+                  info={
+                    <FieldInfoButton
+                      label="Campaign type"
+                      title="Campaign types"
+                    >
+                      <CampaignInfoContent
+                        intro="Campaign type changes what Promo Pulse renders and which extra configuration panels matter."
+                        items={[
+                          [
+                            "Countdown bar",
+                            "A top or bottom urgency bar with timer and CTA. Best for sitewide sales or announcements.",
+                          ],
+                          [
+                            "Product timer",
+                            "A timer intended for product pages. Use it when urgency belongs to a product offer.",
+                          ],
+                          [
+                            "Cart timer",
+                            "A cart or drawer timer. Use it for cart rescue, checkout urgency, or short-lived cart offers.",
+                          ],
+                          [
+                            "Free shipping goal",
+                            "Shows cart progress toward a real threshold. It enables the free-shipping settings panel.",
+                          ],
+                          [
+                            "Delivery cutoff",
+                            "Shows delivery timing based on a real cutoff hour and timezone. It enables delivery settings.",
+                          ],
+                          [
+                            "Low stock message",
+                            "Displays urgency based on real inventory data when available. It does not create fake stock.",
+                          ],
+                          [
+                            "Product badge",
+                            "Renders product or collection badges and enables merchandising badge settings.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <select
                     name="type"
                     value={formValues.type}
@@ -385,7 +456,48 @@ export function CampaignForm({
                   </select>
                 </FormField>
 
-                <FormGroup label="Goal" error={errors.goal} fullWidth>
+                <FormGroup
+                  label="Goal"
+                  error={errors.goal}
+                  fullWidth
+                  info={
+                    <FieldInfoButton label="Goal" title="Campaign goals">
+                      <CampaignInfoContent
+                        intro="Goal describes the merchant intent. It helps defaults, preview text, analytics grouping, and recommendations."
+                        items={[
+                          [
+                            "Flash sale",
+                            "Short-lived offer focused on urgency, usually with a timer and sale CTA.",
+                          ],
+                          [
+                            "Free shipping",
+                            "Motivates shoppers to reach a real shipping threshold. Pair it with cart placements.",
+                          ],
+                          [
+                            "Cart rescue",
+                            "Targets shoppers with cart intent using cart or drawer placements.",
+                          ],
+                          [
+                            "Delivery cutoff",
+                            "Communicates order-by timing using actual cutoff settings.",
+                          ],
+                          [
+                            "Low stock urgency",
+                            "Uses inventory context to message scarce items without inventing quantities.",
+                          ],
+                          [
+                            "Product badge",
+                            "Highlights product-level merchandising labels such as launch, sale, or limited offer.",
+                          ],
+                          [
+                            "Announcement",
+                            "General campaign message without a discount or scarcity assumption.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  }
+                >
                   <div className="counterpulse-goal-list" role="radiogroup">
                     {campaignGoalOptions.map((option) => (
                       <button
@@ -487,6 +599,42 @@ export function CampaignForm({
                 label="Primary placement"
                 error={errors.placementType}
                 fullWidth
+                info={
+                  <FieldInfoButton
+                    label="Primary placement"
+                    title="Campaign placements"
+                  >
+                    <CampaignInfoContent
+                      intro="Placement controls where the widget is allowed to appear. The theme extension or app proxy still needs to be installed for that surface."
+                      items={[
+                        [
+                          "Top or bottom bar",
+                          "Sitewide bars for announcements, flash sales, and global urgency.",
+                        ],
+                        [
+                          "Product page",
+                          "Product detail surface for product timers, delivery cutoff, stock, or badges.",
+                        ],
+                        [
+                          "Collection card",
+                          "Product-card badge surface. Use carefully because theme support varies.",
+                        ],
+                        [
+                          "Cart page or cart drawer",
+                          "Cart surfaces for free shipping goals, cart rescue, and unique code reminders.",
+                        ],
+                        [
+                          "Thank you or order status",
+                          "Post-purchase surfaces controlled by Shopify checkout extensions.",
+                        ],
+                        [
+                          "Custom selector",
+                          "Advanced placement using configured selectors. Test it on the real theme.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
               >
                 <select
                   name="placementType"
@@ -528,6 +676,30 @@ export function CampaignForm({
                 <div className="counterpulse-form-field--full">
                   <TimezoneCombobox
                     error={errors.timezone}
+                    info={
+                      <FieldInfoButton
+                        label="Timezone"
+                        title="Timezone used by campaign timers"
+                      >
+                        <CampaignInfoContent
+                          intro="Timezone controls how scheduled starts, ends, delivery cutoff, and recurring timer calculations are interpreted."
+                          items={[
+                            [
+                              "UTC offset first",
+                              "The selector is ordered by UTC offset and shows one representative region per offset.",
+                            ],
+                            [
+                              "Why it matters",
+                              "A timer promising a real deadline should use the same timezone as the offer or fulfillment operation.",
+                            ],
+                            [
+                              "Existing saved zones",
+                              "If a campaign already uses a more specific IANA zone, it is preserved until you choose another option.",
+                            ],
+                          ]}
+                        />
+                      </FieldInfoButton>
+                    }
                     label="Timezone"
                     name="timezone"
                     value={formValues.timezone}
@@ -651,6 +823,28 @@ function TabSummaryGrid({ rows }: { rows: string[][] }) {
   );
 }
 
+function CampaignInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function GoalIcon({ goal }: { goal: CampaignFormValues["goal"] }) {
   const title = goalIconLabels[goal];
 
@@ -767,37 +961,13 @@ function FormField({
   label,
   error,
   children,
+  info,
   fullWidth = false,
 }: {
   label: string;
   error?: string;
   children: ReactNode;
-  fullWidth?: boolean;
-}) {
-  return (
-    <label
-      className={
-        fullWidth
-          ? "counterpulse-form-field counterpulse-form-field--full"
-          : "counterpulse-form-field"
-      }
-    >
-      <span>{label}</span>
-      {children}
-      <FieldError message={error} />
-    </label>
-  );
-}
-
-function FormGroup({
-  label,
-  error,
-  children,
-  fullWidth = false,
-}: {
-  label: string;
-  error?: string;
-  children: ReactNode;
+  info?: ReactNode;
   fullWidth?: boolean;
 }) {
   return (
@@ -808,7 +978,44 @@ function FormGroup({
           : "counterpulse-form-field"
       }
     >
-      <span>{label}</span>
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
+      <FieldError message={error} />
+    </div>
+  );
+}
+
+function FormGroup({
+  label,
+  error,
+  children,
+  info,
+  fullWidth = false,
+}: {
+  label: string;
+  error?: string;
+  children: ReactNode;
+  info?: ReactNode;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div
+      className={
+        fullWidth
+          ? "counterpulse-form-field counterpulse-form-field--full"
+          : "counterpulse-form-field"
+      }
+    >
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
       {children}
       <FieldError message={error} />
     </div>

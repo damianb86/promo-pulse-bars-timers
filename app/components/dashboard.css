@@ -372,6 +372,15 @@ s-page::part(page) {
   color: #d72c0d;
 }
 
+.counterpulse-modal__icon--info {
+  background: #f4f7fb;
+  color: #2c6ecb;
+}
+
+.counterpulse-modal--info {
+  width: min(620px, 100%);
+}
+
 .counterpulse-modal h2 {
   margin: 0;
   color: #202223;
@@ -392,6 +401,93 @@ s-page::part(page) {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.counterpulse-info-button {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid #c9cccf;
+  border-radius: 999px;
+  padding: 0;
+  background: #ffffff;
+  color: #2c6ecb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.counterpulse-info-button:hover {
+  border-color: #2c6ecb;
+  background: #f4f7fb;
+}
+
+.counterpulse-info-button:focus-visible {
+  outline: 2px solid #005bd3;
+  outline-offset: 2px;
+}
+
+.counterpulse-field-label-row {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.counterpulse-field-control {
+  display: contents;
+}
+
+.counterpulse-sr-only {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.counterpulse-info-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-info-copy p {
+  margin: 0;
+}
+
+.counterpulse-info-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counterpulse-info-list li {
+  display: grid;
+  gap: 2px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fafbfb;
+}
+
+.counterpulse-info-list strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.counterpulse-info-list span {
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
 }
 
 @keyframes counterpulse-toast-in {
@@ -2002,6 +2098,13 @@ s-page::part(page) {
   color: #202223;
   font-size: 13px;
   line-height: 18px;
+}
+
+.counterpulse-toggle-label {
+  display: inline-flex;
+  min-width: 0;
+  gap: 8px;
+  align-items: center;
 }
 
 .counterpulse-toggle--card {

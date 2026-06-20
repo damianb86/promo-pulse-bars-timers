@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -74,7 +74,30 @@ export function DeliveryCutoffSettingsEditor({
           />
 
           <div className="counterpulse-form-grid">
-            <FormField label="Cutoff hour" error={errors?.cutoffHour}>
+            <FormField
+              label="Cutoff hour"
+              error={errors?.cutoffHour}
+              info={
+                <FieldInfoButton
+                  label="Delivery cutoff hour"
+                  title="Delivery cutoff time"
+                >
+                  <DeliveryInfoContent
+                    intro="Cutoff hour and minute define the real order-by time shown to shoppers."
+                    items={[
+                      [
+                        "Hour format",
+                        "Use 0 through 23 based on the selected timezone.",
+                      ],
+                      [
+                        "Real promise",
+                        "Only use a cutoff that matches fulfillment operations.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <input
                 name="cutoffHour"
                 type="number"
@@ -97,6 +120,26 @@ export function DeliveryCutoffSettingsEditor({
             <TimezoneCombobox
               defaultValue={values.timezone}
               error={errors?.timezone}
+              info={
+                <FieldInfoButton
+                  label="Delivery timezone"
+                  title="Delivery timezone"
+                >
+                  <DeliveryInfoContent
+                    intro="Timezone determines when the cutoff is considered reached."
+                    items={[
+                      [
+                        "Fulfillment timezone",
+                        "Choose the timezone used by the warehouse or delivery promise.",
+                      ],
+                      [
+                        "Markets",
+                        "Use market rules if cutoffs differ by country or currency context.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
               label="Timezone"
               name="timezone"
             />
@@ -104,6 +147,30 @@ export function DeliveryCutoffSettingsEditor({
             <FormField
               label="After cutoff behavior"
               error={errors?.afterCutoffBehavior}
+              info={
+                <FieldInfoButton
+                  label="After cutoff behavior"
+                  title="After cutoff behavior"
+                >
+                  <DeliveryInfoContent
+                    intro="This controls what shoppers see after the order-by deadline has passed."
+                    items={[
+                      [
+                        "Hide",
+                        "Use when the message should disappear after the promise is no longer true.",
+                      ],
+                      [
+                        "Show after-cutoff message",
+                        "Use when you have accurate next-day or next-window copy.",
+                      ],
+                      [
+                        "Roll forward",
+                        "Use only when the next cutoff can be computed accurately.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
             >
               <select
                 name="afterCutoffBehavior"
@@ -154,6 +221,23 @@ export function DeliveryCutoffSettingsEditor({
               label="Working days JSON"
               error={errors?.workingDaysJson}
               fullWidth
+              info={
+                <FieldInfoButton label="Working days JSON" title="Working days">
+                  <DeliveryInfoContent
+                    intro="Working days define which weekdays count when delivery promises are calculated."
+                    items={[
+                      [
+                        "Format",
+                        "[1,2,3,4,5] represents Monday through Friday.",
+                      ],
+                      [
+                        "Weekend operations",
+                        "Include 6 or 0 only if Saturday or Sunday fulfillment is real.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
             >
               <textarea
                 name="workingDaysJson"
@@ -166,6 +250,23 @@ export function DeliveryCutoffSettingsEditor({
               label="Holidays JSON"
               error={errors?.holidaysJson}
               fullWidth
+              info={
+                <FieldInfoButton label="Holidays JSON" title="Holidays">
+                  <DeliveryInfoContent
+                    intro="Holidays remove specific calendar dates from delivery promise calculations."
+                    items={[
+                      [
+                        "Format",
+                        'Use an array of ISO dates such as ["2026-12-25"].',
+                      ],
+                      [
+                        "Market differences",
+                        "If holidays differ by country, use country rules or market overrides.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
             >
               <textarea
                 name="holidaysJson"
@@ -179,6 +280,26 @@ export function DeliveryCutoffSettingsEditor({
               label="Country rules JSON"
               error={errors?.countryRulesJson}
               fullWidth
+              info={
+                <FieldInfoButton
+                  label="Country rules JSON"
+                  title="Country delivery rules"
+                >
+                  <DeliveryInfoContent
+                    intro="Country rules override delivery cutoff settings for specific countries."
+                    items={[
+                      [
+                        "Format",
+                        '{"countries":{"US":{"cutoffHour":14}}} changes the cutoff for US traffic.',
+                      ],
+                      [
+                        "Fallback",
+                        "Countries without a rule use the global cutoff settings.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
             >
               <textarea
                 name="countryRulesJson"
@@ -201,28 +322,58 @@ export function DeliveryCutoffSettingsEditor({
   );
 }
 
+function DeliveryInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   label,
   error,
   children,
+  info,
   fullWidth = false,
 }: {
   label: string;
   error?: string;
   children: ReactNode;
+  info?: ReactNode;
   fullWidth?: boolean;
 }) {
   return (
-    <label
+    <div
       className={
         fullWidth
           ? "counterpulse-form-field counterpulse-form-field--full"
           : "counterpulse-form-field"
       }
     >
-      <span>{label}</span>
-      {children}
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <span className="counterpulse-form-error">{error}</span>}
-    </label>
+    </div>
   );
 }

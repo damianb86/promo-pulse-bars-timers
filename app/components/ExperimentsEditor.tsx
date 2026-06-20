@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, FieldInfoButton } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -132,7 +132,37 @@ export function ExperimentsEditor({
               <FormField label="Experiment name">
                 <input name="name" defaultValue="Campaign A/B test" required />
               </FormField>
-              <FormField label="Primary metric">
+              <FormField
+                label="Primary metric"
+                info={
+                  <FieldInfoButton
+                    label="Primary metric"
+                    title="Experiment primary metric"
+                  >
+                    <ExperimentInfoContent
+                      intro="The primary metric is the one Promo Pulse uses when comparing variants and detecting a winner."
+                      items={[
+                        [
+                          "CTR",
+                          "Best when you are testing headline, CTA, design, or placement engagement.",
+                        ],
+                        [
+                          "Add-to-cart rate",
+                          "Best when the campaign should move shoppers from viewing to cart intent.",
+                        ],
+                        [
+                          "Checkout rate",
+                          "Best for cart or checkout-focused urgency and offer messaging.",
+                        ],
+                        [
+                          "Revenue per visitor",
+                          "Best when discount depth or offer quality matters more than clicks.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
+              >
                 <select name="primaryMetric" defaultValue="CLICK_RATE">
                   {metricOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -200,7 +230,37 @@ export function ExperimentsEditor({
                   <FormField label="Experiment name">
                     <input name="name" defaultValue={experiment.name} />
                   </FormField>
-                  <FormField label="Primary metric">
+                  <FormField
+                    label="Primary metric"
+                    info={
+                      <FieldInfoButton
+                        label="Primary metric"
+                        title="Experiment primary metric"
+                      >
+                        <ExperimentInfoContent
+                          intro="Changing this affects future winner detection and reporting interpretation for the experiment."
+                          items={[
+                            [
+                              "CTR",
+                              "Compares click rate: clicks divided by impressions.",
+                            ],
+                            [
+                              "Add-to-cart rate",
+                              "Compares add-to-cart events divided by visitors or impressions.",
+                            ],
+                            [
+                              "Checkout rate",
+                              "Compares checkout-started events for each variant.",
+                            ],
+                            [
+                              "Revenue per visitor",
+                              "Compares attributed revenue normalized by visitor count.",
+                            ],
+                          ]}
+                        />
+                      </FieldInfoButton>
+                    }
+                  >
                     <select
                       name="primaryMetric"
                       defaultValue={experiment.primaryMetric}
@@ -311,15 +371,61 @@ export function ExperimentsEditor({
                   value={experiment.id}
                 />
                 <div className="counterpulse-form-grid">
-                  <label className="counterpulse-toggle">
-                    <input
-                      name="autoWinnerEnabled"
-                      type="checkbox"
-                      defaultChecked={experiment.autoWinnerEnabled}
-                    />
-                    <span>Enable auto-winner</span>
-                  </label>
-                  <FormField label="Minimum sample size">
+                  <div className="counterpulse-toggle">
+                    <label className="counterpulse-toggle-label">
+                      <input
+                        name="autoWinnerEnabled"
+                        type="checkbox"
+                        defaultChecked={experiment.autoWinnerEnabled}
+                      />
+                      <span>Enable auto-winner</span>
+                    </label>
+                    <FieldInfoButton
+                      label="Enable auto-winner"
+                      title="Auto-winner"
+                    >
+                      <ExperimentInfoContent
+                        intro="Auto-winner can detect a likely winning variant using conservative thresholds."
+                        items={[
+                          [
+                            "No silent publish by default",
+                            "The winner is not applied to the base campaign unless the explicit apply action or setting allows it.",
+                          ],
+                          [
+                            "Sample and runtime",
+                            "Minimum sample size and runtime prevent early, noisy winners.",
+                          ],
+                          [
+                            "Confidence",
+                            "The threshold is a simple conservative guard, not a full statistical engine.",
+                          ],
+                        ]}
+                      />
+                    </FieldInfoButton>
+                  </div>
+                  <FormField
+                    label="Minimum sample size"
+                    info={
+                      <FieldInfoButton
+                        label="Minimum sample size"
+                        title="Minimum sample size"
+                      >
+                        <ExperimentInfoContent
+                          intro="Sample size is the minimum amount of traffic each relevant variant should have before winner detection is trusted."
+                          items={[
+                            [
+                              "Higher values",
+                              "Reduce noisy decisions but make tests run longer.",
+                            ],
+                            [
+                              "Lower values",
+                              "Speed up detection but increase the chance of choosing a weak winner.",
+                            ],
+                          ]}
+                        />
+                      </FieldInfoButton>
+                    }
+                  >
                     <input
                       name="autoWinnerMinSampleSize"
                       type="number"
@@ -337,7 +443,30 @@ export function ExperimentsEditor({
                       defaultValue={experiment.autoWinnerMinRuntimeHours}
                     />
                   </FormField>
-                  <FormField label="Confidence threshold">
+                  <FormField
+                    label="Confidence threshold"
+                    info={
+                      <FieldInfoButton
+                        label="Confidence threshold"
+                        title="Confidence threshold"
+                      >
+                        <ExperimentInfoContent
+                          intro="Confidence threshold controls how conservative the auto-winner rule should be."
+                          items={[
+                            ["0.95", "Conservative default for most tests."],
+                            [
+                              "0.90 or lower",
+                              "Faster but less strict. Use when speed matters more than certainty.",
+                            ],
+                            [
+                              "0.99",
+                              "Very strict. Useful for high-traffic campaigns.",
+                            ],
+                          ]}
+                        />
+                      </FieldInfoButton>
+                    }
+                  >
                     <input
                       name="autoWinnerConfidenceThreshold"
                       type="number"
@@ -420,7 +549,35 @@ function VariantFields({ variants }: { variants: ExperimentVariantRow[] }) {
           <FormField label={`Variant ${index + 1} name`}>
             <input name="variantName" defaultValue={variant.name} required />
           </FormField>
-          <FormField label={`Variant ${index + 1} weight`}>
+          <FormField
+            label={`Variant ${index + 1} weight`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton
+                  label="Variant weight"
+                  title="Variant traffic weights"
+                >
+                  <ExperimentInfoContent
+                    intro="Weights control how likely a new visitor is to be assigned to each active variant."
+                    items={[
+                      [
+                        "Stable visitor assignment",
+                        "After a visitor receives a variant, Promo Pulse keeps that assignment stable.",
+                      ],
+                      [
+                        "Relative weights",
+                        "50 and 50 split evenly. 1 and 100 strongly favors the second variant.",
+                      ],
+                      [
+                        "Zero weight",
+                        "Avoids assigning new visitors while preserving the variant configuration.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <input
               name="variantWeight"
               type="number"
@@ -430,7 +587,36 @@ function VariantFields({ variants }: { variants: ExperimentVariantRow[] }) {
               defaultValue={variant.weight}
             />
           </FormField>
-          <FormField label={`Variant ${index + 1} status`}>
+          <FormField
+            label={`Variant ${index + 1} status`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton label="Variant status" title="Variant status">
+                  <ExperimentInfoContent
+                    intro="Variant status controls whether a variant can receive new traffic and how results are interpreted."
+                    items={[
+                      [
+                        "Draft",
+                        "Configured but not intended for live assignment yet.",
+                      ],
+                      [
+                        "Active",
+                        "Eligible for visitor assignment while the experiment is running.",
+                      ],
+                      [
+                        "Paused",
+                        "Keeps historical results but stops new assignment.",
+                      ],
+                      [
+                        "Winner or loser",
+                        "Used after analysis to record the decision.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <select name="variantStatus" defaultValue={variant.status}>
               {["DRAFT", "ACTIVE", "PAUSED", "WINNER", "LOSER", "ARCHIVED"].map(
                 (status) => (
@@ -441,28 +627,128 @@ function VariantFields({ variants }: { variants: ExperimentVariantRow[] }) {
               )}
             </select>
           </FormField>
-          <FormField label={`Variant ${index + 1} text override JSON`}>
+          <FormField
+            label={`Variant ${index + 1} text override JSON`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton
+                  label="Text override JSON"
+                  title="Text overrides"
+                >
+                  <ExperimentInfoContent
+                    intro="Text overrides define what copy is different from the base campaign for this variant."
+                    items={[
+                      [
+                        "Supported fields",
+                        "Use keys such as headline, subheadline, ctaText, ctaUrl, or expiredText.",
+                      ],
+                      [
+                        "Control variant",
+                        "Leave the control blank to keep base campaign copy.",
+                      ],
+                      [
+                        "Example",
+                        '{"headline":"Ends tonight","ctaText":"Shop now"}.',
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <textarea
               name="textOverride"
               defaultValue={variant.textOverrideJson}
               rows={3}
             />
           </FormField>
-          <FormField label={`Variant ${index + 1} design override JSON`}>
+          <FormField
+            label={`Variant ${index + 1} design override JSON`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton
+                  label="Design override JSON"
+                  title="Design overrides"
+                >
+                  <ExperimentInfoContent
+                    intro="Design overrides let a variant test visual changes without changing the base campaign design."
+                    items={[
+                      [
+                        "Typical fields",
+                        "Colors, typography, button style, spacing, or layout values supported by the campaign preview model.",
+                      ],
+                      [
+                        "Scope",
+                        "Only include fields that should differ. Blank keeps the base design.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <textarea
               name="designOverride"
               defaultValue={variant.designOverrideJson}
               rows={3}
             />
           </FormField>
-          <FormField label={`Variant ${index + 1} discount override JSON`}>
+          <FormField
+            label={`Variant ${index + 1} discount override JSON`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton
+                  label="Discount override JSON"
+                  title="Discount overrides"
+                >
+                  <ExperimentInfoContent
+                    intro="Discount overrides are for testing real offer differences between variants."
+                    items={[
+                      [
+                        "Real discounts only",
+                        "Do not enter a code or value unless the merchant has a matching real discount setup.",
+                      ],
+                      [
+                        "Common key",
+                        'Use {"discountCode":"SAVE20"} to show a variant-specific code.',
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <textarea
               name="discountOverride"
               defaultValue={variant.discountOverrideJson}
               rows={3}
             />
           </FormField>
-          <FormField label={`Variant ${index + 1} placement override JSON`}>
+          <FormField
+            label={`Variant ${index + 1} placement override JSON`}
+            info={
+              index === 0 ? (
+                <FieldInfoButton
+                  label="Placement override JSON"
+                  title="Placement overrides"
+                >
+                  <ExperimentInfoContent
+                    intro="Placement overrides test where the campaign appears, while preserving stable visitor assignment."
+                    items={[
+                      [
+                        "Use carefully",
+                        "Theme support can differ by placement, so test the storefront before starting the experiment.",
+                      ],
+                      [
+                        "Blank state",
+                        "Leave blank to use the base campaign placement.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              ) : null
+            }
+          >
             <textarea
               name="placementOverride"
               defaultValue={variant.placementOverrideJson}
@@ -475,18 +761,48 @@ function VariantFields({ variants }: { variants: ExperimentVariantRow[] }) {
   );
 }
 
+function ExperimentInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   label,
   children,
+  info,
 }: {
   label: string;
   children: ReactNode;
+  info?: ReactNode;
 }) {
   return (
-    <label className="counterpulse-form-field">
-      <span>{label}</span>
-      {children}
-    </label>
+    <div className="counterpulse-form-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
+    </div>
   );
 }
 

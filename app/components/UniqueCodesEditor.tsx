@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert, useConfirmSubmit } from "./Notifications";
+import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -123,16 +123,59 @@ export function UniqueCodesEditor({
           />
 
           <div className="counterpulse-form-grid">
-            <label className="counterpulse-toggle">
-              <input
-                name="enableUniqueCodes"
-                type="checkbox"
-                defaultChecked={enabled}
-              />
-              <span>Enable unique codes</span>
-            </label>
+            <div className="counterpulse-toggle">
+              <label className="counterpulse-toggle-label">
+                <input
+                  name="enableUniqueCodes"
+                  type="checkbox"
+                  defaultChecked={enabled}
+                />
+                <span>Enable unique codes</span>
+              </label>
+              <FieldInfoButton
+                label="Enable unique codes"
+                title="Unique visitor codes"
+              >
+                <UniqueCodeInfoContent
+                  intro="Unique codes change the offer from a shared discount code to visitor-scoped assignments."
+                  items={[
+                    [
+                      "Assignment",
+                      "Promo Pulse assigns one available code to each visitor ID and keeps returning that same valid code.",
+                    ],
+                    [
+                      "No sharing by default",
+                      "Codes are not intentionally reused across visitors while they are assigned or used.",
+                    ],
+                    [
+                      "Pool dependency",
+                      "The campaign needs generated codes before visitors can receive one.",
+                    ],
+                  ]}
+                />
+              </FieldInfoButton>
+            </div>
 
-            <FormField label="Prefix">
+            <FormField
+              label="Prefix"
+              info={
+                <FieldInfoButton label="Prefix" title="Code prefix">
+                  <UniqueCodeInfoContent
+                    intro="Prefix is prepended to each generated code so merchants can recognize the campaign in Shopify and reports."
+                    items={[
+                      [
+                        "Example",
+                        "VIP can generate codes such as VIP-A1B2C3D4E5.",
+                      ],
+                      [
+                        "Best practice",
+                        "Keep it short, campaign-specific, and avoid customer names or PII.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <input
                 name="uniqueCodePrefix"
                 defaultValue={values.uniqueCodePrefix}
@@ -140,7 +183,33 @@ export function UniqueCodesEditor({
               />
             </FormField>
 
-            <FormField label="Discount type">
+            <FormField
+              label="Discount type"
+              info={
+                <FieldInfoButton
+                  label="Unique code discount type"
+                  title="Unique code discount type"
+                >
+                  <UniqueCodeInfoContent
+                    intro="Discount type controls what each generated visitor code represents."
+                    items={[
+                      [
+                        "Percentage",
+                        "Each code discounts a percentage from eligible items or orders.",
+                      ],
+                      [
+                        "Fixed amount",
+                        "Each code discounts a currency amount. Confirm the campaign currency and Shopify setup.",
+                      ],
+                      [
+                        "Free shipping",
+                        "Each code represents a shipping discount when Shopify discount creation supports it.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <select name="valueType" defaultValue={values.valueType}>
                 {discountValueTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -160,7 +229,33 @@ export function UniqueCodesEditor({
               />
             </FormField>
 
-            <FormField label="Duration per visitor">
+            <FormField
+              label="Duration per visitor"
+              info={
+                <FieldInfoButton
+                  label="Duration per visitor"
+                  title="Visitor code duration"
+                >
+                  <UniqueCodeInfoContent
+                    intro="Duration is the real validity window for a code after it is assigned to a visitor."
+                    items={[
+                      [
+                        "Before expiration",
+                        "The visitor keeps seeing the same assigned code.",
+                      ],
+                      [
+                        "After expiration",
+                        "Promo Pulse stops showing the old code and the cleanup job can expire or revoke it.",
+                      ],
+                      [
+                        "Urgency",
+                        "Short windows are stronger but require accurate expiration messaging.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
+            >
               <input
                 name="uniqueCodeExpiresMinutes"
                 type="number"
@@ -174,6 +269,26 @@ export function UniqueCodesEditor({
             <FormField
               label="Total codes to generate"
               error={errors?.totalCodesToGenerate}
+              info={
+                <FieldInfoButton
+                  label="Total codes to generate"
+                  title="Code pool size"
+                >
+                  <UniqueCodeInfoContent
+                    intro="Pool size is the maximum number of visitors this batch can serve before the pool runs out."
+                    items={[
+                      [
+                        "Controlled failure",
+                        "When no available code remains, the storefront receives a controlled unavailable response.",
+                      ],
+                      [
+                        "Planning",
+                        "Generate enough codes for expected traffic, then monitor assigned and used totals.",
+                      ],
+                    ]}
+                  />
+                </FieldInfoButton>
+              }
             >
               <input
                 name="totalCodesToGenerate"
@@ -292,20 +407,50 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function UniqueCodeInfoContent({
+  intro,
+  items,
+}: {
+  intro: string;
+  items: Array<[string, string]>;
+}) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{intro}</p>
+      <ul className="counterpulse-info-list">
+        {items.map(([title, description]) => (
+          <li key={title}>
+            <strong>{title}</strong>
+            <span>{description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function FormField({
   label,
   error,
   children,
+  info,
 }: {
   label: string;
   error?: string;
   children: ReactNode;
+  info?: ReactNode;
 }) {
   return (
-    <label className="counterpulse-form-field">
-      <span>{label}</span>
-      {children}
+    <div className="counterpulse-form-field">
+      <span className="counterpulse-field-label-row">
+        <span>{label}</span>
+        {info}
+      </span>
+      <label className="counterpulse-field-control">
+        <span className="counterpulse-sr-only">{label}</span>
+        {children}
+      </label>
       {error && <span className="counterpulse-form-error">{error}</span>}
-    </label>
+    </div>
   );
 }

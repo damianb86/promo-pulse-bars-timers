@@ -11,6 +11,7 @@
   data-alignment="{{ block.settings.alignment | escape }}"
   data-compact="{{ block.settings.compactMode }}"
   data-show-icon="{{ block.settings.showIcon }}"
+  data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
   data-debug="{{ block.settings.debugMode }}"
   data-debug-block="Promo Pulse cart timer"
   {{ block.shopify_attributes }}
@@ -120,6 +121,12 @@
       "id": "debugMode",
       "label": "Debug mode",
       "default": false
+    },
+    {
+      "type": "text",
+      "id": "apiBaseUrl",
+      "label": "App backend URL for development",
+      "info": "Optional. Use the Shopify CLI tunnel URL if the app proxy returns 404 in development."
     }
   ]
 }

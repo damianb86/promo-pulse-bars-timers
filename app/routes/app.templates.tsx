@@ -120,8 +120,9 @@ export const action = async ({
 
   try {
     const campaign = await createDraftCampaignFromTemplate(shop.id, templateKey);
+    const embeddedSearch = new URL(request.url).search;
 
-    return redirect(`/app/campaigns/${campaign.id}`);
+    return redirect(`/app/campaigns/${campaign.id}${embeddedSearch}`);
   } catch (error) {
     if (error instanceof TemplateLibraryError) {
       return { error: error.message };

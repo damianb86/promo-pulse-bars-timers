@@ -10,6 +10,7 @@
     data-cart-currency="{{ cart.currency.iso_code | default: shop.currency | escape }}"
     data-cart-token="{{ cart.token | default: '' | escape }}"
     data-cart-timer-src="{{ 'cart-timer.js' | asset_url }}"
+    data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
     data-analytics-path="/apps/counterpulse-campaigns"
     data-debug="{{ block.settings.debugMode }}"
     data-debug-block="Promo Pulse embed"
@@ -51,6 +52,7 @@
   <script>
     window.CounterPulseCartSubtotal = {{ cart.total_price | default: 0 | divided_by: 100.0 }};
     window.CounterPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";
+    window.CounterPulseApiBaseUrl = "{{ block.settings.apiBaseUrl | escape }}";
   </script>
   <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
   <script src="{{ 'free-shipping.js' | asset_url }}" defer></script>
@@ -104,6 +106,12 @@
           "label": "German"
         }
       ]
+    },
+    {
+      "type": "text",
+      "id": "apiBaseUrl",
+      "label": "App backend URL for development",
+      "info": "Optional. Use the Shopify CLI tunnel URL, for example https://example.trycloudflare.com, only if the app proxy returns 404 in development."
     }
   ]
 }

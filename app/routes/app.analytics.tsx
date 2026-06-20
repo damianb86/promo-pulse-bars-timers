@@ -164,7 +164,7 @@ export default function AnalyticsPage() {
       </s-section>
 
       {!lockedAnalyticsReason && (
-        <>
+        <div data-testid="analytics-dashboard">
           <s-section heading="Date range">
             <div className="counterpulse-actions">
               <a
@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
               </tbody>
             </table>
           </s-section>
-        </>
+        </div>
       )}
     </s-page>
   );

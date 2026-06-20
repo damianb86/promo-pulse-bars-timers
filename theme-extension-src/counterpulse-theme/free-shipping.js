@@ -286,6 +286,7 @@
       campaign.placement.toLowerCase().replace("_", "-") +
       " pp-bar--free-shipping";
     bar.dataset.campaignId = campaign.id;
+    bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
     bar.setAttribute(
       "aria-label",
@@ -394,6 +395,7 @@
     var fill = document.createElement("span");
 
     wrapper.className = "pp-progress";
+    wrapper.dataset.testid = "free-shipping-progress";
     track.className = "pp-progress__track";
     track.setAttribute("role", "progressbar");
     track.setAttribute("aria-label", label || "Free shipping progress");

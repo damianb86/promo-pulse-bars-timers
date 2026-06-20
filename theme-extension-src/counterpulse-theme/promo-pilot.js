@@ -190,6 +190,7 @@
     bar.className =
       "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace("_", "-");
     bar.dataset.campaignId = campaign.id;
+    bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
     bar.setAttribute(
       "aria-label",
@@ -346,6 +347,7 @@
     var countdown = document.createElement("span");
 
     countdown.className = "pp-countdown";
+    countdown.dataset.testid = "promo-timer";
     countdown.textContent = formatTimeRemaining(timerState.remainingMs);
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");

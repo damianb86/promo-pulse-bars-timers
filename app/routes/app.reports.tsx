@@ -238,7 +238,11 @@ function ReportFilters({
         <button className="counterpulse-button" type="submit">
           Apply
         </button>
-        <a className="counterpulse-button-secondary" href={csvHref}>
+        <a
+          className="counterpulse-button-secondary"
+          data-testid="reports-export-csv"
+          href={csvHref}
+        >
           Export CSV
         </a>
       </Form>

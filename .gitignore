@@ -18,6 +18,7 @@ database.sqlite
 .env
 .env.*
 !.env.example
+!.env.real-e2e.example
 
 yarn.lock
 pnpm-lock.yaml
@@ -37,3 +38,5 @@ pnpm-lock.yaml
 /test-results/
 /playwright-report/
 /blob-report/
+/playwright/.auth/
+/playwright-report-real/

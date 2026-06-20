@@ -156,6 +156,7 @@ export default function CampaignsPage() {
     <s-page heading="Campaigns">
       <Link
         className="counterpulse-button"
+        data-testid="campaign-create-button"
         slot="primary-action"
         to="/app/campaigns/new"
       >
@@ -234,11 +235,12 @@ export default function CampaignsPage() {
                   </td>
                   <td>{formatCampaignOption(campaign.type)}</td>
                   <td>{campaign.placements.join(", ") || "No placement"}</td>
-                  <td>{new Date(campaign.updatedAt).toLocaleDateString()}</td>
+                  <td>{formatUpdatedDate(campaign.updatedAt)}</td>
                   <td>
                     <div className="counterpulse-row-actions">
                       <Link
                         className="counterpulse-button-secondary"
+                        data-testid="campaign-edit-button"
                         to={`/app/campaigns/${campaign.id}`}
                       >
                         Edit
@@ -320,6 +322,7 @@ function CampaignActionButton({
             ? "counterpulse-button-danger"
             : "counterpulse-button-secondary"
         }
+        data-testid={`campaign-${action}-button`}
         disabled={disabled}
         type="submit"
       >
@@ -337,4 +340,13 @@ function isCampaignStatus(value: string): value is CampaignStatusValue {
 
 function isCampaignType(value: string): value is CampaignTypeValue {
   return campaignTypeOptions.some((option) => option.value === value);
+}
+
+function formatUpdatedDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "numeric",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
 }

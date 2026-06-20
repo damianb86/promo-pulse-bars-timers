@@ -6,6 +6,7 @@ api_version = "2026-04"
 [[extensions]]
 name = "promo-pulse-order-status"
 handle = "promo-pulse-order-status"
+uid = "d993cf3f-2f59-3af9-0278-02d4f50249c3b9bc0f21"
 type = "ui_extension"
 
 [[extensions.targeting]]

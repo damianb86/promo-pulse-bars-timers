@@ -23,3 +23,13 @@ npx playwright show-trace test-results/<test-name>/trace.zip
   when `NODE_ENV === "production"`.
 - Do not make E2E tests depend on Shopify login, a real dev store, or real
   Shopify APIs unless the test is explicitly documented as a manual smoke test.
+
+## Real Shopify E2E rules:
+- Never run tests/e2e-real unless REAL_E2E_ENABLED=true.
+- Never use E2E_TEST_MODE in real-store tests.
+- Never create real orders unless REAL_E2E_ALLOW_ORDER=true.
+- Never delete resources that do not start with [PP-E2E].
+- Always use storageState for Shopify admin auth.
+- If Shopify login is required, ask the user to run npm run test:e2e:real:auth.
+- If a theme app block/app embed is missing, skip with a clear prerequisite message.
+- Always inspect Playwright traces before changing code.

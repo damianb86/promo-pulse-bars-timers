@@ -391,6 +391,9 @@
       (config.compactMode ? " pp-cart-card--compact" : "") +
       (isDrawer ? " pp-cart-card--drawer" : "");
     card.dataset.campaignId = campaign.id;
+    if (isDrawer) {
+      card.dataset.testid = "cart-drawer-widget";
+    }
     card.setAttribute("role", "region");
     card.setAttribute(
       "aria-label",
@@ -517,6 +520,7 @@
     label.className = "pp-cart-progress__label";
     label.textContent = buildFreeShippingText(campaign, config) || "";
     track.className = "pp-progress__track";
+    track.dataset.testid = "free-shipping-progress";
     track.setAttribute("role", "progressbar");
     track.setAttribute(
       "aria-label",
@@ -671,6 +675,7 @@
 
     slot.id = "counterpulse-cart-drawer-slot";
     slot.className = "pp-cart-drawer-slot";
+    slot.dataset.testid = "cart-drawer-widget";
 
     if (!slot.parentElement) {
       target.insertBefore(slot, target.firstChild);

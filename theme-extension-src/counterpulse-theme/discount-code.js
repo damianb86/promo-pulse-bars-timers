@@ -304,6 +304,7 @@
     var loading = document.createElement("span");
 
     wrapper.className = "pp-unique-code";
+    wrapper.dataset.testid = "unique-code";
     loading.className = "pp-unique-code__loading";
     loading.textContent = "Loading code";
     wrapper.appendChild(loading);
@@ -400,10 +401,12 @@
 
     wrapper.replaceChildren();
     value.className = "pp-unique-code__value";
+    value.dataset.testid = "unique-code";
     value.textContent = payload.code;
     wrapper.appendChild(value);
 
     copyButton.className = "pp-code";
+    copyButton.dataset.testid = "copy-code-button";
     copyButton.type = "button";
     copyButton.textContent = "Copy code";
     copyButton.setAttribute("aria-label", "Copy code " + payload.code);
@@ -504,6 +507,9 @@
 
     if (/^https?:\/\//i.test(value)) return value;
     if (apiBaseUrl && value.charAt(0) === "/") return apiBaseUrl + value;
+    if (value === "/api/storefront/unique-code/assign") {
+      return "/apps/counterpulse-campaigns" + value;
+    }
 
     return value || "/api/storefront/unique-code/assign";
   }

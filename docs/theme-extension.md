@@ -81,6 +81,20 @@ Then restart `npm run dev` so Shopify CLI applies the generated tunnel URL to
 the development store app configuration. The API response must be JSON, not the
 storefront password HTML page.
 
+For local debugging, open the `Promo Pulse embed` settings in Theme Editor and set
+`App backend URL for development` to the current Shopify CLI tunnel base URL,
+for example:
+
+```text
+https://encoding-exhibits-doctor-garcia.trycloudflare.com
+```
+
+Do not include `/apps/counterpulse-campaigns`; the storefront runtime appends
+`/api/storefront/campaigns` automatically. Product/cart/badge blocks have the
+same optional setting when you need to debug them without relying on the global
+embed. Leave this setting blank in production so Shopify App Proxy remains the
+public storefront path.
+
 The cart drawer runtime uses a debounced `MutationObserver`. It intentionally
 ignores Promo Pulse debug panel updates and existing Promo Pulse drawer slots so
 debug text changes do not create repeated `/cart.js` or app proxy calls.

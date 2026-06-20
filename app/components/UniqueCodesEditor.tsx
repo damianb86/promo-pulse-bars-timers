@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
   discountValueTypeOptions,
   type DiscountSettingsValues,
+  type DiscountValueTypeValue,
 } from "../types/discount";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 
@@ -64,6 +65,8 @@ export function UniqueCodesEditor({
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const enabled = values.mode === "UNIQUE_CODES";
+  const [valueType, setValueType] = useState(values.valueType);
+  const isFreeShipping = valueType === "FREE_SHIPPING";
   const confirmSubmit = useConfirmSubmit({
     confirmLabel: "Generate codes",
     title: "Generate unique visitor codes?",
@@ -109,19 +112,6 @@ export function UniqueCodesEditor({
         >
           <input name="_action" type="hidden" value="generateUniqueCodes" />
           <input name="mode" type="hidden" value="UNIQUE_CODES" />
-          <input
-            name="title"
-            type="hidden"
-            value={values.title || "Promo Pulse unique codes"}
-          />
-          <input name="startsAt" type="hidden" value={values.startsAt} />
-          <input name="endsAt" type="hidden" value={values.endsAt} />
-          <input
-            name="minimumSubtotal"
-            type="hidden"
-            value={values.minimumSubtotal}
-          />
-
           <div className="counterpulse-form-grid">
             <div className="counterpulse-toggle">
               <label className="counterpulse-toggle-label">
@@ -155,6 +145,14 @@ export function UniqueCodesEditor({
                 />
               </FieldInfoButton>
             </div>
+
+            <FormField label="Discount title">
+              <input
+                name="title"
+                defaultValue={values.title || "Promo Pulse unique codes"}
+                placeholder="VIP visitor codes"
+              />
+            </FormField>
 
             <FormField
               label="Prefix"
@@ -210,7 +208,15 @@ export function UniqueCodesEditor({
                 </FieldInfoButton>
               }
             >
-              <select name="valueType" defaultValue={values.valueType}>
+              <select
+                name="valueType"
+                value={valueType}
+                onChange={(event) =>
+                  setValueType(
+                    event.currentTarget.value as DiscountValueTypeValue,
+                  )
+                }
+              >
                 {discountValueTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -219,15 +225,30 @@ export function UniqueCodesEditor({
               </select>
             </FormField>
 
-            <FormField label="Discount value">
-              <input
-                name="value"
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={values.value}
-              />
-            </FormField>
+            {!isFreeShipping && (
+              <FormField label="Discount value">
+                <input
+                  name="value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={values.value}
+                />
+              </FormField>
+            )}
+
+            {isFreeShipping && (
+              <FormField label="Free shipping minimum subtotal">
+                <input
+                  name="minimumSubtotal"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={values.minimumSubtotal}
+                  placeholder="Optional"
+                />
+              </FormField>
+            )}
 
             <FormField
               label="Duration per visitor"
@@ -266,6 +287,22 @@ export function UniqueCodesEditor({
               />
             </FormField>
 
+            <FormField label="Pool starts at">
+              <input
+                name="startsAt"
+                type="datetime-local"
+                defaultValue={values.startsAt}
+              />
+            </FormField>
+
+            <FormField label="Pool expires at">
+              <input
+                name="endsAt"
+                type="datetime-local"
+                defaultValue={values.endsAt}
+              />
+            </FormField>
+
             <FormField
               label="Total codes to generate"
               error={errors?.totalCodesToGenerate}
@@ -299,6 +336,49 @@ export function UniqueCodesEditor({
                 defaultValue="25"
               />
             </FormField>
+
+            <div className="counterpulse-toggle">
+              <label className="counterpulse-toggle-label">
+                <input
+                  name="uniqueCodeAutoApply"
+                  type="checkbox"
+                  defaultChecked={values.uniqueCodeAutoApply}
+                />
+                <span>Auto-apply visitor codes when safe</span>
+              </label>
+              <FieldInfoButton
+                label="Auto-apply visitor codes"
+                title="Auto-apply unique codes"
+              >
+                <UniqueCodeInfoContent
+                  intro="Auto-apply uses Shopify discount URLs when it is safe to route the shopper through a discount link."
+                  items={[
+                    [
+                      "How it works",
+                      "The storefront can link to /discount/CODE and preserve the visitor's current destination.",
+                    ],
+                    [
+                      "Limitation",
+                      "Shopify controls final cart and checkout behavior, so Promo Pulse does not force unsafe apply actions.",
+                    ],
+                  ]}
+                />
+              </FieldInfoButton>
+            </div>
+
+            {isFreeShipping && (
+              <div className="counterpulse-form-field counterpulse-form-field--full">
+                <AppAlert
+                  tone="info"
+                  title="Discount value is hidden for free-shipping codes"
+                >
+                  <p>
+                    Free-shipping unique codes use the optional minimum subtotal
+                    instead of a percentage or fixed amount.
+                  </p>
+                </AppAlert>
+              </div>
+            )}
           </div>
 
           <div className="counterpulse-actions">

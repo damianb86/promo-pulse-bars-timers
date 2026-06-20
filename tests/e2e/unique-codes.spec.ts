@@ -29,16 +29,22 @@ test("unique codes can be generated and assigned per visitor", async ({
 
   await page.goto(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Unique codes" }).click();
   const uniqueCodesForm = page.locator(
     'form:has(input[name="_action"][value="generateUniqueCodes"])',
   );
 
   await uniqueCodesForm.getByLabel("Enable unique codes").check();
+  await uniqueCodesForm.getByLabel("Discount title").fill("STG2 unique codes");
   await uniqueCodesForm.getByLabel("Prefix").fill("STG2");
   await uniqueCodesForm.getByLabel("Discount type").selectOption("PERCENTAGE");
   await uniqueCodesForm.getByLabel("Discount value").fill("15");
   await uniqueCodesForm.getByLabel("Duration per visitor").fill("60");
   await uniqueCodesForm.getByLabel("Total codes to generate").fill("2");
+  const autoApply = uniqueCodesForm.getByLabel("Auto-apply visitor codes");
+  if (!(await autoApply.isChecked())) {
+    await autoApply.check();
+  }
 
   await uniqueCodesForm.getByRole("button", { name: "Generate codes" }).click();
   await Promise.all([
@@ -53,29 +59,6 @@ test("unique codes can be generated and assigned per visitor", async ({
   await expect(
     page.getByRole("row", { name: /STG2 Percentage 15 Active 2/ }),
   ).toBeVisible();
-
-  const discountForm = page.locator(
-    'form:has(input[name="_action"][value="saveDiscount"])',
-  );
-  await discountForm.getByLabel("Discount mode").selectOption("UNIQUE_CODES");
-  await discountForm.getByLabel("New discount title").fill("STG2 unique codes");
-  await discountForm.getByLabel("Unique code prefix").fill("STG2");
-  await discountForm.getByLabel("Discount type").selectOption("PERCENTAGE");
-  await discountForm.getByLabel("Discount value").fill("15");
-  await discountForm.getByLabel("Unique code expiration minutes").fill("60");
-  const autoApply = discountForm.getByLabel("Auto-apply unique visitor codes");
-  if (!(await autoApply.isChecked())) {
-    await autoApply.check();
-  }
-  await discountForm.getByRole("button", { name: "Save discount" }).click();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes(`/app/campaigns/${campaignId}`) &&
-        response.request().method() === "POST",
-    ),
-    confirmAction(page, "Save discount"),
-  ]);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
   const widget = page.locator(".pp-unique-code").first();

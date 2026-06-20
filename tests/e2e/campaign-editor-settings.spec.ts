@@ -249,49 +249,46 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
   ]);
   await page.getByRole("tab", { name: "Offers" }).click();
   const campaignId = new URL(page.url()).pathname.split("/").pop() ?? "";
-  const discountForm = page.locator(
-    'form:has(input[name="_action"][value="saveDiscount"])',
+  await page.getByRole("tab", { name: "Unique codes" }).click();
+  const uniqueCodesForm = page.locator(
+    'form:has(input[name="_action"][value="generateUniqueCodes"])',
   );
 
-  await discountForm.getByLabel("Discount mode").selectOption("UNIQUE_CODES");
-  await discountForm.getByLabel("New discount title").fill("VIP E2E discount");
-  await discountForm.getByLabel("Discount type").selectOption("PERCENTAGE");
-  await discountForm.getByLabel("Discount value").fill("18");
-  await discountForm
+  await uniqueCodesForm.getByLabel("Enable unique codes").check();
+  await uniqueCodesForm.getByLabel("Discount title").fill("VIP E2E discount");
+  await uniqueCodesForm.getByLabel("Discount type").selectOption("PERCENTAGE");
+  await uniqueCodesForm.getByLabel("Discount value").fill("18");
+  await uniqueCodesForm
     .locator('input[name="startsAt"]')
     .fill(toLocalDateTime(new Date(Date.now() - 60 * 60 * 1000)));
-  await discountForm
+  await uniqueCodesForm
     .locator('input[name="endsAt"]')
     .fill(toLocalDateTime(new Date(Date.now() + 2 * 60 * 60 * 1000)));
-  await discountForm.getByLabel("Unique code prefix").fill("VIP");
-  await discountForm.getByLabel("Unique code expiration minutes").fill("30");
-  await discountForm.getByLabel("Limit created discount").check();
-  await discountForm.getByLabel("Auto-apply unique visitor codes").check();
+  await uniqueCodesForm.getByLabel("Prefix").fill("VIP");
+  await uniqueCodesForm.getByLabel("Duration per visitor").fill("30");
+  await uniqueCodesForm.getByLabel("Total codes to generate").fill("3");
+  await uniqueCodesForm.getByLabel("Auto-apply visitor codes").check();
 
-  await discountForm.getByRole("button", { name: "Save discount" }).click();
+  await uniqueCodesForm.getByRole("button", { name: "Generate codes" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    confirmAction(page, "Save discount"),
+    confirmAction(page, "Generate codes"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Unique codes" }).click();
 
-  await expect(discountForm.getByLabel("Discount mode")).toHaveValue(
-    "UNIQUE_CODES",
-  );
-  await expect(discountForm.getByLabel("New discount title")).toHaveValue(
+  await expect(uniqueCodesForm.getByLabel("Discount title")).toHaveValue(
     "VIP E2E discount",
   );
-  await expect(discountForm.getByLabel("Unique code prefix")).toHaveValue(
-    "VIP",
+  await expect(uniqueCodesForm.getByLabel("Prefix")).toHaveValue("VIP");
+  await expect(uniqueCodesForm.getByLabel("Duration per visitor")).toHaveValue(
+    "30",
   );
-  await expect(
-    discountForm.getByLabel("Unique code expiration minutes"),
-  ).toHaveValue("30");
   await expect(
     page.getByRole("columnheader", { name: "Total assigned" }),
   ).toBeVisible();
@@ -359,6 +356,7 @@ test("advanced discount rules can be created from the campaign editor", async ({
   });
 
   await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Advanced rules" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveAdvancedDiscountRule"])',
   );
@@ -382,6 +380,7 @@ test("advanced discount rules can be created from the campaign editor", async ({
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Advanced rules" }).click();
 
   await expect(
     page.getByRole("cell", { name: "E2E Tiered Advanced" }),

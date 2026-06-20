@@ -22,6 +22,7 @@ test("merchant can create and copy an email timer image URL", async ({
 
   await page.goto(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Email timer" }).click();
   await page.getByLabel("Transparent pixel").check();
   await page.getByRole("button", { name: "Create email timer" }).click();
   await confirmAction(page, "Create email timer");

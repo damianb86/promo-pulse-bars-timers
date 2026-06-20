@@ -50,6 +50,7 @@ import {
 } from "../components/ExperimentsEditor";
 import { FreeShippingSettingsEditor } from "../components/FreeShippingSettingsEditor";
 import { LowStockSettingsEditor } from "../components/LowStockSettingsEditor";
+import { OffersEditor } from "../components/OffersEditor";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import {
   UniqueCodesEditor,
@@ -780,7 +781,6 @@ export const action = async ({
 
   if (intent === "generateUniqueCodes") {
     formData.set("mode", "UNIQUE_CODES");
-    formData.set("uniqueCodeAutoApply", "false");
 
     const parsed = parseDiscountSettingsFormData(formData);
     const totalCodesToGenerate = parseTotalCodesToGenerate(formData);
@@ -839,7 +839,7 @@ export const action = async ({
         appliesOncePerCustomer: true,
         uniqueCodePrefix: parsed.values.uniqueCodePrefix,
         uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
-        uniqueCodeAutoApply: false,
+        uniqueCodeAutoApply: parsed.values.uniqueCodeAutoApply,
         uniqueCodeStartsAt: parsed.startsAt,
         uniqueCodeEndsAt: parsed.endsAt,
       });
@@ -1505,42 +1505,84 @@ export default function EditCampaignPage() {
             key: "offers",
             label: "Offers",
             description:
-              "Manage discounts, visitor-specific codes, advanced discount rules, and email countdown assets.",
+              "Choose between shared discounts, unique visitor codes, advanced discount rules, and email countdown assets.",
             content: (
-              <>
-                <DiscountSettingsEditor
-                  apiError={discountApiError}
-                  discountOptions={discountOptions}
-                  errors={actionData?.discountErrors}
-                  lockedReason={lockedFeatures.discountSync}
-                  notice={actionData?.discountNotice}
-                  values={actionData?.discountValues ?? discountValues}
-                />
-                <UniqueCodesEditor
-                  codes={uniqueCodes}
-                  errors={actionData?.uniqueCodeErrors}
-                  lockedReason={lockedFeatures.uniqueCodes}
-                  notice={actionData?.uniqueCodeNotice}
-                  pools={uniqueCodePools}
-                  stats={uniqueCodeStats}
-                  values={
-                    actionData?.uniqueCodeValues ??
-                    actionData?.discountValues ??
-                    discountValues
-                  }
-                />
-                <AdvancedDiscountRulesEditor
-                  errors={actionData?.advancedDiscountErrors}
-                  lockedReason={lockedFeatures.advancedDiscounts}
-                  notice={actionData?.advancedDiscountNotice}
-                  rules={advancedDiscountRules}
-                />
-                <EmailTimerEditor
-                  errors={actionData?.emailTimerErrors}
-                  lockedReason={lockedFeatures.emailTimers}
-                  timers={emailTimers}
-                />
-              </>
+              <OffersEditor
+                advancedRulesCount={advancedDiscountRules.length}
+                campaignType={activeCampaignValues.type}
+                campaignTypeLabel={formatCampaignOption(
+                  activeCampaignValues.type,
+                )}
+                discountMode={
+                  (actionData?.discountValues ?? discountValues).mode
+                }
+                uniquePoolsCount={uniqueCodePools.length}
+                sections={[
+                  {
+                    key: "basic-discount",
+                    label: "Basic discount",
+                    description:
+                      "Shared Shopify code or linked existing discount.",
+                    content: (
+                      <DiscountSettingsEditor
+                        apiError={discountApiError}
+                        discountOptions={discountOptions}
+                        errors={actionData?.discountErrors}
+                        lockedReason={lockedFeatures.discountSync}
+                        notice={actionData?.discountNotice}
+                        values={actionData?.discountValues ?? discountValues}
+                      />
+                    ),
+                  },
+                  {
+                    key: "unique-codes",
+                    label: "Unique codes",
+                    description:
+                      "One generated discount code per visitor/session.",
+                    content: (
+                      <UniqueCodesEditor
+                        codes={uniqueCodes}
+                        errors={actionData?.uniqueCodeErrors}
+                        lockedReason={lockedFeatures.uniqueCodes}
+                        notice={actionData?.uniqueCodeNotice}
+                        pools={uniqueCodePools}
+                        stats={uniqueCodeStats}
+                        values={
+                          actionData?.uniqueCodeValues ??
+                          actionData?.discountValues ??
+                          discountValues
+                        }
+                      />
+                    ),
+                  },
+                  {
+                    key: "advanced-rules",
+                    label: "Advanced rules",
+                    description:
+                      "Shopify Functions logic for complex cart offers.",
+                    content: (
+                      <AdvancedDiscountRulesEditor
+                        errors={actionData?.advancedDiscountErrors}
+                        lockedReason={lockedFeatures.advancedDiscounts}
+                        notice={actionData?.advancedDiscountNotice}
+                        rules={advancedDiscountRules}
+                      />
+                    ),
+                  },
+                  {
+                    key: "email-timer",
+                    label: "Email timer",
+                    description: "Countdown image URL for email campaigns.",
+                    content: (
+                      <EmailTimerEditor
+                        errors={actionData?.emailTimerErrors}
+                        lockedReason={lockedFeatures.emailTimers}
+                        timers={emailTimers}
+                      />
+                    ),
+                  },
+                ]}
+              />
             ),
           },
           {
@@ -1638,8 +1680,9 @@ export default function EditCampaignPage() {
               ) : (
                 <s-section heading="Merchandising">
                   <s-paragraph>
-                    Choose a merchandising campaign type to configure badges,
-                    stock urgency, delivery cutoff, or free shipping goals.
+                    Merchandising settings are hidden for this campaign type.
+                    Choose a badge, low-stock, delivery-cutoff, or free-shipping
+                    campaign type to configure those panels.
                   </s-paragraph>
                 </s-section>
               ),

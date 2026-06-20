@@ -54,7 +54,9 @@ test("experiment results can auto-detect and apply a winning variant", async ({
     "Winning treatment copy.",
   );
   await page.getByRole("tab", { name: "Offers" }).click();
-  await expect(page.getByLabel("New discount code")).toHaveValue("WINNER20");
+  await expect(page.getByLabel("Existing discount code or ID")).toHaveValue(
+    "WINNER20",
+  );
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -176,8 +176,10 @@ test("campaign builder tabs preview and layout are interactive", async ({
   await page.getByRole("tab", { name: "Offers" }).click();
   await page.getByTitle("About Discount mode").click();
   infoDialog = page.getByRole("dialog", { name: "Discount modes" });
-  await expect(infoDialog).toContainText("Unique code per visitor");
+  await expect(infoDialog).toContainText("Create new discount");
+  await expect(infoDialog).toContainText("Unique codes");
   await infoDialog.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("tab", { name: "Unique codes" })).toBeVisible();
 
   await page.getByRole("tab", { name: "A/B testing" }).click();
   await expect(

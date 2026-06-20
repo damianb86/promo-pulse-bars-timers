@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -8,6 +8,7 @@ import {
   type DeliveryCutoffSettingsValues,
 } from "../types/delivery-cutoff";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
+import { TimezoneCombobox } from "./TimezoneCombobox";
 
 type DeliveryCutoffSettingsEditorProps = {
   enabled: boolean;
@@ -24,11 +25,26 @@ export function DeliveryCutoffSettingsEditor({
 }: DeliveryCutoffSettingsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save delivery cutoff settings",
+    title: "Save delivery cutoff settings?",
+    children: (
+      <p>
+        This can change checkout and storefront delivery timing messages. Make
+        sure the cutoff and timezone match your fulfillment promise.
+      </p>
+    ),
+  });
 
   if (!enabled) return null;
 
   return (
     <s-section heading="Delivery Cutoff Timer">
+      <p className="counterpulse-section-description">
+        Configure the real cutoff time used for delivery urgency messages and
+        post-cutoff behavior.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -46,7 +62,11 @@ export function DeliveryCutoffSettingsEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input
             name="_action"
             type="hidden"
@@ -74,9 +94,12 @@ export function DeliveryCutoffSettingsEditor({
               />
             </FormField>
 
-            <FormField label="Timezone" error={errors?.timezone}>
-              <input name="timezone" defaultValue={values.timezone} />
-            </FormField>
+            <TimezoneCombobox
+              defaultValue={values.timezone}
+              error={errors?.timezone}
+              label="Timezone"
+              name="timezone"
+            />
 
             <FormField
               label="After cutoff behavior"
@@ -173,6 +196,7 @@ export function DeliveryCutoffSettingsEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
     </s-section>
   );
 }

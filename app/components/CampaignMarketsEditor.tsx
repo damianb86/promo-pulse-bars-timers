@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -76,6 +76,16 @@ export function CampaignMarketsEditor({
     () => stringifyDeliverySettings(deliverySettings),
     [deliverySettings],
   );
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save market rule",
+    title: "Save market override?",
+    children: (
+      <p>
+        This can override campaign copy, free-shipping thresholds, and delivery
+        settings for matching storefront market requests.
+      </p>
+    ),
+  });
   const updateTextOverride = (
     field: keyof typeof textOverrides,
     value: string,
@@ -97,6 +107,11 @@ export function CampaignMarketsEditor({
 
   return (
     <s-section heading="Markets">
+      <p className="counterpulse-section-description">
+        Configure country, locale, currency, threshold, and delivery overrides
+        for Shopify Markets without changing the global campaign defaults.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -123,7 +138,11 @@ export function CampaignMarketsEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="saveMarketRule" />
           <input
             name="marketRuleTextOverridesJson"
@@ -322,6 +341,7 @@ export function CampaignMarketsEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
         <div className="counterpulse-config-card">
@@ -412,23 +432,7 @@ export function CampaignMarketsEditor({
                   <td>{summarizeJson(rule.textOverridesJson)}</td>
                   <td>{summarizeJson(rule.deliverySettingsJson)}</td>
                   <td>
-                    {!lockedReason && (
-                      <Form method="post">
-                        <input
-                          name="_action"
-                          type="hidden"
-                          value="deleteMarketRule"
-                        />
-                        <input
-                          name="marketRuleId"
-                          type="hidden"
-                          value={rule.id}
-                        />
-                        <button className="counterpulse-button" type="submit">
-                          Delete
-                        </button>
-                      </Form>
-                    )}
+                    {!lockedReason && <DeleteMarketRuleForm ruleId={rule.id} />}
                   </td>
                 </tr>
               ))
@@ -441,6 +445,33 @@ export function CampaignMarketsEditor({
         </table>
       </s-box>
     </s-section>
+  );
+}
+
+function DeleteMarketRuleForm({ ruleId }: { ruleId: string }) {
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Delete override",
+    title: "Delete market override?",
+    tone: "critical",
+    children: (
+      <p>
+        This removes the localized market rule. Matching storefront requests
+        will fall back to the global campaign settings.
+      </p>
+    ),
+  });
+
+  return (
+    <>
+      <Form method="post" onSubmit={confirmSubmit.onSubmit}>
+        <input name="_action" type="hidden" value="deleteMarketRule" />
+        <input name="marketRuleId" type="hidden" value={ruleId} />
+        <button className="counterpulse-button-danger" type="submit">
+          Delete
+        </button>
+      </Form>
+      {confirmSubmit.modal}
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -21,11 +21,26 @@ export function FreeShippingSettingsEditor({
 }: FreeShippingSettingsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save free shipping settings",
+    title: "Save free shipping settings?",
+    children: (
+      <p>
+        This changes the cart threshold and progress copy shown to eligible
+        shoppers for this campaign.
+      </p>
+    ),
+  });
 
   if (!enabled) return null;
 
   return (
     <s-section heading="Free Shipping Goal">
+      <p className="counterpulse-section-description">
+        Configure the real free-shipping threshold, currency, progress style,
+        and fallback messages used by cart placements.
+      </p>
+
       {errors?.form && (
         <AppAlert
           tone="critical"
@@ -35,7 +50,11 @@ export function FreeShippingSettingsEditor({
         </AppAlert>
       )}
 
-      <Form method="post" className="counterpulse-form">
+      <Form
+        method="post"
+        className="counterpulse-form"
+        onSubmit={confirmSubmit.onSubmit}
+      >
         <input name="_action" type="hidden" value="saveFreeShippingSettings" />
 
         <div className="counterpulse-form-grid">
@@ -120,6 +139,7 @@ export function FreeShippingSettingsEditor({
           </button>
         </div>
       </Form>
+      {confirmSubmit.modal}
     </s-section>
   );
 }

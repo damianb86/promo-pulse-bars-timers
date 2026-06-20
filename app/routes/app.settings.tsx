@@ -1,5 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { AppAlert, AppToast } from "../components/Notifications";
+import {
+  AppAlert,
+  AppToast,
+  useConfirmSubmit,
+} from "../components/Notifications";
 import {
   Form,
   useActionData,
@@ -9,6 +13,7 @@ import {
 
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
+import { TimezoneCombobox } from "../components/TimezoneCombobox";
 import {
   getOrCreateShopSettings,
   hasShopSettingsErrors,
@@ -78,6 +83,16 @@ export default function SettingsPage() {
   const values = actionData?.values ?? loaderValues;
   const errors = actionData?.errors ?? {};
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save settings",
+    title: "Save shop defaults?",
+    children: (
+      <p>
+        These defaults are used by new campaigns and storefront behavior. Active
+        campaigns keep their own saved settings unless edited.
+      </p>
+    ),
+  });
 
   return (
     <s-page inlineSize="large" heading="Settings">
@@ -106,7 +121,11 @@ export default function SettingsPage() {
         </div>
       </s-section>
 
-      <Form className="counterpulse-form" method="post">
+      <Form
+        className="counterpulse-form"
+        method="post"
+        onSubmit={confirmSubmit.onSubmit}
+      >
         <s-section heading="Localization">
           <div className="counterpulse-form-grid">
             <label className="counterpulse-form-field">
@@ -125,19 +144,12 @@ export default function SettingsPage() {
               )}
             </label>
 
-            <label className="counterpulse-form-field">
-              Default timezone
-              <input
-                name="defaultTimezone"
-                placeholder="UTC"
-                defaultValue={values.defaultTimezone}
-              />
-              {errors.defaultTimezone && (
-                <span className="counterpulse-form-error">
-                  {errors.defaultTimezone}
-                </span>
-              )}
-            </label>
+            <TimezoneCombobox
+              defaultValue={values.defaultTimezone}
+              error={errors.defaultTimezone}
+              label="Default timezone"
+              name="defaultTimezone"
+            />
 
             <label className="counterpulse-form-field">
               Default currency
@@ -328,6 +340,7 @@ export default function SettingsPage() {
           </div>
         </s-section>
       </Form>
+      {confirmSubmit.modal}
     </s-page>
   );
 }

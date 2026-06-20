@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -17,6 +18,7 @@ test("campaign creation shows server validation errors", async ({
   await page.getByRole("tab", { name: "Message" }).click();
   await page.getByLabel("CTA URL").fill("ftp://example.com");
   await page.getByRole("button", { name: "Save campaign" }).click();
+  await confirmAction(page, "Save campaign");
 
   await page.getByRole("tab", { name: "Setup" }).click();
   await expect(page.getByText("Campaign name is required.")).toBeVisible();

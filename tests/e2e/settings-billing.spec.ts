@@ -1,7 +1,9 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectTimezone,
   test,
 } from "./fixtures";
 
@@ -14,7 +16,12 @@ test("shop settings can be saved and persist after reload", async ({
   await loginAsDemoShop("/app/settings");
 
   await page.getByLabel("Default locale").selectOption("es");
-  await page.getByLabel("Default timezone").fill("America/Argentina/Cordoba");
+  await selectTimezone(
+    page,
+    "Default timezone",
+    "UTC-03",
+    "America/Argentina/Cordoba",
+  );
   await page.getByLabel("Default currency").fill("ars");
   await page.getByLabel("Default country").fill("ar");
   await page.getByLabel("Brand name").fill("Promo Pulse E2E");
@@ -25,20 +32,21 @@ test("shop settings can be saved and persist after reload", async ({
   await page.getByLabel("Debug mode").check();
   await page.getByLabel("Consent mode").selectOption("STRICT");
 
+  await page.getByRole("button", { name: "Save settings" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/settings") &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Save settings" }).click(),
+    confirmAction(page, "Save settings"),
   ]);
 
   await expect(page.getByText("Settings saved.")).toBeVisible();
   await page.reload();
 
   await expect(page.getByLabel("Default locale")).toHaveValue("es");
-  await expect(page.getByLabel("Default timezone")).toHaveValue(
+  await expect(page.locator('input[name="defaultTimezone"]')).toHaveValue(
     "America/Argentina/Cordoba",
   );
   await expect(page.getByLabel("Default currency")).toHaveValue("ARS");

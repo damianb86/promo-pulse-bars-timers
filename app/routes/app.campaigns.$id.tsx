@@ -1487,7 +1487,8 @@ export default function EditCampaignPage() {
           {
             key: "campaign",
             label: "Campaign",
-            description: "Goal, copy, timing, placement",
+            description:
+              "Configure the campaign goal, copy, schedule, status, and primary storefront placement.",
             content: (
               <CampaignForm
                 design={actionData?.designValues ?? designValues}
@@ -1503,7 +1504,8 @@ export default function EditCampaignPage() {
           {
             key: "offers",
             label: "Offers",
-            description: "Discounts, unique codes, email timers",
+            description:
+              "Manage discounts, visitor-specific codes, advanced discount rules, and email countdown assets.",
             content: (
               <>
                 <DiscountSettingsEditor
@@ -1544,7 +1546,8 @@ export default function EditCampaignPage() {
           {
             key: "experiments",
             label: "A/B testing",
-            description: "Variants, metrics, auto-winner",
+            description:
+              "Create variants, choose the primary metric, review performance, and apply a winner when ready.",
             content: (
               <ExperimentsEditor
                 errors={actionData?.experimentErrors}
@@ -1557,7 +1560,8 @@ export default function EditCampaignPage() {
           {
             key: "targeting",
             label: "Targeting",
-            description: "Behavior and visitor eligibility",
+            description:
+              "Define which visitors are eligible based on consent-safe behavior and campaign history.",
             content: (
               <BehaviorTargetingEditor
                 errors={actionData?.behaviorTargetingErrors}
@@ -1572,7 +1576,8 @@ export default function EditCampaignPage() {
           {
             key: "markets",
             label: "Markets",
-            description: "Country, locale, threshold overrides",
+            description:
+              "Override campaign text, currency, thresholds, and delivery rules by market, country, or locale.",
             content: (
               <CampaignMarketsEditor
                 apiError={marketApiError}
@@ -1587,7 +1592,8 @@ export default function EditCampaignPage() {
           {
             key: "merchandising",
             label: "Merchandising",
-            description: "Badges, stock, delivery, free shipping",
+            description:
+              "Configure product badges, real stock messaging, delivery cutoff promises, and free-shipping goals.",
             content:
               hasBadge ||
               hasDeliveryCutoff ||
@@ -1641,7 +1647,8 @@ export default function EditCampaignPage() {
           {
             key: "design",
             label: "Design",
-            description: "Visual styling and full preview",
+            description:
+              "Adjust visual style and preview the widget across storefront placements before saving.",
             content: (
               <CampaignDesignEditor
                 errors={actionData?.designErrors}
@@ -1655,7 +1662,8 @@ export default function EditCampaignPage() {
           {
             key: "translations",
             label: "Translations",
-            description: "Locale-specific copy",
+            description:
+              "Edit localized campaign copy and review fallback text for every enabled storefront language.",
             content: lockedFeatures.multiLanguage ? (
               <PlanUpgradeCallout
                 message={lockedFeatures.multiLanguage}

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -26,11 +26,26 @@ export function BadgeSettingsEditor({
 }: BadgeSettingsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save badge settings",
+    title: "Save product badge settings?",
+    children: (
+      <p>
+        This updates the simple product badge shown by this campaign for
+        matching placements.
+      </p>
+    ),
+  });
 
   if (!enabled) return null;
 
   return (
     <s-section heading="Product Badge">
+      <p className="counterpulse-section-description">
+        Configure the default badge text, shape, and position for product or
+        collection placements.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -45,7 +60,11 @@ export function BadgeSettingsEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="saveBadgeSettings" />
 
           <div className="counterpulse-form-grid">
@@ -91,6 +110,7 @@ export function BadgeSettingsEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
     </s-section>
   );
 }

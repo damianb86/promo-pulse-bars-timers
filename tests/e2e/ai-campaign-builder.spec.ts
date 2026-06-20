@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -39,6 +40,7 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Save campaign" }).click();
+  await confirmAction(page, "Save campaign");
   await page.waitForURL((url) => {
     const segments = url.pathname.split("/").filter(Boolean);
     return (

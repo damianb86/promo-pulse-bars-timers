@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -23,6 +24,7 @@ test("merchant can create and copy an email timer image URL", async ({
   await page.getByRole("tab", { name: "Offers" }).click();
   await page.getByLabel("Transparent pixel").check();
   await page.getByRole("button", { name: "Create email timer" }).click();
+  await confirmAction(page, "Create email timer");
 
   const urlInput = page.getByLabel("Email timer URL").first();
   await expect(urlInput).toHaveValue(/\/api\/email-timer\/.+\.png$/);

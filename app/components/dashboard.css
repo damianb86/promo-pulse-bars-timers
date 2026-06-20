@@ -915,7 +915,8 @@ s-page::part(page) {
 .counterpulse-placement-tile:focus-visible,
 .counterpulse-builder-tabs button:focus-visible,
 .counterpulse-editor-tabs button:focus-visible,
-.counterpulse-preview-toolbar button:focus-visible {
+.counterpulse-preview-toolbar button:focus-visible,
+.counterpulse-combobox__option:focus-visible {
   outline: 2px solid #005bd3;
   outline-offset: 2px;
 }
@@ -1245,6 +1246,27 @@ s-page::part(page) {
   line-height: 17px;
 }
 
+.counterpulse-section-description,
+.counterpulse-editor-panel__intro {
+  max-width: 860px;
+  margin: 0 0 14px;
+  color: #6d7175;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19px;
+}
+
+.counterpulse-editor-panel__intro {
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafbfb;
+}
+
+.counterpulse-editor-panel__intro p {
+  margin: 0;
+}
+
 .counterpulse-choice-list {
   display: grid;
   gap: 8px;
@@ -1513,6 +1535,7 @@ s-page::part(page) {
 .counterpulse-field input,
 .counterpulse-field select,
 .counterpulse-field textarea,
+.counterpulse-combobox input,
 .counterpulse-toolbar input,
 .counterpulse-toolbar select {
   width: 100%;
@@ -1526,6 +1549,75 @@ s-page::part(page) {
   font-weight: 400;
   align-self: start;
   min-height: 36px;
+}
+
+.counterpulse-timezone-combobox {
+  position: relative;
+}
+
+.counterpulse-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.counterpulse-combobox__list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #8c9196;
+  border-radius: 8px;
+  padding: 4px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(31, 33, 36, 0.16);
+}
+
+.counterpulse-combobox__option {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  gap: 2px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px;
+  background: transparent;
+  color: #202223;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.counterpulse-combobox__option:hover,
+.counterpulse-combobox__option[aria-selected="true"] {
+  background: #f4fbf7;
+}
+
+.counterpulse-combobox__option[aria-selected="true"] {
+  color: #006f4e;
+}
+
+.counterpulse-combobox__option span {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-combobox__option small,
+.counterpulse-combobox__empty {
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.counterpulse-combobox__empty {
+  padding: 10px;
 }
 
 .counterpulse-field-error {

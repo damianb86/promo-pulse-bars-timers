@@ -1,4 +1,11 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 
 export type NoticeTone = "info" | "success" | "warning" | "critical";
 
@@ -23,6 +30,59 @@ type ConfirmModalProps = {
   onCancel: () => void;
   onConfirm: () => void;
 };
+
+type ConfirmSubmitOptions = {
+  cancelLabel?: string;
+  children?: ReactNode;
+  confirmLabel: string;
+  title: string;
+  tone?: "critical" | "warning";
+};
+
+export function useConfirmSubmit({
+  cancelLabel = "Cancel",
+  children,
+  confirmLabel,
+  title,
+  tone = "warning",
+}: ConfirmSubmitOptions) {
+  const [open, setOpen] = useState(false);
+  const pendingFormRef = useRef<HTMLFormElement | null>(null);
+  const allowNextSubmitRef = useRef(false);
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (allowNextSubmitRef.current) {
+      allowNextSubmitRef.current = false;
+      return;
+    }
+
+    event.preventDefault();
+    pendingFormRef.current = event.currentTarget;
+    setOpen(true);
+  };
+
+  const modal = (
+    <ConfirmModal
+      cancelLabel={cancelLabel}
+      confirmLabel={confirmLabel}
+      open={open}
+      title={title}
+      tone={tone}
+      onCancel={() => setOpen(false)}
+      onConfirm={() => {
+        const form = pendingFormRef.current;
+
+        allowNextSubmitRef.current = true;
+        setOpen(false);
+        window.setTimeout(() => form?.requestSubmit(), 0);
+      }}
+    >
+      {children}
+    </ConfirmModal>
+  );
+
+  return { modal, onSubmit };
+}
 
 export function AppAlert({
   action,

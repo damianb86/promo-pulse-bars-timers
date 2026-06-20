@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -23,13 +24,14 @@ test("Spanish translations and locale/country targeting affect storefront API", 
     .locator('textarea[name="translation.es.subheadline"]')
     .fill("Disponible por tiempo limitado.");
   await page.locator('input[name="translation.es.ctaText"]').fill("Comprar");
+  await page.getByRole("button", { name: "Save translations" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Save translations" }).click(),
+    confirmAction(page, "Save translations"),
   ]);
   await page.getByRole("tab", { name: /ES Spanish/ }).click();
   await expect(

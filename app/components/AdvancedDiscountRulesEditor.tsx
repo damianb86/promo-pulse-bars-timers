@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -67,6 +67,16 @@ export function AdvancedDiscountRulesEditor({
   const navigation = useNavigation();
   const [thresholdTiers, setThresholdTiers] = useState(defaultThresholdTiers);
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save advanced rule",
+    title: "Save advanced discount rule?",
+    children: (
+      <p>
+        This can create or update an app discount rule. Save as draft until you
+        are ready for Shopify Functions to evaluate it in carts.
+      </p>
+    ),
+  });
   const thresholdsJson = useMemo(() => {
     const tiers = thresholdTiers
       .map((tier) => ({
@@ -100,6 +110,11 @@ export function AdvancedDiscountRulesEditor({
 
   return (
     <s-section heading="Advanced Discount Rules">
+      <p className="counterpulse-section-description">
+        Build premium discount logic for cases that need Shopify Functions, such
+        as tiers, spend thresholds, free gifts, or cart conditions.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -120,7 +135,11 @@ export function AdvancedDiscountRulesEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input
             name="_action"
             type="hidden"
@@ -292,6 +311,7 @@ export function AdvancedDiscountRulesEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
         <table className="counterpulse-table">
@@ -318,17 +338,7 @@ export function AdvancedDiscountRulesEditor({
                   <td>{rule.shopifyDiscountId || "-"}</td>
                   <td>
                     {!lockedReason && (
-                      <Form method="post">
-                        <input
-                          name="_action"
-                          type="hidden"
-                          value="deleteAdvancedDiscountRule"
-                        />
-                        <input name="ruleId" type="hidden" value={rule.id} />
-                        <button className="counterpulse-button" type="submit">
-                          Delete
-                        </button>
-                      </Form>
+                      <DeleteAdvancedDiscountRuleForm ruleId={rule.id} />
                     )}
                   </td>
                 </tr>
@@ -342,6 +352,37 @@ export function AdvancedDiscountRulesEditor({
         </table>
       </s-box>
     </s-section>
+  );
+}
+
+function DeleteAdvancedDiscountRuleForm({ ruleId }: { ruleId: string }) {
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Delete rule",
+    title: "Delete advanced discount rule?",
+    tone: "critical",
+    children: (
+      <p>
+        This removes the rule from Promo Pulse and may revoke the matching app
+        discount when possible.
+      </p>
+    ),
+  });
+
+  return (
+    <>
+      <Form method="post" onSubmit={confirmSubmit.onSubmit}>
+        <input
+          name="_action"
+          type="hidden"
+          value="deleteAdvancedDiscountRule"
+        />
+        <input name="ruleId" type="hidden" value={ruleId} />
+        <button className="counterpulse-button-danger" type="submit">
+          Delete
+        </button>
+      </Form>
+      {confirmSubmit.modal}
+    </>
   );
 }
 

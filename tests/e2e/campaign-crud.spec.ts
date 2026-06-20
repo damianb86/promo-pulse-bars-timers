@@ -1,7 +1,9 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectTimezone,
   test,
 } from "./fixtures";
 
@@ -20,13 +22,14 @@ test("campaign CRUD actions work from the admin UI", async ({
   });
 
   await page.getByLabel("Campaign name").fill("E2E CRUD Campaign Updated");
+  await page.getByRole("button", { name: "Update campaign" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Update campaign" }).click(),
+    confirmAction(page, "Update campaign"),
   ]);
   await page.waitForURL("/app/campaigns");
 
@@ -34,14 +37,17 @@ test("campaign CRUD actions work from the admin UI", async ({
   await expect(row).toContainText("Draft");
 
   await row.getByRole("button", { name: "Activate" }).click();
+  await confirmAction(page, "Activate campaign");
   row = page.getByRole("row", { name: /E2E CRUD Campaign Updated/ });
   await expect(row).toContainText("Active");
 
   await row.getByRole("button", { name: "Pause" }).click();
+  await confirmAction(page, "Pause campaign");
   row = page.getByRole("row", { name: /E2E CRUD Campaign Updated/ });
   await expect(row).toContainText("Paused");
 
   await row.getByRole("button", { name: "Duplicate" }).click();
+  await confirmAction(page, "Duplicate campaign");
   await expect(
     page.getByRole("row", { name: /E2E CRUD Campaign Updated copy/ }),
   ).toBeVisible();
@@ -130,8 +136,8 @@ test("campaign builder tabs preview and layout are interactive", async ({
   );
   const timezoneSelect = form.getByRole("combobox", { name: "Timezone" });
   await expect(timezoneSelect).not.toHaveValue("");
-  await timezoneSelect.selectOption("UTC");
-  await expect(timezoneSelect).toHaveValue("UTC");
+  await selectTimezone(form, "Timezone", "UTC+00", "UTC");
+  await expect(form.locator('input[name="timezone"]')).toHaveValue("UTC");
 
   await form.getByRole("button", { name: "Review" }).click();
   await expect(form.getByRole("tab", { name: "Review" })).toHaveAttribute(
@@ -148,6 +154,7 @@ test("campaign builder tabs preview and layout are interactive", async ({
   await page.goto("/app/campaigns/new");
   await form.getByLabel("Campaign name").fill("E2E Editor Tabs");
   await form.getByRole("button", { name: "Save campaign" }).click();
+  await confirmAction(page, "Save campaign");
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
   await expect(page.getByRole("tab", { name: "Campaign" })).toHaveAttribute(
     "aria-selected",

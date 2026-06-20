@@ -247,9 +247,15 @@ function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   setFieldValue("ctaText", suggestion.campaign.ctaText);
   setFieldValue("ctaUrl", suggestion.campaign.ctaUrl);
   setFieldValue("aiSuggestionJson", payload);
-  window.requestAnimationFrame(() =>
-    setFieldValue("aiSuggestionJson", payload),
+  window.dispatchEvent(
+    new CustomEvent("counterpulse:ai-suggestion-json", { detail: payload }),
   );
+  window.requestAnimationFrame(() => {
+    setFieldValue("aiSuggestionJson", payload);
+    window.dispatchEvent(
+      new CustomEvent("counterpulse:ai-suggestion-json", { detail: payload }),
+    );
+  });
 }
 
 function setFieldValue(name: string, value: string) {

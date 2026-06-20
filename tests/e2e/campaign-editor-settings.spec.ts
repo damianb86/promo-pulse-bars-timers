@@ -1,7 +1,9 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectTimezone,
   test,
 } from "./fixtures";
 
@@ -30,13 +32,16 @@ test("free shipping settings persist from the campaign editor", async ({
     .fill("EU free shipping unlocked");
   await form.getByLabel("Country/market threshold JSON").fill('{"DE":150}');
 
+  await form
+    .getByRole("button", { name: "Save free shipping settings" })
+    .click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    form.getByRole("button", { name: "Save free shipping settings" }).click(),
+    confirmAction(page, "Save free shipping settings"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Merchandising" }).click();
@@ -78,7 +83,7 @@ test("delivery cutoff settings persist from the campaign editor", async ({
 
   await form.getByLabel("Cutoff hour").fill("16");
   await form.getByLabel("Cutoff minute").fill("30");
-  await form.getByLabel("Timezone").fill("America/New_York");
+  await selectTimezone(form, "Timezone", "UTC-05", "America/New_York");
   await form
     .getByLabel("After cutoff behavior")
     .selectOption("SHOW_AFTER_CUTOFF_MESSAGE");
@@ -89,13 +94,16 @@ test("delivery cutoff settings persist from the campaign editor", async ({
   await form.getByLabel("Holidays JSON").fill('["2026-12-25"]');
   await form.getByLabel("Country rules JSON").fill('{"US":{"cutoffHour":15}}');
 
+  await form
+    .getByRole("button", { name: "Save delivery cutoff settings" })
+    .click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    form.getByRole("button", { name: "Save delivery cutoff settings" }).click(),
+    confirmAction(page, "Save delivery cutoff settings"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Merchandising" }).click();
@@ -143,15 +151,16 @@ test("low stock, badge, and manual discount settings can be saved", async ({
   await lowStockForm.getByLabel("Show exact quantity").check();
   await lowStockForm.getByLabel("Fallback message").fill("Low stock E2E");
 
+  await lowStockForm
+    .getByRole("button", { name: "Save low stock settings" })
+    .click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    lowStockForm
-      .getByRole("button", { name: "Save low stock settings" })
-      .click(),
+    confirmAction(page, "Save low stock settings"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Merchandising" }).click();
@@ -168,13 +177,14 @@ test("low stock, badge, and manual discount settings can be saved", async ({
   );
   await discountForm.getByLabel("Discount mode").selectOption("LINK_EXISTING");
   await discountForm.getByLabel("Existing discount code or ID").fill("SAVE10");
+  await discountForm.getByRole("button", { name: "Save discount" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    discountForm.getByRole("button", { name: "Save discount" }).click(),
+    confirmAction(page, "Save discount"),
   ]);
   await expect(
     page.getByText(/manual discount reference was saved without date sync/i),
@@ -196,13 +206,14 @@ test("low stock, badge, and manual discount settings can be saved", async ({
   await badgeForm.getByLabel("Badge text").fill("New drop");
   await badgeForm.getByLabel("Badge shape").selectOption("SQUARE");
   await badgeForm.getByLabel("Badge position").selectOption("BOTTOM_LEFT");
+  await badgeForm.getByRole("button", { name: "Save badge settings" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    badgeForm.getByRole("button", { name: "Save badge settings" }).click(),
+    confirmAction(page, "Save badge settings"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Merchandising" }).click();
@@ -257,13 +268,14 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
   await discountForm.getByLabel("Limit created discount").check();
   await discountForm.getByLabel("Auto-apply unique visitor codes").check();
 
+  await discountForm.getByRole("button", { name: "Save discount" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    discountForm.getByRole("button", { name: "Save discount" }).click(),
+    confirmAction(page, "Save discount"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Offers" }).click();
@@ -359,13 +371,14 @@ test("advanced discount rules can be created from the campaign editor", async ({
   await form.getByLabel("Tier 1 minimum subtotal").fill("100");
   await form.getByLabel("Tier 1 discount percent").fill("15");
 
+  await form.getByRole("button", { name: "Save advanced rule" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    form.getByRole("button", { name: "Save advanced rule" }).click(),
+    confirmAction(page, "Save advanced rule"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Offers" }).click();

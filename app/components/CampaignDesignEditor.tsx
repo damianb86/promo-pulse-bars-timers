@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { DesignControls } from "./DesignControls";
@@ -52,6 +52,16 @@ export function CampaignDesignEditor({
   const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [placement, setPlacement] = useState<PreviewPlacement>("TOP_BAR");
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save design",
+    title: "Save campaign design?",
+    children: (
+      <p>
+        This updates visual styling for the campaign widget across enabled
+        placements. Review the preview before confirming.
+      </p>
+    ),
+  });
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -62,6 +72,11 @@ export function CampaignDesignEditor({
 
   return (
     <s-section heading="Design & Preview">
+      <p className="counterpulse-section-description">
+        Tune colors, typography, layout, and preview placement so the widget
+        matches the campaign and store design.
+      </p>
+
       {errors?.form && (
         <AppAlert tone="critical" title="Design could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
@@ -75,7 +90,11 @@ export function CampaignDesignEditor({
         />
       )}
 
-      <Form method="post" className="counterpulse-design-editor">
+      <Form
+        method="post"
+        className="counterpulse-design-editor"
+        onSubmit={confirmSubmit.onSubmit}
+      >
         <input name="_action" type="hidden" value="saveDesign" />
 
         <div className="counterpulse-design-editor__controls">
@@ -124,6 +143,7 @@ export function CampaignDesignEditor({
           />
         </div>
       </Form>
+      {confirmSubmit.modal}
     </s-section>
   );
 }

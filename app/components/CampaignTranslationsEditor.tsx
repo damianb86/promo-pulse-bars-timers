@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -28,16 +28,35 @@ export function CampaignTranslationsEditor({
   const [activeLocale, setActiveLocale] = useState<StorefrontLocale>("en");
   const [values, setValues] = useState(initialValues);
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save translations",
+    title: "Save campaign translations?",
+    children: (
+      <p>
+        This updates localized campaign copy. Empty fields will continue using
+        the resolved fallback shown in each input.
+      </p>
+    ),
+  });
 
   return (
     <s-section heading="Translations">
+      <p className="counterpulse-section-description">
+        Manage locale-specific copy while keeping clear fallback text for any
+        language that is not fully translated.
+      </p>
+
       {errors?.form && (
         <AppAlert tone="critical" title="Translations could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
         </AppAlert>
       )}
 
-      <Form method="post" className="counterpulse-translations">
+      <Form
+        method="post"
+        className="counterpulse-translations"
+        onSubmit={confirmSubmit.onSubmit}
+      >
         <input name="_action" type="hidden" value="saveTranslations" />
 
         <div
@@ -122,6 +141,7 @@ export function CampaignTranslationsEditor({
           </button>
         </div>
       </Form>
+      {confirmSubmit.modal}
     </s-section>
   );
 }

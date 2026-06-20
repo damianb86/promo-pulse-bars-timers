@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -29,13 +30,14 @@ test("design changes update live preview and persist", async ({
     .first();
   await expect(preview).toContainText("Sale ends soon");
   await expect(preview).toHaveCSS("background-color", "rgb(18, 52, 86)");
+  await page.getByRole("button", { name: "Save design" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Save design" }).click(),
+    confirmAction(page, "Save design"),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Design" }).click();

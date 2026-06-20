@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { confirmAction, expect, test } from "./fixtures";
 
 test("advanced badge rules can be created and evaluated for storefront products", async ({
   createCampaignViaUI,
@@ -31,6 +31,7 @@ test("advanced badge rules can be created and evaluated for storefront products"
   await simpleBadgeForm
     .getByRole("button", { name: "Save badge settings" })
     .click();
+  await confirmAction(page, "Save badge settings");
   await page.waitForURL(`/app/campaigns/${campaignId}`);
 
   await advancedBadgeForm.getByLabel("Badge text").fill("VIP drop");
@@ -40,6 +41,7 @@ test("advanced badge rules can be created and evaluated for storefront products"
   await advancedBadgeForm
     .getByRole("button", { name: "Save badge rule" })
     .click();
+  await confirmAction(page, "Save badge rule");
   await page.waitForURL(`/app/campaigns/${campaignId}`);
 
   await expect(page.getByText("VIP drop")).toBeVisible();

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
@@ -46,9 +46,24 @@ export function AdvancedBadgeRulesEditor({
 }: AdvancedBadgeRulesEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save badge rule",
+    title: "Save advanced badge rule?",
+    children: (
+      <p>
+        This can change which products show merchandising badges based on tags,
+        markets, inventory, metafields, or schedule.
+      </p>
+    ),
+  });
 
   return (
     <s-section heading="Badge Rules">
+      <p className="counterpulse-section-description">
+        Build prioritized merchandising rules for product badges using product,
+        inventory, market, locale, metafield, and scheduling conditions.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -69,7 +84,11 @@ export function AdvancedBadgeRulesEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="saveAdvancedBadgeRule" />
 
           <div className="counterpulse-form-grid">
@@ -255,6 +274,7 @@ export function AdvancedBadgeRulesEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
         <table className="counterpulse-table">
@@ -286,21 +306,7 @@ export function AdvancedBadgeRulesEditor({
                   <td>{rule.scheduleSummary || "Always"}</td>
                   <td>
                     {!lockedReason && (
-                      <Form method="post">
-                        <input
-                          name="_action"
-                          type="hidden"
-                          value="deleteAdvancedBadgeRule"
-                        />
-                        <input
-                          name="badgeRuleId"
-                          type="hidden"
-                          value={rule.id}
-                        />
-                        <button className="counterpulse-button" type="submit">
-                          Delete
-                        </button>
-                      </Form>
+                      <DeleteAdvancedBadgeRuleForm ruleId={rule.id} />
                     )}
                   </td>
                 </tr>
@@ -314,6 +320,33 @@ export function AdvancedBadgeRulesEditor({
         </table>
       </s-box>
     </s-section>
+  );
+}
+
+function DeleteAdvancedBadgeRuleForm({ ruleId }: { ruleId: string }) {
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Delete badge rule",
+    title: "Delete advanced badge rule?",
+    tone: "critical",
+    children: (
+      <p>
+        This removes the rule. Matching products will no longer receive this
+        advanced badge unless another rule applies.
+      </p>
+    ),
+  });
+
+  return (
+    <>
+      <Form method="post" onSubmit={confirmSubmit.onSubmit}>
+        <input name="_action" type="hidden" value="deleteAdvancedBadgeRule" />
+        <input name="badgeRuleId" type="hidden" value={ruleId} />
+        <button className="counterpulse-button-danger" type="submit">
+          Delete
+        </button>
+      </Form>
+      {confirmSubmit.modal}
+    </>
   );
 }
 

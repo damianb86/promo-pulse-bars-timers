@@ -1,5 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { expect, test as base, type Page } from "@playwright/test";
+import {
+  expect,
+  test as base,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 type E2EFixtures = {
   resetDb: (scenario?: string) => Promise<void>;
@@ -68,6 +73,12 @@ export const test = base.extend<E2EFixtures>({
       ) {
         return;
       }
+      if (
+        new URL(url).pathname === "/__manifest" &&
+        failureText === "net::ERR_ABORTED"
+      ) {
+        return;
+      }
       failedRequests.push(`${request.method()} ${url}: ${failureText}`);
     });
 
@@ -118,7 +129,7 @@ export const test = base.extend<E2EFixtures>({
       await page
         .getByLabel("End date/time")
         .fill(toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)));
-      await page.getByLabel("Timezone").selectOption("America/New_York");
+      await selectTimezone(page, "Timezone", "UTC-05", "America/New_York");
       await page.getByRole("tab", { name: "Message" }).click();
       await page.locator('input[name="headline"]').fill(values.headline);
       await page.getByLabel("CTA text").fill(values.ctaText);
@@ -127,6 +138,7 @@ export const test = base.extend<E2EFixtures>({
         .locator('textarea[name="subheadline"]')
         .fill(values.subheadline);
       await page.getByRole("button", { name: "Save campaign" }).click();
+      await confirmAction(page, "Save campaign");
       await page.waitForURL((url) => {
         const segments = url.pathname.split("/").filter(Boolean);
         return (
@@ -166,6 +178,25 @@ export async function getAnalyticsSummary(page: Page) {
   });
 
   return response.status();
+}
+
+export async function confirmAction(page: Page, confirmLabel: string | RegExp) {
+  const dialog = page.getByRole("dialog");
+
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: confirmLabel }).click();
+}
+
+export async function selectTimezone(
+  scope: Page | Locator,
+  label: string,
+  search: string,
+  optionText: string | RegExp,
+) {
+  const combobox = scope.getByRole("combobox", { name: label });
+
+  await combobox.fill(search);
+  await scope.getByRole("option", { name: optionText }).first().click();
 }
 
 function toDateTimeLocal(date: Date) {

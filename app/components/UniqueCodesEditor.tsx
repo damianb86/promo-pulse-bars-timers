@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -64,9 +64,24 @@ export function UniqueCodesEditor({
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const enabled = values.mode === "UNIQUE_CODES";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Generate codes",
+    title: "Generate unique visitor codes?",
+    children: (
+      <p>
+        This creates a new pool of visitor-scoped codes. Generated codes can be
+        assigned to shoppers while the campaign is eligible.
+      </p>
+    ),
+  });
 
   return (
     <s-section heading="Unique Codes">
+      <p className="counterpulse-section-description">
+        Generate and monitor codes that are assigned one visitor at a time, with
+        real expiration and usage states.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -87,7 +102,11 @@ export function UniqueCodesEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="generateUniqueCodes" />
           <input name="mode" type="hidden" value="UNIQUE_CODES" />
           <input
@@ -174,6 +193,7 @@ export function UniqueCodesEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
         <table className="counterpulse-table">

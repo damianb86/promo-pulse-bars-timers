@@ -86,6 +86,7 @@ export function CampaignEditorLayout({
             key={section.key}
             role="tab"
             type="button"
+            aria-label={section.label}
             onClick={() => setActiveSectionKey(section.key)}
           >
             <span>{section.label}</span>
@@ -103,6 +104,10 @@ export function CampaignEditorLayout({
           key={section.key}
           role="tabpanel"
         >
+          <div className="counterpulse-editor-panel__intro">
+            <p className="counterpulse-kicker">{section.label}</p>
+            <p>{section.description}</p>
+          </div>
           {section.content}
         </section>
       ))}

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import type {
@@ -20,18 +20,37 @@ export function LowStockSettingsEditor({
 }: LowStockSettingsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save low stock settings",
+    title: "Save low stock settings?",
+    children: (
+      <p>
+        This changes the threshold and fallback message used for real inventory
+        urgency. Promo Pulse will not invent stock quantities.
+      </p>
+    ),
+  });
 
   if (!enabled) return null;
 
   return (
     <s-section heading="Low Stock Message">
+      <p className="counterpulse-section-description">
+        Configure inventory-based urgency using real Shopify inventory data and
+        a fallback message when exact quantity is unavailable.
+      </p>
+
       {errors?.form && (
         <AppAlert tone="critical" title="Low stock settings could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
         </AppAlert>
       )}
 
-      <Form method="post" className="counterpulse-form">
+      <Form
+        method="post"
+        className="counterpulse-form"
+        onSubmit={confirmSubmit.onSubmit}
+      >
         <input name="_action" type="hidden" value="saveLowStockSettings" />
 
         <div className="counterpulse-form-grid">
@@ -74,6 +93,7 @@ export function LowStockSettingsEditor({
           </button>
         </div>
       </Form>
+      {confirmSubmit.modal}
     </s-section>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -39,13 +40,14 @@ test("unique codes can be generated and assigned per visitor", async ({
   await uniqueCodesForm.getByLabel("Duration per visitor").fill("60");
   await uniqueCodesForm.getByLabel("Total codes to generate").fill("2");
 
+  await uniqueCodesForm.getByRole("button", { name: "Generate codes" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    uniqueCodesForm.getByRole("button", { name: "Generate codes" }).click(),
+    confirmAction(page, "Generate codes"),
   ]);
   await expect(page.getByText("Generated 2 unique codes.")).toBeVisible();
   await expect(
@@ -65,13 +67,14 @@ test("unique codes can be generated and assigned per visitor", async ({
   if (!(await autoApply.isChecked())) {
     await autoApply.check();
   }
+  await discountForm.getByRole("button", { name: "Save discount" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    discountForm.getByRole("button", { name: "Save discount" }).click(),
+    confirmAction(page, "Save discount"),
   ]);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");

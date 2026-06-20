@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -74,9 +74,24 @@ export function BehaviorTargetingEditor({
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const selectedSegments = new Set(values.segments);
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save behavior targeting",
+    title: "Save behavior targeting?",
+    children: (
+      <p>
+        This can change which visitors are eligible for the campaign. Targeting
+        only uses consent-safe Promo Pulse events.
+      </p>
+    ),
+  });
 
   return (
     <s-section heading="Behavior targeting">
+      <p className="counterpulse-section-description">
+        Restrict campaign eligibility based on recent, non-PII visitor behavior
+        such as cart activity, campaign clicks, or purchase intent.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -97,7 +112,11 @@ export function BehaviorTargetingEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="saveBehaviorTargeting" />
 
           <div className="counterpulse-panel-grid">
@@ -246,6 +265,7 @@ export function BehaviorTargetingEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
     </s-section>
   );
 }

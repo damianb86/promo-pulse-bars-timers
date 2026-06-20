@@ -5,10 +5,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { CampaignPreview } from "./CampaignPreview";
+import { TimezoneCombobox } from "./TimezoneCombobox";
 import {
   campaignGoalOptions,
   campaignEditableStatusOptions,
@@ -52,40 +53,49 @@ const builderTabs: Array<{
   label: string;
   title: string;
   pill: string;
+  description: string;
 }> = [
   {
     key: "setup",
     label: "Setup",
     title: "Campaign setup",
     pill: "Intent",
+    description:
+      "Define the campaign goal, status, and promotion type before editing copy or placements.",
   },
   {
     key: "message",
     label: "Message",
     title: "Copy and call to action",
     pill: "Copy",
+    description:
+      "Write the customer-facing message and CTA that will appear in the live preview.",
   },
   {
     key: "placement",
     label: "Placement",
     title: "Storefront placement",
     pill: "Surface",
+    description:
+      "Choose where the campaign should render. Keep placement aligned with the campaign goal.",
   },
   {
     key: "schedule",
     label: "Schedule",
     title: "Timing and timezone",
     pill: "Real time",
+    description:
+      "Set real start/end timing and the UTC offset representative used for timer calculations.",
   },
   {
     key: "review",
     label: "Review",
     title: "Review before saving",
     pill: "Checks",
+    description:
+      "Check the important settings before confirming changes that can affect the storefront.",
   },
 ];
-
-const timezoneOptions = buildTimezoneOptions();
 
 const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
   FLASH_SALE: "Flash sale",
@@ -109,14 +119,24 @@ export function CampaignForm({
   const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [formValues, setFormValues] = useState(() => values);
+  const [aiSuggestionJson, setAiSuggestionJson] = useState("");
   const isSubmitting = navigation.state === "submitting";
-
   const statusOptions =
     mode === "edit" ? campaignEditableStatusOptions : campaignStatusOptions;
   const statusLabel =
     statusOptions.find((option) => option.value === formValues.status)?.label ??
     "Draft";
   const submitLabel = mode === "create" ? "Save campaign" : "Update campaign";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: submitLabel,
+    title: mode === "create" ? "Save this campaign?" : "Update this campaign?",
+    children: (
+      <p>
+        Confirming will save these campaign settings. If the campaign is active,
+        the storefront may update as soon as the request completes.
+      </p>
+    ),
+  });
   const activeGoalLabel =
     campaignGoalOptions.find((option) => option.value === formValues.goal)
       ?.label ?? "Flash sale";
@@ -208,365 +228,390 @@ export function CampaignForm({
 
   useEffect(() => {
     const handleReviewRequest = () => setActiveTab("review");
+    const handleAiSuggestionJson = (event: Event) => {
+      setAiSuggestionJson(
+        event instanceof CustomEvent && typeof event.detail === "string"
+          ? event.detail
+          : "",
+      );
+    };
 
     window.addEventListener(
       "counterpulse:campaign-review",
       handleReviewRequest,
     );
+    window.addEventListener(
+      "counterpulse:ai-suggestion-json",
+      handleAiSuggestionJson,
+    );
 
-    return () =>
+    return () => {
       window.removeEventListener(
         "counterpulse:campaign-review",
         handleReviewRequest,
       );
+      window.removeEventListener(
+        "counterpulse:ai-suggestion-json",
+        handleAiSuggestionJson,
+      );
+    };
   }, []);
 
   return (
-    <Form
-      data-campaign-form
-      id={formId}
-      method="post"
-      className="counterpulse-create-form"
-    >
-      <input name="_action" type="hidden" value="saveBasics" />
-      <input
-        data-ai-suggestion-json
-        defaultValue=""
-        name="aiSuggestionJson"
-        type="hidden"
-      />
-
-      {errors.form && (
-        <AppAlert tone="critical" title="Campaign could not be saved">
-          <s-paragraph>{errors.form}</s-paragraph>
-        </AppAlert>
-      )}
-
-      {showTopbar && (
-        <div
-          className="counterpulse-create-topbar"
-          aria-label="Campaign status"
-        >
-          <div className="counterpulse-create-status">
-            <span>{statusLabel}</span>
-            <span>{activeGoalLabel}</span>
-            <span>{activePlacementLabel}</span>
-          </div>
-          <div className="counterpulse-create-actions">
-            <button
-              className="counterpulse-button-secondary"
-              type="button"
-              onClick={() => setActiveTab("review")}
-            >
-              Review
-            </button>
-            <button
-              className="counterpulse-button"
-              data-testid="campaign-save-button"
-              type="submit"
-            >
-              {isSubmitting ? "Saving..." : submitLabel}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div
-        className="counterpulse-builder-tabs"
-        aria-label="Campaign builder"
-        role="tablist"
+    <>
+      <Form
+        data-campaign-form
+        id={formId}
+        method="post"
+        className="counterpulse-create-form"
+        onSubmit={confirmSubmit.onSubmit}
       >
-        {builderTabs.map((tab) => (
-          <button
-            aria-controls={`campaign-builder-panel-${tab.key}`}
-            aria-selected={activeTab === tab.key}
-            className={activeTab === tab.key ? "is-active" : undefined}
-            id={`campaign-builder-tab-${tab.key}`}
-            key={tab.key}
-            role="tab"
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
+        <input name="_action" type="hidden" value="saveBasics" />
+        <input
+          data-ai-suggestion-json
+          name="aiSuggestionJson"
+          readOnly
+          type="hidden"
+          value={aiSuggestionJson}
+        />
+
+        {errors.form && (
+          <AppAlert tone="critical" title="Campaign could not be saved">
+            <s-paragraph>{errors.form}</s-paragraph>
+          </AppAlert>
+        )}
+
+        {showTopbar && (
+          <div
+            className="counterpulse-create-topbar"
+            aria-label="Campaign status"
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="counterpulse-create-builder-grid">
-        <section className="counterpulse-create-panel">
-          <div className="counterpulse-panel-heading">
-            <div>
-              <p className="counterpulse-kicker">{activeTabMeta.label}</p>
-              <h2 id="campaign-builder-heading">{activeTabMeta.title}</h2>
+            <div className="counterpulse-create-status">
+              <span>{statusLabel}</span>
+              <span>{activeGoalLabel}</span>
+              <span>{activePlacementLabel}</span>
             </div>
-            <span className="counterpulse-pill">{activeTabMeta.pill}</span>
+            <div className="counterpulse-create-actions">
+              <button
+                className="counterpulse-button-secondary"
+                type="button"
+                onClick={() => setActiveTab("review")}
+              >
+                Review
+              </button>
+              <button
+                className="counterpulse-button"
+                data-testid="campaign-save-button"
+                type="submit"
+              >
+                {isSubmitting ? "Saving..." : submitLabel}
+              </button>
+            </div>
           </div>
+        )}
 
-          <BuilderPanel activeTab={activeTab} tabKey="setup">
-            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-              <FormField label="Campaign name" error={errors.name} fullWidth>
-                <input
-                  data-testid="campaign-name-input"
-                  name="name"
-                  value={formValues.name}
-                  placeholder="Spring sale - free shipping countdown"
-                  onChange={updateField("name")}
-                />
-              </FormField>
+        <div
+          className="counterpulse-builder-tabs"
+          aria-label="Campaign builder"
+          role="tablist"
+        >
+          {builderTabs.map((tab) => (
+            <button
+              aria-controls={`campaign-builder-panel-${tab.key}`}
+              aria-selected={activeTab === tab.key}
+              className={activeTab === tab.key ? "is-active" : undefined}
+              id={`campaign-builder-tab-${tab.key}`}
+              key={tab.key}
+              role="tab"
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-              <FormField label="Status" error={errors.status}>
-                <select
-                  data-testid="campaign-status-select"
-                  name="status"
-                  value={formValues.status}
-                  onChange={updateField("status")}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
-              <FormField label="Campaign type" error={errors.type}>
-                <select
-                  name="type"
-                  value={formValues.type}
-                  onChange={updateField("type")}
-                >
-                  {campaignTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-
-              <FormGroup label="Goal" error={errors.goal} fullWidth>
-                <div className="counterpulse-goal-list" role="radiogroup">
-                  {campaignGoalOptions.map((option) => (
-                    <button
-                      aria-checked={formValues.goal === option.value}
-                      className="counterpulse-goal-card"
-                      key={option.value}
-                      role="radio"
-                      type="button"
-                      onClick={() => selectGoal(option.value)}
-                    >
-                      <input
-                        checked={formValues.goal === option.value}
-                        type="radio"
-                        name="goal"
-                        value={option.value}
-                        onChange={() => selectGoal(option.value)}
-                      />
-                      <span
-                        className="counterpulse-goal-card__icon"
-                        aria-hidden="true"
-                      >
-                        <GoalIcon goal={option.value} />
-                      </span>
-                      <span>{option.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </FormGroup>
+        <div className="counterpulse-create-builder-grid">
+          <section className="counterpulse-create-panel">
+            <div className="counterpulse-panel-heading">
+              <div>
+                <p className="counterpulse-kicker">{activeTabMeta.label}</p>
+                <h2 id="campaign-builder-heading">{activeTabMeta.title}</h2>
+                <p className="counterpulse-panel-description">
+                  {activeTabMeta.description}
+                </p>
+              </div>
+              <span className="counterpulse-pill">{activeTabMeta.pill}</span>
             </div>
-          </BuilderPanel>
 
-          <BuilderPanel activeTab={activeTab} tabKey="message">
-            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-              <FormField label="Headline" error={errors.headline} fullWidth>
-                <input
-                  name="headline"
-                  value={formValues.headline}
-                  placeholder="Free shipping on orders over $75"
-                  onChange={updateField("headline")}
-                />
-              </FormField>
+            <BuilderPanel activeTab={activeTab} tabKey="setup">
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <FormField label="Campaign name" error={errors.name} fullWidth>
+                  <input
+                    data-testid="campaign-name-input"
+                    name="name"
+                    value={formValues.name}
+                    placeholder="Spring sale - free shipping countdown"
+                    onChange={updateField("name")}
+                  />
+                </FormField>
 
+                <FormField label="Status" error={errors.status}>
+                  <select
+                    data-testid="campaign-status-select"
+                    name="status"
+                    value={formValues.status}
+                    onChange={updateField("status")}
+                  >
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField label="Campaign type" error={errors.type}>
+                  <select
+                    name="type"
+                    value={formValues.type}
+                    onChange={updateField("type")}
+                  >
+                    {campaignTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormGroup label="Goal" error={errors.goal} fullWidth>
+                  <div className="counterpulse-goal-list" role="radiogroup">
+                    {campaignGoalOptions.map((option) => (
+                      <button
+                        aria-checked={formValues.goal === option.value}
+                        className="counterpulse-goal-card"
+                        key={option.value}
+                        role="radio"
+                        type="button"
+                        onClick={() => selectGoal(option.value)}
+                      >
+                        <input
+                          checked={formValues.goal === option.value}
+                          type="radio"
+                          name="goal"
+                          value={option.value}
+                          onChange={() => selectGoal(option.value)}
+                        />
+                        <span
+                          className="counterpulse-goal-card__icon"
+                          aria-hidden="true"
+                        >
+                          <GoalIcon goal={option.value} />
+                        </span>
+                        <span>{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </FormGroup>
+              </div>
+            </BuilderPanel>
+
+            <BuilderPanel activeTab={activeTab} tabKey="message">
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <FormField label="Headline" error={errors.headline} fullWidth>
+                  <input
+                    name="headline"
+                    value={formValues.headline}
+                    placeholder="Free shipping on orders over $75"
+                    onChange={updateField("headline")}
+                  />
+                </FormField>
+
+                <FormField
+                  label="Subheadline"
+                  error={errors.subheadline}
+                  fullWidth
+                >
+                  <textarea
+                    name="subheadline"
+                    value={formValues.subheadline}
+                    rows={4}
+                    placeholder="Limited time only. Do not miss out."
+                    onChange={updateField("subheadline")}
+                  />
+                </FormField>
+
+                <FormField label="CTA text" error={errors.ctaText}>
+                  <input
+                    name="ctaText"
+                    value={formValues.ctaText}
+                    placeholder="Shop now"
+                    onChange={updateField("ctaText")}
+                  />
+                </FormField>
+
+                <FormField label="CTA URL" error={errors.ctaUrl}>
+                  <input
+                    name="ctaUrl"
+                    value={formValues.ctaUrl}
+                    placeholder="/collections/sale"
+                    onChange={updateField("ctaUrl")}
+                  />
+                </FormField>
+              </div>
+            </BuilderPanel>
+
+            <BuilderPanel activeTab={activeTab} tabKey="placement">
+              <div className="counterpulse-placement-grid">
+                {placementTypeOptions.map((option) => (
+                  <button
+                    aria-pressed={option.value === formValues.placementType}
+                    className={
+                      option.value === formValues.placementType
+                        ? "counterpulse-placement-tile is-selected"
+                        : "counterpulse-placement-tile"
+                    }
+                    key={option.value}
+                    type="button"
+                    onClick={() => selectPlacement(option.value)}
+                  >
+                    <span aria-hidden="true">
+                      {placementInitial(option.label)}
+                    </span>
+                    <strong>{option.label}</strong>
+                  </button>
+                ))}
+              </div>
               <FormField
-                label="Subheadline"
-                error={errors.subheadline}
+                label="Primary placement"
+                error={errors.placementType}
                 fullWidth
               >
-                <textarea
-                  name="subheadline"
-                  value={formValues.subheadline}
-                  rows={4}
-                  placeholder="Limited time only. Do not miss out."
-                  onChange={updateField("subheadline")}
-                />
-              </FormField>
-
-              <FormField label="CTA text" error={errors.ctaText}>
-                <input
-                  name="ctaText"
-                  value={formValues.ctaText}
-                  placeholder="Shop now"
-                  onChange={updateField("ctaText")}
-                />
-              </FormField>
-
-              <FormField label="CTA URL" error={errors.ctaUrl}>
-                <input
-                  name="ctaUrl"
-                  value={formValues.ctaUrl}
-                  placeholder="/collections/sale"
-                  onChange={updateField("ctaUrl")}
-                />
-              </FormField>
-            </div>
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="placement">
-            <div className="counterpulse-placement-grid">
-              {placementTypeOptions.map((option) => (
-                <button
-                  aria-pressed={option.value === formValues.placementType}
-                  className={
-                    option.value === formValues.placementType
-                      ? "counterpulse-placement-tile is-selected"
-                      : "counterpulse-placement-tile"
-                  }
-                  key={option.value}
-                  type="button"
-                  onClick={() => selectPlacement(option.value)}
-                >
-                  <span aria-hidden="true">
-                    {placementInitial(option.label)}
-                  </span>
-                  <strong>{option.label}</strong>
-                </button>
-              ))}
-            </div>
-            <FormField
-              label="Primary placement"
-              error={errors.placementType}
-              fullWidth
-            >
-              <select
-                name="placementType"
-                value={formValues.placementType}
-                onChange={updateField("placementType")}
-              >
-                {placementTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </BuilderPanel>
-
-          <BuilderPanel activeTab={activeTab} tabKey="schedule">
-            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-              <FormField label="Start date/time" error={errors.startsAt}>
-                <input
-                  type="datetime-local"
-                  name="startsAt"
-                  value={formValues.startsAt}
-                  onChange={updateField("startsAt")}
-                />
-                <small className="counterpulse-field-hint">
-                  Leave blank to start as soon as the campaign is active.
-                </small>
-              </FormField>
-
-              <FormField label="End date/time" error={errors.endsAt}>
-                <input
-                  type="datetime-local"
-                  name="endsAt"
-                  value={formValues.endsAt}
-                  onChange={updateField("endsAt")}
-                />
-              </FormField>
-
-              <FormField label="Timezone" error={errors.timezone} fullWidth>
                 <select
-                  name="timezone"
-                  value={formValues.timezone}
-                  onChange={updateField("timezone")}
+                  name="placementType"
+                  value={formValues.placementType}
+                  onChange={updateField("placementType")}
                 >
-                  {timezoneOptions.map((timezone) => (
-                    <option key={timezone} value={timezone}>
-                      {timezone}
+                  {placementTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
               </FormField>
-            </div>
-          </BuilderPanel>
+            </BuilderPanel>
 
-          <BuilderPanel activeTab={activeTab} tabKey="review">
-            <TabSummaryGrid rows={summaryRows} />
-            <div className="counterpulse-validation-strip">
-              {[
-                ["No fake scarcity", "Copy must match real offer data."],
-                ["Discount synced", "Use real discount rules after save."],
-                ["Timer matches offer", "Countdown should mirror schedule."],
-                ["Consent-safe tracking", "No PII in visitor tracking."],
-              ].map(([title, description]) => (
-                <div className="counterpulse-validation-item" key={title}>
-                  <span>OK</span>
-                  <div>
-                    <strong>{title}</strong>
-                    <small>{description}</small>
-                  </div>
+            <BuilderPanel activeTab={activeTab} tabKey="schedule">
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <FormField label="Start date/time" error={errors.startsAt}>
+                  <input
+                    type="datetime-local"
+                    name="startsAt"
+                    value={formValues.startsAt}
+                    onChange={updateField("startsAt")}
+                  />
+                  <small className="counterpulse-field-hint">
+                    Leave blank to start as soon as the campaign is active.
+                  </small>
+                </FormField>
+
+                <FormField label="End date/time" error={errors.endsAt}>
+                  <input
+                    type="datetime-local"
+                    name="endsAt"
+                    value={formValues.endsAt}
+                    onChange={updateField("endsAt")}
+                  />
+                </FormField>
+
+                <div className="counterpulse-form-field--full">
+                  <TimezoneCombobox
+                    error={errors.timezone}
+                    label="Timezone"
+                    name="timezone"
+                    value={formValues.timezone}
+                    onChange={(timezone) =>
+                      setFormValues((currentValues) => ({
+                        ...currentValues,
+                        timezone,
+                      }))
+                    }
+                  />
                 </div>
-              ))}
-            </div>
-          </BuilderPanel>
-        </section>
+              </div>
+            </BuilderPanel>
 
-        <aside
-          className="counterpulse-create-side-panel"
-          aria-label="Live campaign preview"
-        >
-          <div className="counterpulse-preview-panel">
-            <div className="counterpulse-preview-toolbar">
-              <button
-                aria-pressed={previewDevice === "desktop"}
-                className={previewDevice === "desktop" ? "is-active" : ""}
-                type="button"
-                onClick={() => setPreviewDevice("desktop")}
-              >
-                Desktop
-              </button>
-              <button
-                aria-pressed={previewDevice === "mobile"}
-                className={previewDevice === "mobile" ? "is-active" : ""}
-                type="button"
-                onClick={() => setPreviewDevice("mobile")}
-              >
-                Mobile
-              </button>
+            <BuilderPanel activeTab={activeTab} tabKey="review">
+              <TabSummaryGrid rows={summaryRows} />
+              <div className="counterpulse-validation-strip">
+                {[
+                  ["No fake scarcity", "Copy must match real offer data."],
+                  ["Discount synced", "Use real discount rules after save."],
+                  ["Timer matches offer", "Countdown should mirror schedule."],
+                  ["Consent-safe tracking", "No PII in visitor tracking."],
+                ].map(([title, description]) => (
+                  <div className="counterpulse-validation-item" key={title}>
+                    <span>OK</span>
+                    <div>
+                      <strong>{title}</strong>
+                      <small>{description}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </BuilderPanel>
+          </section>
+
+          <aside
+            className="counterpulse-create-side-panel"
+            aria-label="Live campaign preview"
+          >
+            <div className="counterpulse-preview-panel">
+              <div className="counterpulse-preview-toolbar">
+                <button
+                  aria-pressed={previewDevice === "desktop"}
+                  className={previewDevice === "desktop" ? "is-active" : ""}
+                  type="button"
+                  onClick={() => setPreviewDevice("desktop")}
+                >
+                  Desktop
+                </button>
+                <button
+                  aria-pressed={previewDevice === "mobile"}
+                  className={previewDevice === "mobile" ? "is-active" : ""}
+                  type="button"
+                  onClick={() => setPreviewDevice("mobile")}
+                >
+                  Mobile
+                </button>
+              </div>
+              <CampaignPreview
+                design={design}
+                device={previewDevice}
+                placement={previewPlacement}
+                viewModel={previewViewModel}
+              />
+              <dl className="counterpulse-preview-meta">
+                <div>
+                  <dt>Goal</dt>
+                  <dd>{activeGoalLabel}</dd>
+                </div>
+                <div>
+                  <dt>Type</dt>
+                  <dd>{activeTypeLabel}</dd>
+                </div>
+                <div>
+                  <dt>Placement</dt>
+                  <dd>{activePlacementLabel}</dd>
+                </div>
+              </dl>
             </div>
-            <CampaignPreview
-              design={design}
-              device={previewDevice}
-              placement={previewPlacement}
-              viewModel={previewViewModel}
-            />
-            <dl className="counterpulse-preview-meta">
-              <div>
-                <dt>Goal</dt>
-                <dd>{activeGoalLabel}</dd>
-              </div>
-              <div>
-                <dt>Type</dt>
-                <dd>{activeTypeLabel}</dd>
-              </div>
-              <div>
-                <dt>Placement</dt>
-                <dd>{activePlacementLabel}</dd>
-              </div>
-            </dl>
-          </div>
-        </aside>
-      </div>
-    </Form>
+          </aside>
+        </div>
+      </Form>
+      {confirmSubmit.modal}
+    </>
   );
 }
 
@@ -712,23 +757,6 @@ function toPreviewPlacement(
   if (placementType === "COLLECTION_CARD") return "PRODUCT_BADGE";
 
   return "TOP_BAR";
-}
-
-function buildTimezoneOptions() {
-  const supportedValuesOf = (
-    Intl as typeof Intl & {
-      supportedValuesOf?: (key: "timeZone") => string[];
-    }
-  ).supportedValuesOf;
-  const supportedTimezones =
-    typeof supportedValuesOf === "function"
-      ? supportedValuesOf("timeZone")
-      : [];
-  const timezones = ["UTC", ...supportedTimezones].filter(
-    (timezone, index, list) => list.indexOf(timezone) === index,
-  );
-
-  return timezones.sort((a, b) => a.localeCompare(b));
 }
 
 function formatDateTimeLabel(value: string, fallback: string) {

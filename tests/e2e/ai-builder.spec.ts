@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -40,6 +41,7 @@ test("mock AI builder generates a reviewed draft without auto-publishing", async
   await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
 
   await page.getByRole("button", { name: "Save campaign" }).click();
+  await confirmAction(page, "Save campaign");
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
   await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
   await page.getByRole("tab", { name: "A/B testing" }).click();

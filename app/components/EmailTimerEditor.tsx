@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -62,6 +62,16 @@ export function EmailTimerEditor({
   const [size, setSize] = useState({ height: 180, width: 600 });
   const [expiredBehavior, setExpiredBehavior] = useState("SHOW_EXPIRED");
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Create email timer",
+    title: "Create email countdown timer?",
+    children: (
+      <p>
+        This creates a public image URL that can be inserted into email tools.
+        The URL does not expose shop secrets, but recipients may load it.
+      </p>
+    ),
+  });
 
   const copyText = async (value: string, key: string) => {
     if (!navigator.clipboard) return;
@@ -78,6 +88,11 @@ export function EmailTimerEditor({
 
   return (
     <s-section heading="Email Timer">
+      <p className="counterpulse-section-description">
+        Create no-JavaScript countdown images for email platforms and choose
+        what recipients see after the campaign expires.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -92,7 +107,11 @@ export function EmailTimerEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="createEmailTimer" />
 
           <div className="counterpulse-panel-grid">
@@ -195,6 +214,7 @@ export function EmailTimerEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
         {timers.length > 0 ? (

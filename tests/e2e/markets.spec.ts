@@ -1,4 +1,5 @@
 import {
+  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -33,13 +34,14 @@ test("advanced market rules override storefront free shipping by market", async 
     .getByLabel("Free shipping progress text")
     .fill("Te faltan {{amount}}");
 
+  await marketForm.getByRole("button", { name: "Save market rule" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    marketForm.getByRole("button", { name: "Save market rule" }).click(),
+    confirmAction(page, "Save market rule"),
   ]);
 
   await expect(page.getByText("country: ES")).toBeVisible();

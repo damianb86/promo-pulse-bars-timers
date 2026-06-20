@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppAlert } from "./Notifications";
+import { AppAlert, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
@@ -30,9 +30,24 @@ export function DiscountSettingsEditor({
 }: DiscountSettingsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const confirmSubmit = useConfirmSubmit({
+    confirmLabel: "Save discount",
+    title: "Save discount settings?",
+    children: (
+      <p>
+        This can create or link a real Shopify discount and can change how
+        visitors redeem the campaign offer.
+      </p>
+    ),
+  });
 
   return (
     <s-section heading="Discount">
+      <p className="counterpulse-section-description">
+        Choose whether this campaign links to an existing discount, creates a
+        Shopify discount, or prepares unique visitor codes.
+      </p>
+
       {lockedReason && (
         <PlanUpgradeCallout
           message={lockedReason}
@@ -59,7 +74,11 @@ export function DiscountSettingsEditor({
       )}
 
       {!lockedReason && (
-        <Form method="post" className="counterpulse-form">
+        <Form
+          method="post"
+          className="counterpulse-form"
+          onSubmit={confirmSubmit.onSubmit}
+        >
           <input name="_action" type="hidden" value="saveDiscount" />
 
           <div className="counterpulse-form-grid">
@@ -221,6 +240,7 @@ export function DiscountSettingsEditor({
           </div>
         </Form>
       )}
+      {confirmSubmit.modal}
     </s-section>
   );
 }

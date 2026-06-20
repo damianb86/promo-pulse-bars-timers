@@ -306,7 +306,7 @@ function CampaignActionButton({
 }) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const requiresConfirmation = action === "delete";
+  const confirmation = campaignActionConfirmations[action];
 
   return (
     <>
@@ -321,35 +321,59 @@ function CampaignActionButton({
           }
           data-testid={`campaign-${action}-button`}
           disabled={disabled}
-          type={requiresConfirmation ? "button" : "submit"}
-          onClick={
-            requiresConfirmation ? () => setIsConfirmOpen(true) : undefined
-          }
+          type="button"
+          onClick={() => setIsConfirmOpen(true)}
         >
           {children}
         </button>
       </Form>
 
-      {requiresConfirmation && (
-        <ConfirmModal
-          confirmLabel="Delete campaign"
-          open={isConfirmOpen}
-          title="Delete campaign?"
-          onCancel={() => setIsConfirmOpen(false)}
-          onConfirm={() => {
-            setIsConfirmOpen(false);
-            formRef.current?.requestSubmit();
-          }}
-        >
-          <p>
-            This permanently removes the campaign and its configuration.
-            Existing storefront displays will stop using it.
-          </p>
-        </ConfirmModal>
-      )}
+      <ConfirmModal
+        confirmLabel={confirmation.confirmLabel}
+        open={isConfirmOpen}
+        title={confirmation.title}
+        tone={destructive ? "critical" : "warning"}
+        onCancel={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          setIsConfirmOpen(false);
+          formRef.current?.requestSubmit();
+        }}
+      >
+        <p>{confirmation.description}</p>
+      </ConfirmModal>
     </>
   );
 }
+
+const campaignActionConfirmations: Record<
+  "duplicate" | "pause" | "activate" | "delete",
+  { confirmLabel: string; description: string; title: string }
+> = {
+  activate: {
+    confirmLabel: "Activate campaign",
+    title: "Activate campaign?",
+    description:
+      "This can make the campaign eligible on the storefront immediately if its schedule and targeting match.",
+  },
+  delete: {
+    confirmLabel: "Delete campaign",
+    title: "Delete campaign?",
+    description:
+      "This permanently removes the campaign and its configuration. Existing storefront displays will stop using it.",
+  },
+  duplicate: {
+    confirmLabel: "Duplicate campaign",
+    title: "Duplicate campaign?",
+    description:
+      "This creates a draft copy with the same configuration so you can edit it before publishing.",
+  },
+  pause: {
+    confirmLabel: "Pause campaign",
+    title: "Pause campaign?",
+    description:
+      "This stops the campaign from rendering for shoppers until you activate it again.",
+  },
+};
 
 function isCampaignStatus(value: string): value is CampaignStatusValue {
   return campaignListStatusOptions.some(

@@ -237,9 +237,9 @@ function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   const payload = JSON.stringify(suggestion);
 
   setFieldValue("aiSuggestionJson", payload);
-  setRadioValue("goal", suggestion.campaign.goal);
-  setFieldValue("type", suggestion.campaign.type);
-  setFieldValue("placementType", suggestion.campaign.placementType);
+  setChoiceValue("goal", suggestion.campaign.goal);
+  setChoiceValue("type", suggestion.campaign.type);
+  setChoiceValue("placementType", suggestion.campaign.placementType);
   setFieldValue("name", suggestion.campaign.name);
   setFieldValue("status", "DRAFT");
   setFieldValue("headline", suggestion.campaign.headline);
@@ -261,7 +261,9 @@ function setFieldValue(name: string, value: string) {
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-function setRadioValue(name: string, value: string) {
+function setChoiceValue(name: string, value: string) {
+  setFieldValue(name, value);
+
   const campaignForm = document.querySelector("[data-campaign-form]");
   const radios = campaignForm?.querySelectorAll<HTMLInputElement>(
     `input[type="radio"][name="${name}"]`,

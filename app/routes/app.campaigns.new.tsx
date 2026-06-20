@@ -331,18 +331,27 @@ export default function CreateCampaignPage() {
 
   return (
     <s-page heading="Create campaign">
-      <AiCampaignBuilder
-        errors={actionData?.aiErrors}
-        lockedReason={aiLockedReason}
-        suggestion={actionData?.aiSuggestion}
-        templateSourceName={templateSourceName}
-        values={actionData?.aiInput ?? aiInput}
-      />
-      <CampaignForm
-        mode="create"
-        values={actionData?.values ?? defaults}
-        errors={actionData?.errors}
-      />
+      <div className="counterpulse-create-workspace">
+        <div className="counterpulse-create-workspace__main">
+          <CampaignForm
+            mode="create"
+            values={actionData?.values ?? defaults}
+            errors={actionData?.errors}
+          />
+        </div>
+        <aside
+          className="counterpulse-ai-drawer"
+          aria-label="AI Campaign Assistant"
+        >
+          <AiCampaignBuilder
+            errors={actionData?.aiErrors}
+            lockedReason={aiLockedReason}
+            suggestion={actionData?.aiSuggestion}
+            templateSourceName={templateSourceName}
+            values={actionData?.aiInput ?? aiInput}
+          />
+        </aside>
+      </div>
     </s-page>
   );
 }

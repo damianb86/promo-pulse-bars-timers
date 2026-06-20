@@ -2,6 +2,7 @@ import {
   AnalyticsEventType,
   CampaignDesignIcon,
   DesignAlignment,
+  DesignPositionMode,
   DiscountCodeValueType,
   DiscountSyncMethod,
   ExperimentPrimaryMetric,
@@ -995,6 +996,7 @@ async function applyDesignOverride(
   const override = jsonObject(variant.designOverride);
   const alignment = readDesignAlignment(override.alignment);
   const icon = readCampaignDesignIcon(override.icon);
+  const positionMode = readDesignPositionMode(override.positionMode);
   const data: Omit<Prisma.CampaignDesignUncheckedCreateInput, "campaignId"> = {
     ...pickStringFields(override, [
       "templateKey",
@@ -1004,9 +1006,11 @@ async function applyDesignOverride(
       "buttonColor",
       "buttonTextColor",
       "customCss",
+      "customIconUrl",
     ]),
     ...pickIntegerFields(override, ["fontSize", "borderRadius"]),
     ...pickBooleanFields(override, [
+      "fullWidth",
       "positionSticky",
       "mobileEnabled",
       "showCloseButton",
@@ -1014,6 +1018,7 @@ async function applyDesignOverride(
     ]),
     ...(alignment ? { alignment } : {}),
     ...(icon ? { icon } : {}),
+    ...(positionMode ? { positionMode } : {}),
   };
 
   if (Object.keys(data).length === 0) return;
@@ -1148,6 +1153,12 @@ function readDecimal(value: unknown) {
 function readDesignAlignment(value: unknown) {
   return Object.values(DesignAlignment).includes(value as DesignAlignment)
     ? (value as DesignAlignment)
+    : null;
+}
+
+function readDesignPositionMode(value: unknown) {
+  return Object.values(DesignPositionMode).includes(value as DesignPositionMode)
+    ? (value as DesignPositionMode)
     : null;
 }
 

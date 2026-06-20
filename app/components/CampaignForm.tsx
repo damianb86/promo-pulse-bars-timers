@@ -9,6 +9,7 @@ import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { CampaignPreview } from "./CampaignPreview";
+import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import { TimezoneCombobox } from "./TimezoneCombobox";
 import {
   campaignGoalOptions,
@@ -24,21 +25,27 @@ import {
 import type {
   CampaignFormErrors,
   CampaignFormValues,
+  CountrySelectionValue,
+  ProductSelectionValue,
 } from "../types/campaign-form";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
+  campaignId?: string;
   design?: CampaignDesignValues;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
+  lockedTargetingFeatures?: {
+    advanced: string;
+    basic: string;
+    geo: string;
+  };
   mode: "create" | "edit";
   showTopbar?: boolean;
 };
 
 type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
-
-type PreviewDevice = "desktop" | "mobile";
 
 type PreviewPlacement =
   | "TOP_BAR"
@@ -108,10 +115,12 @@ const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
 };
 
 export function CampaignForm({
+  campaignId,
   design = defaultCampaignDesignValues,
   values,
   errors = {},
   formId,
+  lockedTargetingFeatures,
   mode,
   showTopbar = true,
 }: CampaignFormProps) {
@@ -120,7 +129,14 @@ export function CampaignForm({
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [formValues, setFormValues] = useState(() => values);
   const [aiSuggestionJson, setAiSuggestionJson] = useState("");
+  const [showProductExclusions, setShowProductExclusions] = useState(
+    () => values.excludeProductIds.trim().length > 0,
+  );
+  const [timerIdCopied, setTimerIdCopied] = useState(false);
   const isSubmitting = navigation.state === "submitting";
+  const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
+  const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
+  const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
   const statusOptions =
     mode === "edit" ? campaignEditableStatusOptions : campaignStatusOptions;
   const statusLabel =
@@ -216,7 +232,45 @@ export function CampaignForm({
     setFormValues((currentValues) => ({
       ...currentValues,
       placementType,
+      productSelection:
+        placementType === "CUSTOM_SELECTOR"
+          ? "CUSTOM_POSITION"
+          : currentValues.productSelection === "CUSTOM_POSITION"
+            ? "ALL_PRODUCTS"
+            : currentValues.productSelection,
     }));
+  };
+
+  const selectProductSelection = (productSelection: ProductSelectionValue) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      productSelection,
+      placementType:
+        productSelection === "CUSTOM_POSITION"
+          ? "CUSTOM_SELECTOR"
+          : currentValues.placementType === "CUSTOM_SELECTOR"
+            ? "PRODUCT_PAGE"
+            : currentValues.placementType,
+    }));
+  };
+
+  const selectCountrySelection = (countrySelection: CountrySelectionValue) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      countrySelection,
+    }));
+  };
+
+  const copyTimerId = () => {
+    if (!campaignId || !navigator.clipboard) return;
+
+    navigator.clipboard
+      .writeText(campaignId)
+      .then(() => {
+        setTimerIdCopied(true);
+        window.setTimeout(() => setTimerIdCopied(false), 1800);
+      })
+      .catch(() => setTimerIdCopied(false));
   };
 
   const selectGoal = (goal: CampaignFormValues["goal"]) => {
@@ -575,6 +629,258 @@ export function CampaignForm({
             </BuilderPanel>
 
             <BuilderPanel activeTab={activeTab} tabKey="placement">
+              <div className="counterpulse-targeting-grid">
+                <section
+                  className="counterpulse-targeting-card"
+                  aria-labelledby="campaign-products-heading"
+                >
+                  <div className="counterpulse-targeting-card__header">
+                    <h3 id="campaign-products-heading">Select Products</h3>
+                  </div>
+
+                  <TargetingRadioOption
+                    checked={formValues.productSelection === "ALL_PRODUCTS"}
+                    disabled={false}
+                    name="productSelection"
+                    title="All products"
+                    value="ALL_PRODUCTS"
+                    onSelect={() => selectProductSelection("ALL_PRODUCTS")}
+                  >
+                    <button
+                      className="counterpulse-link-button"
+                      type="button"
+                      disabled={Boolean(
+                        advancedTargetingLocked &&
+                        formValues.excludeProductIds.trim().length === 0,
+                      )}
+                      onClick={() => setShowProductExclusions(true)}
+                    >
+                      Exclude specific products
+                    </button>
+                    {advancedTargetingLocked &&
+                      formValues.excludeProductIds.trim().length === 0 && (
+                        <UpgradeText reason={advancedTargetingLocked} />
+                      )}
+                    {showProductExclusions ? (
+                      <div className="counterpulse-targeting-field">
+                        <label htmlFor="campaign-excluded-product-ids">
+                          Excluded product IDs
+                        </label>
+                        <textarea
+                          id="campaign-excluded-product-ids"
+                          name="excludeProductIds"
+                          rows={3}
+                          value={formValues.excludeProductIds}
+                          placeholder="gid://shopify/Product/123456789"
+                          readOnly={Boolean(advancedTargetingLocked)}
+                          onChange={updateField("excludeProductIds")}
+                        />
+                        <small>Separate IDs with commas or new lines.</small>
+                      </div>
+                    ) : (
+                      <input
+                        type="hidden"
+                        name="excludeProductIds"
+                        value={formValues.excludeProductIds}
+                      />
+                    )}
+                  </TargetingRadioOption>
+
+                  <TargetingRadioOption
+                    checked={
+                      formValues.productSelection === "SPECIFIC_PRODUCTS"
+                    }
+                    disabled={Boolean(
+                      basicTargetingLocked &&
+                      formValues.productSelection !== "SPECIFIC_PRODUCTS",
+                    )}
+                    lockReason={basicTargetingLocked}
+                    name="productSelection"
+                    title="Specific products"
+                    value="SPECIFIC_PRODUCTS"
+                    onSelect={() => selectProductSelection("SPECIFIC_PRODUCTS")}
+                  >
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-product-ids">Product IDs</label>
+                      <textarea
+                        id="campaign-product-ids"
+                        name="productIds"
+                        rows={3}
+                        value={formValues.productIds}
+                        placeholder="gid://shopify/Product/123456789"
+                        onChange={updateField("productIds")}
+                      />
+                      <small>Separate IDs with commas or new lines.</small>
+                      <FieldError message={errors.productIds} />
+                    </div>
+                  </TargetingRadioOption>
+
+                  <TargetingRadioOption
+                    checked={formValues.productSelection === "COLLECTIONS"}
+                    disabled={Boolean(
+                      basicTargetingLocked &&
+                      formValues.productSelection !== "COLLECTIONS",
+                    )}
+                    lockReason={basicTargetingLocked}
+                    name="productSelection"
+                    title="All products in specific collections"
+                    value="COLLECTIONS"
+                    onSelect={() => selectProductSelection("COLLECTIONS")}
+                  >
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-collection-ids">
+                        Collection IDs
+                      </label>
+                      <textarea
+                        id="campaign-collection-ids"
+                        name="collectionIds"
+                        rows={3}
+                        value={formValues.collectionIds}
+                        placeholder="gid://shopify/Collection/987654321"
+                        onChange={updateField("collectionIds")}
+                      />
+                      <small>Separate IDs with commas or new lines.</small>
+                      <FieldError message={errors.collectionIds} />
+                    </div>
+                  </TargetingRadioOption>
+
+                  <TargetingRadioOption
+                    checked={formValues.productSelection === "TAGS"}
+                    disabled={Boolean(
+                      basicTargetingLocked &&
+                      formValues.productSelection !== "TAGS",
+                    )}
+                    lockReason={basicTargetingLocked}
+                    name="productSelection"
+                    title="All products with specific tags"
+                    value="TAGS"
+                    onSelect={() => selectProductSelection("TAGS")}
+                  >
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-product-tags">
+                        Product tags
+                      </label>
+                      <textarea
+                        id="campaign-product-tags"
+                        name="productTags"
+                        rows={3}
+                        value={formValues.productTags}
+                        placeholder="sale, limited, preorder"
+                        onChange={updateField("productTags")}
+                      />
+                      <small>Separate tags with commas or new lines.</small>
+                      <FieldError message={errors.productTags} />
+                    </div>
+                  </TargetingRadioOption>
+
+                  <TargetingRadioOption
+                    checked={formValues.productSelection === "CUSTOM_POSITION"}
+                    description="Add timer anywhere using app blocks or the selector below."
+                    disabled={Boolean(
+                      advancedTargetingLocked &&
+                      formValues.productSelection !== "CUSTOM_POSITION",
+                    )}
+                    lockReason={advancedTargetingLocked}
+                    name="productSelection"
+                    title="Custom position"
+                    value="CUSTOM_POSITION"
+                    onSelect={() => selectProductSelection("CUSTOM_POSITION")}
+                  >
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-custom-selector">
+                        Theme selector
+                      </label>
+                      <input
+                        id="campaign-custom-selector"
+                        name="customSelector"
+                        value={formValues.customSelector}
+                        placeholder=".product-form__buttons"
+                        onChange={updateField("customSelector")}
+                      />
+                      <small>
+                        Promo Pulse will inject the timer inside this selector
+                        when the app embed is active.
+                      </small>
+                      <FieldError message={errors.customSelector} />
+                    </div>
+                  </TargetingRadioOption>
+
+                  <div className="counterpulse-timer-id-box">
+                    <div>
+                      <span>Timer ID</span>
+                      <code>{campaignId ?? "Available after save"}</code>
+                    </div>
+                    <button
+                      aria-label="Copy timer ID"
+                      type="button"
+                      disabled={!campaignId}
+                      onClick={copyTimerId}
+                    >
+                      <CopyIcon />
+                    </button>
+                    {timerIdCopied && <small>Copied</small>}
+                    <p>
+                      Countdown timer app blocks can use this ID to render this
+                      exact campaign.
+                    </p>
+                  </div>
+                </section>
+
+                <section
+                  className="counterpulse-targeting-card"
+                  aria-labelledby="campaign-geolocation-heading"
+                >
+                  <div className="counterpulse-targeting-card__header">
+                    <h3 id="campaign-geolocation-heading">
+                      Geolocation targeting
+                    </h3>
+                  </div>
+
+                  <TargetingRadioOption
+                    checked={formValues.countrySelection === "ALL_WORLD"}
+                    description="Eligible worldwide unless another timer excludes the current context."
+                    disabled={false}
+                    name="countrySelection"
+                    title="All world"
+                    value="ALL_WORLD"
+                    onSelect={() => selectCountrySelection("ALL_WORLD")}
+                  />
+
+                  <TargetingRadioOption
+                    checked={
+                      formValues.countrySelection === "SPECIFIC_COUNTRIES"
+                    }
+                    disabled={Boolean(
+                      geoTargetingLocked &&
+                      formValues.countrySelection !== "SPECIFIC_COUNTRIES",
+                    )}
+                    lockReason={geoTargetingLocked}
+                    name="countrySelection"
+                    title="Specific countries"
+                    value="SPECIFIC_COUNTRIES"
+                    onSelect={() =>
+                      selectCountrySelection("SPECIFIC_COUNTRIES")
+                    }
+                  >
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor="campaign-country-codes">
+                        Country codes
+                      </label>
+                      <textarea
+                        id="campaign-country-codes"
+                        name="countries"
+                        rows={3}
+                        value={formValues.countries}
+                        placeholder="US, CA, GB"
+                        onChange={updateField("countries")}
+                      />
+                      <small>Use ISO 2-letter country codes.</small>
+                      <FieldError message={errors.countries} />
+                    </div>
+                  </TargetingRadioOption>
+                </section>
+              </div>
+
               <div className="counterpulse-placement-grid">
                 {placementTypeOptions.map((option) => (
                   <button
@@ -639,7 +945,12 @@ export function CampaignForm({
                 <select
                   name="placementType"
                   value={formValues.placementType}
-                  onChange={updateField("placementType")}
+                  onChange={(event) =>
+                    selectPlacement(
+                      event.currentTarget
+                        .value as CampaignFormValues["placementType"],
+                    )
+                  }
                 >
                   {placementTypeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -741,22 +1052,10 @@ export function CampaignForm({
           >
             <div className="counterpulse-preview-panel">
               <div className="counterpulse-preview-toolbar">
-                <button
-                  aria-pressed={previewDevice === "desktop"}
-                  className={previewDevice === "desktop" ? "is-active" : ""}
-                  type="button"
-                  onClick={() => setPreviewDevice("desktop")}
-                >
-                  Desktop
-                </button>
-                <button
-                  aria-pressed={previewDevice === "mobile"}
-                  className={previewDevice === "mobile" ? "is-active" : ""}
-                  type="button"
-                  onClick={() => setPreviewDevice("mobile")}
-                >
-                  Mobile
-                </button>
+                <DevicePreviewToggle
+                  value={previewDevice}
+                  onChange={setPreviewDevice}
+                />
               </div>
               <CampaignPreview
                 design={design}
@@ -820,6 +1119,97 @@ function TabSummaryGrid({ rows }: { rows: string[][] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+function TargetingRadioOption({
+  checked,
+  children,
+  description,
+  disabled,
+  lockReason,
+  name,
+  onSelect,
+  title,
+  value,
+}: {
+  checked: boolean;
+  children?: ReactNode;
+  description?: string;
+  disabled: boolean;
+  lockReason?: string;
+  name: "productSelection" | "countrySelection";
+  onSelect: () => void;
+  title: string;
+  value: string;
+}) {
+  const lockedMessage = disabled ? (lockReason ?? "") : "";
+
+  return (
+    <div
+      className={[
+        "counterpulse-targeting-option",
+        checked ? "is-selected" : "",
+        disabled ? "is-disabled" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <label>
+        <input
+          checked={checked}
+          disabled={disabled}
+          name={name}
+          type="radio"
+          value={value}
+          onChange={onSelect}
+        />
+        <span>
+          <strong>{title}</strong>
+          {description && <small>{description}</small>}
+          {lockedMessage && <UpgradeText reason={lockedMessage} />}
+        </span>
+      </label>
+      {checked && children && (
+        <div className="counterpulse-targeting-option__content">{children}</div>
+      )}
+    </div>
+  );
+}
+
+function UpgradeText({ reason }: { reason: string }) {
+  return (
+    <small className="counterpulse-upgrade-inline">
+      {reason} <a href="/app/billing">Upgrade</a>
+    </small>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="16"
+      viewBox="0 0 24 24"
+      width="16"
+    >
+      <rect
+        height="13"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="2"
+        width="13"
+        x="8"
+        y="8"
+      />
+      <path
+        d="M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }
 

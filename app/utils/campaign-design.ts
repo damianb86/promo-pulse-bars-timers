@@ -2,7 +2,13 @@ import {
   campaignDesignTemplates,
   defaultCampaignDesignValues,
   designAlignmentOptions,
+  designBackgroundTypeOptions,
+  designFontFamilyOptions,
   designIconOptions,
+  designLayoutOptions,
+  designPositionModeOptions,
+  designTimerFormatOptions,
+  designTimerStyleOptions,
   findCampaignDesignTemplate,
   type CampaignDesignErrors,
   type CampaignDesignValues,
@@ -12,10 +18,19 @@ const hexColorPattern = /^#[0-9A-Fa-f]{6}$/;
 
 const colorFields: Array<keyof CampaignDesignValues> = [
   "backgroundColor",
+  "gradientStartColor",
+  "gradientEndColor",
   "textColor",
   "accentColor",
   "buttonColor",
   "buttonTextColor",
+  "borderColor",
+  "titleColor",
+  "subheadingColor",
+  "timerColor",
+  "legendColor",
+  "timerSurfaceColor",
+  "timerSurfaceBorderColor",
 ];
 
 export function isValidHexColor(value: string) {
@@ -52,6 +67,7 @@ export function applyCampaignDesignTemplate(
     ...template,
     templateKey: template.templateKey,
     customCss: currentValues.customCss,
+    layout: currentValues.layout,
   };
 }
 
@@ -73,6 +89,7 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   }
 
   if (
+    values.backgroundType === "SOLID" &&
     isValidHexColor(values.backgroundColor) &&
     isValidHexColor(values.textColor) &&
     !hasReadableContrast(values.textColor, values.backgroundColor)
@@ -87,6 +104,26 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   ) {
     errors.buttonTextColor =
       "Button text color needs stronger contrast with button color.";
+  }
+
+  if (!designLayoutOptions.some((option) => option.value === values.layout)) {
+    errors.layout = "Choose a valid layout.";
+  }
+
+  if (
+    !designBackgroundTypeOptions.some(
+      (option) => option.value === values.backgroundType,
+    )
+  ) {
+    errors.backgroundType = "Choose a valid background type.";
+  }
+
+  if (
+    !Number.isInteger(values.gradientAngle) ||
+    values.gradientAngle < 0 ||
+    values.gradientAngle > 360
+  ) {
+    errors.gradientAngle = "Gradient angle must be between 0 and 360.";
   }
 
   if (
@@ -106,6 +143,92 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   }
 
   if (
+    !Number.isInteger(values.borderSize) ||
+    values.borderSize < 0 ||
+    values.borderSize > 8
+  ) {
+    errors.borderSize = "Border size must be between 0 and 8.";
+  }
+
+  if (
+    !designFontFamilyOptions.some(
+      (option) => option.value === values.fontFamily,
+    )
+  ) {
+    errors.fontFamily = "Choose a valid font.";
+  }
+
+  validateIntegerRange(values, errors, "titleFontSize", 12, 48, "Title size");
+  validateIntegerRange(
+    values,
+    errors,
+    "subheadingFontSize",
+    10,
+    32,
+    "Subheading size",
+  );
+  validateIntegerRange(values, errors, "timerFontSize", 12, 72, "Timer size");
+  validateIntegerRange(values, errors, "legendFontSize", 10, 24, "Legend size");
+
+  if (
+    !designTimerStyleOptions.some(
+      (option) => option.value === values.timerStyle,
+    )
+  ) {
+    errors.timerStyle = "Choose a valid timer style.";
+  }
+
+  if (
+    !designTimerFormatOptions.some(
+      (option) => option.value === values.timerFormat,
+    )
+  ) {
+    errors.timerFormat = "Choose a valid timer format.";
+  }
+
+  validateIntegerRange(
+    values,
+    errors,
+    "timerSurfaceBorderSize",
+    0,
+    6,
+    "Timer border size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "timerSurfaceRadius",
+    0,
+    40,
+    "Timer radius",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "paddingBlock",
+    4,
+    48,
+    "Vertical padding",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "paddingInline",
+    8,
+    64,
+    "Horizontal padding",
+  );
+  validateIntegerRange(values, errors, "contentGap", 0, 32, "Content gap");
+
+  if (
+    !designPositionModeOptions.some(
+      (option) => option.value === values.positionMode,
+    )
+  ) {
+    errors.positionMode = "Choose a valid position mode.";
+  }
+
+  if (
     !designAlignmentOptions.some((option) => option.value === values.alignment)
   ) {
     errors.alignment = "Choose a valid alignment.";
@@ -113,6 +236,16 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
 
   if (!designIconOptions.some((option) => option.value === values.icon)) {
     errors.icon = "Choose a valid icon.";
+  }
+
+  if (values.icon === "CUSTOM" && !values.customIconUrl) {
+    errors.customIconUrl = "Upload an SVG, PNG, JPG, or JPEG icon.";
+  } else if (
+    values.customIconUrl &&
+    (values.customIconUrl.length > 150_000 ||
+      !isSafeCustomIconUrl(values.customIconUrl))
+  ) {
+    errors.customIconUrl = "Upload a valid image icon.";
   }
 
   return errors;
@@ -134,6 +267,26 @@ export function sanitizeCustomCss(value: string, isProPlan: boolean) {
     .slice(0, 2000);
 }
 
+function validateIntegerRange(
+  values: CampaignDesignValues,
+  errors: CampaignDesignErrors,
+  field: keyof CampaignDesignValues,
+  min: number,
+  max: number,
+  label: string,
+) {
+  const value = values[field];
+
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < min ||
+    value > max
+  ) {
+    errors[field] = `${label} must be between ${min} and ${max}.`;
+  }
+}
+
 function getRelativeLuminance(hexColor: string) {
   const [red, green, blue] = hexToRgb(hexColor).map(toLinearRgb);
 
@@ -152,4 +305,12 @@ function toLinearRgb(value: number) {
   return normalizedValue <= 0.03928
     ? normalizedValue / 12.92
     : Math.pow((normalizedValue + 0.055) / 1.055, 2.4);
+}
+
+function isSafeCustomIconUrl(value: string) {
+  return (
+    value.startsWith("/") ||
+    /^https?:\/\//i.test(value) ||
+    /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value)
+  );
 }

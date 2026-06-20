@@ -23,7 +23,10 @@ import {
   type CampaignTypeValue,
   type PlacementTypeValue,
 } from "../../types/campaign-options";
-import type { CampaignFormValues } from "../../types/campaign-form";
+import {
+  defaultCampaignFormValues,
+  type CampaignFormValues,
+} from "../../types/campaign-form";
 import { defaultDeliveryCutoffSettingsValues } from "../../types/delivery-cutoff";
 import { defaultFreeShippingSettingsValues } from "../../types/free-shipping";
 import { defaultLowStockSettingsValues } from "../../types/low-stock";
@@ -92,7 +95,9 @@ export async function ensureSystemCampaignTemplates() {
   return syncSystemCampaignTemplates();
 }
 
-export async function listTemplateLibrary(filters: TemplateLibraryFilters = {}) {
+export async function listTemplateLibrary(
+  filters: TemplateLibraryFilters = {},
+) {
   const normalized = normalizeTemplateFilters(filters);
   const templates = await prisma.campaignTemplate.findMany({
     where: buildTemplateWhere(normalized),
@@ -284,7 +289,8 @@ export async function createDraftCampaignFromTemplate(
         ? {
             badgeSettings: {
               create: {
-                badgeText: texts.badgeText ?? defaultBadgeSettingsValues.badgeText,
+                badgeText:
+                  texts.badgeText ?? defaultBadgeSettingsValues.badgeText,
                 badgeShape: readBadgeShape(settings.badgeShape),
                 badgePosition: readBadgePosition(settings.badgePosition),
               },
@@ -307,6 +313,7 @@ export function buildCampaignFormDefaultsFromTemplate(
   );
 
   return {
+    ...defaultCampaignFormValues,
     goal: toEditableCampaignGoal(template.goal),
     type: template.type as CampaignTypeValue,
     name: `${template.eventName} ${formatCampaignType(template.type)}`,
@@ -435,10 +442,33 @@ function readTemplateDesign(value: Prisma.JsonValue) {
   const design: CampaignDesignValues = {
     ...defaultCampaignDesignValues,
     templateKey: readString(input.templateKey) || "clean-minimal",
+    layout:
+      readEnum(input.layout, [
+        "STANDARD",
+        "BALANCED",
+        "INLINE",
+        "CTA_RIGHT",
+        "CTA_LEFT",
+        "CTA_TOP",
+      ]) ?? defaultCampaignDesignValues.layout,
+    backgroundType:
+      readEnum(input.backgroundType, ["SOLID", "GRADIENT"]) ??
+      defaultCampaignDesignValues.backgroundType,
     backgroundColor:
       readString(input.backgroundColor) ||
       defaultCampaignDesignValues.backgroundColor,
-    textColor: readString(input.textColor) || defaultCampaignDesignValues.textColor,
+    gradientStartColor:
+      readString(input.gradientStartColor) ||
+      defaultCampaignDesignValues.gradientStartColor,
+    gradientEndColor:
+      readString(input.gradientEndColor) ||
+      defaultCampaignDesignValues.gradientEndColor,
+    gradientAngle: readInteger(
+      input.gradientAngle,
+      defaultCampaignDesignValues.gradientAngle,
+    ),
+    textColor:
+      readString(input.textColor) || defaultCampaignDesignValues.textColor,
     accentColor:
       readString(input.accentColor) || defaultCampaignDesignValues.accentColor,
     buttonColor:
@@ -451,6 +481,92 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.borderRadius,
       defaultCampaignDesignValues.borderRadius,
     ),
+    borderSize: readInteger(
+      input.borderSize,
+      defaultCampaignDesignValues.borderSize,
+    ),
+    borderColor:
+      readString(input.borderColor) || defaultCampaignDesignValues.borderColor,
+    fontFamily:
+      readEnum(input.fontFamily, [
+        "THEME",
+        "SYSTEM",
+        "SERIF",
+        "ROUNDED",
+        "MONO",
+        "GEOMETRIC",
+        "HUMANIST",
+        "CONDENSED",
+        "CASUAL",
+      ]) ?? defaultCampaignDesignValues.fontFamily,
+    titleFontSize: readInteger(
+      input.titleFontSize,
+      defaultCampaignDesignValues.titleFontSize,
+    ),
+    titleColor:
+      readString(input.titleColor) || defaultCampaignDesignValues.titleColor,
+    subheadingFontSize: readInteger(
+      input.subheadingFontSize,
+      defaultCampaignDesignValues.subheadingFontSize,
+    ),
+    subheadingColor:
+      readString(input.subheadingColor) ||
+      defaultCampaignDesignValues.subheadingColor,
+    timerFontSize: readInteger(
+      input.timerFontSize,
+      defaultCampaignDesignValues.timerFontSize,
+    ),
+    timerColor:
+      readString(input.timerColor) || defaultCampaignDesignValues.timerColor,
+    legendFontSize: readInteger(
+      input.legendFontSize,
+      defaultCampaignDesignValues.legendFontSize,
+    ),
+    legendColor:
+      readString(input.legendColor) || defaultCampaignDesignValues.legendColor,
+    timerStyle:
+      readEnum(input.timerStyle, ["PLAIN", "GROUPED", "BOXES"]) ??
+      defaultCampaignDesignValues.timerStyle,
+    timerFormat:
+      readEnum(input.timerFormat, ["UNITS", "COLON"]) ??
+      defaultCampaignDesignValues.timerFormat,
+    timerShowLabels: readBoolean(
+      input.timerShowLabels,
+      defaultCampaignDesignValues.timerShowLabels,
+    ),
+    timerSurfaceColor:
+      readString(input.timerSurfaceColor) ||
+      defaultCampaignDesignValues.timerSurfaceColor,
+    timerSurfaceBorderColor:
+      readString(input.timerSurfaceBorderColor) ||
+      defaultCampaignDesignValues.timerSurfaceBorderColor,
+    timerSurfaceBorderSize: readInteger(
+      input.timerSurfaceBorderSize,
+      defaultCampaignDesignValues.timerSurfaceBorderSize,
+    ),
+    timerSurfaceRadius: readInteger(
+      input.timerSurfaceRadius,
+      defaultCampaignDesignValues.timerSurfaceRadius,
+    ),
+    paddingBlock: readInteger(
+      input.paddingBlock,
+      defaultCampaignDesignValues.paddingBlock,
+    ),
+    paddingInline: readInteger(
+      input.paddingInline,
+      defaultCampaignDesignValues.paddingInline,
+    ),
+    contentGap: readInteger(
+      input.contentGap,
+      defaultCampaignDesignValues.contentGap,
+    ),
+    fullWidth: readBoolean(
+      input.fullWidth,
+      defaultCampaignDesignValues.fullWidth,
+    ),
+    positionMode:
+      readEnum(input.positionMode, ["FLOW", "OVERLAY"]) ??
+      defaultCampaignDesignValues.positionMode,
     positionSticky: readBoolean(
       input.positionSticky,
       defaultCampaignDesignValues.positionSticky,
@@ -469,8 +585,16 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     ),
     showIcon: readBoolean(input.showIcon, defaultCampaignDesignValues.showIcon),
     icon:
-      readEnum(input.icon, ["FIRE", "CLOCK", "TRUCK", "GIFT", "TAG", "NONE"]) ??
-      defaultCampaignDesignValues.icon,
+      readEnum(input.icon, [
+        "FIRE",
+        "CLOCK",
+        "TRUCK",
+        "GIFT",
+        "TAG",
+        "CUSTOM",
+        "NONE",
+      ]) ?? defaultCampaignDesignValues.icon,
+    customIconUrl: readString(input.customIconUrl),
   };
 
   return design;
@@ -501,21 +625,21 @@ function readPlacementType(
   value: string | null | undefined,
   type: CampaignType,
 ) {
-  return (
-    readEnum(value, [
-      "TOP_BAR",
-      "BOTTOM_BAR",
-      "PRODUCT_PAGE",
-      "COLLECTION_CARD",
-      "CART_PAGE",
-      "CART_DRAWER",
-      "THANK_YOU_PAGE",
-      "ORDER_STATUS_PAGE",
-      "PASSWORD_PAGE",
-      "CUSTOM_SELECTOR",
-    ]) ??
-    (getDefaultPlacementForCampaignType(type) as PlacementTypeValue)
-  ) as PlacementType;
+  return (readEnum(value, [
+    "TOP_BAR",
+    "BOTTOM_BAR",
+    "PRODUCT_PAGE",
+    "COLLECTION_CARD",
+    "CART_PAGE",
+    "CART_DRAWER",
+    "THANK_YOU_PAGE",
+    "ORDER_STATUS_PAGE",
+    "PASSWORD_PAGE",
+    "CUSTOM_SELECTOR",
+  ]) ??
+    (getDefaultPlacementForCampaignType(
+      type,
+    ) as PlacementTypeValue)) as PlacementType;
 }
 
 function shouldCreateTimerSettings(type: CampaignType) {

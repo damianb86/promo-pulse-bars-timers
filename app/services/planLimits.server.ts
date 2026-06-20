@@ -384,6 +384,7 @@ export async function validateCampaignPlanAccess(
     type: CampaignTypeValue;
     placementType: PlacementTypeValue;
     startsAt?: string;
+    targeting?: Parameters<typeof getCampaignPlanViolations>[1]["targeting"];
   },
   options: { campaignId?: string } = {},
 ) {
@@ -391,6 +392,30 @@ export async function validateCampaignPlanAccess(
 
   for (const feature of getRequiredCampaignFeatures(campaign)) {
     const featureGate = canUseFeature(shop, feature);
+
+    if (!featureGate.allowed) {
+      errors.push(featureGate.reason);
+    }
+  }
+
+  if (usesBasicTargeting(campaign.targeting)) {
+    const featureGate = canUseFeature(shop, "basic_targeting");
+
+    if (!featureGate.allowed) {
+      errors.push(featureGate.reason);
+    }
+  }
+
+  if (usesGeoMarketTargeting(campaign.targeting)) {
+    const featureGate = canUseFeature(shop, "geo_market_targeting");
+
+    if (!featureGate.allowed) {
+      errors.push(featureGate.reason);
+    }
+  }
+
+  if (usesAdvancedTargeting(campaign.targeting)) {
+    const featureGate = canUseFeature(shop, "advanced_targeting");
 
     if (!featureGate.allowed) {
       errors.push(featureGate.reason);

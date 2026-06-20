@@ -4,6 +4,12 @@ import {
   defaultCampaignDesignValues,
   type CampaignDesignErrors,
   type CampaignDesignValues,
+  type DesignBackgroundTypeValue,
+  type DesignPositionModeValue,
+  type DesignFontFamilyValue,
+  type DesignLayoutValue,
+  type DesignTimerFormatValue,
+  type DesignTimerStyleValue,
   type CampaignDesignIconValue,
   type DesignAlignmentValue,
 } from "../types/campaign-design";
@@ -27,9 +33,22 @@ export function parseCampaignDesignFormData(
   const canUseCustomCss = customCssGate.allowed;
   const values: CampaignDesignValues = {
     templateKey: readString(formData, "templateKey") || "clean-minimal",
+    layout: readLayout(formData),
+    backgroundType: readBackgroundType(formData),
     backgroundColor:
       readString(formData, "backgroundColor") ||
       defaultCampaignDesignValues.backgroundColor,
+    gradientStartColor:
+      readString(formData, "gradientStartColor") ||
+      defaultCampaignDesignValues.gradientStartColor,
+    gradientEndColor:
+      readString(formData, "gradientEndColor") ||
+      defaultCampaignDesignValues.gradientEndColor,
+    gradientAngle: readInteger(
+      formData,
+      "gradientAngle",
+      defaultCampaignDesignValues.gradientAngle,
+    ),
     textColor:
       readString(formData, "textColor") ||
       defaultCampaignDesignValues.textColor,
@@ -52,6 +71,83 @@ export function parseCampaignDesignFormData(
       "borderRadius",
       defaultCampaignDesignValues.borderRadius,
     ),
+    borderSize: readInteger(
+      formData,
+      "borderSize",
+      defaultCampaignDesignValues.borderSize,
+    ),
+    borderColor:
+      readString(formData, "borderColor") ||
+      defaultCampaignDesignValues.borderColor,
+    fontFamily: readFontFamily(formData),
+    titleFontSize: readInteger(
+      formData,
+      "titleFontSize",
+      defaultCampaignDesignValues.titleFontSize,
+    ),
+    titleColor:
+      readString(formData, "titleColor") ||
+      defaultCampaignDesignValues.titleColor,
+    subheadingFontSize: readInteger(
+      formData,
+      "subheadingFontSize",
+      defaultCampaignDesignValues.subheadingFontSize,
+    ),
+    subheadingColor:
+      readString(formData, "subheadingColor") ||
+      defaultCampaignDesignValues.subheadingColor,
+    timerFontSize: readInteger(
+      formData,
+      "timerFontSize",
+      defaultCampaignDesignValues.timerFontSize,
+    ),
+    timerColor:
+      readString(formData, "timerColor") ||
+      defaultCampaignDesignValues.timerColor,
+    legendFontSize: readInteger(
+      formData,
+      "legendFontSize",
+      defaultCampaignDesignValues.legendFontSize,
+    ),
+    legendColor:
+      readString(formData, "legendColor") ||
+      defaultCampaignDesignValues.legendColor,
+    timerStyle: readTimerStyle(formData),
+    timerFormat: readTimerFormat(formData),
+    timerShowLabels: readBoolean(formData, "timerShowLabels"),
+    timerSurfaceColor:
+      readString(formData, "timerSurfaceColor") ||
+      defaultCampaignDesignValues.timerSurfaceColor,
+    timerSurfaceBorderColor:
+      readString(formData, "timerSurfaceBorderColor") ||
+      defaultCampaignDesignValues.timerSurfaceBorderColor,
+    timerSurfaceBorderSize: readInteger(
+      formData,
+      "timerSurfaceBorderSize",
+      defaultCampaignDesignValues.timerSurfaceBorderSize,
+    ),
+    timerSurfaceRadius: readInteger(
+      formData,
+      "timerSurfaceRadius",
+      defaultCampaignDesignValues.timerSurfaceRadius,
+    ),
+    paddingBlock: readInteger(
+      formData,
+      "paddingBlock",
+      defaultCampaignDesignValues.paddingBlock,
+    ),
+    paddingInline: readInteger(
+      formData,
+      "paddingInline",
+      defaultCampaignDesignValues.paddingInline,
+    ),
+    contentGap: readInteger(
+      formData,
+      "contentGap",
+      defaultCampaignDesignValues.contentGap,
+    ),
+    fullWidth: readBoolean(formData, "fullWidth"),
+    positionMode: readPositionMode(formData),
     positionSticky: readBoolean(formData, "positionSticky"),
     mobileEnabled: readBoolean(formData, "mobileEnabled"),
     customCss: sanitizeCustomCss(
@@ -62,6 +158,7 @@ export function parseCampaignDesignFormData(
     showCloseButton: readBoolean(formData, "showCloseButton"),
     showIcon: readBoolean(formData, "showIcon"),
     icon: readIcon(formData),
+    customIconUrl: readString(formData, "customIconUrl").slice(0, 150_000),
   };
 
   const errors = validateCampaignDesignValues(values);
@@ -94,6 +191,87 @@ function readBoolean(formData: FormData, key: keyof CampaignDesignValues) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
+function readLayout(formData: FormData): DesignLayoutValue {
+  const value = readString(formData, "layout");
+
+  if (
+    [
+      "STANDARD",
+      "BALANCED",
+      "INLINE",
+      "CTA_RIGHT",
+      "CTA_LEFT",
+      "CTA_TOP",
+    ].includes(value)
+  ) {
+    return value as DesignLayoutValue;
+  }
+
+  return defaultCampaignDesignValues.layout;
+}
+
+function readBackgroundType(formData: FormData): DesignBackgroundTypeValue {
+  const value = readString(formData, "backgroundType");
+
+  if (["SOLID", "GRADIENT"].includes(value)) {
+    return value as DesignBackgroundTypeValue;
+  }
+
+  return defaultCampaignDesignValues.backgroundType;
+}
+
+function readFontFamily(formData: FormData): DesignFontFamilyValue {
+  const value = readString(formData, "fontFamily");
+
+  if (
+    [
+      "THEME",
+      "SYSTEM",
+      "SERIF",
+      "ROUNDED",
+      "MONO",
+      "GEOMETRIC",
+      "HUMANIST",
+      "CONDENSED",
+      "CASUAL",
+    ].includes(value)
+  ) {
+    return value as DesignFontFamilyValue;
+  }
+
+  return defaultCampaignDesignValues.fontFamily;
+}
+
+function readTimerFormat(formData: FormData): DesignTimerFormatValue {
+  const value = readString(formData, "timerFormat");
+
+  if (["UNITS", "COLON"].includes(value)) {
+    return value as DesignTimerFormatValue;
+  }
+
+  return defaultCampaignDesignValues.timerFormat;
+}
+
+function readTimerStyle(formData: FormData): DesignTimerStyleValue {
+  const value = readString(formData, "timerStyle");
+
+  if (["PLAIN", "GROUPED", "BOXES"].includes(value)) {
+    return value as DesignTimerStyleValue;
+  }
+
+  return defaultCampaignDesignValues.timerStyle;
+}
+
+function readPositionMode(formData: FormData): DesignPositionModeValue {
+  const value = readString(formData, "positionMode");
+
+  if (["FLOW", "OVERLAY"].includes(value)) {
+    return value as DesignPositionModeValue;
+  }
+
+  return defaultCampaignDesignValues.positionMode;
+}
+
 function readAlignment(formData: FormData): DesignAlignmentValue {
   const value = readString(formData, "alignment");
 
@@ -107,7 +285,9 @@ function readAlignment(formData: FormData): DesignAlignmentValue {
 function readIcon(formData: FormData): CampaignDesignIconValue {
   const value = readString(formData, "icon");
 
-  if (["FIRE", "CLOCK", "TRUCK", "GIFT", "TAG", "NONE"].includes(value)) {
+  if (
+    ["FIRE", "CLOCK", "TRUCK", "GIFT", "TAG", "CUSTOM", "NONE"].includes(value)
+  ) {
     return value as CampaignDesignIconValue;
   }
 

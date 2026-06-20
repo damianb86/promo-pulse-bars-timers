@@ -205,9 +205,12 @@ import {
   type EditableCampaignStatusValue,
   type PlacementTypeValue,
 } from "../types/campaign-options";
-import type {
-  CampaignFormErrors,
-  CampaignFormValues,
+import {
+  buildCampaignTargetingValues,
+  type CampaignFormErrors,
+  type CampaignFormValues,
+  type CountrySelectionValue,
+  type ProductSelectionValue,
 } from "../types/campaign-form";
 import {
   defaultDeliveryCutoffSettingsValues,
@@ -278,6 +281,9 @@ type LoaderData = {
     multiLanguage: string;
     uniqueCodes: string;
     behaviorTargeting: string;
+    basicTargeting: string;
+    geoMarketTargeting: string;
+    advancedTargeting: string;
   };
   behaviorTargetingValues: BehaviorTargetingRules;
   advancedBadgeRules: AdvancedBadgeRuleRow[];
@@ -370,7 +376,15 @@ export const loader = async ({
     uniqueCodes: getLockedFeatureReason(shop, "unique_discount_codes"),
     behaviorTargeting: canUsePremiumFeature(shop, "BEHAVIORAL_TARGETING")
       .reason,
+    basicTargeting: getLockedFeatureReason(shop, "basic_targeting"),
+    geoMarketTargeting: getLockedFeatureReason(shop, "geo_market_targeting"),
+    advancedTargeting: getLockedFeatureReason(shop, "advanced_targeting"),
   };
+  const productSelection = inferProductSelection(
+    placement?.placementType,
+    campaign.targeting,
+  );
+  const countrySelection = inferCountrySelection(campaign.targeting);
   const discountListResult = lockedFeatures.discountSync
     ? { discounts: [], error: "" }
     : await loadDiscountOptions(admin);
@@ -425,6 +439,16 @@ export const loader = async ({
       subheadline: translation?.subheadline ?? "",
       ctaText: translation?.ctaText ?? "",
       ctaUrl: translation?.ctaUrl ?? "",
+      productSelection,
+      productIds: targetingListText(campaign.targeting?.productIds),
+      excludeProductIds: targetingListText(
+        campaign.targeting?.excludeProductIds,
+      ),
+      collectionIds: targetingListText(campaign.targeting?.collectionIds),
+      productTags: targetingListText(campaign.targeting?.productTags),
+      customSelector: placement?.customSelector ?? "",
+      countrySelection,
+      countries: targetingListText(campaign.targeting?.countries),
     },
     designValues,
     designViewModel: buildCampaignViewModel({
@@ -1382,10 +1406,19 @@ export const action = async ({
     };
   }
 
+  const targeting = buildCampaignTargetingValues(parsed.values);
+
   try {
-    const planErrors = await validateCampaignPlanAccess(shop, parsed.values, {
-      campaignId: id,
-    });
+    const planErrors = await validateCampaignPlanAccess(
+      shop,
+      {
+        ...parsed.values,
+        targeting,
+      },
+      {
+        campaignId: id,
+      },
+    );
 
     if (planErrors.length > 0) {
       return {
@@ -1405,6 +1438,8 @@ export const action = async ({
       endsAt: parsed.endsAt,
       timezone: parsed.values.timezone,
       placementType: parsed.values.placementType,
+      customSelector: parsed.values.customSelector,
+      targeting,
       headline: parsed.values.headline,
       subheadline: parsed.values.subheadline,
       ctaText: parsed.values.ctaText,
@@ -1491,9 +1526,15 @@ export default function EditCampaignPage() {
               "Configure the campaign goal, copy, schedule, status, and primary storefront placement.",
             content: (
               <CampaignForm
+                campaignId={id}
                 design={actionData?.designValues ?? designValues}
                 formId="campaign-basics-form"
                 key={JSON.stringify(actionData?.values ?? values)}
+                lockedTargetingFeatures={{
+                  advanced: lockedFeatures.advancedTargeting,
+                  basic: lockedFeatures.basicTargeting,
+                  geo: lockedFeatures.geoMarketTargeting,
+                }}
                 mode="edit"
                 showTopbar={false}
                 values={actionData?.values ?? values}
@@ -2860,6 +2901,51 @@ function toPlacementType(value: string): PlacementTypeValue {
   }
 
   return "TOP_BAR";
+}
+
+type CampaignTargetingRecord = {
+  countries?: unknown;
+  productIds?: unknown;
+  collectionIds?: unknown;
+  productTags?: unknown;
+  excludeProductIds?: unknown;
+} | null;
+
+function inferProductSelection(
+  placementType: string | null | undefined,
+  targeting: CampaignTargetingRecord,
+): ProductSelectionValue {
+  if (placementType === "CUSTOM_SELECTOR") return "CUSTOM_POSITION";
+  if (targetingStringList(targeting?.productIds).length > 0) {
+    return "SPECIFIC_PRODUCTS";
+  }
+  if (targetingStringList(targeting?.collectionIds).length > 0) {
+    return "COLLECTIONS";
+  }
+  if (targetingStringList(targeting?.productTags).length > 0) return "TAGS";
+
+  return "ALL_PRODUCTS";
+}
+
+function inferCountrySelection(
+  targeting: CampaignTargetingRecord,
+): CountrySelectionValue {
+  return targetingStringList(targeting?.countries).length > 0
+    ? "SPECIFIC_COUNTRIES"
+    : "ALL_WORLD";
+}
+
+function targetingListText(value: unknown) {
+  return targetingStringList(value).join("\n");
+}
+
+function targetingStringList(value: unknown) {
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
 }
 
 type CampaignDesignRecord =

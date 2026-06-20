@@ -1,0 +1,2 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "fullWidth" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "CampaignDesign" ADD COLUMN "positionMode" TEXT NOT NULL DEFAULT 'FLOW';

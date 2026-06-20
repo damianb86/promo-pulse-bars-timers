@@ -16,6 +16,7 @@ export function DevicePreviewToggle({
         type="button"
         onClick={() => onChange("desktop")}
       >
+        <DesktopIcon />
         Desktop
       </button>
       <button
@@ -23,8 +24,56 @@ export function DevicePreviewToggle({
         type="button"
         onClick={() => onChange("mobile")}
       >
+        <MobileIcon />
         Mobile
       </button>
     </div>
+  );
+}
+
+function DesktopIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <rect
+        height="12"
+        rx="2"
+        width="17"
+        x="3.5"
+        y="4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M9 20h6M12 16.5V20"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function MobileIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <rect
+        height="17"
+        rx="2.5"
+        width="10"
+        x="7"
+        y="3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M11 17.5h2"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }

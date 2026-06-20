@@ -9,6 +9,7 @@ import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
 import { CampaignForm } from "../components/CampaignForm";
 import {
   createCampaign,
+  toTargetingWriteData,
   updateCampaignDesignForShop,
   updateCampaignTranslationsForShop,
 } from "../models/campaign.server";
@@ -28,6 +29,7 @@ import {
 import { createExperiment } from "../services/experiments";
 import {
   canCreateCampaign,
+  getLockedFeatureReason,
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
 import { canUsePremiumFeature } from "../services/premiumFeatures.server";
@@ -43,6 +45,7 @@ import type {
   CampaignSuggestion,
 } from "../types/ai-campaign";
 import {
+  buildCampaignTargetingValues,
   defaultCampaignFormValues,
   type CampaignFormErrors,
   type CampaignFormValues,
@@ -66,6 +69,11 @@ type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
   defaults: CampaignFormValues;
+  lockedTargetingFeatures: {
+    advanced: string;
+    basic: string;
+    geo: string;
+  };
   templateSourceName?: string;
 };
 
@@ -102,6 +110,11 @@ export const loader = async ({
           ),
           timezone: settings.defaultTimezone,
         },
+    lockedTargetingFeatures: {
+      advanced: getLockedFeatureReason(shop, "advanced_targeting"),
+      basic: getLockedFeatureReason(shop, "basic_targeting"),
+      geo: getLockedFeatureReason(shop, "geo_market_targeting"),
+    },
     templateSourceName: template?.eventName,
   };
 };
@@ -163,6 +176,7 @@ export const action = async ({
   const appliedAiSuggestion = parseAppliedCampaignSuggestion(
     formData.get("aiSuggestionJson"),
   );
+  const targeting = buildCampaignTargetingValues(parsed.values);
 
   try {
     const createGate = await canCreateCampaign(shop);
@@ -189,7 +203,10 @@ export const action = async ({
       }
     }
 
-    const planErrors = await validateCampaignPlanAccess(shop, parsed.values);
+    const planErrors = await validateCampaignPlanAccess(shop, {
+      ...parsed.values,
+      targeting,
+    });
 
     if (planErrors.length > 0) {
       return {
@@ -213,9 +230,16 @@ export const action = async ({
         create: [
           {
             placementType: parsed.values.placementType,
+            customSelector:
+              parsed.values.placementType === "CUSTOM_SELECTOR"
+                ? parsed.values.customSelector || null
+                : null,
             enabled: true,
           },
         ],
+      },
+      targeting: {
+        create: toTargetingWriteData(targeting),
       },
       translations: {
         create: buildDefaultCampaignTranslations({
@@ -330,8 +354,13 @@ export const action = async ({
 
 export default function CreateCampaignPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
-  const { aiInput, aiLockedReason, defaults, templateSourceName } =
-    useLoaderData<typeof loader>();
+  const {
+    aiInput,
+    aiLockedReason,
+    defaults,
+    lockedTargetingFeatures,
+    templateSourceName,
+  } = useLoaderData<typeof loader>();
 
   return (
     <s-page inlineSize="large" heading="Create campaign">
@@ -340,6 +369,7 @@ export default function CreateCampaignPage() {
           <CampaignForm
             key={JSON.stringify(actionData?.values ?? defaults)}
             mode="create"
+            lockedTargetingFeatures={lockedTargetingFeatures}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
           />

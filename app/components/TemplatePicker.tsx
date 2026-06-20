@@ -25,12 +25,15 @@ export function TemplatePicker({ value, onChange }: TemplatePickerProps) {
           <span
             className="counterpulse-template__swatch"
             style={{
-              background: template.backgroundColor,
-              color: template.textColor,
+              background:
+                template.backgroundType === "GRADIENT"
+                  ? `linear-gradient(${template.gradientAngle}deg, ${template.gradientStartColor}, ${template.gradientEndColor})`
+                  : template.backgroundColor,
+              color: template.titleColor,
               borderColor: template.accentColor,
             }}
           >
-            Aa
+            <span style={{ background: template.timerColor }} />
           </span>
           <span>{template.label}</span>
         </button>

@@ -11,6 +11,9 @@
     country: detectCountry(root),
     market: detectMarket(root),
     currency: detectCurrency(root),
+    productId: root.dataset.productId || "",
+    productTags: splitList(root.dataset.productTags),
+    collectionIds: splitList(root.dataset.collectionIds),
     device: detectDevice(),
     utmSource:
       new URLSearchParams(window.location.search).get("utm_source") || "",
@@ -29,16 +32,16 @@
 
   updateDebug(
     root,
-    "Embed JS cargado. Consultando TOP_BAR y BOTTOM_BAR; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
+    "Embed JS cargado. Consultando TOP_BAR, BOTTOM_BAR y CUSTOM_SELECTOR; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
   );
 
-  Promise.all(["TOP_BAR", "BOTTOM_BAR"].map(fetchCampaigns))
+  Promise.all(["TOP_BAR", "BOTTOM_BAR", "CUSTOM_SELECTOR"].map(fetchCampaigns))
     .then(function (responses) {
       updateDebug(
         root,
         "API global OK: " +
           responses.flat().length +
-          " campana(s) recibidas para TOP_BAR/BOTTOM_BAR.",
+          " campana(s) recibidas para placements globales.",
       );
       responses.flat().forEach(renderCampaign);
     })
@@ -129,6 +132,13 @@
     if (config.country) params.set("country", config.country);
     if (config.market) params.set("market", config.market);
     if (config.currency) params.set("currency", config.currency);
+    if (config.productId) params.set("productId", config.productId);
+    if (config.productTags.length) {
+      params.set("productTags", config.productTags.join(","));
+    }
+    if (config.collectionIds.length) {
+      params.set("collectionIds", config.collectionIds.join(","));
+    }
     if (config.utmSource) params.set("utmSource", config.utmSource);
     appendBehaviorTargetingParams(params);
 
@@ -179,16 +189,24 @@
 
     var design = campaign.design || {};
     var timerState = calculateTimerState(campaign, new Date());
+    var icon;
 
     if (design.mobileEnabled === false && config.device === "mobile") return;
     if (timerState.isExpired && !(campaign.texts || {}).expiredText) return;
     if (renderedCampaigns[campaign.placement + ":" + campaign.id]) return;
 
     var bar = document.createElement("section");
-    var container = getPlacementContainer(campaign.placement);
+    var container = getPlacementContainer(
+      campaign.placement,
+      campaign.placementSelector,
+    );
+
+    if (!container) return;
 
     bar.className =
       "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace("_", "-");
+    if (design.fullWidth) bar.classList.add("pp-bar--full-width");
+    if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
     bar.dataset.campaignId = campaign.id;
     bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
@@ -198,11 +216,16 @@
     );
     setDesignProperties(bar, design);
 
-    if (campaign.placement === "TOP_BAR" && design.positionSticky) {
+    if (
+      campaign.placement === "TOP_BAR" &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
+    ) {
       bar.classList.add("pp-bar--sticky");
     }
 
-    bar.appendChild(renderIcon(design));
+    icon = renderIcon(design);
+    if (icon) bar.appendChild(icon);
     bar.appendChild(renderMessage(campaign, timerState));
 
     if (
@@ -286,10 +309,24 @@
     bar.style.setProperty("--pp-align", getTextAlign(design.alignment));
   }
 
-  function getPlacementContainer(placement) {
+  function getPlacementContainer(placement, selector) {
+    var target;
+    var customContainer;
     var id = placement === "BOTTOM_BAR" ? "pp-bottom-bars" : "pp-top-bars";
     var existingContainer = document.getElementById(id);
     var container;
+
+    if (placement === "CUSTOM_SELECTOR") {
+      target = queryCustomPlacementTarget(selector);
+
+      if (!target) return null;
+
+      customContainer = document.createElement("div");
+      customContainer.className = "pp-container pp-container--custom-selector";
+      target.appendChild(customContainer);
+
+      return customContainer;
+    }
 
     if (existingContainer) return existingContainer;
 
@@ -307,13 +344,44 @@
     return container;
   }
 
+  function queryCustomPlacementTarget(selector) {
+    if (!selector || typeof selector !== "string") {
+      updateDebug(root, "CUSTOM_SELECTOR omitido: falta el selector.");
+      return null;
+    }
+
+    try {
+      return document.querySelector(selector);
+    } catch (error) {
+      updateDebug(root, "CUSTOM_SELECTOR invalido: " + selector);
+      debug(selector, error);
+      return null;
+    }
+  }
+
   function renderIcon(design) {
     var icon = document.createElement("span");
-    var iconLabel = getIconLabel(design.showIcon ? design.icon : "NONE");
+    var svg;
+    var image;
+
+    if (design.showIcon === false) return null;
 
     icon.className = "pp-icon";
-    icon.textContent = iconLabel;
-    icon.hidden = !iconLabel;
+
+    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
+      image = document.createElement("img");
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.src = design.customIconUrl;
+      icon.appendChild(image);
+      return icon;
+    }
+
+    svg = getIconSvg(design.icon);
+    if (!svg) return null;
+
+    icon.innerHTML = svg;
 
     return icon;
   }
@@ -337,18 +405,18 @@
     }
 
     if (timerState.isActive) {
-      message.appendChild(renderCountdown(timerState));
+      message.appendChild(renderCountdown(timerState, campaign.design || {}));
     }
 
     return message;
   }
 
-  function renderCountdown(timerState) {
+  function renderCountdown(timerState, design) {
     var countdown = document.createElement("span");
 
     countdown.className = "pp-countdown";
     countdown.dataset.testid = "promo-timer";
-    countdown.textContent = formatTimeRemaining(timerState.remainingMs);
+    countdown.textContent = formatTimeRemaining(timerState.remainingMs, design);
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
 
@@ -424,7 +492,10 @@
         return;
       }
 
-      countdown.textContent = formatTimeRemaining(timerState.remainingMs);
+      countdown.textContent = formatTimeRemaining(
+        timerState.remainingMs,
+        campaign.design || {},
+      );
     }, 1000);
   }
 
@@ -774,18 +845,39 @@
     );
   }
 
-  function formatTimeRemaining(ms) {
+  function formatTimeRemaining(ms, design) {
     var totalSeconds = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(totalSeconds / 86400);
     var hours = Math.floor((totalSeconds % 86400) / 3600);
     var minutes = Math.floor((totalSeconds % 3600) / 60);
     var seconds = totalSeconds % 60;
+    var units;
+
+    if (design && design.timerFormat === "UNITS") {
+      units = [];
+      if (days > 0) units.push(formatTimerUnit(days, "Day", design));
+      units.push(
+        formatTimerUnit(
+          days > 0 ? hours : Math.floor(totalSeconds / 3600),
+          "Hr",
+          design,
+        ),
+      );
+      units.push(formatTimerUnit(minutes, "Min", design));
+      units.push(formatTimerUnit(seconds, "Sec", design));
+      return units.join(" ");
+    }
 
     if (days > 0) {
-      return days + "d " + pad(hours) + "h " + pad(minutes) + "m";
+      return [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":");
     }
 
     return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  }
+
+  function formatTimerUnit(value, label, design) {
+    if (design && design.timerShowLabels === false) return pad(value);
+    return pad(value) + " " + label + (value === 1 ? "" : "s");
   }
 
   function parseDate(value) {
@@ -924,15 +1016,34 @@
       : null;
   }
 
-  function getIconLabel(icon) {
+  function splitList(value) {
+    return String(value || "")
+      .split(",")
+      .map(function (item) {
+        return item.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function isSafeIconUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" ||
+        /^https?:\/\//i.test(value) ||
+        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
+    );
+  }
+
+  function getIconSvg(icon) {
     return (
       {
-        FIRE: "Sale",
-        CLOCK: "Time",
-        TRUCK: "Ship",
-        GIFT: "Gift",
-        TAG: "Deal",
-        NONE: "",
+        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
+        CLOCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
+        TRUCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
+        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
       }[icon] || ""
     );
   }

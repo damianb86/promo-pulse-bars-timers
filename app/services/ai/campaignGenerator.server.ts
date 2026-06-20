@@ -988,8 +988,29 @@ function sanitizePartialDesign(
     ...(typeof design.templateKey === "string"
       ? { templateKey: design.templateKey.slice(0, 80) }
       : {}),
+    ...(design.layout === "STANDARD" ||
+    design.layout === "BALANCED" ||
+    design.layout === "INLINE" ||
+    design.layout === "CTA_RIGHT" ||
+    design.layout === "CTA_LEFT" ||
+    design.layout === "CTA_TOP"
+      ? { layout: design.layout }
+      : {}),
+    ...(design.backgroundType === "SOLID" ||
+    design.backgroundType === "GRADIENT"
+      ? { backgroundType: design.backgroundType }
+      : {}),
     ...(isHexColor(design.backgroundColor)
       ? { backgroundColor: design.backgroundColor }
+      : {}),
+    ...(isHexColor(design.gradientStartColor)
+      ? { gradientStartColor: design.gradientStartColor }
+      : {}),
+    ...(isHexColor(design.gradientEndColor)
+      ? { gradientEndColor: design.gradientEndColor }
+      : {}),
+    ...(typeof design.gradientAngle === "number"
+      ? { gradientAngle: clampInteger(design.gradientAngle, 0, 360) }
       : {}),
     ...(isHexColor(design.textColor) ? { textColor: design.textColor } : {}),
     ...(isHexColor(design.accentColor)
@@ -1006,6 +1027,87 @@ function sanitizePartialDesign(
       : {}),
     ...(typeof design.borderRadius === "number"
       ? { borderRadius: clampInteger(design.borderRadius, 0, 24) }
+      : {}),
+    ...(typeof design.borderSize === "number"
+      ? { borderSize: clampInteger(design.borderSize, 0, 8) }
+      : {}),
+    ...(isHexColor(design.borderColor)
+      ? { borderColor: design.borderColor }
+      : {}),
+    ...(design.fontFamily === "THEME" ||
+    design.fontFamily === "SYSTEM" ||
+    design.fontFamily === "SERIF" ||
+    design.fontFamily === "ROUNDED" ||
+    design.fontFamily === "MONO" ||
+    design.fontFamily === "GEOMETRIC" ||
+    design.fontFamily === "HUMANIST" ||
+    design.fontFamily === "CONDENSED" ||
+    design.fontFamily === "CASUAL"
+      ? { fontFamily: design.fontFamily }
+      : {}),
+    ...(typeof design.titleFontSize === "number"
+      ? { titleFontSize: clampInteger(design.titleFontSize, 12, 48) }
+      : {}),
+    ...(isHexColor(design.titleColor) ? { titleColor: design.titleColor } : {}),
+    ...(typeof design.subheadingFontSize === "number"
+      ? { subheadingFontSize: clampInteger(design.subheadingFontSize, 10, 32) }
+      : {}),
+    ...(isHexColor(design.subheadingColor)
+      ? { subheadingColor: design.subheadingColor }
+      : {}),
+    ...(typeof design.timerFontSize === "number"
+      ? { timerFontSize: clampInteger(design.timerFontSize, 12, 72) }
+      : {}),
+    ...(isHexColor(design.timerColor) ? { timerColor: design.timerColor } : {}),
+    ...(typeof design.legendFontSize === "number"
+      ? { legendFontSize: clampInteger(design.legendFontSize, 10, 24) }
+      : {}),
+    ...(isHexColor(design.legendColor)
+      ? { legendColor: design.legendColor }
+      : {}),
+    ...(design.timerStyle === "PLAIN" ||
+    design.timerStyle === "GROUPED" ||
+    design.timerStyle === "BOXES"
+      ? { timerStyle: design.timerStyle }
+      : {}),
+    ...(design.timerFormat === "UNITS" || design.timerFormat === "COLON"
+      ? { timerFormat: design.timerFormat }
+      : {}),
+    ...(typeof design.timerShowLabels === "boolean"
+      ? { timerShowLabels: design.timerShowLabels }
+      : {}),
+    ...(isHexColor(design.timerSurfaceColor)
+      ? { timerSurfaceColor: design.timerSurfaceColor }
+      : {}),
+    ...(isHexColor(design.timerSurfaceBorderColor)
+      ? { timerSurfaceBorderColor: design.timerSurfaceBorderColor }
+      : {}),
+    ...(typeof design.timerSurfaceBorderSize === "number"
+      ? {
+          timerSurfaceBorderSize: clampInteger(
+            design.timerSurfaceBorderSize,
+            0,
+            6,
+          ),
+        }
+      : {}),
+    ...(typeof design.timerSurfaceRadius === "number"
+      ? { timerSurfaceRadius: clampInteger(design.timerSurfaceRadius, 0, 40) }
+      : {}),
+    ...(typeof design.paddingBlock === "number"
+      ? { paddingBlock: clampInteger(design.paddingBlock, 4, 48) }
+      : {}),
+    ...(typeof design.paddingInline === "number"
+      ? { paddingInline: clampInteger(design.paddingInline, 8, 64) }
+      : {}),
+    ...(typeof design.contentGap === "number"
+      ? { contentGap: clampInteger(design.contentGap, 0, 32) }
+      : {}),
+    ...(typeof design.fullWidth === "boolean"
+      ? { fullWidth: design.fullWidth }
+      : {}),
+    ...(design.positionMode === "FLOW" || design.positionMode === "OVERLAY"
+      ? { positionMode: design.positionMode }
       : {}),
     ...(typeof design.positionSticky === "boolean"
       ? { positionSticky: design.positionSticky }
@@ -1032,8 +1134,12 @@ function sanitizePartialDesign(
     design.icon === "TRUCK" ||
     design.icon === "GIFT" ||
     design.icon === "TAG" ||
+    design.icon === "CUSTOM" ||
     design.icon === "NONE"
       ? { icon: design.icon }
+      : {}),
+    ...(typeof design.customIconUrl === "string"
+      ? { customIconUrl: design.customIconUrl.slice(0, 150_000) }
       : {}),
   };
 }

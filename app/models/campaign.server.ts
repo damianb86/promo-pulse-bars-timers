@@ -8,7 +8,9 @@ import {
 import {
   campaignDuplicateInclude,
   campaignDetailsInclude,
+  createEmptyTargetingRules,
   type CreateCampaignInput,
+  type CampaignTargetingRules,
   type UpdateCampaignInput,
 } from "../types/campaign";
 import type {
@@ -46,6 +48,8 @@ type CampaignBasicsInput = {
   endsAt: Date | null;
   timezone: string;
   placementType: PlacementTypeValue;
+  customSelector: string;
+  targeting: CampaignTargetingRules;
   headline: string;
   subheadline: string;
   ctaText: string;
@@ -161,6 +165,27 @@ export function updateCampaign(id: string, data: UpdateCampaignInput) {
   });
 }
 
+export function toTargetingWriteData(
+  targeting: CampaignTargetingRules = createEmptyTargetingRules(),
+) {
+  return {
+    countries: targeting.countries as Prisma.InputJsonValue,
+    markets: targeting.markets as Prisma.InputJsonValue,
+    locales: targeting.locales as Prisma.InputJsonValue,
+    productIds: targeting.productIds as Prisma.InputJsonValue,
+    collectionIds: targeting.collectionIds as Prisma.InputJsonValue,
+    productTags: targeting.productTags as Prisma.InputJsonValue,
+    customerTags: targeting.customerTags as Prisma.InputJsonValue,
+    urlContains: targeting.urlContains as Prisma.InputJsonValue,
+    utmSources: targeting.utmSources as Prisma.InputJsonValue,
+    devices: targeting.devices as Prisma.InputJsonValue,
+    excludeProductIds: targeting.excludeProductIds as Prisma.InputJsonValue,
+    excludeCollectionIds:
+      targeting.excludeCollectionIds as Prisma.InputJsonValue,
+    behaviorRules: targeting.behaviorRules as Prisma.InputJsonValue,
+  };
+}
+
 export async function updateCampaignBasicsForShop(
   id: string,
   shopId: string,
@@ -190,8 +215,21 @@ export async function updateCampaignBasicsForShop(
       data: {
         campaignId: id,
         placementType: input.placementType,
+        customSelector:
+          input.placementType === "CUSTOM_SELECTOR"
+            ? input.customSelector.trim() || null
+            : null,
         enabled: true,
       },
+    });
+
+    await tx.campaignTargeting.upsert({
+      where: { campaignId: id },
+      create: {
+        campaignId: id,
+        ...toTargetingWriteData(input.targeting),
+      },
+      update: toTargetingWriteData(input.targeting),
     });
 
     await tx.campaignTranslation.upsert({
@@ -494,13 +532,41 @@ export async function updateCampaignDesignForShop(
     create: {
       campaignId: id,
       templateKey: input.templateKey,
+      layout: input.layout,
+      backgroundType: input.backgroundType,
       backgroundColor: input.backgroundColor,
+      gradientStartColor: input.gradientStartColor,
+      gradientEndColor: input.gradientEndColor,
+      gradientAngle: input.gradientAngle,
       textColor: input.textColor,
       accentColor: input.accentColor,
       buttonColor: input.buttonColor,
       buttonTextColor: input.buttonTextColor,
       fontSize: input.fontSize,
       borderRadius: input.borderRadius,
+      borderSize: input.borderSize,
+      borderColor: input.borderColor,
+      fontFamily: input.fontFamily,
+      titleFontSize: input.titleFontSize,
+      titleColor: input.titleColor,
+      subheadingFontSize: input.subheadingFontSize,
+      subheadingColor: input.subheadingColor,
+      timerFontSize: input.timerFontSize,
+      timerColor: input.timerColor,
+      legendFontSize: input.legendFontSize,
+      legendColor: input.legendColor,
+      timerStyle: input.timerStyle,
+      timerFormat: input.timerFormat,
+      timerShowLabels: input.timerShowLabels,
+      timerSurfaceColor: input.timerSurfaceColor,
+      timerSurfaceBorderColor: input.timerSurfaceBorderColor,
+      timerSurfaceBorderSize: input.timerSurfaceBorderSize,
+      timerSurfaceRadius: input.timerSurfaceRadius,
+      paddingBlock: input.paddingBlock,
+      paddingInline: input.paddingInline,
+      contentGap: input.contentGap,
+      fullWidth: input.fullWidth,
+      positionMode: input.positionMode,
       positionSticky: input.positionSticky,
       customCss: input.customCss,
       mobileEnabled: input.mobileEnabled,
@@ -508,16 +574,45 @@ export async function updateCampaignDesignForShop(
       showCloseButton: input.showCloseButton,
       showIcon: input.showIcon,
       icon: input.icon,
+      customIconUrl: input.customIconUrl,
     },
     update: {
       templateKey: input.templateKey,
+      layout: input.layout,
+      backgroundType: input.backgroundType,
       backgroundColor: input.backgroundColor,
+      gradientStartColor: input.gradientStartColor,
+      gradientEndColor: input.gradientEndColor,
+      gradientAngle: input.gradientAngle,
       textColor: input.textColor,
       accentColor: input.accentColor,
       buttonColor: input.buttonColor,
       buttonTextColor: input.buttonTextColor,
       fontSize: input.fontSize,
       borderRadius: input.borderRadius,
+      borderSize: input.borderSize,
+      borderColor: input.borderColor,
+      fontFamily: input.fontFamily,
+      titleFontSize: input.titleFontSize,
+      titleColor: input.titleColor,
+      subheadingFontSize: input.subheadingFontSize,
+      subheadingColor: input.subheadingColor,
+      timerFontSize: input.timerFontSize,
+      timerColor: input.timerColor,
+      legendFontSize: input.legendFontSize,
+      legendColor: input.legendColor,
+      timerStyle: input.timerStyle,
+      timerFormat: input.timerFormat,
+      timerShowLabels: input.timerShowLabels,
+      timerSurfaceColor: input.timerSurfaceColor,
+      timerSurfaceBorderColor: input.timerSurfaceBorderColor,
+      timerSurfaceBorderSize: input.timerSurfaceBorderSize,
+      timerSurfaceRadius: input.timerSurfaceRadius,
+      paddingBlock: input.paddingBlock,
+      paddingInline: input.paddingInline,
+      contentGap: input.contentGap,
+      fullWidth: input.fullWidth,
+      positionMode: input.positionMode,
       positionSticky: input.positionSticky,
       customCss: input.customCss,
       mobileEnabled: input.mobileEnabled,
@@ -525,6 +620,7 @@ export async function updateCampaignDesignForShop(
       showCloseButton: input.showCloseButton,
       showIcon: input.showIcon,
       icon: input.icon,
+      customIconUrl: input.customIconUrl,
     },
   });
 }
@@ -705,13 +801,42 @@ export async function duplicateCampaign(id: string, shopId: string) {
             design: {
               create: {
                 templateKey: campaign.design.templateKey,
+                layout: campaign.design.layout,
+                backgroundType: campaign.design.backgroundType,
                 backgroundColor: campaign.design.backgroundColor,
+                gradientStartColor: campaign.design.gradientStartColor,
+                gradientEndColor: campaign.design.gradientEndColor,
+                gradientAngle: campaign.design.gradientAngle,
                 textColor: campaign.design.textColor,
                 accentColor: campaign.design.accentColor,
                 buttonColor: campaign.design.buttonColor,
                 buttonTextColor: campaign.design.buttonTextColor,
                 fontSize: campaign.design.fontSize,
                 borderRadius: campaign.design.borderRadius,
+                borderSize: campaign.design.borderSize,
+                borderColor: campaign.design.borderColor,
+                fontFamily: campaign.design.fontFamily,
+                titleFontSize: campaign.design.titleFontSize,
+                titleColor: campaign.design.titleColor,
+                subheadingFontSize: campaign.design.subheadingFontSize,
+                subheadingColor: campaign.design.subheadingColor,
+                timerFontSize: campaign.design.timerFontSize,
+                timerColor: campaign.design.timerColor,
+                legendFontSize: campaign.design.legendFontSize,
+                legendColor: campaign.design.legendColor,
+                timerStyle: campaign.design.timerStyle,
+                timerFormat: campaign.design.timerFormat,
+                timerShowLabels: campaign.design.timerShowLabels,
+                timerSurfaceColor: campaign.design.timerSurfaceColor,
+                timerSurfaceBorderColor:
+                  campaign.design.timerSurfaceBorderColor,
+                timerSurfaceBorderSize: campaign.design.timerSurfaceBorderSize,
+                timerSurfaceRadius: campaign.design.timerSurfaceRadius,
+                paddingBlock: campaign.design.paddingBlock,
+                paddingInline: campaign.design.paddingInline,
+                contentGap: campaign.design.contentGap,
+                fullWidth: campaign.design.fullWidth,
+                positionMode: campaign.design.positionMode,
                 positionSticky: campaign.design.positionSticky,
                 customCss: campaign.design.customCss,
                 mobileEnabled: campaign.design.mobileEnabled,
@@ -719,6 +844,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 showCloseButton: campaign.design.showCloseButton,
                 showIcon: campaign.design.showIcon,
                 icon: campaign.design.icon,
+                customIconUrl: campaign.design.customIconUrl,
               },
             },
           }
@@ -818,8 +944,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 uniqueCodePrefix: campaign.discountSync.uniqueCodePrefix,
                 uniqueCodeExpiresMinutes:
                   campaign.discountSync.uniqueCodeExpiresMinutes,
-                uniqueCodeAutoApply:
-                  campaign.discountSync.uniqueCodeAutoApply,
+                uniqueCodeAutoApply: campaign.discountSync.uniqueCodeAutoApply,
                 uniqueCodeStartsAt: campaign.discountSync.uniqueCodeStartsAt,
                 uniqueCodeEndsAt: campaign.discountSync.uniqueCodeEndsAt,
               },

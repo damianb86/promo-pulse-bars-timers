@@ -50,7 +50,7 @@ export function CampaignDesignEditor({
   const navigation = useNavigation();
   const [design, setDesign] = useState(initialDesign);
   const [device, setDevice] = useState<PreviewDevice>("desktop");
-  const [placement, setPlacement] = useState<PreviewPlacement>("TOP_BAR");
+  const [placement, setPlacement] = useState<PreviewPlacement>("PRODUCT_PAGE");
   const isSubmitting = navigation.state === "submitting";
   const confirmSubmit = useConfirmSubmit({
     confirmLabel: "Save design",
@@ -72,11 +72,6 @@ export function CampaignDesignEditor({
 
   return (
     <s-section heading="Design & Preview">
-      <p className="counterpulse-section-description">
-        Tune colors, typography, layout, and preview placement so the widget
-        matches the campaign and store design.
-      </p>
-
       {errors?.form && (
         <AppAlert tone="critical" title="Design could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
@@ -119,7 +114,7 @@ export function CampaignDesignEditor({
         <div className="counterpulse-design-editor__preview">
           <div className="counterpulse-preview-toolbar">
             <DevicePreviewToggle value={device} onChange={setDevice} />
-            <label className="counterpulse-form-field">
+            <label className="counterpulse-form-field counterpulse-preview-placement-field">
               <span>Placement preview</span>
               <select
                 value={placement}

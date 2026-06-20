@@ -54,6 +54,7 @@ model Shop {
   marketCampaignRules   MarketCampaignRule[]
   recommendations       CampaignRecommendation[]
   agencyShopAccesses    AgencyShopAccess[]
+  contactRequests       ContactRequest[]
   onboardingChecklist   ShopOnboardingChecklist?
   settings              ShopSettings?
 }
@@ -171,22 +172,51 @@ model CampaignTargeting {
 }
 
 model CampaignDesign {
-  campaignId      String             @id
-  templateKey     String             @default("clean-minimal")
-  backgroundColor String             @default("#111827")
-  textColor       String             @default("#FFFFFF")
-  accentColor     String             @default("#22C55E")
-  buttonColor     String             @default("#FFFFFF")
-  buttonTextColor String             @default("#111827")
-  fontSize        Int                @default(14)
-  borderRadius    Int                @default(0)
-  positionSticky  Boolean            @default(true)
-  customCss       String?
-  mobileEnabled   Boolean            @default(true)
-  alignment       DesignAlignment    @default(CENTER)
-  showCloseButton Boolean            @default(true)
-  showIcon        Boolean            @default(true)
-  icon            CampaignDesignIcon @default(NONE)
+  campaignId              String               @id
+  templateKey             String               @default("clean-minimal")
+  layout                  DesignLayout         @default(STANDARD)
+  backgroundType          DesignBackgroundType @default(SOLID)
+  backgroundColor         String               @default("#111827")
+  gradientStartColor      String               @default("#252237")
+  gradientEndColor        String               @default("#4C4861")
+  gradientAngle           Int                  @default(90)
+  textColor               String               @default("#FFFFFF")
+  accentColor             String               @default("#22C55E")
+  buttonColor             String               @default("#FFFFFF")
+  buttonTextColor         String               @default("#111827")
+  fontSize                Int                  @default(14)
+  borderRadius            Int                  @default(0)
+  borderSize              Int                  @default(0)
+  borderColor             String               @default("#E5E7EB")
+  fontFamily              DesignFontFamily     @default(THEME)
+  titleFontSize           Int                  @default(22)
+  titleColor              String               @default("#FFFFFF")
+  subheadingFontSize      Int                  @default(14)
+  subheadingColor         String               @default("#D1D5DB")
+  timerFontSize           Int                  @default(38)
+  timerColor              String               @default("#FFFFFF")
+  legendFontSize          Int                  @default(12)
+  legendColor             String               @default("#D1D5DB")
+  timerStyle              DesignTimerStyle     @default(PLAIN)
+  timerFormat             DesignTimerFormat    @default(UNITS)
+  timerShowLabels         Boolean              @default(true)
+  timerSurfaceColor       String               @default("#FFFFFF")
+  timerSurfaceBorderColor String               @default("#D1D5DB")
+  timerSurfaceBorderSize  Int                  @default(0)
+  timerSurfaceRadius      Int                  @default(8)
+  paddingBlock            Int                  @default(20)
+  paddingInline           Int                  @default(24)
+  contentGap              Int                  @default(8)
+  fullWidth               Boolean              @default(false)
+  positionMode            DesignPositionMode   @default(FLOW)
+  positionSticky          Boolean              @default(true)
+  customCss               String?
+  mobileEnabled           Boolean              @default(true)
+  alignment               DesignAlignment      @default(CENTER)
+  showCloseButton         Boolean              @default(true)
+  showIcon                Boolean              @default(true)
+  icon                    CampaignDesignIcon   @default(NONE)
+  customIconUrl           String               @default("")
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -660,6 +690,22 @@ model AgencyShopAccess {
   @@index([role])
 }
 
+model ContactRequest {
+  id         String   @id @default(cuid())
+  shopId     String
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopDomain String
+  type       String
+  subject    String
+  message    String
+  email      String?
+  createdAt  DateTime @default(now())
+
+  @@index([shopId, createdAt])
+  @@index([shopDomain, createdAt])
+  @@index([type])
+}
+
 enum ShopPlan {
   FREE
   STARTER
@@ -916,11 +962,54 @@ enum DesignAlignment {
   RIGHT
 }
 
+enum DesignLayout {
+  STANDARD
+  BALANCED
+  INLINE
+  CTA_RIGHT
+  CTA_LEFT
+  CTA_TOP
+}
+
+enum DesignBackgroundType {
+  SOLID
+  GRADIENT
+}
+
+enum DesignFontFamily {
+  THEME
+  SYSTEM
+  SERIF
+  ROUNDED
+  MONO
+  GEOMETRIC
+  HUMANIST
+  CONDENSED
+  CASUAL
+}
+
+enum DesignTimerStyle {
+  PLAIN
+  GROUPED
+  BOXES
+}
+
+enum DesignTimerFormat {
+  UNITS
+  COLON
+}
+
+enum DesignPositionMode {
+  FLOW
+  OVERLAY
+}
+
 enum CampaignDesignIcon {
   FIRE
   CLOCK
   TRUCK
   GIFT
   TAG
+  CUSTOM
   NONE
 }

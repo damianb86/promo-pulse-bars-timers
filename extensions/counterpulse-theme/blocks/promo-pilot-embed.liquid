@@ -9,6 +9,9 @@
     data-cart-total-cents="{{ cart.total_price | default: 0 }}"
     data-cart-currency="{{ cart.currency.iso_code | default: shop.currency | escape }}"
     data-cart-token="{{ cart.token | default: '' | escape }}"
+    data-product-id="{% if product %}gid://shopify/Product/{{ product.id }}{% endif %}"
+    data-product-tags="{% if product %}{{ product.tags | join: ',' | escape }}{% endif %}"
+    data-collection-ids="{% if product %}{% for collection in product.collections %}gid://shopify/Collection/{{ collection.id }}{% unless forloop.last %},{% endunless %}{% endfor %}{% endif %}"
     data-cart-timer-src="{{ 'cart-timer.js' | asset_url }}"
     data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
     data-analytics-path="/apps/counterpulse-campaigns"
@@ -34,7 +37,9 @@
           <dt>Cart subtotal</dt>
           <dd>{{ cart.total_price | default: 0 | divided_by: 100.0 }} {{ cart.currency.iso_code | default: shop.currency | escape }}</dd>
           <dt>Placements automaticos</dt>
-          <dd>TOP_BAR, BOTTOM_BAR, CART_DRAWER</dd>
+          <dd>TOP_BAR, BOTTOM_BAR, CUSTOM_SELECTOR, CART_DRAWER</dd>
+          <dt>Product context</dt>
+          <dd>{% if product %}gid://shopify/Product/{{ product.id }}{% else %}none{% endif %}</dd>
           <dt>API ejemplo</dt>
           <dd>
             <code data-pp-debug-url>/apps/counterpulse-campaigns?shop={{ shop.permanent_domain | escape }}&amp;placement=TOP_BAR&amp;locale={{ request.locale.iso_code | default: block.settings.defaultLocale | escape }}</code>
@@ -44,7 +49,7 @@
           Embed Liquid renderizado. Esperando que carguen los assets JavaScript.
         </p>
         <p class="pp-debug__hint">
-          Si ves este panel y no aparece una barra, revisa que exista una campana ACTIVE con placement TOP_BAR, BOTTOM_BAR o CART_DRAWER y targeting compatible.
+          Si ves este panel y no aparece una barra, revisa que exista una campana ACTIVE con placement TOP_BAR, BOTTOM_BAR, CUSTOM_SELECTOR o CART_DRAWER y targeting compatible.
         </p>
       </aside>
     {% endif %}

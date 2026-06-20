@@ -285,6 +285,8 @@
       "pp-bar pp-bar--" +
       campaign.placement.toLowerCase().replace("_", "-") +
       " pp-bar--free-shipping";
+    if (design.fullWidth) bar.classList.add("pp-bar--full-width");
+    if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
     bar.dataset.campaignId = campaign.id;
     bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
@@ -294,13 +296,16 @@
     );
     setDesign(bar, design);
 
-    if (campaign.placement === "TOP_BAR" && design.positionSticky) {
+    if (
+      campaign.placement === "TOP_BAR" &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
+    ) {
       bar.classList.add("pp-bar--sticky");
     }
 
-    if (design.showIcon !== false && design.icon !== "NONE") {
-      bar.appendChild(node("span", "pp-icon", iconLabel(design.icon)));
-    }
+    var icon = renderDesignIcon(design);
+    if (icon) bar.appendChild(icon);
 
     message.className = "pp-message";
     headline.textContent = (campaign.texts || {}).headline || "Free shipping";
@@ -599,9 +604,52 @@
     );
   }
 
-  function iconLabel(icon) {
+  function renderDesignIcon(design) {
+    var icon = document.createElement("span");
+    var image;
+    var svg;
+
+    if (!design || design.showIcon === false) return null;
+
+    icon.className = "pp-icon";
+
+    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
+      image = document.createElement("img");
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.src = design.customIconUrl;
+      icon.appendChild(image);
+      return icon;
+    }
+
+    svg = getIconSvg(design.icon || "TRUCK");
+    if (!svg) return null;
+
+    icon.innerHTML = svg;
+    return icon;
+  }
+
+  function isSafeIconUrl(value) {
     return (
-      { TRUCK: "Ship", GIFT: "Gift", TAG: "Deal", FIRE: "Sale" }[icon] || "Ship"
+      typeof value === "string" &&
+      (value.charAt(0) === "/" ||
+        /^https?:\/\//i.test(value) ||
+        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
+    );
+  }
+
+  function getIconSvg(icon) {
+    return (
+      {
+        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
+        CLOCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
+        TRUCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
+        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
+      }[icon] || ""
     );
   }
 

@@ -1,21 +1,71 @@
 export type DesignAlignmentValue = "LEFT" | "CENTER" | "RIGHT";
+export type DesignLayoutValue =
+  | "STANDARD"
+  | "BALANCED"
+  | "INLINE"
+  | "CTA_RIGHT"
+  | "CTA_LEFT"
+  | "CTA_TOP";
+export type DesignBackgroundTypeValue = "SOLID" | "GRADIENT";
+export type DesignFontFamilyValue =
+  | "THEME"
+  | "SYSTEM"
+  | "SERIF"
+  | "ROUNDED"
+  | "MONO"
+  | "GEOMETRIC"
+  | "HUMANIST"
+  | "CONDENSED"
+  | "CASUAL";
+export type DesignTimerStyleValue = "PLAIN" | "GROUPED" | "BOXES";
+export type DesignTimerFormatValue = "UNITS" | "COLON";
+export type DesignPositionModeValue = "FLOW" | "OVERLAY";
 export type CampaignDesignIconValue =
   | "FIRE"
   | "CLOCK"
   | "TRUCK"
   | "GIFT"
   | "TAG"
+  | "CUSTOM"
   | "NONE";
 
 export type CampaignDesignValues = {
   templateKey: string;
+  layout: DesignLayoutValue;
+  backgroundType: DesignBackgroundTypeValue;
   backgroundColor: string;
+  gradientStartColor: string;
+  gradientEndColor: string;
+  gradientAngle: number;
   textColor: string;
   accentColor: string;
   buttonColor: string;
   buttonTextColor: string;
   fontSize: number;
   borderRadius: number;
+  borderSize: number;
+  borderColor: string;
+  fontFamily: DesignFontFamilyValue;
+  titleFontSize: number;
+  titleColor: string;
+  subheadingFontSize: number;
+  subheadingColor: string;
+  timerFontSize: number;
+  timerColor: string;
+  legendFontSize: number;
+  legendColor: string;
+  timerStyle: DesignTimerStyleValue;
+  timerFormat: DesignTimerFormatValue;
+  timerShowLabels: boolean;
+  timerSurfaceColor: string;
+  timerSurfaceBorderColor: string;
+  timerSurfaceBorderSize: number;
+  timerSurfaceRadius: number;
+  paddingBlock: number;
+  paddingInline: number;
+  contentGap: number;
+  fullWidth: boolean;
+  positionMode: DesignPositionModeValue;
   positionSticky: boolean;
   mobileEnabled: boolean;
   customCss: string;
@@ -23,6 +73,7 @@ export type CampaignDesignValues = {
   showCloseButton: boolean;
   showIcon: boolean;
   icon: CampaignDesignIconValue;
+  customIconUrl: string;
 };
 
 export type CampaignDesignErrors = Partial<
@@ -37,13 +88,41 @@ export type CampaignDesignTemplate = CampaignDesignValues & {
 
 export const defaultCampaignDesignValues: CampaignDesignValues = {
   templateKey: "clean-minimal",
+  layout: "STANDARD",
+  backgroundType: "SOLID",
   backgroundColor: "#FFFFFF",
+  gradientStartColor: "#252237",
+  gradientEndColor: "#4C4861",
+  gradientAngle: 90,
   textColor: "#111827",
   accentColor: "#2563EB",
   buttonColor: "#111827",
   buttonTextColor: "#FFFFFF",
   fontSize: 14,
   borderRadius: 4,
+  borderSize: 1,
+  borderColor: "#E5E7EB",
+  fontFamily: "THEME",
+  titleFontSize: 22,
+  titleColor: "#111827",
+  subheadingFontSize: 14,
+  subheadingColor: "#4B5563",
+  timerFontSize: 38,
+  timerColor: "#111827",
+  legendFontSize: 12,
+  legendColor: "#6B7280",
+  timerStyle: "PLAIN",
+  timerFormat: "UNITS",
+  timerShowLabels: true,
+  timerSurfaceColor: "#FFFFFF",
+  timerSurfaceBorderColor: "#D1D5DB",
+  timerSurfaceBorderSize: 0,
+  timerSurfaceRadius: 8,
+  paddingBlock: 20,
+  paddingInline: 24,
+  contentGap: 8,
+  fullWidth: false,
+  positionMode: "FLOW",
   positionSticky: false,
   mobileEnabled: true,
   customCss: "",
@@ -51,9 +130,94 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   showCloseButton: true,
   showIcon: false,
   icon: "NONE",
+  customIconUrl: "",
 };
 
 export const campaignDesignTemplates: CampaignDesignTemplate[] = [
+  {
+    ...defaultCampaignDesignValues,
+    templateKey: "dawn",
+    label: "Dawn",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#EAFBFF",
+    gradientStartColor: "#45E4D9",
+    gradientEndColor: "#B975F4",
+    gradientAngle: 135,
+    textColor: "#173A7A",
+    titleColor: "#173A7A",
+    subheadingColor: "#173A7A",
+    timerColor: "#FFFFFF",
+    legendColor: "#EAFBFF",
+    accentColor: "#FFFFFF",
+    buttonColor: "#173A7A",
+    buttonTextColor: "#FFFFFF",
+    borderSize: 0,
+    borderRadius: 8,
+    titleFontSize: 22,
+    subheadingFontSize: 14,
+    timerFontSize: 42,
+    legendFontSize: 12,
+    timerSurfaceColor: "#173A7A",
+    timerSurfaceBorderColor: "#FFFFFF",
+    timerSurfaceRadius: 8,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    templateKey: "fifty-shades",
+    label: "50 Shades",
+    layout: "BALANCED",
+    backgroundColor: "#313E50",
+    textColor: "#F8FAFC",
+    titleColor: "#F8FAFC",
+    subheadingColor: "#C8D0DC",
+    timerColor: "#FFFFFF",
+    legendColor: "#B8C0CE",
+    accentColor: "#94A3B8",
+    buttonColor: "#F8FAFC",
+    buttonTextColor: "#313E50",
+    borderSize: 0,
+    borderRadius: 8,
+    titleFontSize: 18,
+    subheadingFontSize: 12,
+    timerFontSize: 22,
+    legendFontSize: 11,
+    paddingBlock: 14,
+    paddingInline: 18,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    templateKey: "love",
+    label: "Love",
+    layout: "INLINE",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#991B1B",
+    gradientStartColor: "#E63946",
+    gradientEndColor: "#FF35A2",
+    gradientAngle: 90,
+    textColor: "#FFFFFF",
+    titleColor: "#172554",
+    subheadingColor: "#FFFFFF",
+    timerColor: "#FFFFFF",
+    legendColor: "#FFE4F0",
+    accentColor: "#172554",
+    buttonColor: "#172554",
+    buttonTextColor: "#FFFFFF",
+    borderSize: 0,
+    borderRadius: 8,
+    fontSize: 13,
+    titleFontSize: 14,
+    subheadingFontSize: 12,
+    timerFontSize: 14,
+    legendFontSize: 11,
+    timerFormat: "COLON",
+    timerShowLabels: false,
+    paddingBlock: 9,
+    paddingInline: 18,
+    contentGap: 6,
+    timerSurfaceColor: "#172554",
+    timerSurfaceBorderColor: "#FFFFFF",
+    timerSurfaceRadius: 8,
+  },
   {
     ...defaultCampaignDesignValues,
     templateKey: "black-friday",
@@ -65,6 +229,11 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonTextColor: "#050505",
     fontSize: 15,
     borderRadius: 0,
+    borderSize: 0,
+    titleColor: "#FFFFFF",
+    subheadingColor: "#D1D5DB",
+    timerColor: "#F59E0B",
+    legendColor: "#FDE68A",
     positionSticky: true,
     showIcon: true,
     icon: "TAG",
@@ -79,7 +248,19 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#FFFFFF",
     buttonTextColor: "#7F1D1D",
     fontSize: 15,
+    backgroundType: "GRADIENT",
+    gradientStartColor: "#7F1D1D",
+    gradientEndColor: "#DC2626",
+    gradientAngle: 135,
+    titleColor: "#FFFFFF",
+    subheadingColor: "#FEE2E2",
+    timerColor: "#FDE047",
+    legendColor: "#FECACA",
+    borderSize: 0,
     borderRadius: 6,
+    timerSurfaceColor: "#450A0A",
+    timerSurfaceBorderColor: "#FDE047",
+    timerSurfaceRadius: 8,
     positionSticky: true,
     showIcon: true,
     icon: "FIRE",
@@ -94,6 +275,15 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#047857",
     buttonTextColor: "#FFFFFF",
     borderRadius: 8,
+    titleColor: "#064E3B",
+    subheadingColor: "#047857",
+    timerColor: "#065F46",
+    legendColor: "#047857",
+    timerStyle: "BOXES",
+    timerSurfaceColor: "#FFFFFF",
+    timerSurfaceBorderColor: "#A7F3D0",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 8,
     showIcon: true,
     icon: "TRUCK",
   },
@@ -107,6 +297,15 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#2563EB",
     buttonTextColor: "#FFFFFF",
     borderRadius: 6,
+    titleColor: "#1E3A8A",
+    subheadingColor: "#1D4ED8",
+    timerColor: "#1E40AF",
+    legendColor: "#3B82F6",
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#DBEAFE",
+    timerSurfaceBorderColor: "#BFDBFE",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 10,
     showIcon: true,
     icon: "CLOCK",
   },
@@ -120,6 +319,10 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#C2410C",
     buttonTextColor: "#FFFFFF",
     alignment: "LEFT",
+    titleColor: "#7C2D12",
+    subheadingColor: "#C2410C",
+    timerColor: "#EA580C",
+    legendColor: "#9A3412",
     showIcon: true,
     icon: "TAG",
   },
@@ -138,6 +341,20 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#F9FAFB",
     buttonTextColor: "#111827",
     borderRadius: 8,
+    backgroundType: "GRADIENT",
+    gradientStartColor: "#111827",
+    gradientEndColor: "#312E81",
+    gradientAngle: 135,
+    titleColor: "#F9FAFB",
+    subheadingColor: "#C4B5FD",
+    timerColor: "#FFFFFF",
+    legendColor: "#DDD6FE",
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#1F2937",
+    timerSurfaceBorderColor: "#6D28D9",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 12,
+    borderSize: 0,
     showIcon: true,
     icon: "GIFT",
   },
@@ -151,8 +368,112 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     buttonColor: "#166534",
     buttonTextColor: "#FFFFFF",
     borderRadius: 10,
+    titleColor: "#14532D",
+    subheadingColor: "#166534",
+    timerColor: "#DC2626",
+    legendColor: "#15803D",
     showIcon: true,
     icon: "GIFT",
+  },
+];
+
+export const designLayoutOptions: Array<{
+  value: DesignLayoutValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "STANDARD",
+    label: "Standard",
+    description: "Stacked card with title, subtitle, timer, and unit labels.",
+  },
+  {
+    value: "BALANCED",
+    label: "Balanced",
+    description: "Copy on the left and timer on the right for compact blocks.",
+  },
+  {
+    value: "INLINE",
+    label: "Inline",
+    description: "Single-line bar for compact announcement placements.",
+  },
+  {
+    value: "CTA_RIGHT",
+    label: "Button right",
+    description: "Copy and timer stay left while the action sits on the right.",
+  },
+  {
+    value: "CTA_LEFT",
+    label: "Button left",
+    description: "Action is emphasized first with the content beside it.",
+  },
+  {
+    value: "CTA_TOP",
+    label: "Button top",
+    description:
+      "Action is placed above copy and timer for mobile-first offers.",
+  },
+];
+
+export const designBackgroundTypeOptions: Array<{
+  value: DesignBackgroundTypeValue;
+  label: string;
+}> = [
+  { value: "SOLID", label: "Single color background" },
+  { value: "GRADIENT", label: "Gradient background" },
+];
+
+export const designFontFamilyOptions: Array<{
+  value: DesignFontFamilyValue;
+  label: string;
+}> = [
+  { value: "THEME", label: "Use your theme fonts" },
+  { value: "SYSTEM", label: "Modern system" },
+  { value: "SERIF", label: "Editorial serif" },
+  { value: "ROUNDED", label: "Rounded" },
+  { value: "MONO", label: "Mono timer" },
+  { value: "GEOMETRIC", label: "Geometric" },
+  { value: "HUMANIST", label: "Humanist" },
+  { value: "CONDENSED", label: "Condensed" },
+  { value: "CASUAL", label: "Soft sans" },
+];
+
+export const designTimerFormatOptions: Array<{
+  value: DesignTimerFormatValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "UNITS",
+    label: "Units",
+    description: "Each unit is shown separately.",
+  },
+  {
+    value: "COLON",
+    label: "Colon",
+    description: "Time is shown as HH:MM:SS.",
+  },
+];
+
+export const designTimerStyleOptions: Array<{
+  value: DesignTimerStyleValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "PLAIN",
+    label: "Plain",
+    description: "Timer text is shown without an extra container.",
+  },
+  {
+    value: "GROUPED",
+    label: "Grouped",
+    description: "The full timer sits inside one styled container.",
+  },
+  {
+    value: "BOXES",
+    label: "Boxes",
+    description: "Each time unit is shown in its own styled box.",
   },
 ];
 
@@ -165,6 +486,14 @@ export const designAlignmentOptions: Array<{
   { value: "RIGHT", label: "Right" },
 ];
 
+export const designPositionModeOptions: Array<{
+  value: DesignPositionModeValue;
+  label: string;
+}> = [
+  { value: "FLOW", label: "Occupies space" },
+  { value: "OVERLAY", label: "Overlay page" },
+];
+
 export const designIconOptions: Array<{
   value: CampaignDesignIconValue;
   label: string;
@@ -174,6 +503,7 @@ export const designIconOptions: Array<{
   { value: "TRUCK", label: "Truck" },
   { value: "GIFT", label: "Gift" },
   { value: "TAG", label: "Tag" },
+  { value: "CUSTOM", label: "Custom" },
   { value: "NONE", label: "None" },
 ];
 

@@ -12,9 +12,14 @@ import {
   type PlacementTypeValue,
 } from "../types/campaign-options";
 import {
+  countrySelectionOptions,
+  productSelectionOptions,
+  splitCampaignList,
   defaultCampaignFormValues,
   type CampaignFormErrors,
   type CampaignFormValues,
+  type CountrySelectionValue,
+  type ProductSelectionValue,
 } from "../types/campaign-form";
 
 export type ParsedCampaignForm = {
@@ -39,6 +44,8 @@ const campaignEditableStatuses = new Set(
 const placementTypes = new Set(
   placementTypeOptions.map((option) => option.value),
 );
+const productSelections = new Set<string>(productSelectionOptions);
+const countrySelections = new Set<string>(countrySelectionOptions);
 
 export function parseCampaignFormData(
   formData: FormData,
@@ -50,6 +57,21 @@ export function parseCampaignFormData(
     campaignTypes,
     defaultCampaignFormValues.type,
   ) as CampaignTypeValue;
+  const productSelection = readOption(
+    formData,
+    "productSelection",
+    productSelections,
+    defaultCampaignFormValues.productSelection,
+  ) as ProductSelectionValue;
+  const placementType =
+    productSelection === "CUSTOM_POSITION"
+      ? "CUSTOM_SELECTOR"
+      : (readOption(
+          formData,
+          "placementType",
+          placementTypes,
+          getDefaultPlacementForCampaignType(type),
+        ) as PlacementTypeValue);
 
   const values: CampaignFormValues = {
     goal: readOption(
@@ -71,16 +93,24 @@ export function parseCampaignFormData(
         : campaignCreateStatuses,
       defaultCampaignFormValues.status,
     ) as EditableCampaignStatusValue,
-    placementType: readOption(
-      formData,
-      "placementType",
-      placementTypes,
-      getDefaultPlacementForCampaignType(type),
-    ) as PlacementTypeValue,
+    placementType,
     headline: readString(formData, "headline"),
     subheadline: readString(formData, "subheadline"),
     ctaText: readString(formData, "ctaText"),
     ctaUrl: readString(formData, "ctaUrl"),
+    productSelection,
+    productIds: readString(formData, "productIds"),
+    excludeProductIds: readString(formData, "excludeProductIds"),
+    collectionIds: readString(formData, "collectionIds"),
+    productTags: readString(formData, "productTags"),
+    customSelector: readString(formData, "customSelector"),
+    countrySelection: readOption(
+      formData,
+      "countrySelection",
+      countrySelections,
+      defaultCampaignFormValues.countrySelection,
+    ) as CountrySelectionValue,
+    countries: readString(formData, "countries"),
   };
 
   const errors: CampaignFormErrors = {};
@@ -101,6 +131,41 @@ export function parseCampaignFormData(
 
   if (values.ctaUrl && !isValidCtaUrl(values.ctaUrl)) {
     errors.ctaUrl = "CTA URL must be a valid absolute URL or storefront path.";
+  }
+
+  if (
+    values.productSelection === "SPECIFIC_PRODUCTS" &&
+    splitCampaignList(values.productIds).length === 0
+  ) {
+    errors.productIds = "Add at least one product ID.";
+  }
+
+  if (
+    values.productSelection === "COLLECTIONS" &&
+    splitCampaignList(values.collectionIds).length === 0
+  ) {
+    errors.collectionIds = "Add at least one collection ID.";
+  }
+
+  if (
+    values.productSelection === "TAGS" &&
+    splitCampaignList(values.productTags).length === 0
+  ) {
+    errors.productTags = "Add at least one product tag.";
+  }
+
+  if (
+    values.countrySelection === "SPECIFIC_COUNTRIES" &&
+    splitCampaignList(values.countries).length === 0
+  ) {
+    errors.countries = "Add at least one country code.";
+  }
+
+  if (
+    values.productSelection === "CUSTOM_POSITION" &&
+    values.customSelector.length > 120
+  ) {
+    errors.customSelector = "Keep the selector under 120 characters.";
   }
 
   if (values.status === "ACTIVE") {

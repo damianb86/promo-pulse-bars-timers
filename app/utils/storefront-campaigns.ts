@@ -210,7 +210,7 @@ function getMatchingPlacement(
   return (
     enabledPlacements.find(
       (placement) => placement.placementType === context.placement,
-    ) ?? null
+    ) ?? (context.campaignId ? (enabledPlacements[0] ?? null) : null)
   );
 }
 
@@ -272,7 +272,10 @@ function isTargetingEligible(
       jsonStringList(targeting.utmSources),
       context.utmSource,
     ) &&
-    matchesOptionalExactList(jsonStringList(targeting.devices), context.device) &&
+    matchesOptionalExactList(
+      jsonStringList(targeting.devices),
+      context.device,
+    ) &&
     campaignMatchesBehaviorTargeting(
       targeting.behaviorRules,
       context.behaviorProfile,

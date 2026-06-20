@@ -71,10 +71,12 @@ describe("campaign design validation", () => {
   it("applies templates without carrying over visual defaults accidentally", () => {
     const values = applyCampaignDesignTemplate("flash-sale", {
       ...defaultCampaignDesignValues,
+      layout: "CTA_LEFT",
       customCss: ".banner { letter-spacing: 0; }",
     });
 
     expect(values.templateKey).toBe("flash-sale");
+    expect(values.layout).toBe("CTA_LEFT");
     expect(values.backgroundColor).toBe("#7F1D1D");
     expect(values.customCss).toBe(".banner { letter-spacing: 0; }");
   });

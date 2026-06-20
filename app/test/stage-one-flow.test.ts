@@ -152,6 +152,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       type: CampaignType.COUNTDOWN_BAR,
       goal: CampaignGoal.FLASH_SALE,
       placements: [{ placementType: PlacementType.TOP_BAR }],
+      design: {},
       translations: [
         {
           locale: "en",
@@ -187,6 +188,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         behaviorRules: null,
       },
       design: {
+        ...draftCampaign.design!,
         campaignId: draftCampaign.id,
         templateKey: "flash-sale",
         backgroundColor: "#7F1D1D",
@@ -435,9 +437,9 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         }),
       }),
     );
-    expect(body.campaigns.map((campaign: { id: string }) => campaign.id)).toEqual(
-      ["behavior-campaign"],
-    );
+    expect(
+      body.campaigns.map((campaign: { id: string }) => campaign.id),
+    ).toEqual(["behavior-campaign"]);
   });
 
   it("validates storefront API input and disables cache for dynamic cart or UTM context", async () => {

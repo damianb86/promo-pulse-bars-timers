@@ -18,6 +18,7 @@ const navigationItems = [
   { label: "Agency", href: "/app/agency" },
   { label: "Settings", href: "/app/settings" },
   { label: "Billing", href: "/app/billing" },
+  { label: "Help", href: "/app/help" },
 ];
 
 export function AppShell({ apiKey, children }: AppShellProps) {

@@ -401,12 +401,9 @@
     );
     setDesign(card, campaign.design || {}, config.alignment);
 
-    if (
-      config.showIcon &&
-      (!campaign.design || campaign.design.showIcon !== false) &&
-      (!campaign.design || campaign.design.icon !== "NONE")
-    ) {
-      card.appendChild(node("span", "pp-icon", iconLabel(campaign)));
+    if (config.showIcon) {
+      var icon = renderCampaignIcon(campaign);
+      if (icon) card.appendChild(icon);
     }
 
     card.appendChild(renderMessage(campaign, timerState, config));
@@ -500,7 +497,9 @@
     message.appendChild(node("strong", "", headline));
     if (detail) message.appendChild(node("span", "", detail));
     if (timerState.isActive) {
-      message.appendChild(renderCountdown(timerState.remainingMs));
+      message.appendChild(
+        renderCountdown(timerState.remainingMs, campaign.design || {}),
+      );
     }
 
     return message;
@@ -557,8 +556,8 @@
     return ctas;
   }
 
-  function renderCountdown(ms) {
-    var countdown = node("span", "pp-countdown", formatTime(ms));
+  function renderCountdown(ms, design) {
+    var countdown = node("span", "pp-countdown", formatTime(ms, design));
 
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
@@ -585,7 +584,10 @@
         return;
       }
 
-      countdown.textContent = formatTime(state.remainingMs);
+      countdown.textContent = formatTime(
+        state.remainingMs,
+        campaign.design || {},
+      );
     }, 1000);
   }
 
@@ -869,16 +871,55 @@
     return campaign.name || "Cart offer";
   }
 
-  function iconLabel(campaign) {
-    var icon = campaign.design && campaign.design.icon;
+  function renderCampaignIcon(campaign) {
+    var design = campaign.design || {};
+    var icon = document.createElement("span");
+    var image;
+    var svg;
+    var fallbackIcon =
+      campaign.type === "FREE_SHIPPING_GOAL" ? "TRUCK" : "CLOCK";
+
+    if (design.showIcon === false) return null;
+
+    icon.className = "pp-icon";
+
+    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
+      image = document.createElement("img");
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.src = design.customIconUrl;
+      icon.appendChild(image);
+      return icon;
+    }
+
+    svg = getIconSvg(design.icon || fallbackIcon);
+    if (!svg) return null;
+
+    icon.innerHTML = svg;
+    return icon;
+  }
+
+  function isSafeIconUrl(value) {
+    return (
+      typeof value === "string" &&
+      (value.charAt(0) === "/" ||
+        /^https?:\/\//i.test(value) ||
+        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
+    );
+  }
+
+  function getIconSvg(icon) {
     return (
       {
-        FIRE: "Sale",
-        CLOCK: "Time",
-        TRUCK: "Ship",
-        GIFT: "Gift",
-        TAG: "Deal",
-      }[icon] || (campaign.type === "FREE_SHIPPING_GOAL" ? "Ship" : "Time")
+        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
+        CLOCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
+        TRUCK:
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
+        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
+      }[icon] || ""
     );
   }
 
@@ -944,15 +985,37 @@
     return date && !Number.isNaN(date.getTime()) ? date : null;
   }
 
-  function formatTime(ms) {
+  function formatTime(ms, design) {
     var total = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(total / 86400);
     var hours = Math.floor((total % 86400) / 3600);
     var minutes = Math.floor((total % 3600) / 60);
     var seconds = total % 60;
+    var units;
 
-    if (days > 0) return days + "d " + pad(hours) + "h " + pad(minutes) + "m";
+    if (design && design.timerFormat === "UNITS") {
+      units = [];
+      if (days > 0) units.push(formatTimerUnit(days, "Day", design));
+      units.push(
+        formatTimerUnit(
+          days > 0 ? hours : Math.floor(total / 3600),
+          "Hr",
+          design,
+        ),
+      );
+      units.push(formatTimerUnit(minutes, "Min", design));
+      units.push(formatTimerUnit(seconds, "Sec", design));
+      return units.join(" ");
+    }
+
+    if (days > 0)
+      return [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":");
     return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  }
+
+  function formatTimerUnit(value, label, design) {
+    if (design && design.timerShowLabels === false) return pad(value);
+    return pad(value) + " " + label + (value === 1 ? "" : "s");
   }
 
   function safeQuerySelector(selector) {

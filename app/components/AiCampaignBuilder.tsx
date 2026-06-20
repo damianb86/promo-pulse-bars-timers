@@ -236,16 +236,19 @@ export function AiCampaignBuilder({
 function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   const payload = JSON.stringify(suggestion);
 
-  setFieldValue("aiSuggestionJson", payload);
-  setChoiceValue("goal", suggestion.campaign.goal);
-  setChoiceValue("type", suggestion.campaign.type);
-  setChoiceValue("placementType", suggestion.campaign.placementType);
+  setRadioValue("goal", suggestion.campaign.goal);
+  setFieldValue("type", suggestion.campaign.type);
+  setFieldValue("placementType", suggestion.campaign.placementType);
   setFieldValue("name", suggestion.campaign.name);
   setFieldValue("status", "DRAFT");
   setFieldValue("headline", suggestion.campaign.headline);
   setFieldValue("subheadline", suggestion.campaign.subheadline);
   setFieldValue("ctaText", suggestion.campaign.ctaText);
   setFieldValue("ctaUrl", suggestion.campaign.ctaUrl);
+  setFieldValue("aiSuggestionJson", payload);
+  window.requestAnimationFrame(() =>
+    setFieldValue("aiSuggestionJson", payload),
+  );
 }
 
 function setFieldValue(name: string, value: string) {
@@ -256,23 +259,46 @@ function setFieldValue(name: string, value: string) {
 
   if (!element) return;
 
-  element.value = value;
+  setNativeValue(element, value);
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-function setChoiceValue(name: string, value: string) {
-  setFieldValue(name, value);
-
+function setRadioValue(name: string, value: string) {
   const campaignForm = document.querySelector("[data-campaign-form]");
   const radios = campaignForm?.querySelectorAll<HTMLInputElement>(
     `input[type="radio"][name="${name}"]`,
   );
+  const selectedRadio = Array.from(radios ?? []).find(
+    (radio) => radio.value === value,
+  );
 
-  radios?.forEach((radio) => {
-    radio.checked = radio.value === value;
-    radio.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  if (!selectedRadio) return;
+
+  if (selectedRadio.checked) {
+    selectedRadio.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+
+  selectedRadio.click();
+}
+
+function setNativeValue(
+  element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  value: string,
+) {
+  const prototype = Object.getPrototypeOf(element) as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+    | HTMLSelectElement;
+  const valueSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+
+  if (valueSetter) {
+    valueSetter.call(element, value);
+    return;
+  }
+
+  element.value = value;
 }
 
 function PreviewItem({ label, value }: { label: string; value: string }) {

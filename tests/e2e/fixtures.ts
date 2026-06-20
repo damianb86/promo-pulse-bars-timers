@@ -173,6 +173,8 @@ function isIgnoredConsoleError(message: string) {
   return (
     message.includes(
       "App Bridge Next: missing required configuration fields: shop",
-    ) || message.includes("Outdated Optimize Dep")
+    ) ||
+    message.includes("Outdated Optimize Dep") ||
+    message.includes("Failed to fetch manifest patches")
   );
 }

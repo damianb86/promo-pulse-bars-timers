@@ -18,7 +18,10 @@ test("design changes update live preview and persist", async ({
   await page.locator('input[name="backgroundColor"]').fill("#123456");
   await page.locator('input[name="fontSize"]').fill("18");
   await page.locator('input[name="borderRadius"]').fill("12");
-  await page.getByRole("button", { name: "Mobile" }).click();
+  await page
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
 
   const preview = page.locator(".counterpulse-preview-promo").first();
   await expect(preview).toContainText("Sale ends soon");

@@ -8,10 +8,23 @@ export type CampaignEditorSection = {
 };
 
 type CampaignEditorLayoutProps = {
+  actionBar?: {
+    campaignSectionKey?: string;
+    formId: string;
+    goalLabel: string;
+    placementLabel: string;
+    statusLabel: string;
+    submitLabel: string;
+    submittingLabel?: string;
+    isSubmitting?: boolean;
+  };
   sections: CampaignEditorSection[];
 };
 
-export function CampaignEditorLayout({ sections }: CampaignEditorLayoutProps) {
+export function CampaignEditorLayout({
+  actionBar,
+  sections,
+}: CampaignEditorLayoutProps) {
   const [activeSectionKey, setActiveSectionKey] = useState(
     () => sections[0]?.key ?? "",
   );
@@ -22,6 +35,43 @@ export function CampaignEditorLayout({ sections }: CampaignEditorLayoutProps) {
 
   return (
     <div className="counterpulse-editor-workspace">
+      {actionBar && (
+        <div className="counterpulse-editor-actionbar">
+          <div>
+            <p className="counterpulse-kicker">Campaign controls</p>
+            <div className="counterpulse-create-status">
+              <span>{actionBar.statusLabel}</span>
+              <span>{actionBar.goalLabel}</span>
+              <span>{actionBar.placementLabel}</span>
+            </div>
+          </div>
+          <div className="counterpulse-create-actions">
+            <button
+              className="counterpulse-button-secondary"
+              type="button"
+              onClick={() => {
+                setActiveSectionKey(actionBar.campaignSectionKey ?? "campaign");
+                window.dispatchEvent(
+                  new CustomEvent("counterpulse:campaign-review"),
+                );
+              }}
+            >
+              Review
+            </button>
+            <button
+              className="counterpulse-button"
+              data-testid="campaign-save-button"
+              form={actionBar.formId}
+              type="submit"
+            >
+              {actionBar.isSubmitting
+                ? (actionBar.submittingLabel ?? "Saving...")
+                : actionBar.submitLabel}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         className="counterpulse-editor-tabs"
         aria-label="Campaign editor sections"

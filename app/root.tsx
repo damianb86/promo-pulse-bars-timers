@@ -1,4 +1,11 @@
+import type { LinksFunction } from "react-router";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
+
+import dashboardStylesHref from "./components/dashboard.css?url";
+
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: dashboardStylesHref },
+];
 
 export default function App() {
   return (

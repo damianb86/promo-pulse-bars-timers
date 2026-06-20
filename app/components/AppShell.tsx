@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 
-import "./dashboard.css";
-
 type AppShellProps = {
   apiKey: string;
   children: ReactNode;

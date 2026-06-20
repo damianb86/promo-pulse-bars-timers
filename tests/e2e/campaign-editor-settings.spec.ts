@@ -356,9 +356,8 @@ test("advanced discount rules can be created from the campaign editor", async ({
   await form.getByLabel("Rule type").selectOption("TIERED_DISCOUNT");
   await form.getByLabel("Status").selectOption("ACTIVE");
   await form.getByLabel("Discount value (%)").fill("10");
-  await form
-    .getByLabel("Thresholds JSON")
-    .fill('[{"minimumSubtotal":100,"discountValue":15}]');
+  await form.getByLabel("Tier 1 minimum subtotal").fill("100");
+  await form.getByLabel("Tier 1 discount percent").fill("15");
 
   await Promise.all([
     page.waitForResponse(

@@ -15,7 +15,7 @@ const env = {
     `http://localhost:${process.env.PORT || process.env.E2E_PORT || "31338"}`,
   SCOPES:
     process.env.SCOPES ||
-    "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events",
+    "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events,read_markets,write_markets",
 };
 
 await run("npm", ["exec", "prisma", "generate"], env);

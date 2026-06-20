@@ -29,9 +29,27 @@ type EmailTimerEditorProps = {
 };
 
 const expiredBehaviorOptions = [
-  { label: "Show expired image", value: "SHOW_EXPIRED" },
-  { label: "Show zero timer", value: "SHOW_ZERO" },
-  { label: "Transparent pixel", value: "HIDE" },
+  {
+    description: "Keep a branded fallback visible after the offer ends.",
+    label: "Show expired image",
+    value: "SHOW_EXPIRED",
+  },
+  {
+    description: "Render 00:00:00 while preserving the timer size.",
+    label: "Show zero timer",
+    value: "SHOW_ZERO",
+  },
+  {
+    description: "Return a 1px transparent image for expired emails.",
+    label: "Transparent pixel",
+    value: "HIDE",
+  },
+];
+
+const sizePresets = [
+  { height: 140, label: "Compact", width: 480 },
+  { height: 180, label: "Standard", width: 600 },
+  { height: 220, label: "Hero", width: 760 },
 ];
 
 export function EmailTimerEditor({
@@ -41,6 +59,8 @@ export function EmailTimerEditor({
 }: EmailTimerEditorProps) {
   const navigation = useNavigation();
   const [copiedValue, setCopiedValue] = useState("");
+  const [size, setSize] = useState({ height: 180, width: 600 });
+  const [expiredBehavior, setExpiredBehavior] = useState("SHOW_EXPIRED");
   const isSubmitting = navigation.state === "submitting";
 
   const copyText = async (value: string, key: string) => {
@@ -48,6 +68,12 @@ export function EmailTimerEditor({
 
     await navigator.clipboard.writeText(value);
     setCopiedValue(key);
+  };
+  const updateSize = (field: "height" | "width", value: string) => {
+    setSize((current) => ({
+      ...current,
+      [field]: Number(value),
+    }));
   };
 
   return (
@@ -69,41 +95,97 @@ export function EmailTimerEditor({
         <Form method="post" className="counterpulse-form">
           <input name="_action" type="hidden" value="createEmailTimer" />
 
-          <div className="counterpulse-form-grid">
-            <FormField label="Width" error={errors?.width}>
-              <input
-                name="emailTimerWidth"
-                type="number"
-                min="240"
-                max="1200"
-                step="1"
-                defaultValue="600"
+          <div className="counterpulse-panel-grid">
+            <div className="counterpulse-config-card">
+              <PanelHeader
+                eyebrow="Image"
+                title="Email-safe canvas"
+                description="The timer is a static PNG URL, so it works in Klaviyo, Omnisend, Mailchimp, and plain email HTML."
               />
-            </FormField>
-
-            <FormField label="Height" error={errors?.height}>
-              <input
-                name="emailTimerHeight"
-                type="number"
-                min="80"
-                max="400"
-                step="1"
-                defaultValue="180"
-              />
-            </FormField>
-
-            <FormField label="Expired behavior">
-              <select
-                name="emailTimerExpiredBehavior"
-                defaultValue="SHOW_EXPIRED"
-              >
-                {expiredBehaviorOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+              <div className="counterpulse-preset-row">
+                {sizePresets.map((preset) => (
+                  <button
+                    aria-pressed={
+                      size.width === preset.width &&
+                      size.height === preset.height
+                    }
+                    className="counterpulse-preset-button"
+                    key={preset.label}
+                    type="button"
+                    onClick={() =>
+                      setSize({ height: preset.height, width: preset.width })
+                    }
+                  >
+                    <strong>{preset.label}</strong>
+                    <span>
+                      {preset.width} x {preset.height}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </FormField>
+              </div>
+              <div className="counterpulse-form-grid">
+                <FormField label="Width" error={errors?.width}>
+                  <input
+                    name="emailTimerWidth"
+                    type="number"
+                    min="240"
+                    max="1200"
+                    step="1"
+                    value={size.width}
+                    onChange={(event) =>
+                      updateSize("width", event.currentTarget.value)
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Height" error={errors?.height}>
+                  <input
+                    name="emailTimerHeight"
+                    type="number"
+                    min="80"
+                    max="400"
+                    step="1"
+                    value={size.height}
+                    onChange={(event) =>
+                      updateSize("height", event.currentTarget.value)
+                    }
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            <div className="counterpulse-config-card">
+              <PanelHeader
+                eyebrow="Fallback"
+                title="After expiration"
+                description="Email clients cannot run JavaScript, so the image URL decides what expired subscribers see."
+              />
+              <div className="counterpulse-choice-list">
+                {expiredBehaviorOptions.map((option) => {
+                  const inputId = `email-timer-expired-${option.value}`;
+
+                  return (
+                    <div
+                      className="counterpulse-choice-card"
+                      key={option.value}
+                    >
+                      <input
+                        checked={expiredBehavior === option.value}
+                        id={inputId}
+                        name="emailTimerExpiredBehavior"
+                        type="radio"
+                        value={option.value}
+                        onChange={() => setExpiredBehavior(option.value)}
+                      />
+                      <label htmlFor={inputId}>
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="counterpulse-actions">
@@ -118,14 +200,21 @@ export function EmailTimerEditor({
         {timers.length > 0 ? (
           <div className="counterpulse-stack">
             {timers.map((timer) => (
-              <div className="counterpulse-card" key={timer.id}>
-                <div className="counterpulse-form-grid">
-                  <div>
+              <div className="counterpulse-config-card" key={timer.id}>
+                <div className="counterpulse-email-timer-card">
+                  <div className="counterpulse-email-timer-card__preview">
                     <img
                       alt="Email countdown preview"
                       src={timer.imageUrl}
                       width={Math.min(timer.width, 360)}
                     />
+                    <div className="counterpulse-detail-list">
+                      <span>
+                        {timer.width} x {timer.height}
+                      </span>
+                      <span>{formatEnum(timer.expiredBehavior)}</span>
+                      <span>{timer.endsAt || "No fixed end"}</span>
+                    </div>
                   </div>
                   <div className="counterpulse-stack">
                     <FormField label="Email timer URL">
@@ -165,29 +254,6 @@ export function EmailTimerEditor({
                     </button>
                   </div>
                 </s-box>
-
-                <s-box paddingBlockStart="base">
-                  <table className="counterpulse-table">
-                    <thead>
-                      <tr>
-                        <th>Size</th>
-                        <th>Mode</th>
-                        <th>Expires</th>
-                        <th>Expired behavior</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>
-                          {timer.width} x {timer.height}
-                        </td>
-                        <td>{timer.mode}</td>
-                        <td>{timer.endsAt || "Never"}</td>
-                        <td>{timer.expiredBehavior}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </s-box>
               </div>
             ))}
           </div>
@@ -196,6 +262,26 @@ export function EmailTimerEditor({
         )}
       </s-box>
     </s-section>
+  );
+}
+
+function PanelHeader({
+  description,
+  eyebrow,
+  title,
+}: {
+  description: string;
+  eyebrow: string;
+  title: string;
+}) {
+  return (
+    <div className="counterpulse-panel-heading counterpulse-panel-heading--compact">
+      <div>
+        <p className="counterpulse-kicker">{eyebrow}</p>
+        <h3>{title}</h3>
+        <p className="counterpulse-panel-description">{description}</p>
+      </div>
+    </div>
   );
 }
 
@@ -215,4 +301,12 @@ function FormField({
       {error && <small className="counterpulse-field-error">{error}</small>}
     </label>
   );
+}
+
+function formatEnum(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData } from "react-router";
+import { useActionData, useLoaderData, useNavigation } from "react-router";
 import {
   AdvancedDiscountRuleStatus,
   AdvancedDiscountRuleType,
@@ -196,6 +196,7 @@ import {
   campaignEditableStatusOptions,
   campaignGoalOptions,
   campaignTypeOptions,
+  formatCampaignOption,
   getDefaultPlacementForCampaignType,
   placementTypeOptions,
   type CampaignGoalValue,
@@ -1456,12 +1457,32 @@ export default function EditCampaignPage() {
     lockedFeatures,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionData | undefined;
+  const navigation = useNavigation();
+  const activeCampaignValues = actionData?.values ?? values;
   const translationValues =
     actionData?.translationValues ?? translationsViewModel.values;
+  const campaignStatusLabel = formatCampaignOption(activeCampaignValues.status);
+  const campaignGoalLabel =
+    campaignGoalOptions.find(
+      (option) => option.value === activeCampaignValues.goal,
+    )?.label ?? formatCampaignOption(activeCampaignValues.goal);
+  const campaignPlacementLabel =
+    placementTypeOptions.find(
+      (option) => option.value === activeCampaignValues.placementType,
+    )?.label ?? formatCampaignOption(activeCampaignValues.placementType);
 
   return (
     <s-page inlineSize="large" heading="Edit campaign">
       <CampaignEditorLayout
+        actionBar={{
+          campaignSectionKey: "campaign",
+          formId: "campaign-basics-form",
+          goalLabel: campaignGoalLabel,
+          isSubmitting: navigation.state === "submitting",
+          placementLabel: campaignPlacementLabel,
+          statusLabel: campaignStatusLabel,
+          submitLabel: "Update campaign",
+        }}
         sections={[
           {
             key: "campaign",
@@ -1470,8 +1491,10 @@ export default function EditCampaignPage() {
             content: (
               <CampaignForm
                 design={actionData?.designValues ?? designValues}
+                formId="campaign-basics-form"
                 key={JSON.stringify(actionData?.values ?? values)}
                 mode="edit"
+                showTopbar={false}
                 values={actionData?.values ?? values}
                 errors={actionData?.errors}
               />

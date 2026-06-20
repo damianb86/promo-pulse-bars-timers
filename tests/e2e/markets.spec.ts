@@ -26,16 +26,12 @@ test("advanced market rules override storefront free shipping by market", async 
   await marketForm.getByLabel("Locale").fill("es");
   await marketForm.getByLabel("Currency").fill("EUR");
   await marketForm.getByLabel("Free shipping threshold").fill("95");
-  await marketForm.getByLabel("Text overrides JSON").fill(
-    JSON.stringify(
-      {
-        headline: "Envio gratis Espana",
-        freeShippingProgressText: "Te faltan {{amount}}",
-      },
-      null,
-      2,
-    ),
-  );
+  await marketForm
+    .getByLabel("Headline override", { exact: true })
+    .fill("Envio gratis Espana");
+  await marketForm
+    .getByLabel("Free shipping progress text")
+    .fill("Te faltan {{amount}}");
 
   await Promise.all([
     page.waitForResponse(

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
@@ -53,6 +53,11 @@ const defaultThresholdsJson = JSON.stringify(
   2,
 );
 
+const defaultThresholdTiers = [
+  { discountValue: "15", minimumSubtotal: "100" },
+  { discountValue: "", minimumSubtotal: "" },
+];
+
 export function AdvancedDiscountRulesEditor({
   errors,
   lockedReason,
@@ -60,7 +65,38 @@ export function AdvancedDiscountRulesEditor({
   rules,
 }: AdvancedDiscountRulesEditorProps) {
   const navigation = useNavigation();
+  const [thresholdTiers, setThresholdTiers] = useState(defaultThresholdTiers);
   const isSubmitting = navigation.state === "submitting";
+  const thresholdsJson = useMemo(() => {
+    const tiers = thresholdTiers
+      .map((tier) => ({
+        discountValue: Number(tier.discountValue),
+        minimumSubtotal: Number(tier.minimumSubtotal),
+      }))
+      .filter(
+        (tier) =>
+          Number.isFinite(tier.discountValue) &&
+          tier.discountValue > 0 &&
+          Number.isFinite(tier.minimumSubtotal) &&
+          tier.minimumSubtotal > 0,
+      );
+
+    return JSON.stringify(
+      tiers.length > 0 ? tiers : JSON.parse(defaultThresholdsJson),
+    );
+  }, [thresholdTiers]);
+
+  const updateThresholdTier = (
+    index: number,
+    field: "discountValue" | "minimumSubtotal",
+    value: string,
+  ) => {
+    setThresholdTiers((currentTiers) =>
+      currentTiers.map((tier, tierIndex) =>
+        tierIndex === index ? { ...tier, [field]: value } : tier,
+      ),
+    );
+  };
 
   return (
     <s-section heading="Advanced Discount Rules">
@@ -90,93 +126,163 @@ export function AdvancedDiscountRulesEditor({
             type="hidden"
             value="saveAdvancedDiscountRule"
           />
+          <input name="thresholdsJson" type="hidden" value={thresholdsJson} />
 
-          <div className="counterpulse-form-grid">
-            <FormField label="Rule title">
-              <input
-                name="title"
-                defaultValue="Promo Pulse advanced discount"
-                required
+          <div className="counterpulse-panel-grid">
+            <div className="counterpulse-config-card counterpulse-config-card--wide">
+              <PanelHeader
+                eyebrow="Rule"
+                title="Discount logic"
+                description="Start with a draft rule, then activate it after the Shopify Function discount has been verified."
               />
-            </FormField>
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <FormField label="Rule title">
+                  <input
+                    name="title"
+                    defaultValue="Promo Pulse advanced discount"
+                    required
+                  />
+                </FormField>
 
-            <FormField label="Rule type">
-              <select name="ruleType" defaultValue="TIERED_DISCOUNT">
-                {ruleTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+                <FormField label="Rule type">
+                  <select name="ruleType" defaultValue="TIERED_DISCOUNT">
+                    {ruleTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField label="Status">
+                  <select name="ruleStatus" defaultValue="DRAFT">
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField
+                  label="Discount value (%)"
+                  error={errors?.discountValue}
+                >
+                  <input
+                    name="discountValue"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    defaultValue="10"
+                  />
+                </FormField>
+
+                <FormField
+                  label="Shipping discount (%)"
+                  error={errors?.shippingDiscountValue}
+                >
+                  <input
+                    name="shippingDiscountValue"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="Optional"
+                  />
+                </FormField>
+
+                <FormField label="Start date/time">
+                  <input name="startsAt" type="datetime-local" />
+                </FormField>
+
+                <FormField label="End date/time">
+                  <input name="endsAt" type="datetime-local" />
+                </FormField>
+              </div>
+            </div>
+
+            <div className="counterpulse-config-card">
+              <PanelHeader
+                eyebrow="Eligibility"
+                title="Products and collections"
+                description="Leave both fields blank to evaluate the whole cart."
+              />
+              <div className="counterpulse-stack">
+                <FormField label="Product or variant IDs">
+                  <textarea
+                    name="productIds"
+                    rows={4}
+                    placeholder="gid://shopify/Product/123"
+                  />
+                  <small className="counterpulse-field-hint">
+                    One product or variant GID per line.
+                  </small>
+                </FormField>
+
+                <FormField label="Collection IDs">
+                  <textarea
+                    name="collectionIds"
+                    rows={4}
+                    placeholder="gid://shopify/Collection/123"
+                  />
+                  <small className="counterpulse-field-hint">
+                    Optional collection filters, one per line.
+                  </small>
+                </FormField>
+              </div>
+            </div>
+
+            <div className="counterpulse-config-card">
+              <PanelHeader
+                eyebrow="Tiers"
+                title="Spend thresholds"
+                description="Build the tier rules without editing raw JSON."
+              />
+              <div className="counterpulse-tier-list">
+                {thresholdTiers.map((tier, index) => (
+                  <div className="counterpulse-tier-row" key={index}>
+                    <strong>Tier {index + 1}</strong>
+                    <FormField label={`Tier ${index + 1} minimum subtotal`}>
+                      <input
+                        min="0"
+                        step="0.01"
+                        type="number"
+                        value={tier.minimumSubtotal}
+                        onChange={(event) =>
+                          updateThresholdTier(
+                            index,
+                            "minimumSubtotal",
+                            event.currentTarget.value,
+                          )
+                        }
+                      />
+                    </FormField>
+                    <FormField label={`Tier ${index + 1} discount percent`}>
+                      <input
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        type="number"
+                        value={tier.discountValue}
+                        onChange={(event) =>
+                          updateThresholdTier(
+                            index,
+                            "discountValue",
+                            event.currentTarget.value,
+                          )
+                        }
+                      />
+                    </FormField>
+                  </div>
                 ))}
-              </select>
-            </FormField>
-
-            <FormField label="Status">
-              <select name="ruleStatus" defaultValue="DRAFT">
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Discount value (%)" error={errors?.discountValue}>
-              <input
-                name="discountValue"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                defaultValue="10"
-              />
-            </FormField>
-
-            <FormField
-              label="Shipping discount (%)"
-              error={errors?.shippingDiscountValue}
-            >
-              <input
-                name="shippingDiscountValue"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-              />
-            </FormField>
-
-            <FormField label="Start date/time">
-              <input name="startsAt" type="datetime-local" />
-            </FormField>
-
-            <FormField label="End date/time">
-              <input name="endsAt" type="datetime-local" />
-            </FormField>
-          </div>
-
-          <div className="counterpulse-form-grid">
-            <FormField label="Product or variant IDs">
-              <textarea
-                name="productIds"
-                rows={4}
-                placeholder="gid://shopify/Product/123"
-              />
-            </FormField>
-
-            <FormField label="Collection IDs">
-              <textarea
-                name="collectionIds"
-                rows={4}
-                placeholder="gid://shopify/Collection/123"
-              />
-            </FormField>
-
-            <FormField label="Thresholds JSON" error={errors?.thresholdsJson}>
-              <textarea
-                name="thresholdsJson"
-                rows={4}
-                defaultValue={defaultThresholdsJson}
-              />
-            </FormField>
+              </div>
+              {errors?.thresholdsJson && (
+                <small className="counterpulse-field-error">
+                  {errors.thresholdsJson}
+                </small>
+              )}
+            </div>
           </div>
 
           <div className="counterpulse-actions">
@@ -236,6 +342,26 @@ export function AdvancedDiscountRulesEditor({
         </table>
       </s-box>
     </s-section>
+  );
+}
+
+function PanelHeader({
+  description,
+  eyebrow,
+  title,
+}: {
+  description: string;
+  eyebrow: string;
+  title: string;
+}) {
+  return (
+    <div className="counterpulse-panel-heading counterpulse-panel-heading--compact">
+      <div>
+        <p className="counterpulse-kicker">{eyebrow}</p>
+        <h3>{title}</h3>
+        <p className="counterpulse-panel-description">{description}</p>
+      </div>
+    </div>
   );
 }
 

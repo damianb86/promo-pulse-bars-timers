@@ -1,4 +1,10 @@
-import { type ChangeEvent, type ReactNode, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { AppAlert } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
@@ -24,7 +30,9 @@ type CampaignFormProps = {
   design?: CampaignDesignValues;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
+  formId?: string;
   mode: "create" | "edit";
+  showTopbar?: boolean;
 };
 
 type BuilderTabKey = "setup" | "message" | "placement" | "schedule" | "review";
@@ -93,7 +101,9 @@ export function CampaignForm({
   design = defaultCampaignDesignValues,
   values,
   errors = {},
+  formId,
   mode,
+  showTopbar = true,
 }: CampaignFormProps) {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
@@ -196,8 +206,28 @@ export function CampaignForm({
     }));
   };
 
+  useEffect(() => {
+    const handleReviewRequest = () => setActiveTab("review");
+
+    window.addEventListener(
+      "counterpulse:campaign-review",
+      handleReviewRequest,
+    );
+
+    return () =>
+      window.removeEventListener(
+        "counterpulse:campaign-review",
+        handleReviewRequest,
+      );
+  }, []);
+
   return (
-    <Form data-campaign-form method="post" className="counterpulse-create-form">
+    <Form
+      data-campaign-form
+      id={formId}
+      method="post"
+      className="counterpulse-create-form"
+    >
       <input name="_action" type="hidden" value="saveBasics" />
       <input
         data-ai-suggestion-json
@@ -212,29 +242,34 @@ export function CampaignForm({
         </AppAlert>
       )}
 
-      <div className="counterpulse-create-topbar" aria-label="Campaign status">
-        <div className="counterpulse-create-status">
-          <span>{statusLabel}</span>
-          <span>{activeGoalLabel}</span>
-          <span>{activePlacementLabel}</span>
+      {showTopbar && (
+        <div
+          className="counterpulse-create-topbar"
+          aria-label="Campaign status"
+        >
+          <div className="counterpulse-create-status">
+            <span>{statusLabel}</span>
+            <span>{activeGoalLabel}</span>
+            <span>{activePlacementLabel}</span>
+          </div>
+          <div className="counterpulse-create-actions">
+            <button
+              className="counterpulse-button-secondary"
+              type="button"
+              onClick={() => setActiveTab("review")}
+            >
+              Review
+            </button>
+            <button
+              className="counterpulse-button"
+              data-testid="campaign-save-button"
+              type="submit"
+            >
+              {isSubmitting ? "Saving..." : submitLabel}
+            </button>
+          </div>
         </div>
-        <div className="counterpulse-create-actions">
-          <button
-            className="counterpulse-button-secondary"
-            type="button"
-            onClick={() => setActiveTab("review")}
-          >
-            Review
-          </button>
-          <button
-            className="counterpulse-button"
-            data-testid="campaign-save-button"
-            type="submit"
-          >
-            {isSubmitting ? "Saving..." : submitLabel}
-          </button>
-        </div>
-      </div>
+      )}
 
       <div
         className="counterpulse-builder-tabs"

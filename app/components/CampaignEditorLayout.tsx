@@ -12,8 +12,8 @@ export type CampaignEditorSection = {
 type CampaignEditorLayoutProps = {
   actionBar?: {
     campaignSectionKey?: string;
+    campaignTypeLabel: string;
     formId: string;
-    goalLabel: string;
     isPublishing?: boolean;
     placementLabel: string;
     publicationLabel?: string;
@@ -45,7 +45,7 @@ export function CampaignEditorLayout({
           <div>
             <p className="counterpulse-kicker">Campaign controls</p>
             <div className="counterpulse-create-status">
-              <span>{actionBar.goalLabel}</span>
+              <span>{actionBar.campaignTypeLabel}</span>
               <span>{actionBar.placementLabel}</span>
               {actionBar.publicationLabel && (
                 <span>{actionBar.publicationLabel}</span>

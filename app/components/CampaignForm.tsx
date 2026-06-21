@@ -113,7 +113,7 @@ const builderTabs: Array<{
     title: "Campaign setup",
     pill: "Intent",
     description:
-      "Define the campaign goal, status, and promotion type before editing copy or placements.",
+      "Define the campaign type and status before editing copy or placements.",
   },
   {
     key: "message",
@@ -209,6 +209,15 @@ type CampaignSetupPreset = {
   placementType: PlacementTypeValue;
   productSelection?: ProductSelectionValue;
   type?: CampaignTypeValue;
+};
+
+type CampaignTypeChoice = {
+  description: string;
+  goal: CampaignGoalValue;
+  icon: "goal" | "type";
+  label: string;
+  type: CampaignTypeValue;
+  value: string;
 };
 
 const countdownBarDesignPreset: Partial<CampaignDesignValues> = {
@@ -448,6 +457,81 @@ const campaignGoalSetupPresets: Record<CampaignGoalValue, CampaignSetupPreset> =
     },
   };
 
+const campaignTypeChoiceOptions: CampaignTypeChoice[] = [
+  {
+    description:
+      "A sitewide urgency bar with timer and CTA. Best for short sales or announcements with a clear deadline.",
+    goal: "FLASH_SALE",
+    icon: "goal",
+    label: "Flash sale",
+    type: "COUNTDOWN_BAR",
+    value: "FLASH_SALE",
+  },
+  {
+    description:
+      "A focused countdown near product content when urgency belongs to a product offer.",
+    goal: "FLASH_SALE",
+    icon: "type",
+    label: "Product timer",
+    type: "PRODUCT_TIMER",
+    value: "PRODUCT_TIMER",
+  },
+  {
+    description:
+      "A cart or drawer timer for checkout urgency and cart rescue flows.",
+    goal: "CART_RESCUE",
+    icon: "goal",
+    label: "Cart rescue",
+    type: "CART_TIMER",
+    value: "CART_RESCUE",
+  },
+  {
+    description:
+      "A cart progress campaign tied to a real free-shipping threshold.",
+    goal: "FREE_SHIPPING",
+    icon: "goal",
+    label: "Free shipping",
+    type: "FREE_SHIPPING_GOAL",
+    value: "FREE_SHIPPING",
+  },
+  {
+    description:
+      "An order-by timer based on cutoff time, timezone, and delivery settings.",
+    goal: "DELIVERY_CUTOFF",
+    icon: "goal",
+    label: "Delivery cutoff",
+    type: "DELIVERY_CUTOFF",
+    value: "DELIVERY_CUTOFF",
+  },
+  {
+    description:
+      "Inventory-aware urgency messaging without fake scarcity claims.",
+    goal: "LOW_STOCK_URGENCY",
+    icon: "goal",
+    label: "Low stock urgency",
+    type: "LOW_STOCK",
+    value: "LOW_STOCK_URGENCY",
+  },
+  {
+    description:
+      "A compact product or collection badge for merchandising messages.",
+    goal: "PRODUCT_BADGE",
+    icon: "goal",
+    label: "Product badge",
+    type: "PRODUCT_BADGE",
+    value: "PRODUCT_BADGE",
+  },
+  {
+    description:
+      "A general storefront announcement without a discount or scarcity assumption.",
+    goal: "ANNOUNCEMENT",
+    icon: "goal",
+    label: "Announcement",
+    type: "COUNTDOWN_BAR",
+    value: "ANNOUNCEMENT",
+  },
+];
+
 export function CampaignForm({
   campaignId,
   confirmOnSubmit = true,
@@ -541,9 +625,13 @@ export function CampaignForm({
   const activeGoalLabel =
     campaignGoalOptions.find((option) => option.value === formValues.goal)
       ?.label ?? "Flash sale";
-  const activeTypeLabel =
-    campaignTypeOptions.find((option) => option.value === formValues.type)
-      ?.label ?? "Countdown bar";
+  const activeCampaignTypeChoiceKey = getCampaignTypeChoiceKey(formValues);
+  const activeCampaignTypeChoice =
+    campaignTypeChoiceOptions.find(
+      (option) => option.value === activeCampaignTypeChoiceKey,
+    ) ?? campaignTypeChoiceOptions[0];
+  const activeCampaignTypeLabel =
+    activeCampaignTypeChoice?.label ?? activeGoalLabel;
   const activePlacementLabel = formatPlacementSelectionLabel(
     formValues.placementTypes,
   );
@@ -639,8 +727,7 @@ export function CampaignForm({
   );
   const summaryRows = useMemo(
     () => [
-      ["Goal", activeGoalLabel],
-      ["Type", activeTypeLabel],
+      ["Campaign type", activeCampaignTypeLabel],
       ["Placement", activePlacementLabel],
       ["Status", statusLabel],
       ["Starts", formatDateTimeLabel(formValues.startsAt, "Immediately")],
@@ -648,9 +735,8 @@ export function CampaignForm({
       ["Timezone", formValues.timezone || "UTC"],
     ],
     [
-      activeGoalLabel,
+      activeCampaignTypeLabel,
       activePlacementLabel,
-      activeTypeLabel,
       formValues.endsAt,
       formValues.startsAt,
       formValues.timezone,
@@ -713,22 +799,6 @@ export function CampaignForm({
         fullWidth: true,
       });
     }
-  };
-
-  const selectCampaignType = (type: CampaignTypeValue) => {
-    const preset = campaignTypeSetupPresets[type];
-
-    setFormValues((currentValues) =>
-      applySetupPreset(
-        {
-          ...currentValues,
-          type,
-          goal: preset.goal ?? currentValues.goal,
-        },
-        preset,
-      ),
-    );
-    updateDesignValues(applyDesignSetupPreset(effectiveDesign, preset.design));
   };
 
   const selectProductSelection = (productSelection: ProductSelectionValue) => {
@@ -947,15 +1017,18 @@ export function CampaignForm({
     }
   };
 
-  const selectGoal = (goal: CampaignFormValues["goal"]) => {
-    const preset = campaignGoalSetupPresets[goal];
+  const selectCampaignTypeChoice = (choice: CampaignTypeChoice) => {
+    const preset =
+      choice.value === "PRODUCT_TIMER"
+        ? campaignTypeSetupPresets.PRODUCT_TIMER
+        : campaignGoalSetupPresets[choice.goal];
 
     setFormValues((currentValues) =>
       applySetupPreset(
         {
           ...currentValues,
-          goal,
-          type: preset.type ?? currentValues.type,
+          goal: choice.goal,
+          type: choice.type,
         },
         preset,
       ),
@@ -1113,7 +1186,7 @@ export function CampaignForm({
             aria-label="Campaign status"
           >
             <div className="counterpulse-create-status">
-              <span>{activeGoalLabel}</span>
+              <span>{activeCampaignTypeLabel}</span>
               <span>{activePlacementLabel}</span>
             </div>
             <div className="counterpulse-create-actions">
@@ -1242,7 +1315,7 @@ export function CampaignForm({
 
                 <FormGroup
                   label="Campaign type"
-                  error={errors.type}
+                  error={errors.goal ?? errors.type}
                   fullWidth
                   info={
                     <FieldInfoButton
@@ -1250,136 +1323,80 @@ export function CampaignForm({
                       title="Campaign types"
                     >
                       <CampaignInfoContent
-                        intro="Campaign type changes what Promo Pulse renders and which extra configuration panels matter."
-                        items={[
-                          [
-                            "Countdown bar",
-                            "A top or bottom urgency bar with timer and CTA. Best for sitewide sales or announcements.",
-                          ],
-                          [
-                            "Product timer",
-                            "A timer intended for product pages. Use it when urgency belongs to a product offer.",
-                          ],
-                          [
-                            "Cart timer",
-                            "A cart or drawer timer. Use it for cart rescue, checkout urgency, or short-lived cart offers.",
-                          ],
-                          [
-                            "Free shipping goal",
-                            "Shows cart progress toward a real threshold. It enables the free-shipping settings panel.",
-                          ],
-                          [
-                            "Delivery cutoff",
-                            "Shows delivery timing based on a real cutoff hour and timezone. It enables delivery settings.",
-                          ],
-                          [
-                            "Low stock message",
-                            "Displays urgency based on real inventory data when available. It does not create fake stock.",
-                          ],
-                          [
-                            "Product badge",
-                            "Renders product or collection badges and enables merchandising badge settings.",
-                          ],
-                        ]}
-                      />
-                    </FieldInfoButton>
-                  }
-                >
-                  <div className="counterpulse-goal-list" role="radiogroup">
-                    {campaignTypeOptions.map((option) => (
-                      <button
-                        aria-checked={formValues.type === option.value}
-                        className="counterpulse-goal-card"
-                        key={option.value}
-                        role="radio"
-                        type="button"
-                        onClick={() => selectCampaignType(option.value)}
-                      >
-                        <input
-                          checked={formValues.type === option.value}
-                          type="radio"
-                          name="type"
-                          value={option.value}
-                          onChange={() => selectCampaignType(option.value)}
-                        />
-                        <span
-                          className="counterpulse-goal-card__icon"
-                          aria-hidden="true"
-                        >
-                          <CampaignTypeIcon type={option.value} />
-                        </span>
-                        <span>{option.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </FormGroup>
-
-                <FormGroup
-                  label="Goal"
-                  error={errors.goal}
-                  fullWidth
-                  info={
-                    <FieldInfoButton label="Goal" title="Campaign goals">
-                      <CampaignInfoContent
-                        intro="Goal describes the merchant intent. It helps defaults, preview text, analytics grouping, and recommendations."
+                        intro="Campaign type defines what Promo Pulse renders and which campaign settings become relevant. Choose one; Promo Pulse keeps the technical goal and rendering type synchronized."
                         items={[
                           [
                             "Flash sale",
-                            "Short-lived offer focused on urgency, usually with a timer and sale CTA.",
+                            "A sitewide urgency bar with timer and CTA. Best for short sales or deadline-based announcements.",
                           ],
                           [
-                            "Free shipping",
-                            "Motivates shoppers to reach a real shipping threshold. Pair it with cart placements.",
+                            "Product timer",
+                            "A focused countdown near product content when urgency belongs to a product offer.",
                           ],
                           [
                             "Cart rescue",
-                            "Targets shoppers with cart intent using cart or drawer placements.",
+                            "A cart or drawer timer for checkout urgency and cart rescue flows.",
+                          ],
+                          [
+                            "Free shipping",
+                            "A cart progress campaign tied to a real free-shipping threshold.",
                           ],
                           [
                             "Delivery cutoff",
-                            "Communicates order-by timing using actual cutoff settings.",
+                            "An order-by timer based on cutoff time, timezone, and delivery settings.",
                           ],
                           [
                             "Low stock urgency",
-                            "Uses inventory context to message scarce items without inventing quantities.",
+                            "Inventory-aware urgency messaging without fake scarcity claims.",
                           ],
                           [
                             "Product badge",
-                            "Highlights product-level merchandising labels such as launch, sale, or limited offer.",
+                            "A compact product or collection badge for merchandising messages.",
                           ],
                           [
                             "Announcement",
-                            "General campaign message without a discount or scarcity assumption.",
+                            "A general storefront announcement without a discount or scarcity assumption.",
                           ],
                         ]}
                       />
                     </FieldInfoButton>
                   }
                 >
+                  <input name="goal" type="hidden" value={formValues.goal} />
+                  <input name="type" type="hidden" value={formValues.type} />
                   <div className="counterpulse-goal-list" role="radiogroup">
-                    {campaignGoalOptions.map((option) => (
+                    {campaignTypeChoiceOptions.map((option) => (
                       <button
-                        aria-checked={formValues.goal === option.value}
+                        aria-checked={
+                          activeCampaignTypeChoiceKey === option.value
+                        }
                         className="counterpulse-goal-card"
                         key={option.value}
                         role="radio"
                         type="button"
-                        onClick={() => selectGoal(option.value)}
+                        onClick={() => selectCampaignTypeChoice(option)}
                       >
                         <input
-                          checked={formValues.goal === option.value}
+                          checked={activeCampaignTypeChoiceKey === option.value}
                           type="radio"
-                          name="goal"
+                          name="campaignTypeChoice"
                           value={option.value}
-                          onChange={() => selectGoal(option.value)}
+                          onChange={() => selectCampaignTypeChoice(option)}
                         />
                         <span
                           className="counterpulse-goal-card__icon"
                           aria-hidden="true"
                         >
-                          <GoalIcon goal={option.value} />
+                          {option.icon === "type" ? (
+                            <CampaignTypeIcon type={option.type} />
+                          ) : (
+                            <GoalIcon goal={option.goal} />
+                          )}
                         </span>
-                        <span>{option.label}</span>
+                        <span>
+                          <strong>{option.label}</strong>
+                          <small>{option.description}</small>
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -2099,12 +2116,8 @@ export function CampaignForm({
                 meta={
                   <dl className="counterpulse-preview-meta">
                     <div>
-                      <dt>Goal</dt>
-                      <dd>{activeGoalLabel}</dd>
-                    </div>
-                    <div>
-                      <dt>Type</dt>
-                      <dd>{activeTypeLabel}</dd>
+                      <dt>Campaign type</dt>
+                      <dd>{activeCampaignTypeLabel}</dd>
                     </div>
                     <div>
                       <dt>Placement</dt>
@@ -2163,6 +2176,13 @@ function applyDesignSetupPreset(
   }
 
   return nextValues;
+}
+
+function getCampaignTypeChoiceKey(values: CampaignFormValues) {
+  if (values.type === "PRODUCT_TIMER") return "PRODUCT_TIMER";
+  if (values.goal === "ANNOUNCEMENT") return "ANNOUNCEMENT";
+
+  return values.goal;
 }
 
 function BuilderPanel({

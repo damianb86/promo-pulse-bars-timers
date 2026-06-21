@@ -1587,9 +1587,9 @@ s-page::part(page) {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 10px;
-  align-items: center;
+  align-items: start;
   width: 100%;
-  min-height: 68px;
+  min-height: 84px;
   border: 1px solid #dfe3e8;
   border-radius: 8px;
   padding: 11px 12px;
@@ -1601,6 +1601,25 @@ s-page::part(page) {
   font-weight: 700;
   line-height: 18px;
   text-align: left;
+}
+
+.counterpulse-goal-card > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.counterpulse-goal-card strong {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 17px;
+}
+
+.counterpulse-goal-card small {
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
 }
 
 .counterpulse-goal-card input {
@@ -1624,6 +1643,10 @@ s-page::part(page) {
   background: #f4fbf7;
   box-shadow: 0 0 0 1px #008060;
   color: #005c45;
+}
+
+.counterpulse-goal-card[aria-checked="true"] small {
+  color: #006f4e;
 }
 
 .counterpulse-goal-card[aria-checked="true"] .counterpulse-goal-card__icon {

@@ -1662,10 +1662,8 @@ export default function EditCampaignPage() {
   });
 
   const campaignStatusLabel = formatCampaignOption(activeCampaignValues.status);
-  const campaignGoalLabel =
-    campaignGoalOptions.find(
-      (option) => option.value === activeCampaignValues.goal,
-    )?.label ?? formatCampaignOption(activeCampaignValues.goal);
+  const campaignTypeLabel =
+    formatUnifiedCampaignTypeLabel(activeCampaignValues);
   const campaignPlacementLabel = formatPlacementSelectionLabel(
     activeCampaignValues.placementTypes,
   );
@@ -1684,8 +1682,8 @@ export default function EditCampaignPage() {
         <CampaignEditorLayout
           actionBar={{
             campaignSectionKey: "campaign",
+            campaignTypeLabel,
             formId: "campaign-basics-form",
-            goalLabel: campaignGoalLabel,
             isSubmitting: navigation.state === "submitting",
             isPublishing,
             onPublish: () => {
@@ -2214,6 +2212,16 @@ function buildPublicationLabel(publication: LoaderData["publication"]) {
   if (publication.hasUnpublishedChanges) return "Unpublished changes";
 
   return "Published";
+}
+
+function formatUnifiedCampaignTypeLabel(values: CampaignFormValues) {
+  if (values.type === "PRODUCT_TIMER") return "Product timer";
+  if (values.goal === "ANNOUNCEMENT") return "Announcement";
+
+  return (
+    campaignGoalOptions.find((option) => option.value === values.goal)?.label ??
+    formatCampaignOption(values.type)
+  );
 }
 
 function toDateTimeLocalValue(date: Date | string | null) {

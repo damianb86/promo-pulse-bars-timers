@@ -144,6 +144,24 @@ describe("storefront campaign serialization", () => {
     expect(JSON.stringify(serialized)).not.toContain("77");
   });
 
+  it("keeps hidden discount codes out of the storefront payload", () => {
+    const campaign = buildCampaign({
+      discountSync: {
+        method: "CODE",
+        discountCode: "FREESHIP",
+        shopifyDiscountId: "gid://shopify/DiscountCodeNode/private",
+        showCodeOnStorefront: false,
+      },
+    });
+    const serialized = serializeStorefrontCampaign(campaign, baseContext());
+
+    expect(serialized?.discount).toMatchObject({
+      method: "CODE",
+      discountCode: null,
+    });
+    expect(JSON.stringify(serialized)).not.toContain("FREESHIP");
+  });
+
   it("filters by placement", () => {
     const campaigns = [
       buildCampaign({
@@ -649,6 +667,7 @@ function buildCampaign(
       uniqueCodeAutoApply?: boolean;
       uniqueCodeExpiresMinutes?: number | null;
       uniqueCodePrefix?: string | null;
+      showCodeOnStorefront?: boolean;
       value?: string | null;
     };
     freeShippingSettings?: {
@@ -771,6 +790,7 @@ function buildCampaign(
           uniqueCodeAutoApply: false,
           uniqueCodeStartsAt: null,
           uniqueCodeEndsAt: null,
+          showCodeOnStorefront: true,
           ...overrides.discountSync,
         } as StorefrontCampaignSource["discountSync"])
       : null,

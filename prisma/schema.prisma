@@ -309,6 +309,7 @@ model DiscountSync {
   value                    Decimal?
   minimumSubtotal          Decimal?
   appliesOncePerCustomer   Boolean                @default(false)
+  showCodeOnStorefront     Boolean                @default(true)
   uniqueCodePrefix         String?
   uniqueCodeExpiresMinutes Int?
   uniqueCodeAutoApply      Boolean                @default(false)

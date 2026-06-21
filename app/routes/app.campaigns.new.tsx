@@ -626,6 +626,7 @@ async function createOrLinkFreeShippingDiscountForCampaign({
     minimumSubtotal: thresholdAmount.toFixed(2),
     appliesOncePerCustomer:
       values.freeShippingDiscountAppliesOncePerCustomer,
+    showCodeOnStorefront: values.freeShippingShowDiscountCode,
   });
 }
 

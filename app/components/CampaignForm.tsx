@@ -804,6 +804,7 @@ export function CampaignForm({
         discountSync: formValues.freeShippingAutoDiscount
           ? {
               discountCode: formValues.freeShippingDiscountCode,
+              showCodeOnStorefront: formValues.freeShippingShowDiscountCode,
             }
           : null,
       }),
@@ -1731,6 +1732,25 @@ export function CampaignForm({
                               />
                               <span>Limit to one use per customer</span>
                             </label>
+                          </div>
+
+                          <div className="counterpulse-toggle">
+                            <label className="counterpulse-toggle-label">
+                              <input
+                                checked={formValues.freeShippingShowDiscountCode}
+                                name="freeShippingShowDiscountCode"
+                                type="checkbox"
+                                onChange={updateCheckboxField(
+                                  "freeShippingShowDiscountCode",
+                                )}
+                              />
+                              <span>Show discount code on storefront</span>
+                            </label>
+                            <p className="counterpulse-field-hint">
+                              Leave this off when the code should only be kept
+                              for Shopify checkout enforcement and not promoted
+                              in the storefront banner.
+                            </p>
                           </div>
                         </div>
                       )}

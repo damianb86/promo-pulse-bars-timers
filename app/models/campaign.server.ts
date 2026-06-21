@@ -120,6 +120,7 @@ type DiscountSyncInput = {
   value?: string | number | null;
   minimumSubtotal?: string | number | null;
   appliesOncePerCustomer?: boolean;
+  showCodeOnStorefront?: boolean;
   uniqueCodePrefix?: string | null;
   uniqueCodeExpiresMinutes?: number | null;
   uniqueCodeAutoApply?: boolean;
@@ -477,6 +478,7 @@ export async function updateDiscountSyncForShop(
         value: input.value ?? null,
         minimumSubtotal: input.minimumSubtotal ?? null,
         appliesOncePerCustomer: input.appliesOncePerCustomer ?? false,
+        showCodeOnStorefront: input.showCodeOnStorefront ?? true,
         uniqueCodePrefix: input.uniqueCodePrefix ?? null,
         uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
         uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
@@ -494,6 +496,7 @@ export async function updateDiscountSyncForShop(
         value: input.value ?? null,
         minimumSubtotal: input.minimumSubtotal ?? null,
         appliesOncePerCustomer: input.appliesOncePerCustomer ?? false,
+        showCodeOnStorefront: input.showCodeOnStorefront ?? true,
         uniqueCodePrefix: input.uniqueCodePrefix ?? null,
         uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
         uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
@@ -1029,6 +1032,8 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 minimumSubtotal: campaign.discountSync.minimumSubtotal,
                 appliesOncePerCustomer:
                   campaign.discountSync.appliesOncePerCustomer,
+                showCodeOnStorefront:
+                  campaign.discountSync.showCodeOnStorefront,
                 uniqueCodePrefix: campaign.discountSync.uniqueCodePrefix,
                 uniqueCodeExpiresMinutes:
                   campaign.discountSync.uniqueCodeExpiresMinutes,

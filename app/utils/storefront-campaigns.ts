@@ -472,9 +472,13 @@ function getCampaignCtaUrl(
 function serializeDiscount(discountSync: DiscountSync | null) {
   if (!discountSync) return null;
 
+  const showCodeOnStorefront =
+    (discountSync as { showCodeOnStorefront?: boolean | null })
+      .showCodeOnStorefront !== false;
+
   return {
     method: discountSync.method,
-    discountCode: discountSync.discountCode,
+    discountCode: showCodeOnStorefront ? discountSync.discountCode : null,
     uniqueCode:
       discountSync.method === "UNIQUE_CODE"
         ? {

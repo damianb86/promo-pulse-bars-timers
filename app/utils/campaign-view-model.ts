@@ -66,6 +66,7 @@ export type CampaignViewModelInput = {
   } | null;
   discountSync?: {
     discountCode?: string | null;
+    showCodeOnStorefront?: boolean | null;
   } | null;
 };
 
@@ -169,7 +170,10 @@ export function buildCampaignViewModel(
       getCampaignText(campaign, "en", "badgeText") ||
       getCampaignText(campaign, "en", "headline") ||
       campaign.name,
-    discountCode: campaign.discountSync?.discountCode ?? "",
+    discountCode:
+      campaign.discountSync?.showCodeOnStorefront === false
+        ? ""
+        : (campaign.discountSync?.discountCode ?? ""),
     placements: campaign.placements
       .filter((placement) => placement.enabled)
       .map((placement) => placement.placementType),

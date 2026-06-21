@@ -3800,6 +3800,7 @@ function toCampaignFreeShippingFormValues(
     valueType?: string | null;
     minimumSubtotal?: { toString(): string } | string | number | null;
     appliesOncePerCustomer?: boolean | null;
+    showCodeOnStorefront?: boolean | null;
   } | null,
 ): Pick<
   CampaignFormValues,
@@ -3810,9 +3811,10 @@ function toCampaignFreeShippingFormValues(
   | "freeShippingEmptyCartMessage"
   | "freeShippingSuccessMessage"
   | "freeShippingAutoDiscount"
-  | "freeShippingDiscountCode"
-  | "freeShippingDiscountTitle"
-  | "freeShippingDiscountAppliesOncePerCustomer"
+    | "freeShippingDiscountCode"
+    | "freeShippingDiscountTitle"
+    | "freeShippingDiscountAppliesOncePerCustomer"
+    | "freeShippingShowDiscountCode"
 > {
   const freeShippingValues = toFreeShippingSettingsValues(settings);
   const hasFreeShippingDiscount = discountSync?.valueType === "FREE_SHIPPING";
@@ -3837,6 +3839,9 @@ function toCampaignFreeShippingFormValues(
       defaultCampaignFormValues.freeShippingDiscountTitle,
     freeShippingDiscountAppliesOncePerCustomer:
       discountSync?.appliesOncePerCustomer ?? false,
+    freeShippingShowDiscountCode:
+      discountSync?.showCodeOnStorefront ??
+      defaultCampaignFormValues.freeShippingShowDiscountCode,
   };
 }
 
@@ -4151,6 +4156,7 @@ async function createOrLinkFreeShippingDiscountForCampaign({
     minimumSubtotal: thresholdAmount.toFixed(2),
     appliesOncePerCustomer:
       values.freeShippingDiscountAppliesOncePerCustomer,
+    showCodeOnStorefront: values.freeShippingShowDiscountCode,
   });
 }
 

@@ -206,6 +206,10 @@ export function parseCampaignFormData(
       formData,
       "freeShippingDiscountAppliesOncePerCustomer",
     ),
+    freeShippingShowDiscountCode: readBoolean(
+      formData,
+      "freeShippingShowDiscountCode",
+    ),
     cartTimerDurationMinutes:
       readString(formData, "cartTimerDurationMinutes") ||
       defaultCampaignFormValues.cartTimerDurationMinutes,

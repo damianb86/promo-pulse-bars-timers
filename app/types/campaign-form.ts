@@ -105,6 +105,7 @@ export type CampaignFormValues = {
   freeShippingDiscountCode: string;
   freeShippingDiscountTitle: string;
   freeShippingDiscountAppliesOncePerCustomer: boolean;
+  freeShippingShowDiscountCode: boolean;
   cartTimerDurationMinutes: string;
   cartTimerResetBehavior: CampaignTimerResetBehaviorValue;
   deliveryCutoffHour: string;
@@ -170,6 +171,7 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   freeShippingDiscountCode: "FREESHIP",
   freeShippingDiscountTitle: "Promo Pulse free shipping",
   freeShippingDiscountAppliesOncePerCustomer: false,
+  freeShippingShowDiscountCode: false,
   cartTimerDurationMinutes: "120",
   cartTimerResetBehavior: "ON_SESSION_END",
   deliveryCutoffHour: defaultDeliveryCutoffSettingsValues.cutoffHour,

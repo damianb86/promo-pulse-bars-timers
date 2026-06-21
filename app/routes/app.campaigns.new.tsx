@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ExperimentPrimaryMetric,
   ExperimentVariantStatus,
+  type Prisma,
 } from "@prisma/client";
 
 import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
@@ -11,18 +12,24 @@ import { CampaignForm } from "../components/CampaignForm";
 import {
   createCampaign,
   toTargetingWriteData,
+  updateBadgeSettingsForShop,
   updateCampaignDesignForShop,
   updateCampaignTranslationsForShop,
+  updateDeliveryCutoffSettingsForShop,
   updateDiscountSyncForShop,
+  updateFreeShippingSettingsForShop,
+  updateLowStockSettingsForShop,
 } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
 import {
+  buildCampaignAiFollowUpQuestions,
   buildDefaultCampaignAiInput,
   generateCampaignSuggestion,
   hasCampaignAiFormErrors,
   parseAppliedCampaignSuggestion,
   parseCampaignAiFormData,
+  shouldAskCampaignAiFollowUpQuestions,
 } from "../services/ai/campaignGenerator.server";
 import {
   hasCampaignFormErrors,
@@ -50,6 +57,7 @@ import {
 } from "../services/templates/templateLibrary.server";
 import type {
   CampaignAiFormErrors,
+  CampaignAiFollowUpQuestion,
   CampaignAiInput,
   CampaignSuggestion,
 } from "../types/ai-campaign";
@@ -71,6 +79,7 @@ import { buildDefaultCampaignTranslations } from "../utils/campaign-localization
 
 type ActionData = {
   aiErrors?: CampaignAiFormErrors;
+  aiFollowUpQuestions?: CampaignAiFollowUpQuestion[];
   aiInput?: CampaignAiInput;
   aiSuggestion?: CampaignSuggestion | null;
   errors?: CampaignFormErrors;
@@ -162,6 +171,18 @@ export const action = async ({
       return {
         aiInput: parsedAi.values,
         aiErrors: parsedAi.errors,
+      };
+    }
+
+    if (
+      shouldAskCampaignAiFollowUpQuestions(
+        parsedAi.values,
+        formData.get("aiFollowUpStatus"),
+      )
+    ) {
+      return {
+        aiInput: parsedAi.values,
+        aiFollowUpQuestions: buildCampaignAiFollowUpQuestions(parsedAi.values),
       };
     }
 
@@ -417,14 +438,32 @@ export default function CreateCampaignPage() {
     templateSourceName,
   } = useLoaderData<typeof loader>();
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(
-    Boolean(actionData?.aiErrors || actionData?.aiSuggestion),
+    Boolean(
+      actionData?.aiErrors ||
+      actionData?.aiFollowUpQuestions ||
+      actionData?.aiSuggestion,
+    ),
   );
 
   useEffect(() => {
-    if (actionData?.aiErrors || actionData?.aiSuggestion) {
-      setIsAiDrawerOpen(true);
+    if (
+      actionData?.aiErrors ||
+      actionData?.aiFollowUpQuestions ||
+      actionData?.aiSuggestion
+    ) {
+      const openAiDrawer = window.setTimeout(() => {
+        setIsAiDrawerOpen(true);
+      }, 0);
+
+      return () => window.clearTimeout(openAiDrawer);
     }
-  }, [actionData?.aiErrors, actionData?.aiSuggestion]);
+
+    return undefined;
+  }, [
+    actionData?.aiErrors,
+    actionData?.aiFollowUpQuestions,
+    actionData?.aiSuggestion,
+  ]);
 
   return (
     <s-page inlineSize="large" heading="Create campaign">
@@ -478,7 +517,9 @@ export default function CreateCampaignPage() {
             </div>
             <AiCampaignBuilder
               errors={actionData?.aiErrors}
+              followUpQuestions={actionData?.aiFollowUpQuestions}
               lockedReason={aiLockedReason}
+              onApplied={() => setIsAiDrawerOpen(false)}
               suggestion={actionData?.aiSuggestion}
               templateSourceName={templateSourceName}
               values={actionData?.aiInput ?? aiInput}
@@ -517,6 +558,12 @@ async function applyAiSuggestionToCampaign({
     shopId,
     buildTranslationsForSavedCampaign(suggestion, formValues),
   );
+  await applyAiGeneratedSettingsToCampaign({
+    campaignId,
+    formValues,
+    shopId,
+    suggestion,
+  });
 
   if (suggestion.variants.length < 2) return;
 
@@ -539,6 +586,114 @@ async function applyAiSuggestionToCampaign({
       placementOverride: variant.placementOverride,
     })),
   });
+}
+
+async function applyAiGeneratedSettingsToCampaign({
+  campaignId,
+  formValues,
+  shopId,
+  suggestion,
+}: {
+  campaignId: string;
+  formValues: CampaignFormValues;
+  shopId: string;
+  suggestion: CampaignSuggestion;
+}) {
+  const tasks: Promise<unknown>[] = [];
+
+  if (
+    formValues.type === "FREE_SHIPPING_GOAL" ||
+    formValues.goal === "FREE_SHIPPING"
+  ) {
+    tasks.push(
+      updateFreeShippingSettingsForShop(campaignId, shopId, {
+        thresholdAmount: suggestion.freeShipping.thresholdAmount,
+        currencyCode: suggestion.freeShipping.currencyCode,
+        includeDiscountedSubtotal:
+          suggestion.freeShipping.includeDiscountedSubtotal,
+        emptyCartMessage: suggestion.freeShipping.emptyCartMessage,
+        successMessage: suggestion.freeShipping.successMessage,
+        progressStyle: suggestion.freeShipping.progressStyle,
+        thresholdRules: null,
+      }),
+    );
+  }
+
+  if (
+    formValues.type === "DELIVERY_CUTOFF" ||
+    formValues.goal === "DELIVERY_CUTOFF"
+  ) {
+    tasks.push(
+      updateDeliveryCutoffSettingsForShop(campaignId, shopId, {
+        timezone: formValues.timezone,
+        cutoffHour: Number(suggestion.deliveryCutoff.cutoffHour),
+        cutoffMinute: Number(suggestion.deliveryCutoff.cutoffMinute),
+        processingDays: Number(suggestion.deliveryCutoff.processingDays),
+        minDeliveryDays: Number(suggestion.deliveryCutoff.minDeliveryDays),
+        maxDeliveryDays: Number(suggestion.deliveryCutoff.maxDeliveryDays),
+        workingDays: suggestion.deliveryCutoff.workingDays,
+        holidays: suggestion.deliveryCutoff.holidays,
+        countryRules: suggestion.deliveryCutoff
+          .countryRules as Prisma.InputJsonValue,
+        afterCutoffBehavior: suggestion.deliveryCutoff.afterCutoffBehavior,
+      }),
+    );
+  }
+
+  if (
+    formValues.type === "LOW_STOCK" ||
+    formValues.goal === "LOW_STOCK_URGENCY"
+  ) {
+    tasks.push(
+      updateLowStockSettingsForShop(campaignId, shopId, {
+        threshold: Number(suggestion.lowStock.threshold),
+        showExactQuantity: suggestion.lowStock.showExactQuantity,
+        fallbackMessage: suggestion.lowStock.fallbackMessage,
+      }),
+    );
+  }
+
+  if (
+    formValues.type === "PRODUCT_BADGE" ||
+    formValues.goal === "PRODUCT_BADGE"
+  ) {
+    tasks.push(
+      updateBadgeSettingsForShop(campaignId, shopId, {
+        badgeText: suggestion.badge.badgeText,
+        badgeShape: suggestion.badge.badgeShape,
+        badgePosition: suggestion.badge.badgePosition,
+      }),
+    );
+  }
+
+  if (suggestion.discount.mode !== "NONE") {
+    tasks.push(
+      updateDiscountSyncForShop(campaignId, shopId, {
+        shopifyDiscountId: null,
+        discountCode: suggestion.discount.discountCode || null,
+        method:
+          suggestion.discount.mode === "UNIQUE_CODES" ? "UNIQUE_CODE" : "CODE",
+        syncStartEnd: false,
+        title: suggestion.discount.title || null,
+        valueType: suggestion.discount.valueType,
+        value:
+          suggestion.discount.valueType === "FREE_SHIPPING"
+            ? null
+            : suggestion.discount.value || null,
+        minimumSubtotal: suggestion.discount.minimumSubtotal || null,
+        appliesOncePerCustomer: suggestion.discount.appliesOncePerCustomer,
+        uniqueCodePrefix: suggestion.discount.uniqueCodePrefix,
+        uniqueCodeExpiresMinutes: Number(
+          suggestion.discount.uniqueCodeExpiresMinutes,
+        ),
+        uniqueCodeAutoApply: suggestion.discount.uniqueCodeAutoApply,
+        uniqueCodeStartsAt: null,
+        uniqueCodeEndsAt: null,
+      }),
+    );
+  }
+
+  await Promise.all(tasks);
 }
 
 function buildTranslationsForSavedCampaign(

@@ -4,11 +4,14 @@ type RateLimitBucket = {
 };
 
 const buckets = new Map<string, RateLimitBucket>();
-const windowMs = 60_000;
+const windowMs = readPositiveIntegerEnv(
+  "STOREFRONT_RATE_LIMIT_WINDOW_MS",
+  60_000,
+);
 const maxRequestsPerWindow =
   process.env.E2E_TEST_MODE === "true" && process.env.NODE_ENV !== "production"
-    ? 1_000
-    : 120;
+    ? readPositiveIntegerEnv("STOREFRONT_RATE_LIMIT_E2E_MAX_REQUESTS", 1_000)
+    : readPositiveIntegerEnv("STOREFRONT_RATE_LIMIT_MAX_REQUESTS", 120);
 
 export function checkStorefrontRateLimit(key: string, now = Date.now()) {
   cleanupExpiredBuckets(now);
@@ -54,4 +57,10 @@ function cleanupExpiredBuckets(now: number) {
       buckets.delete(key);
     }
   }
+}
+
+function readPositiveIntegerEnv(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }

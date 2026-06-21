@@ -13,7 +13,7 @@ import {
 
 import prisma from "../../db.server";
 import { defaultBadgeSettingsValues } from "../../types/badge";
-import type { CampaignAiInput } from "../../types/ai-campaign";
+import type { CampaignAiInput, CampaignAiShape } from "../../types/ai-campaign";
 import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
@@ -340,12 +340,18 @@ export function buildCampaignAiInputFromTemplate(
 
   return {
     objective: toEditableCampaignGoal(template.goal),
+    campaignNameHint: `${template.eventName} ${formatCampaignType(template.type)}`,
+    campaignShape: readCampaignShape(template.type),
+    goalAnswers: {},
     productContext: settings.productContext ?? "selected products",
     eventName: template.eventName,
     countryCode: template.countryCode ?? "US",
     locale: normalizeTemplateLocale(template.locale),
     brandTone: readBrandTone(template.category),
     knownOffer: settings.knownOffer ?? "",
+    quickStarts: [],
+    merchantNotes: "",
+    followUpAnswers: {},
     ctaUrl: texts.ctaUrl ?? "/collections/all",
   };
 }
@@ -704,6 +710,25 @@ function readBrandTone(category: CampaignTemplateCategory) {
   if (category === "HOLIDAY" || category === "SEASONAL") return "playful";
   if (category === "PRODUCT_LAUNCH") return "premium";
   return "minimal";
+}
+
+function readCampaignShape(type: CampaignType): CampaignAiShape {
+  if (
+    type === CampaignType.CART_TIMER ||
+    type === CampaignType.FREE_SHIPPING_GOAL
+  ) {
+    return "cart";
+  }
+
+  if (type === CampaignType.PRODUCT_TIMER || type === CampaignType.LOW_STOCK) {
+    return "product";
+  }
+
+  if (type === CampaignType.PRODUCT_BADGE) {
+    return "merchandising";
+  }
+
+  return "sitewide";
 }
 
 function toEditableCampaignGoal(goal: CampaignGoal): CampaignGoalValue {

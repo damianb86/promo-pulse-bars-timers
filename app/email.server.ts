@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 
-const APP_NAME = "Promo Pulse: Bars & Timers";
+const APP_NAME =
+  process.env.PROMO_PULSE_APP_NAME || "Promo Pulse: Bars & Timers";
 const DEFAULT_FROM_EMAIL = "noreply@zuam.dev";
 const DEFAULT_FROM_NAME = "Promo Pulse";
 

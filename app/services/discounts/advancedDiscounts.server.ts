@@ -18,8 +18,12 @@ export const ADVANCED_DISCOUNT_FUNCTION_HANDLE =
   "promo-pulse-advanced-discounts";
 export const ADVANCED_DISCOUNT_FUNCTION_ID =
   process.env.SHOPIFY_ADVANCED_DISCOUNT_FUNCTION_ID || "";
-export const ADVANCED_DISCOUNT_METAFIELD_NAMESPACE = "$app:promo-pulse";
-export const ADVANCED_DISCOUNT_METAFIELD_KEY = "advanced-discount-config";
+export const ADVANCED_DISCOUNT_METAFIELD_NAMESPACE =
+  process.env.SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_NAMESPACE ||
+  "$app:promo-pulse";
+export const ADVANCED_DISCOUNT_METAFIELD_KEY =
+  process.env.SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_KEY ||
+  "advanced-discount-config";
 
 export type AdvancedDiscountRuleInput = {
   title: string;

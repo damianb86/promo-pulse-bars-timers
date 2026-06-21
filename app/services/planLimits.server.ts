@@ -46,6 +46,15 @@ export type PlanLimits = {
 };
 
 type ShopPlanSource = Pick<Shop, "id" | "plan">;
+type PlanLimitOverride = Partial<
+  Pick<
+    PlanLimits,
+    "monthlyPriceUsd" | "activeCampaignLimit" | "monthlyImpressionLimit"
+  >
+> & {
+  features?: Partial<Record<PlanFeatureKey, boolean>>;
+};
+type PlanLimitOverrides = Partial<Record<ShopPlan, PlanLimitOverride>>;
 
 const planOrder: Record<ShopPlan, number> = {
   FREE: 0,
@@ -80,7 +89,7 @@ const allFeatures: Record<PlanFeatureKey, boolean> = {
   unique_discount_codes: false,
 };
 
-const limitsByPlan: Record<ShopPlan, PlanLimits> = {
+const baseLimitsByPlan: Record<ShopPlan, PlanLimits> = {
   FREE: {
     plan: "FREE",
     monthlyPriceUsd: 0,
@@ -229,6 +238,8 @@ const limitsByPlan: Record<ShopPlan, PlanLimits> = {
   },
 };
 
+const limitsByPlan = applyPlanLimitOverrides(baseLimitsByPlan);
+
 const featureMinimumPlans: Record<PlanFeatureKey, ShopPlan> = Object.keys(
   allFeatures,
 ).reduce(
@@ -242,6 +253,109 @@ const featureMinimumPlans: Record<PlanFeatureKey, ShopPlan> = Object.keys(
   },
   {} as Record<PlanFeatureKey, ShopPlan>,
 );
+
+function applyPlanLimitOverrides(
+  limits: Record<ShopPlan, PlanLimits>,
+): Record<ShopPlan, PlanLimits> {
+  const overrides = parsePlanLimitOverrides();
+
+  if (!overrides) return limits;
+
+  return (Object.keys(limits) as ShopPlan[]).reduce(
+    (nextLimits, plan) => {
+      const override = overrides[plan];
+      const current = limits[plan];
+
+      if (!override) {
+        nextLimits[plan] = current;
+        return nextLimits;
+      }
+
+      nextLimits[plan] = {
+        ...current,
+        monthlyPriceUsd: readNonNegativeNumber(
+          override.monthlyPriceUsd,
+          current.monthlyPriceUsd,
+        ),
+        activeCampaignLimit: readNullableNonNegativeInteger(
+          override.activeCampaignLimit,
+          current.activeCampaignLimit,
+        ),
+        monthlyImpressionLimit: readNullableNonNegativeInteger(
+          override.monthlyImpressionLimit,
+          current.monthlyImpressionLimit,
+        ),
+        features: {
+          ...current.features,
+          ...readFeatureOverrides(override.features),
+        },
+      };
+
+      return nextLimits;
+    },
+    {} as Record<ShopPlan, PlanLimits>,
+  );
+}
+
+function parsePlanLimitOverrides(): PlanLimitOverrides | null {
+  const rawValue = process.env.PROMO_PULSE_PLAN_LIMITS_JSON?.trim();
+
+  if (!rawValue) return null;
+
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Expected an object.");
+    }
+
+    return parsed as PlanLimitOverrides;
+  } catch (error) {
+    console.warn(
+      "PROMO_PULSE_PLAN_LIMITS_JSON is invalid and was ignored.",
+      error,
+    );
+    return null;
+  }
+}
+
+function readNonNegativeNumber(value: unknown, fallback: number) {
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) && parsedValue >= 0
+    ? parsedValue
+    : fallback;
+}
+
+function readNullableNonNegativeInteger(
+  value: unknown,
+  fallback: number | null,
+) {
+  if (value === null) return null;
+
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) && parsedValue >= 0
+    ? Math.floor(parsedValue)
+    : fallback;
+}
+
+function readFeatureOverrides(
+  features?: Partial<Record<PlanFeatureKey, boolean>>,
+) {
+  if (!features || typeof features !== "object") return {};
+
+  return (Object.keys(allFeatures) as PlanFeatureKey[]).reduce(
+    (featureOverrides, feature) => {
+      if (typeof features[feature] === "boolean") {
+        featureOverrides[feature] = features[feature];
+      }
+
+      return featureOverrides;
+    },
+    {} as Partial<Record<PlanFeatureKey, boolean>>,
+  );
+}
 
 export class PlanGateError extends Error {
   requiredPlan?: ShopPlan;

@@ -17,7 +17,7 @@ export type PremiumFeatureGateCheck = {
 
 export type Stage2FeatureFlagState = Record<InternalStage2FeatureFlag, boolean>;
 
-export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
+const baseStage2FeatureFlags: Stage2FeatureFlagState = {
   UNIQUE_CODES: true,
   AB_TESTING: true,
   AUTO_WINNER: true,
@@ -30,7 +30,11 @@ export const defaultStage2FeatureFlags: Stage2FeatureFlagState = {
   AGENCY_DASHBOARD: true,
 };
 
-export const minimumPlanByPremiumFeature = {
+export const defaultStage2FeatureFlags = applyStage2FeatureFlagOverrides(
+  baseStage2FeatureFlags,
+);
+
+const baseMinimumPlanByPremiumFeature = {
   UNIQUE_CODES: ShopPlan.PREMIUM,
   AB_TESTING: ShopPlan.PREMIUM,
   AUTO_WINNER: ShopPlan.PREMIUM,
@@ -46,6 +50,10 @@ export const minimumPlanByPremiumFeature = {
   RECOMMENDATIONS: ShopPlan.PRO,
   CAMPAIGN_LIBRARY: ShopPlan.STARTER,
 } satisfies Record<PremiumFeatureKey, ShopPlan>;
+
+export const minimumPlanByPremiumFeature = applyPremiumFeaturePlanOverrides(
+  baseMinimumPlanByPremiumFeature,
+);
 
 const planRank = {
   FREE: 0,
@@ -125,4 +133,72 @@ function formatPremiumFeatureName(featureKey: PremiumFeatureKey) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function applyStage2FeatureFlagOverrides(flags: Stage2FeatureFlagState) {
+  const overrides = parseJsonEnv<Record<string, unknown>>(
+    "PROMO_PULSE_STAGE2_FLAGS_JSON",
+  );
+
+  if (!overrides) return flags;
+
+  return internalStage2FeatureFlags.reduce(
+    (nextFlags, flag) => {
+      if (typeof overrides[flag] === "boolean") {
+        nextFlags[flag] = overrides[flag];
+      }
+
+      return nextFlags;
+    },
+    { ...flags },
+  );
+}
+
+function applyPremiumFeaturePlanOverrides(
+  minimumPlans: Record<PremiumFeatureKey, ShopPlan>,
+) {
+  const overrides = parseJsonEnv<Record<string, unknown>>(
+    "PROMO_PULSE_PREMIUM_FEATURE_PLANS_JSON",
+  );
+
+  if (!overrides) return minimumPlans;
+
+  return premiumFeatureKeys.reduce(
+    (nextMinimumPlans, featureKey) => {
+      const plan = overrides[featureKey];
+
+      if (isShopPlan(plan)) {
+        nextMinimumPlans[featureKey] = plan;
+      }
+
+      return nextMinimumPlans;
+    },
+    { ...minimumPlans },
+  );
+}
+
+function parseJsonEnv<T>(name: string): T | null {
+  const rawValue = process.env[name]?.trim();
+
+  if (!rawValue) return null;
+
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Expected an object.");
+    }
+
+    return parsed as T;
+  } catch (error) {
+    console.warn(`${name} is invalid and was ignored.`, error);
+    return null;
+  }
+}
+
+function isShopPlan(value: unknown): value is ShopPlan {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(planRank, value)
+  );
 }

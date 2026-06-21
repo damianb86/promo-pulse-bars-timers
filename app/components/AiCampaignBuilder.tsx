@@ -3,21 +3,49 @@ import { AppAlert, AppToast } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import {
+  type CampaignAiAnswerMap,
+  type CampaignAiFollowUpQuestion,
   campaignAiToneOptions,
   type CampaignAiFormErrors,
   type CampaignAiInput,
   type CampaignSuggestion,
 } from "../types/ai-campaign";
+import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
 import { storefrontLocales } from "../types/localization";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 
 type AiCampaignBuilderProps = {
   errors?: CampaignAiFormErrors;
+  followUpQuestions?: CampaignAiFollowUpQuestion[];
   lockedReason?: string;
+  onApplied?: () => void;
   suggestion?: CampaignSuggestion | null;
   templateSourceName?: string;
   values: CampaignAiInput;
+};
+
+type GoalFlowOption = {
+  id: string;
+  label: string;
+  description: string;
+  offerText?: string;
+  notesText?: string;
+};
+
+type GoalFlowQuestion = {
+  id: string;
+  title: string;
+  description: string;
+  options: GoalFlowOption[];
+};
+
+type GoalFlowConfig = {
+  summary: string;
+  defaultShape: CampaignAiInput["campaignShape"];
+  defaultAnswers: CampaignAiAnswerMap;
+  quickStarts: string[];
+  questions: GoalFlowQuestion[];
 };
 
 const aiCampaignShapeOptions = [
@@ -52,6 +80,435 @@ const aiOfferQuickStarts = [
   "Delivery cutoff reminder",
 ];
 
+const aiGoalFlows: Record<CampaignAiInput["objective"], GoalFlowConfig> = {
+  FLASH_SALE: {
+    summary:
+      "Build a sale-focused countdown with a clear offer, short window, and visible placement.",
+    defaultShape: "sitewide",
+    defaultAnswers: {
+      flash_sale_offer_type: ["flash_sale_percent"],
+      flash_sale_window: ["flash_sale_24h"],
+      flash_sale_surface: ["flash_sale_top_bar"],
+    },
+    quickStarts: ["Limited-time sale"],
+    questions: [
+      {
+        id: "flash_sale_offer_type",
+        title: "What kind of sale is this?",
+        description: "Choose every offer type that applies.",
+        options: [
+          {
+            id: "flash_sale_percent",
+            label: "Percentage discount",
+            description: "A classic percent-off sale.",
+            offerText: "20% off",
+          },
+          {
+            id: "flash_sale_fixed",
+            label: "Fixed amount off",
+            description: "Useful for higher-ticket products.",
+            offerText: "$10 off",
+          },
+          {
+            id: "flash_sale_no_discount",
+            label: "No discount",
+            description: "Use urgency without savings claims.",
+          },
+        ],
+      },
+      {
+        id: "flash_sale_window",
+        title: "How long should the timer feel?",
+        description: "This guides timer defaults and urgency copy.",
+        options: [
+          {
+            id: "flash_sale_24h",
+            label: "24 hours",
+            description: "High urgency.",
+          },
+          {
+            id: "flash_sale_48h",
+            label: "48 hours",
+            description: "Balanced sale window.",
+          },
+          {
+            id: "flash_sale_weekend",
+            label: "Weekend sale",
+            description: "Longer promotional window.",
+          },
+        ],
+      },
+      {
+        id: "flash_sale_surface",
+        title: "Where should shoppers notice it?",
+        description: "The campaign can still be previewed elsewhere.",
+        options: [
+          {
+            id: "flash_sale_top_bar",
+            label: "Top bar",
+            description: "Best for sitewide sales.",
+          },
+          {
+            id: "flash_sale_product_page",
+            label: "Product page",
+            description: "Best for product-specific sales.",
+          },
+          {
+            id: "flash_sale_cart",
+            label: "Cart reminder",
+            description: "Reinforce the sale near checkout.",
+          },
+        ],
+      },
+    ],
+  },
+  FREE_SHIPPING: {
+    summary:
+      "Configure a cart-focused free-shipping goal with threshold, progress style, and optional countdown.",
+    defaultShape: "cart",
+    defaultAnswers: {
+      free_shipping_threshold: ["free_shipping_threshold_75"],
+      free_shipping_scope: ["free_shipping_cart_progress"],
+      free_shipping_timer: ["free_shipping_no_countdown"],
+    },
+    quickStarts: ["Free shipping threshold"],
+    questions: [
+      {
+        id: "free_shipping_threshold",
+        title: "What threshold should unlock free shipping?",
+        description: "Pick the closest real threshold. You can edit it later.",
+        options: [
+          {
+            id: "free_shipping_threshold_50",
+            label: "$50",
+            description: "Lower threshold for lower-priced catalogs.",
+            offerText: "Free shipping over $50",
+          },
+          {
+            id: "free_shipping_threshold_75",
+            label: "$75",
+            description: "Balanced default.",
+            offerText: "Free shipping over $75",
+          },
+          {
+            id: "free_shipping_threshold_100",
+            label: "$100",
+            description: "Higher AOV target.",
+            offerText: "Free shipping over $100",
+          },
+        ],
+      },
+      {
+        id: "free_shipping_scope",
+        title: "How should it be shown?",
+        description: "Free shipping usually works best in cart surfaces.",
+        options: [
+          {
+            id: "free_shipping_cart_progress",
+            label: "Cart progress",
+            description: "Show progress toward the threshold.",
+          },
+          {
+            id: "free_shipping_top_bar",
+            label: "Top-bar reminder",
+            description: "Sitewide reminder plus cart progress.",
+          },
+          {
+            id: "free_shipping_compact",
+            label: "Compact message",
+            description: "Use less vertical space.",
+          },
+        ],
+      },
+      {
+        id: "free_shipping_timer",
+        title: "Should urgency be added?",
+        description: "Use a countdown only when there is a real time limit.",
+        options: [
+          {
+            id: "free_shipping_no_countdown",
+            label: "No countdown",
+            description: "Threshold only.",
+          },
+          {
+            id: "free_shipping_countdown_24h",
+            label: "24-hour countdown",
+            description: "Use only if the offer really ends soon.",
+          },
+        ],
+      },
+    ],
+  },
+  CART_RESCUE: {
+    summary:
+      "Create a cart drawer/page timer that pushes checkout completion without overpromising.",
+    defaultShape: "cart",
+    defaultAnswers: {
+      cart_rescue_timer: ["cart_timer_15"],
+      cart_rescue_incentive: ["cart_incentive_none"],
+      cart_rescue_surface: ["cart_surface_drawer"],
+    },
+    quickStarts: ["Cart recovery incentive"],
+    questions: [
+      {
+        id: "cart_rescue_timer",
+        title: "How long should the cart timer run?",
+        description: "Short timers feel stronger in cart contexts.",
+        options: [
+          {
+            id: "cart_timer_15",
+            label: "15 minutes",
+            description: "High urgency.",
+          },
+          {
+            id: "cart_timer_30",
+            label: "30 minutes",
+            description: "Moderate urgency.",
+          },
+        ],
+      },
+      {
+        id: "cart_rescue_incentive",
+        title: "Is there an incentive?",
+        description: "Only choose one if the store really offers it.",
+        options: [
+          {
+            id: "cart_incentive_none",
+            label: "No incentive",
+            description: "Use timer and copy only.",
+          },
+          {
+            id: "cart_incentive_discount",
+            label: "Small discount",
+            description: "Draft a code-based incentive.",
+            offerText: "10% off",
+          },
+          {
+            id: "cart_incentive_shipping",
+            label: "Free shipping",
+            description: "Draft a shipping incentive.",
+            offerText: "Free shipping",
+          },
+        ],
+      },
+      {
+        id: "cart_rescue_surface",
+        title: "Where should it appear?",
+        description: "Cart drawer is usually the primary surface.",
+        options: [
+          {
+            id: "cart_surface_drawer",
+            label: "Cart drawer",
+            description: "Primary cart rescue placement.",
+          },
+          {
+            id: "cart_surface_page",
+            label: "Cart page",
+            description: "Use for full cart pages too.",
+          },
+        ],
+      },
+    ],
+  },
+  DELIVERY_CUTOFF: {
+    summary:
+      "Draft an order-by timer using a daily cutoff and conservative delivery wording.",
+    defaultShape: "product",
+    defaultAnswers: {
+      delivery_cutoff_time: ["delivery_cutoff_14"],
+      delivery_cutoff_after: ["delivery_after_next_window"],
+    },
+    quickStarts: ["Delivery cutoff reminder"],
+    questions: [
+      {
+        id: "delivery_cutoff_time",
+        title: "What is the daily cutoff?",
+        description: "This configures the recurring countdown.",
+        options: [
+          {
+            id: "delivery_cutoff_14",
+            label: "2:00 PM",
+            description: "Conservative fulfillment cutoff.",
+          },
+          {
+            id: "delivery_cutoff_16",
+            label: "4:00 PM",
+            description: "Later fulfillment cutoff.",
+          },
+        ],
+      },
+      {
+        id: "delivery_cutoff_after",
+        title: "What happens after cutoff?",
+        description: "Choose how the campaign behaves after the daily window.",
+        options: [
+          {
+            id: "delivery_after_next_window",
+            label: "Show next window",
+            description: "Keep explaining the next order window.",
+          },
+          {
+            id: "delivery_after_hide",
+            label: "Hide message",
+            description: "Avoid after-cutoff messaging.",
+          },
+        ],
+      },
+    ],
+  },
+  LOW_STOCK_URGENCY: {
+    summary:
+      "Use real inventory conditions to show low-stock urgency without fake scarcity.",
+    defaultShape: "product",
+    defaultAnswers: {
+      low_stock_threshold: ["low_stock_threshold_5"],
+      low_stock_copy: ["low_stock_hide_quantity"],
+    },
+    quickStarts: ["Low stock urgency"],
+    questions: [
+      {
+        id: "low_stock_threshold",
+        title: "When should the message show?",
+        description: "This maps to the low-stock threshold.",
+        options: [
+          {
+            id: "low_stock_threshold_5",
+            label: "Below 5 units",
+            description: "Conservative scarcity.",
+          },
+          {
+            id: "low_stock_threshold_10",
+            label: "Below 10 units",
+            description: "Earlier warning.",
+          },
+        ],
+      },
+      {
+        id: "low_stock_copy",
+        title: "How much detail should be shown?",
+        description: "Avoid exact counts unless inventory data supports it.",
+        options: [
+          {
+            id: "low_stock_hide_quantity",
+            label: "Hide quantity",
+            description: "Show low-stock wording only.",
+          },
+          {
+            id: "low_stock_show_quantity",
+            label: "Show exact quantity",
+            description: "Only when inventory is reliable.",
+          },
+        ],
+      },
+    ],
+  },
+  PRODUCT_BADGE: {
+    summary:
+      "Create a compact product or collection badge for merchandising signals.",
+    defaultShape: "merchandising",
+    defaultAnswers: {
+      product_badge_text: ["badge_limited_offer"],
+      product_badge_surface: ["badge_collection_card"],
+    },
+    quickStarts: ["New product launch"],
+    questions: [
+      {
+        id: "product_badge_text",
+        title: "What should the badge say?",
+        description: "Badges need very short copy.",
+        options: [
+          {
+            id: "badge_new_drop",
+            label: "New drop",
+            description: "Product launch badge.",
+            offerText: "New drop",
+          },
+          {
+            id: "badge_limited_offer",
+            label: "Limited offer",
+            description: "General promo badge.",
+            offerText: "Limited offer",
+          },
+          {
+            id: "badge_free_shipping",
+            label: "Free shipping",
+            description: "Use only if true.",
+            offerText: "Free shipping",
+          },
+        ],
+      },
+      {
+        id: "product_badge_surface",
+        title: "Where should badges appear?",
+        description: "Collection cards are usually the most visible surface.",
+        options: [
+          {
+            id: "badge_collection_card",
+            label: "Collection cards",
+            description: "Show badges while browsing collections.",
+          },
+          {
+            id: "badge_product_page",
+            label: "Product pages",
+            description: "Show badges on product detail pages too.",
+          },
+        ],
+      },
+    ],
+  },
+  ANNOUNCEMENT: {
+    summary:
+      "Draft a general message for launches, store updates, or seasonal announcements.",
+    defaultShape: "sitewide",
+    defaultAnswers: {
+      announcement_focus: ["announcement_launch"],
+      announcement_surface: ["announcement_top_bar"],
+    },
+    quickStarts: ["New product launch"],
+    questions: [
+      {
+        id: "announcement_focus",
+        title: "What is the announcement about?",
+        description: "This controls message framing.",
+        options: [
+          {
+            id: "announcement_launch",
+            label: "Launch",
+            description: "New products or collection.",
+          },
+          {
+            id: "announcement_policy",
+            label: "Store update",
+            description: "Operational or policy message.",
+          },
+          {
+            id: "announcement_event",
+            label: "Seasonal event",
+            description: "Event-led announcement.",
+          },
+        ],
+      },
+      {
+        id: "announcement_surface",
+        title: "Where should it appear?",
+        description: "Announcements are often sitewide.",
+        options: [
+          {
+            id: "announcement_top_bar",
+            label: "Top bar",
+            description: "Most visible sitewide placement.",
+          },
+          {
+            id: "announcement_bottom_bar",
+            label: "Bottom bar",
+            description: "Less intrusive persistent message.",
+          },
+        ],
+      },
+    ],
+  },
+};
+
 const aiGoalDescriptions: Record<CampaignAiInput["objective"], string> = {
   FLASH_SALE: "Create urgency around a short sale window.",
   FREE_SHIPPING: "Move shoppers toward a shipping threshold.",
@@ -62,9 +519,33 @@ const aiGoalDescriptions: Record<CampaignAiInput["objective"], string> = {
   ANNOUNCEMENT: "Promote a general message or launch.",
 };
 
+const aiGoalFlowQuickStarts = uniqueStrings(
+  Object.values(aiGoalFlows).flatMap((flow) => flow.quickStarts),
+);
+const aiGoalFlowOfferLines = uniqueStrings(
+  Object.values(aiGoalFlows).flatMap((flow) =>
+    flow.questions.flatMap((question) =>
+      question.options
+        .map((option) => option.offerText)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ),
+);
+const aiGoalFlowNoteLines = uniqueStrings(
+  Object.values(aiGoalFlows).flatMap((flow) =>
+    flow.questions.flatMap((question) =>
+      question.options
+        .map((option) => option.notesText)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ),
+);
+
 export function AiCampaignBuilder({
   errors = {},
+  followUpQuestions = [],
   lockedReason,
+  onApplied,
   suggestion,
   templateSourceName,
   values,
@@ -73,8 +554,11 @@ export function AiCampaignBuilder({
   const suggestionPreviewRef = useRef<HTMLDivElement | null>(null);
   const [applied, setApplied] = useState(false);
   const [formValues, setFormValues] = useState(values);
-  const [campaignNameHint, setCampaignNameHint] = useState("");
-  const [selectedShape, setSelectedShape] = useState("sitewide");
+  const [followUpAnswers, setFollowUpAnswers] = useState<CampaignAiAnswerMap>(
+    {},
+  );
+  const activeGoalFlow = aiGoalFlows[formValues.objective];
+  const isAnsweringFollowUp = followUpQuestions.length > 0 && !suggestion;
   const isGenerating =
     navigation.state === "submitting" &&
     navigation.formData?.get("_action") === "generateAiCampaignSuggestion";
@@ -90,12 +574,90 @@ export function AiCampaignBuilder({
   const applyOfferQuickStart = (offer: string) => {
     setFormValues((current) => ({
       ...current,
-      knownOffer: current.knownOffer.trim() ? current.knownOffer : offer,
+      quickStarts: current.quickStarts.includes(offer)
+        ? current.quickStarts.filter((item) => item !== offer)
+        : [...current.quickStarts, offer],
+      knownOffer: current.quickStarts.includes(offer)
+        ? removeKnownOfferLine(current.knownOffer, offer)
+        : appendKnownOfferLine(current.knownOffer, offer),
     }));
+  };
+  const selectGoal = (objective: CampaignAiInput["objective"]) => {
+    const flow = aiGoalFlows[objective];
+
+    setFormValues((current) => ({
+      ...current,
+      objective,
+      campaignShape: flow.defaultShape,
+      goalAnswers: flow.defaultAnswers,
+      quickStarts: flow.quickStarts,
+      knownOffer: mergeKnownOfferLines(
+        removeKnownOfferLines(current.knownOffer, [
+          ...aiGoalFlowQuickStarts,
+          ...aiGoalFlowOfferLines,
+        ]),
+        flow.quickStarts,
+        collectOfferText(flow.defaultAnswers, flow),
+      ),
+      merchantNotes: mergeKnownOfferLines(
+        removeKnownOfferLines(current.merchantNotes, aiGoalFlowNoteLines),
+        [],
+        collectNotesText(flow.defaultAnswers, flow),
+      ),
+    }));
+    setFollowUpAnswers({});
+  };
+  const toggleGoalAnswer = (
+    question: GoalFlowQuestion,
+    option: GoalFlowOption,
+  ) => {
+    setFormValues((current) => {
+      const currentAnswers = current.goalAnswers[question.id] ?? [];
+      const isSelected = currentAnswers.includes(option.id);
+      const nextAnswers = isSelected
+        ? currentAnswers.filter((answer) => answer !== option.id)
+        : [...currentAnswers, option.id];
+      const nextGoalAnswers = {
+        ...current.goalAnswers,
+        [question.id]: nextAnswers,
+      };
+
+      return {
+        ...current,
+        goalAnswers: nextGoalAnswers,
+        knownOffer: option.offerText
+          ? isSelected
+            ? removeKnownOfferLine(current.knownOffer, option.offerText)
+            : appendKnownOfferLine(current.knownOffer, option.offerText)
+          : current.knownOffer,
+        merchantNotes: option.notesText
+          ? isSelected
+            ? removeKnownOfferLine(current.merchantNotes, option.notesText)
+            : appendKnownOfferLine(current.merchantNotes, option.notesText)
+          : current.merchantNotes,
+      };
+    });
+  };
+  const toggleFollowUpAnswer = (questionId: string, optionId: string) => {
+    setFollowUpAnswers((current) => {
+      const currentAnswers = current[questionId] ?? [];
+      const isSelected = currentAnswers.includes(optionId);
+
+      return {
+        ...current,
+        [questionId]: isSelected
+          ? currentAnswers.filter((answer) => answer !== optionId)
+          : [...currentAnswers, optionId],
+      };
+    });
   };
 
   useEffect(() => {
-    setFormValues(values);
+    const syncFormValues = window.setTimeout(() => {
+      setFormValues(values);
+    }, 0);
+
+    return () => window.clearTimeout(syncFormValues);
   }, [values]);
 
   useEffect(() => {
@@ -165,6 +727,31 @@ export function AiCampaignBuilder({
               type="hidden"
               value={formValues.brandTone}
             />
+            <input
+              name="campaignShape"
+              type="hidden"
+              value={formValues.campaignShape}
+            />
+            <input
+              name="goalAnswersJson"
+              type="hidden"
+              value={JSON.stringify(formValues.goalAnswers)}
+            />
+            <input
+              name="quickStartsJson"
+              type="hidden"
+              value={JSON.stringify(formValues.quickStarts)}
+            />
+            <input
+              name="followUpAnswersJson"
+              type="hidden"
+              value={JSON.stringify(followUpAnswers)}
+            />
+            <input
+              name="aiFollowUpStatus"
+              type="hidden"
+              value={isAnsweringFollowUp ? "answered" : "initial"}
+            />
 
             <div className="counterpulse-ai-step">
               <div>
@@ -178,7 +765,7 @@ export function AiCampaignBuilder({
                     className="counterpulse-ai-option-card"
                     key={option.value}
                     type="button"
-                    onClick={() => updateValue("objective", option.value)}
+                    onClick={() => selectGoal(option.value)}
                   >
                     <span className="counterpulse-ai-option-card__icon">
                       <AiGoalIcon />
@@ -197,21 +784,58 @@ export function AiCampaignBuilder({
 
             <div className="counterpulse-ai-step">
               <div>
-                <p className="counterpulse-kicker">Shape</p>
-                <h3>What kind of campaign should it feel like?</h3>
+                <p className="counterpulse-kicker">Goal setup</p>
+                <h3>{activeGoalFlow.summary}</h3>
               </div>
               <div className="counterpulse-ai-shape-grid">
                 {aiCampaignShapeOptions.map((option) => (
                   <button
-                    aria-pressed={selectedShape === option.key}
+                    aria-pressed={formValues.campaignShape === option.key}
                     className="counterpulse-ai-shape-card"
                     key={option.key}
                     type="button"
-                    onClick={() => setSelectedShape(option.key)}
+                    onClick={() =>
+                      updateValue(
+                        "campaignShape",
+                        option.key as CampaignAiInput["campaignShape"],
+                      )
+                    }
                   >
                     <strong>{option.label}</strong>
                     <small>{option.description}</small>
                   </button>
+                ))}
+              </div>
+
+              <div className="counterpulse-ai-flow-stack">
+                {activeGoalFlow.questions.map((question) => (
+                  <section
+                    className="counterpulse-ai-question"
+                    key={question.id}
+                  >
+                    <div>
+                      <strong>{question.title}</strong>
+                      <p>{question.description}</p>
+                    </div>
+                    <div className="counterpulse-ai-chip-grid">
+                      {question.options.map((option) => (
+                        <button
+                          aria-pressed={Boolean(
+                            formValues.goalAnswers[question.id]?.includes(
+                              option.id,
+                            ),
+                          )}
+                          className="counterpulse-ai-chip"
+                          key={option.id}
+                          type="button"
+                          onClick={() => toggleGoalAnswer(question, option)}
+                        >
+                          <span>{option.label}</span>
+                          <small>{option.description}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 ))}
               </div>
             </div>
@@ -244,11 +868,15 @@ export function AiCampaignBuilder({
             <div className="counterpulse-ai-step">
               <div>
                 <p className="counterpulse-kicker">Offer</p>
-                <h3>Pick a starting point</h3>
+                <h3>Pick any relevant starting points</h3>
               </div>
               <div className="counterpulse-ai-chip-grid">
-                {aiOfferQuickStarts.map((offer) => (
+                {uniqueStrings([
+                  ...activeGoalFlow.quickStarts,
+                  ...aiOfferQuickStarts,
+                ]).map((offer) => (
                   <button
+                    aria-pressed={formValues.quickStarts.includes(offer)}
                     className="counterpulse-ai-chip"
                     key={offer}
                     type="button"
@@ -260,6 +888,50 @@ export function AiCampaignBuilder({
               </div>
             </div>
 
+            {isAnsweringFollowUp && (
+              <div className="counterpulse-ai-step counterpulse-ai-follow-up">
+                <div>
+                  <p className="counterpulse-kicker">AI questions</p>
+                  <h3>Optional refinements before generating</h3>
+                  <p>
+                    Select any answers that apply. You can ignore every question
+                    and generate with safe defaults.
+                  </p>
+                </div>
+                <div className="counterpulse-ai-flow-stack">
+                  {followUpQuestions.map((question) => (
+                    <section
+                      className="counterpulse-ai-question"
+                      key={question.id}
+                    >
+                      <div>
+                        <strong>{question.question}</strong>
+                        <p>{question.reason}</p>
+                      </div>
+                      <div className="counterpulse-ai-chip-grid">
+                        {question.options.map((option) => (
+                          <button
+                            aria-pressed={Boolean(
+                              followUpAnswers[question.id]?.includes(option.id),
+                            )}
+                            className="counterpulse-ai-chip"
+                            key={option.id}
+                            type="button"
+                            onClick={() =>
+                              toggleFollowUpAnswer(question.id, option.id)
+                            }
+                          >
+                            <span>{option.label}</span>
+                            <small>{option.description}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="counterpulse-ai-step">
               <div>
                 <p className="counterpulse-kicker">Details</p>
@@ -268,10 +940,11 @@ export function AiCampaignBuilder({
               <div className="counterpulse-form-grid">
                 <FormField label="Campaign name hint">
                   <input
-                    value={campaignNameHint}
+                    name="campaignNameHint"
+                    value={formValues.campaignNameHint}
                     placeholder="Optional. Leave blank to generate a name."
                     onChange={(event) =>
-                      setCampaignNameHint(event.currentTarget.value)
+                      updateValue("campaignNameHint", event.currentTarget.value)
                     }
                   />
                 </FormField>
@@ -328,6 +1001,18 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
+                <FormField label="Extra campaign notes" fullWidth>
+                  <textarea
+                    name="merchantNotes"
+                    value={formValues.merchantNotes}
+                    rows={3}
+                    placeholder="Optional. Add brand constraints, audience notes, exclusions, merchandising rules, or anything the AI should respect."
+                    onChange={(event) =>
+                      updateValue("merchantNotes", event.currentTarget.value)
+                    }
+                  />
+                </FormField>
+
                 <FormField label="Event or season" error={errors.eventName}>
                   <input
                     name="eventName"
@@ -374,8 +1059,7 @@ export function AiCampaignBuilder({
                   <select
                     value={formValues.objective}
                     onChange={(event) =>
-                      updateValue(
-                        "objective",
+                      selectGoal(
                         event.currentTarget
                           .value as CampaignAiInput["objective"],
                       )
@@ -398,6 +1082,16 @@ export function AiCampaignBuilder({
                     required
                     onChange={(event) =>
                       updateValue("productContext", event.currentTarget.value)
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Extra notes" fullWidth>
+                  <textarea
+                    value={formValues.merchantNotes}
+                    rows={2}
+                    onChange={(event) =>
+                      updateValue("merchantNotes", event.currentTarget.value)
                     }
                   />
                 </FormField>
@@ -490,9 +1184,11 @@ export function AiCampaignBuilder({
               <button className="counterpulse-ai-submit" type="submit">
                 {isGenerating
                   ? "Generating..."
-                  : templateSourceName
-                    ? "Generate variants from template"
-                    : "Generate with AI"}
+                  : isAnsweringFollowUp
+                    ? "Generate campaign with these answers"
+                    : templateSourceName
+                      ? "Generate variants from template"
+                      : "Generate with AI"}
               </button>
             </div>
           </Form>
@@ -536,7 +1232,31 @@ export function AiCampaignBuilder({
                   />
                   <PreviewItem
                     label="Placement"
-                    value={formatEnum(suggestion.campaign.placementType)}
+                    value={suggestion.campaign.placementTypes
+                      .map(formatEnum)
+                      .join(", ")}
+                  />
+                  <PreviewItem
+                    label="Timer"
+                    value={`${formatEnum(suggestion.timer.mode)} · ${formatEnum(
+                      suggestion.timer.expiredBehavior,
+                    )}`}
+                  />
+                  <PreviewItem
+                    label="Targeting"
+                    value={`${formatEnum(
+                      suggestion.targeting.productSelection,
+                    )} · ${formatEnum(suggestion.targeting.countrySelection)}`}
+                  />
+                  <PreviewItem
+                    label="Discount"
+                    value={
+                      suggestion.discount.mode === "NONE"
+                        ? "No discount"
+                        : `${formatEnum(
+                            suggestion.discount.mode,
+                          )} · ${formatEnum(suggestion.discount.valueType)}`
+                    }
                   />
                 </div>
 
@@ -567,6 +1287,7 @@ export function AiCampaignBuilder({
                     onClick={() => {
                       applySuggestionToCampaignForm(suggestion);
                       setApplied(true);
+                      onApplied?.();
                     }}
                     type="button"
                   >
@@ -609,6 +1330,35 @@ function AiGoalIcon() {
 
 function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   const payload = JSON.stringify(suggestion);
+  const campaignValues: Partial<CampaignFormValues> = {
+    goal: suggestion.campaign.goal,
+    type: suggestion.campaign.type,
+    placementType: suggestion.campaign.placementType,
+    placementTypes: suggestion.campaign.placementTypes,
+    name: suggestion.campaign.name,
+    status: "DRAFT",
+    headline: suggestion.campaign.headline,
+    subheadline: suggestion.campaign.subheadline,
+    ctaText: suggestion.campaign.ctaText,
+    ctaUrl: suggestion.campaign.ctaUrl,
+    expiredText: suggestion.campaign.expiredText,
+    timerMode: suggestion.timer.mode,
+    timerDurationMinutes: suggestion.timer.durationMinutes,
+    timerResetBehavior: suggestion.timer.resetBehavior,
+    timerExpiredBehavior: suggestion.timer.expiredBehavior,
+    timerRecurringHour: suggestion.timer.recurringHour,
+    timerRecurringMinute: suggestion.timer.recurringMinute,
+    startsAt: suggestion.timer.startsAt,
+    endsAt: suggestion.timer.endsAt,
+    productSelection: suggestion.targeting.productSelection,
+    productIds: suggestion.targeting.productIds.join("\n"),
+    excludeProductIds: suggestion.targeting.excludeProductIds.join("\n"),
+    collectionIds: suggestion.targeting.collectionIds.join("\n"),
+    productTags: suggestion.targeting.productTags.join("\n"),
+    customSelector: suggestion.targeting.customSelector,
+    countrySelection: suggestion.targeting.countrySelection,
+    countries: suggestion.targeting.countries.join("\n"),
+  };
 
   setRadioValue("goal", suggestion.campaign.goal);
   setFieldValue("type", suggestion.campaign.type);
@@ -621,10 +1371,26 @@ function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   setFieldValue("ctaUrl", suggestion.campaign.ctaUrl);
   setFieldValue("aiSuggestionJson", payload);
   window.dispatchEvent(
+    new CustomEvent("promo-pulse:ai-apply-values", {
+      detail: {
+        design: suggestion.design,
+        values: campaignValues,
+      },
+    }),
+  );
+  window.dispatchEvent(
     new CustomEvent("promo-pulse:ai-suggestion-json", { detail: payload }),
   );
   window.requestAnimationFrame(() => {
     setFieldValue("aiSuggestionJson", payload);
+    window.dispatchEvent(
+      new CustomEvent("promo-pulse:ai-apply-values", {
+        detail: {
+          design: suggestion.design,
+          values: campaignValues,
+        },
+      }),
+    );
     window.dispatchEvent(
       new CustomEvent("promo-pulse:ai-suggestion-json", { detail: payload }),
     );
@@ -722,4 +1488,66 @@ function formatEnum(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function collectOfferText(answers: CampaignAiAnswerMap, flow: GoalFlowConfig) {
+  return collectOptionText(answers, flow, "offerText");
+}
+
+function collectNotesText(answers: CampaignAiAnswerMap, flow: GoalFlowConfig) {
+  return collectOptionText(answers, flow, "notesText");
+}
+
+function collectOptionText(
+  answers: CampaignAiAnswerMap,
+  flow: GoalFlowConfig,
+  key: "offerText" | "notesText",
+) {
+  const optionsById = new Map(
+    flow.questions.flatMap((question) =>
+      question.options.map((option) => [option.id, option] as const),
+    ),
+  );
+
+  return Object.values(answers)
+    .flat()
+    .map((answerId) => optionsById.get(answerId)?.[key])
+    .filter((value): value is string => Boolean(value));
+}
+
+function appendKnownOfferLine(value: string, line: string) {
+  return mergeKnownOfferLines(value, [], [line]);
+}
+
+function removeKnownOfferLine(value: string, line: string) {
+  return removeKnownOfferLines(value, [line]);
+}
+
+function removeKnownOfferLines(value: string, lines: string[]) {
+  const blockedLines = new Set(lines);
+
+  return value
+    .split(/\n+/)
+    .map((item) => item.trim())
+    .filter((item) => item && !blockedLines.has(item))
+    .join("\n");
+}
+
+function mergeKnownOfferLines(
+  value: string,
+  quickStarts: string[],
+  extraLines: string[],
+) {
+  return uniqueStrings([
+    ...value
+      .split(/\n+/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    ...quickStarts,
+    ...extraLines,
+  ]).join("\n");
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
 }

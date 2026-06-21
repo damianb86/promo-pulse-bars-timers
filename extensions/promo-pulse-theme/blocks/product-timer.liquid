@@ -32,6 +32,7 @@
     ]
   </script>
 {% endif %}
+<script src="{{ 'product-timer.js' | asset_url }}" defer></script>
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
 <script src="{{ 'delivery-cutoff.js' | asset_url }}" defer></script>
 <script src="{{ 'low-stock.js' | asset_url }}" defer></script>
@@ -41,7 +42,6 @@
   "name": "Promo Pulse product timer",
   "target": "section",
   "stylesheet": "promo-pulse.css",
-  "javascript": "product-timer.js",
   "templates": ["product"],
   "settings": [
     {

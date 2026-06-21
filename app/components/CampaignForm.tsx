@@ -26,6 +26,7 @@ import {
   type CampaignTypeValue,
   type PlacementTypeValue,
 } from "../types/campaign-options";
+import { CampaignControlStatusBadge } from "./CampaignControlStatusBadge";
 import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
@@ -1112,12 +1113,15 @@ export function CampaignForm({
             aria-label="Campaign status"
           >
             <div className="counterpulse-create-status">
-              <span>{statusLabel}</span>
               <span>{activeGoalLabel}</span>
               <span>{activePlacementLabel}</span>
             </div>
             <div className="counterpulse-create-actions">
               {topbarActions}
+              <CampaignControlStatusBadge
+                label={statusLabel}
+                status={formValues.status}
+              />
               {canReview && (
                 <button
                   className="counterpulse-button-secondary"

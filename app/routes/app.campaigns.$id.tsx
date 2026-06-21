@@ -1699,6 +1699,7 @@ export default function EditCampaignPage() {
               ? "Publish changes"
               : "Publish",
             statusLabel: campaignStatusLabel,
+            statusValue: activeCampaignValues.status,
           }}
           sections={[
             {

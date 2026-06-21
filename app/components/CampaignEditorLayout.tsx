@@ -1,4 +1,6 @@
 import { type ReactNode, useState } from "react";
+import { CampaignControlStatusBadge } from "./CampaignControlStatusBadge";
+import type { EditableCampaignStatusValue } from "../types/campaign-options";
 
 export type CampaignEditorSection = {
   key: string;
@@ -17,6 +19,7 @@ type CampaignEditorLayoutProps = {
     publicationLabel?: string;
     publishLabel?: string;
     statusLabel: string;
+    statusValue: EditableCampaignStatusValue;
     isSubmitting?: boolean;
     onPublish?: () => void;
   };
@@ -42,7 +45,6 @@ export function CampaignEditorLayout({
           <div>
             <p className="counterpulse-kicker">Campaign controls</p>
             <div className="counterpulse-create-status">
-              <span>{actionBar.statusLabel}</span>
               <span>{actionBar.goalLabel}</span>
               <span>{actionBar.placementLabel}</span>
               {actionBar.publicationLabel && (
@@ -51,6 +53,10 @@ export function CampaignEditorLayout({
             </div>
           </div>
           <div className="counterpulse-create-actions">
+            <CampaignControlStatusBadge
+              label={actionBar.statusLabel}
+              status={actionBar.statusValue}
+            />
             <button
               className="counterpulse-button-secondary"
               type="button"

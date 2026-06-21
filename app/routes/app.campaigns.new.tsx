@@ -54,9 +54,12 @@ import type {
   CampaignSuggestion,
 } from "../types/ai-campaign";
 import {
+  buildCampaignBadgeSettingsValues,
+  buildCampaignDeliveryCutoffSettingsValues,
   buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
   buildCampaignFreeShippingSettingsValues,
+  buildCampaignLowStockSettingsValues,
   defaultCampaignFormValues,
   emptyCampaignTargetingOptions,
   type CampaignFormErrors,
@@ -64,9 +67,6 @@ import {
   type CampaignTargetingOptions,
 } from "../types/campaign-form";
 import type { StorefrontLocale } from "../types/localization";
-import { defaultBadgeSettingsValues } from "../types/badge";
-import { defaultDeliveryCutoffSettingsValues } from "../types/delivery-cutoff";
-import { defaultLowStockSettingsValues } from "../types/low-stock";
 import { buildDefaultCampaignTranslations } from "../utils/campaign-localization";
 
 type ActionData = {
@@ -140,7 +140,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
-  const { session, redirect } = await authenticateAdmin(request);
+  const { admin, session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const intent = formData.get("_action");
@@ -199,8 +199,21 @@ export const action = async ({
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
+  const isDeliveryCutoffCampaign =
+    parsed.values.type === "DELIVERY_CUTOFF" ||
+    parsed.values.goal === "DELIVERY_CUTOFF";
+  const isLowStockCampaign =
+    parsed.values.type === "LOW_STOCK" ||
+    parsed.values.goal === "LOW_STOCK_URGENCY";
+  const isBadgeCampaign =
+    parsed.values.type === "PRODUCT_BADGE" ||
+    parsed.values.goal === "PRODUCT_BADGE";
   const freeShippingSettings =
     buildCampaignFreeShippingSettingsValues(parsed.values);
+  const deliveryCutoffSettings =
+    buildCampaignDeliveryCutoffSettingsValues(parsed.values);
+  const lowStockSettings = buildCampaignLowStockSettingsValues(parsed.values);
+  const badgeSettings = buildCampaignBadgeSettingsValues(parsed.values);
 
   try {
     const createGate = await canCreateCampaign(shop);
@@ -318,56 +331,42 @@ export const action = async ({
             },
           }
         : {}),
-      ...(parsed.values.type === "DELIVERY_CUTOFF" ||
-      parsed.values.goal === "DELIVERY_CUTOFF"
+      ...(isDeliveryCutoffCampaign
         ? {
             deliveryCutoffSettings: {
               create: {
                 afterCutoffBehavior:
-                  defaultDeliveryCutoffSettingsValues.afterCutoffBehavior,
-                countryRules: {},
-                cutoffHour: Number(
-                  defaultDeliveryCutoffSettingsValues.cutoffHour,
-                ),
-                cutoffMinute: Number(
-                  defaultDeliveryCutoffSettingsValues.cutoffMinute,
-                ),
-                holidays: [],
-                maxDeliveryDays: Number(
-                  defaultDeliveryCutoffSettingsValues.maxDeliveryDays,
-                ),
-                minDeliveryDays: Number(
-                  defaultDeliveryCutoffSettingsValues.minDeliveryDays,
-                ),
-                processingDays: Number(
-                  defaultDeliveryCutoffSettingsValues.processingDays,
-                ),
-                workingDays: [1, 2, 3, 4, 5],
+                  deliveryCutoffSettings.afterCutoffBehavior,
+                countryRules: deliveryCutoffSettings.countryRules,
+                cutoffHour: deliveryCutoffSettings.cutoffHour,
+                cutoffMinute: deliveryCutoffSettings.cutoffMinute,
+                holidays: deliveryCutoffSettings.holidays,
+                maxDeliveryDays: deliveryCutoffSettings.maxDeliveryDays,
+                minDeliveryDays: deliveryCutoffSettings.minDeliveryDays,
+                processingDays: deliveryCutoffSettings.processingDays,
+                workingDays: deliveryCutoffSettings.workingDays,
               },
             },
           }
         : {}),
-      ...(parsed.values.type === "LOW_STOCK" ||
-      parsed.values.goal === "LOW_STOCK_URGENCY"
+      ...(isLowStockCampaign
         ? {
             lowStockSettings: {
               create: {
-                fallbackMessage: defaultLowStockSettingsValues.fallbackMessage,
-                showExactQuantity:
-                  defaultLowStockSettingsValues.showExactQuantity,
-                threshold: Number(defaultLowStockSettingsValues.threshold),
+                fallbackMessage: lowStockSettings.fallbackMessage,
+                showExactQuantity: lowStockSettings.showExactQuantity,
+                threshold: lowStockSettings.threshold,
               },
             },
           }
         : {}),
-      ...(parsed.values.type === "PRODUCT_BADGE" ||
-      parsed.values.goal === "PRODUCT_BADGE"
+      ...(isBadgeCampaign
         ? {
             badgeSettings: {
               create: {
-                badgePosition: defaultBadgeSettingsValues.badgePosition,
-                badgeShape: defaultBadgeSettingsValues.badgeShape,
-                badgeText: defaultBadgeSettingsValues.badgeText,
+                badgePosition: badgeSettings.badgePosition,
+                badgeShape: badgeSettings.badgeShape,
+                badgeText: badgeSettings.badgeText,
               },
             },
           }

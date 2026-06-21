@@ -14,6 +14,7 @@ import {
 import {
   countrySelectionOptions,
   productSelectionOptions,
+  parseDeliveryWorkingDays,
   splitCampaignList,
   defaultCampaignFormValues,
   type CampaignTimerExpiredBehaviorValue,
@@ -24,6 +25,8 @@ import {
   type CountrySelectionValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
+import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
+import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 
 export type ParsedCampaignForm = {
@@ -70,6 +73,15 @@ const timerExpiredBehaviors = new Set<string>([
 ]);
 const freeShippingProgressStyles = new Set<string>(
   freeShippingProgressStyleOptions.map((option) => option.value),
+);
+const deliveryAfterCutoffBehaviors = new Set<string>(
+  afterCutoffBehaviorOptions.map((option) => option.value),
+);
+const badgeShapes = new Set<string>(
+  badgeShapeOptions.map((option) => option.value),
+);
+const badgePositions = new Set<string>(
+  badgePositionOptions.map((option) => option.value),
 );
 
 export function parseCampaignFormData(
@@ -194,6 +206,64 @@ export function parseCampaignFormData(
       formData,
       "freeShippingDiscountAppliesOncePerCustomer",
     ),
+    cartTimerDurationMinutes:
+      readString(formData, "cartTimerDurationMinutes") ||
+      defaultCampaignFormValues.cartTimerDurationMinutes,
+    cartTimerResetBehavior: readOption(
+      formData,
+      "cartTimerResetBehavior",
+      timerResetBehaviors,
+      defaultCampaignFormValues.cartTimerResetBehavior,
+    ) as CampaignFormValues["cartTimerResetBehavior"],
+    deliveryCutoffHour:
+      readString(formData, "deliveryCutoffHour") ||
+      defaultCampaignFormValues.deliveryCutoffHour,
+    deliveryCutoffMinute:
+      readString(formData, "deliveryCutoffMinute") ||
+      defaultCampaignFormValues.deliveryCutoffMinute,
+    deliveryProcessingDays:
+      readString(formData, "deliveryProcessingDays") ||
+      defaultCampaignFormValues.deliveryProcessingDays,
+    deliveryMinDays:
+      readString(formData, "deliveryMinDays") ||
+      defaultCampaignFormValues.deliveryMinDays,
+    deliveryMaxDays:
+      readString(formData, "deliveryMaxDays") ||
+      defaultCampaignFormValues.deliveryMaxDays,
+    deliveryWorkingDays:
+      readString(formData, "deliveryWorkingDays") ||
+      defaultCampaignFormValues.deliveryWorkingDays,
+    deliveryAfterCutoffBehavior: readOption(
+      formData,
+      "deliveryAfterCutoffBehavior",
+      deliveryAfterCutoffBehaviors,
+      defaultCampaignFormValues.deliveryAfterCutoffBehavior,
+    ) as CampaignFormValues["deliveryAfterCutoffBehavior"],
+    lowStockThreshold:
+      readString(formData, "lowStockThreshold") ||
+      defaultCampaignFormValues.lowStockThreshold,
+    lowStockShowExactQuantity: readBoolean(
+      formData,
+      "lowStockShowExactQuantity",
+    ),
+    lowStockFallbackMessage:
+      readString(formData, "lowStockFallbackMessage") ||
+      defaultCampaignFormValues.lowStockFallbackMessage,
+    badgeText:
+      readString(formData, "badgeText") ||
+      defaultCampaignFormValues.badgeText,
+    badgeShape: readOption(
+      formData,
+      "badgeShape",
+      badgeShapes,
+      defaultCampaignFormValues.badgeShape,
+    ) as CampaignFormValues["badgeShape"],
+    badgePosition: readOption(
+      formData,
+      "badgePosition",
+      badgePositions,
+      defaultCampaignFormValues.badgePosition,
+    ) as CampaignFormValues["badgePosition"],
   };
 
   const errors: CampaignFormErrors = {};
@@ -309,6 +379,67 @@ export function parseCampaignFormData(
         errors.freeShippingDiscountTitle =
           "Add a Shopify discount title.";
       }
+    }
+  }
+
+  if (values.type === "CART_TIMER" || values.goal === "CART_RESCUE") {
+    if (!isIntegerInRange(values.cartTimerDurationMinutes, 1, 10080)) {
+      errors.cartTimerDurationMinutes =
+        "Enter cart reservation minutes between 1 and 10080.";
+    }
+  }
+
+  if (values.type === "DELIVERY_CUTOFF" || values.goal === "DELIVERY_CUTOFF") {
+    if (!isIntegerInRange(values.deliveryCutoffHour, 0, 23)) {
+      errors.deliveryCutoffHour = "Enter a cutoff hour from 0 to 23.";
+    }
+
+    if (!isIntegerInRange(values.deliveryCutoffMinute, 0, 59)) {
+      errors.deliveryCutoffMinute = "Enter a cutoff minute from 0 to 59.";
+    }
+
+    if (!isIntegerInRange(values.deliveryProcessingDays, 0, 60)) {
+      errors.deliveryProcessingDays =
+        "Enter processing days from 0 to 60.";
+    }
+
+    if (!isIntegerInRange(values.deliveryMinDays, 0, 60)) {
+      errors.deliveryMinDays = "Enter minimum delivery days from 0 to 60.";
+    }
+
+    if (!isIntegerInRange(values.deliveryMaxDays, 0, 90)) {
+      errors.deliveryMaxDays = "Enter maximum delivery days from 0 to 90.";
+    }
+
+    if (Number(values.deliveryMaxDays) < Number(values.deliveryMinDays)) {
+      errors.deliveryMaxDays =
+        "Maximum delivery days must be greater than or equal to minimum delivery days.";
+    }
+
+    if (parseDeliveryWorkingDays(values.deliveryWorkingDays).length === 0) {
+      errors.deliveryWorkingDays = "Choose at least one fulfillment day.";
+    }
+  }
+
+  if (values.type === "LOW_STOCK" || values.goal === "LOW_STOCK_URGENCY") {
+    if (!isIntegerInRange(values.lowStockThreshold, 1, 9999)) {
+      errors.lowStockThreshold =
+        "Enter a low-stock threshold from 1 to 9999.";
+    }
+
+    if (values.lowStockFallbackMessage.length > 180) {
+      errors.lowStockFallbackMessage =
+        "Keep the fallback message under 180 characters.";
+    }
+  }
+
+  if (values.type === "PRODUCT_BADGE" || values.goal === "PRODUCT_BADGE") {
+    if (!values.badgeText.trim()) {
+      errors.badgeText = "Badge text is required.";
+    }
+
+    if (values.badgeText.length > 48) {
+      errors.badgeText = "Keep badge text under 48 characters.";
     }
   }
 

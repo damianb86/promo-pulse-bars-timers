@@ -41,11 +41,17 @@ import type {
   ProductSelectionValue,
 } from "../types/campaign-form";
 import {
+  buildCampaignBadgeSettingsValues,
+  buildCampaignDeliveryCutoffSettingsValues,
   buildCampaignFreeShippingSettingsValues,
+  buildCampaignLowStockSettingsValues,
   buildCampaignTimerSettingsValues,
   emptyCampaignTargetingOptions,
+  parseDeliveryWorkingDays,
   splitCampaignList,
 } from "../types/campaign-form";
+import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
+import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
@@ -194,6 +200,26 @@ const timerExpiredBehaviorOptions: Array<{
   { label: "Do nothing", value: "DO_NOTHING" },
 ];
 
+const cartTimerResetBehaviorOptions: Array<{
+  label: string;
+  value: CampaignFormValues["cartTimerResetBehavior"];
+}> = [
+  { label: "Per cart session", value: "ON_SESSION_END" },
+  { label: "Never reset for the visitor", value: "NEVER" },
+  { label: "Reset daily", value: "DAILY" },
+  { label: "Reset weekly", value: "WEEKLY" },
+];
+
+const deliveryWeekdayOptions = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 7, label: "Sun" },
+] as const;
+
 const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
   FLASH_SALE: "Flash sale",
   FREE_SHIPPING: "Free shipping",
@@ -300,6 +326,8 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         timerStyle: "GROUPED",
       },
       form: {
+        cartTimerDurationMinutes: "120",
+        cartTimerResetBehavior: "ON_SESSION_END",
         timerDurationMinutes: "120",
         timerExpiredBehavior: "HIDE_TIMER",
         timerMode: "EVERGREEN_SESSION",
@@ -359,6 +387,13 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         timerStyle: "GROUPED",
       },
       form: {
+        deliveryAfterCutoffBehavior: "SHOW_NEXT_WINDOW",
+        deliveryCutoffHour: "14",
+        deliveryCutoffMinute: "0",
+        deliveryMaxDays: "5",
+        deliveryMinDays: "2",
+        deliveryProcessingDays: "0",
+        deliveryWorkingDays: "1,2,3,4,5",
         timerExpiredBehavior: "UNPUBLISH_TIMER",
         timerMode: "FIXED_DATE",
       },
@@ -384,6 +419,9 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         timerStyle: "PLAIN",
       },
       form: {
+        lowStockFallbackMessage: "Only a few left",
+        lowStockShowExactQuantity: false,
+        lowStockThreshold: "5",
         timerExpiredBehavior: "DO_NOTHING",
         timerMode: "FIXED_DATE",
       },
@@ -410,6 +448,9 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         timerStyle: "PLAIN",
       },
       form: {
+        badgePosition: "TOP_RIGHT",
+        badgeShape: "PILL",
+        badgeText: "Limited offer",
         timerExpiredBehavior: "DO_NOTHING",
         timerMode: "FIXED_DATE",
       },
@@ -630,6 +671,20 @@ export function CampaignForm({
   const activeGoalLabel =
     campaignGoalOptions.find((option) => option.value === formValues.goal)
       ?.label ?? "Flash sale";
+  const isCartRescueCampaign =
+    formValues.type === "CART_TIMER" || formValues.goal === "CART_RESCUE";
+  const isDeliveryCutoffCampaign =
+    formValues.type === "DELIVERY_CUTOFF" ||
+    formValues.goal === "DELIVERY_CUTOFF";
+  const isFreeShippingCampaign =
+    formValues.type === "FREE_SHIPPING_GOAL" ||
+    formValues.goal === "FREE_SHIPPING";
+  const isLowStockCampaign =
+    formValues.type === "LOW_STOCK" ||
+    formValues.goal === "LOW_STOCK_URGENCY";
+  const isBadgeCampaign =
+    formValues.type === "PRODUCT_BADGE" ||
+    formValues.goal === "PRODUCT_BADGE";
   const activeCampaignTypeChoiceKey = getCampaignTypeChoiceKey(formValues);
   const activeCampaignTypeChoice =
     campaignTypeChoiceOptions.find(
@@ -646,6 +701,10 @@ export function CampaignForm({
   const selectedProductTags = splitCampaignList(formValues.productTags);
   const selectedCountries = splitCampaignList(formValues.countries).map(
     (country) => country.toUpperCase(),
+  );
+  const selectedDeliveryWorkingDays = useMemo(
+    () => new Set(parseDeliveryWorkingDays(formValues.deliveryWorkingDays)),
+    [formValues.deliveryWorkingDays],
   );
   const matchingProductTags = useMemo(
     () =>
@@ -727,18 +786,33 @@ export function CampaignForm({
         ],
         design: effectiveDesign,
         timerSettings: buildCampaignTimerSettingsValues(formValues),
-        freeShippingSettings:
-          formValues.type === "FREE_SHIPPING_GOAL" ||
-          formValues.goal === "FREE_SHIPPING"
-            ? buildCampaignFreeShippingSettingsValues(formValues)
-            : null,
+        freeShippingSettings: isFreeShippingCampaign
+          ? buildCampaignFreeShippingSettingsValues(formValues)
+          : null,
+        deliveryCutoffSettings: isDeliveryCutoffCampaign
+          ? buildCampaignDeliveryCutoffSettingsValues(formValues)
+          : null,
+        lowStockSettings: isLowStockCampaign
+          ? buildCampaignLowStockSettingsValues(formValues)
+          : null,
+        badgeSettings: isBadgeCampaign
+          ? buildCampaignBadgeSettingsValues(formValues)
+          : null,
         discountSync: formValues.freeShippingAutoDiscount
           ? {
               discountCode: formValues.freeShippingDiscountCode,
             }
           : null,
       }),
-    [activeGoalLabel, effectiveDesign, formValues],
+    [
+      activeGoalLabel,
+      effectiveDesign,
+      formValues,
+      isBadgeCampaign,
+      isDeliveryCutoffCampaign,
+      isFreeShippingCampaign,
+      isLowStockCampaign,
+    ],
   );
   const summaryRows = useMemo(
     () => [
@@ -1081,6 +1155,32 @@ export function CampaignForm({
       ),
     );
     updateDesignValues(applyDesignSetupPreset(effectiveDesign, preset.design));
+  };
+
+  const toggleDeliveryWorkingDay = (day: number) => {
+    setFormValues((currentValues) => {
+      const days = new Set(
+        parseDeliveryWorkingDays(currentValues.deliveryWorkingDays),
+      );
+
+      if (days.has(day)) {
+        days.delete(day);
+      } else {
+        days.add(day);
+      }
+
+      const nextDays = Array.from(days).sort(
+        (first, second) => first - second,
+      );
+
+      return {
+        ...currentValues,
+        deliveryWorkingDays:
+          nextDays.length > 0
+            ? nextDays.join(",")
+            : currentValues.deliveryWorkingDays,
+      };
+    });
   };
 
   const updateDesignValues = (nextDesign: CampaignDesignValues) => {
@@ -1624,6 +1724,323 @@ export function CampaignForm({
                     </div>
                   </section>
                 )}
+
+                {(formValues.type === "CART_TIMER" ||
+                  formValues.goal === "CART_RESCUE") && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card"
+                    aria-labelledby={scopedId("cart-rescue-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("cart-rescue-setup-heading")}>
+                        Cart rescue timer
+                      </h3>
+                      <p>
+                        Configure the per-cart reservation window used in the
+                        cart page and drawer.
+                      </p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField
+                        label="Reservation minutes"
+                        error={errors.cartTimerDurationMinutes}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={10080}
+                          min={1}
+                          name="cartTimerDurationMinutes"
+                          type="number"
+                          value={formValues.cartTimerDurationMinutes}
+                          onChange={updateField("cartTimerDurationMinutes")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Reset behavior"
+                        error={errors.cartTimerResetBehavior}
+                      >
+                        <select
+                          name="cartTimerResetBehavior"
+                          value={formValues.cartTimerResetBehavior}
+                          onChange={updateField("cartTimerResetBehavior")}
+                        >
+                          {cartTimerResetBehaviorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+                  </section>
+                )}
+
+                {(formValues.type === "DELIVERY_CUTOFF" ||
+                  formValues.goal === "DELIVERY_CUTOFF") && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card"
+                    aria-labelledby={scopedId("delivery-cutoff-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("delivery-cutoff-setup-heading")}>
+                        Delivery promise
+                      </h3>
+                      <p>
+                        Set the real order-by cutoff and delivery window shown
+                        near product content.
+                      </p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField
+                        label="Cutoff hour"
+                        error={errors.deliveryCutoffHour}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={23}
+                          min={0}
+                          name="deliveryCutoffHour"
+                          type="number"
+                          value={formValues.deliveryCutoffHour}
+                          onChange={updateField("deliveryCutoffHour")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Cutoff minute"
+                        error={errors.deliveryCutoffMinute}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={59}
+                          min={0}
+                          name="deliveryCutoffMinute"
+                          type="number"
+                          value={formValues.deliveryCutoffMinute}
+                          onChange={updateField("deliveryCutoffMinute")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Processing days"
+                        error={errors.deliveryProcessingDays}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={60}
+                          min={0}
+                          name="deliveryProcessingDays"
+                          type="number"
+                          value={formValues.deliveryProcessingDays}
+                          onChange={updateField("deliveryProcessingDays")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Minimum delivery days"
+                        error={errors.deliveryMinDays}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={60}
+                          min={0}
+                          name="deliveryMinDays"
+                          type="number"
+                          value={formValues.deliveryMinDays}
+                          onChange={updateField("deliveryMinDays")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Maximum delivery days"
+                        error={errors.deliveryMaxDays}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={90}
+                          min={0}
+                          name="deliveryMaxDays"
+                          type="number"
+                          value={formValues.deliveryMaxDays}
+                          onChange={updateField("deliveryMaxDays")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="After cutoff"
+                        error={errors.deliveryAfterCutoffBehavior}
+                      >
+                        <select
+                          name="deliveryAfterCutoffBehavior"
+                          value={formValues.deliveryAfterCutoffBehavior}
+                          onChange={updateField(
+                            "deliveryAfterCutoffBehavior",
+                          )}
+                        >
+                          {afterCutoffBehaviorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+
+                      <FormGroup
+                        label="Fulfillment days"
+                        error={errors.deliveryWorkingDays}
+                        fullWidth
+                      >
+                        <input
+                          name="deliveryWorkingDays"
+                          type="hidden"
+                          value={formValues.deliveryWorkingDays}
+                        />
+                        <div className="counterpulse-weekday-list">
+                          {deliveryWeekdayOptions.map((day) => (
+                            <button
+                              aria-pressed={selectedDeliveryWorkingDays.has(
+                                day.value,
+                              )}
+                              className={
+                                selectedDeliveryWorkingDays.has(day.value)
+                                  ? "counterpulse-weekday-chip is-selected"
+                                  : "counterpulse-weekday-chip"
+                              }
+                              key={day.value}
+                              type="button"
+                              onClick={() =>
+                                toggleDeliveryWorkingDay(day.value)
+                              }
+                            >
+                              {day.label}
+                            </button>
+                          ))}
+                        </div>
+                      </FormGroup>
+                    </div>
+                  </section>
+                )}
+
+                {(formValues.type === "LOW_STOCK" ||
+                  formValues.goal === "LOW_STOCK_URGENCY") && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card"
+                    aria-labelledby={scopedId("low-stock-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("low-stock-setup-heading")}>
+                        Low stock rules
+                      </h3>
+                      <p>
+                        Show urgency only when inventory is at or below the
+                        selected threshold.
+                      </p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField
+                        label="Inventory threshold"
+                        error={errors.lowStockThreshold}
+                      >
+                        <input
+                          inputMode="numeric"
+                          max={9999}
+                          min={1}
+                          name="lowStockThreshold"
+                          type="number"
+                          value={formValues.lowStockThreshold}
+                          onChange={updateField("lowStockThreshold")}
+                        />
+                      </FormField>
+
+                      <div className="counterpulse-toggle">
+                        <label className="counterpulse-toggle-label">
+                          <input
+                            checked={formValues.lowStockShowExactQuantity}
+                            name="lowStockShowExactQuantity"
+                            type="checkbox"
+                            onChange={updateCheckboxField(
+                              "lowStockShowExactQuantity",
+                            )}
+                          />
+                          <span>Show exact quantity when Shopify provides it</span>
+                        </label>
+                      </div>
+
+                      <FormField
+                        label="Fallback message"
+                        error={errors.lowStockFallbackMessage}
+                        fullWidth
+                      >
+                        <input
+                          name="lowStockFallbackMessage"
+                          value={formValues.lowStockFallbackMessage}
+                          onChange={updateField("lowStockFallbackMessage")}
+                        />
+                      </FormField>
+                    </div>
+                  </section>
+                )}
+
+                {(formValues.type === "PRODUCT_BADGE" ||
+                  formValues.goal === "PRODUCT_BADGE") && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card"
+                    aria-labelledby={scopedId("product-badge-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("product-badge-setup-heading")}>
+                        Product badge
+                      </h3>
+                      <p>
+                        Configure the badge text, shape, and product image
+                        corner before deeper merchandising rules are added.
+                      </p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField label="Badge text" error={errors.badgeText}>
+                        <input
+                          maxLength={48}
+                          name="badgeText"
+                          value={formValues.badgeText}
+                          onChange={updateField("badgeText")}
+                        />
+                      </FormField>
+
+                      <FormField label="Shape" error={errors.badgeShape}>
+                        <select
+                          name="badgeShape"
+                          value={formValues.badgeShape}
+                          onChange={updateField("badgeShape")}
+                        >
+                          {badgeShapeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+
+                      <FormField label="Position" error={errors.badgePosition}>
+                        <select
+                          name="badgePosition"
+                          value={formValues.badgePosition}
+                          onChange={updateField("badgePosition")}
+                        >
+                          {badgePositionOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+                  </section>
+                )}
               </div>
             </BuilderPanel>
 
@@ -2064,18 +2481,41 @@ export function CampaignForm({
                   {formValues.timerMode === "EVERGREEN_SESSION" ? (
                     <FormField
                       label="Minutes"
-                      error={errors.timerDurationMinutes}
+                      error={
+                        isCartRescueCampaign
+                          ? errors.cartTimerDurationMinutes
+                          : errors.timerDurationMinutes
+                      }
                       fullWidth
                     >
                       <input
                         inputMode="numeric"
                         min={1}
                         max={10080}
-                        name="timerDurationMinutes"
+                        name={
+                          isCartRescueCampaign
+                            ? "cartTimerDurationMinutes"
+                            : "timerDurationMinutes"
+                        }
                         type="number"
-                        value={formValues.timerDurationMinutes}
-                        onChange={updateField("timerDurationMinutes")}
+                        value={
+                          isCartRescueCampaign
+                            ? formValues.cartTimerDurationMinutes
+                            : formValues.timerDurationMinutes
+                        }
+                        onChange={
+                          isCartRescueCampaign
+                            ? updateField("cartTimerDurationMinutes")
+                            : updateField("timerDurationMinutes")
+                        }
                       />
+                      {isCartRescueCampaign && (
+                        <input
+                          name="timerDurationMinutes"
+                          type="hidden"
+                          value={formValues.timerDurationMinutes}
+                        />
+                      )}
                     </FormField>
                   ) : (
                     <input

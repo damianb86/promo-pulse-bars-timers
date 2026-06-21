@@ -219,6 +219,9 @@ import {
   type PlacementTypeValue,
 } from "../types/campaign-options";
 import {
+  buildCampaignBadgeSettingsValues,
+  buildCampaignDeliveryCutoffSettingsValues,
+  buildCampaignLowStockSettingsValues,
   defaultCampaignFormValues,
   buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
@@ -483,6 +486,12 @@ export const loader = async ({
         campaign.freeShippingSettings,
         campaign.discountSync,
       ),
+      ...toCampaignDeliveryCutoffFormValues(
+        campaign.deliveryCutoffSettings,
+        campaign.timezone,
+      ),
+      ...toCampaignLowStockFormValues(campaign.lowStockSettings),
+      ...toCampaignBadgeFormValues(campaign.badgeSettings),
     },
     targetingOptions: await loadTargetingOptions(admin),
     designValues,
@@ -1490,6 +1499,15 @@ export const action = async ({
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
+  const isDeliveryCutoffCampaign =
+    parsed.values.type === "DELIVERY_CUTOFF" ||
+    parsed.values.goal === "DELIVERY_CUTOFF";
+  const isLowStockCampaign =
+    parsed.values.type === "LOW_STOCK" ||
+    parsed.values.goal === "LOW_STOCK_URGENCY";
+  const isBadgeCampaign =
+    parsed.values.type === "PRODUCT_BADGE" ||
+    parsed.values.goal === "PRODUCT_BADGE";
 
   try {
     const planErrors = await validateCampaignPlanAccess(
@@ -1576,6 +1594,38 @@ export const action = async ({
           endsAt: parsed.endsAt,
         });
       }
+    }
+
+    if (isDeliveryCutoffCampaign) {
+      const deliveryCutoffSettings =
+        buildCampaignDeliveryCutoffSettingsValues(parsed.values);
+
+      await updateDeliveryCutoffSettingsForShop(id, shop.id, {
+        afterCutoffBehavior: deliveryCutoffSettings.afterCutoffBehavior,
+        countryRules: deliveryCutoffSettings.countryRules,
+        cutoffHour: deliveryCutoffSettings.cutoffHour,
+        cutoffMinute: deliveryCutoffSettings.cutoffMinute,
+        holidays: deliveryCutoffSettings.holidays,
+        maxDeliveryDays: deliveryCutoffSettings.maxDeliveryDays,
+        minDeliveryDays: deliveryCutoffSettings.minDeliveryDays,
+        processingDays: deliveryCutoffSettings.processingDays,
+        timezone: parsed.values.timezone,
+        workingDays: deliveryCutoffSettings.workingDays,
+      });
+    }
+
+    if (isLowStockCampaign) {
+      const lowStockSettings = buildCampaignLowStockSettingsValues(
+        parsed.values,
+      );
+
+      await updateLowStockSettingsForShop(id, shop.id, lowStockSettings);
+    }
+
+    if (isBadgeCampaign) {
+      const badgeSettings = buildCampaignBadgeSettingsValues(parsed.values);
+
+      await updateBadgeSettingsForShop(id, shop.id, badgeSettings);
     }
 
     if (isPublishRequest) {
@@ -3775,6 +3825,95 @@ function readStringLike(value: {
   if (value === null || value === undefined) return "";
 
   return String(value);
+}
+
+function toCampaignDeliveryCutoffFormValues(
+  settings: {
+    cutoffHour: number;
+    cutoffMinute: number;
+    processingDays: number;
+    minDeliveryDays: number;
+    maxDeliveryDays: number;
+    workingDays: unknown;
+    afterCutoffBehavior?: string | null;
+  } | null,
+  campaignTimezone: string,
+): Pick<
+  CampaignFormValues,
+  | "deliveryCutoffHour"
+  | "deliveryCutoffMinute"
+  | "deliveryProcessingDays"
+  | "deliveryMinDays"
+  | "deliveryMaxDays"
+  | "deliveryWorkingDays"
+  | "deliveryAfterCutoffBehavior"
+> {
+  const values = toDeliveryCutoffSettingsValues(settings, campaignTimezone);
+
+  return {
+    deliveryCutoffHour: values.cutoffHour,
+    deliveryCutoffMinute: values.cutoffMinute,
+    deliveryProcessingDays: values.processingDays,
+    deliveryMinDays: values.minDeliveryDays,
+    deliveryMaxDays: values.maxDeliveryDays,
+    deliveryWorkingDays: readDeliveryWorkingDays(values.workingDaysJson),
+    deliveryAfterCutoffBehavior: values.afterCutoffBehavior,
+  };
+}
+
+function toCampaignLowStockFormValues(
+  settings: {
+    threshold: number;
+    showExactQuantity: boolean;
+    fallbackMessage?: string | null;
+  } | null,
+): Pick<
+  CampaignFormValues,
+  | "lowStockThreshold"
+  | "lowStockShowExactQuantity"
+  | "lowStockFallbackMessage"
+> {
+  const values = toLowStockSettingsValues(settings);
+
+  return {
+    lowStockThreshold: values.threshold,
+    lowStockShowExactQuantity: values.showExactQuantity,
+    lowStockFallbackMessage: values.fallbackMessage,
+  };
+}
+
+function toCampaignBadgeFormValues(
+  settings: {
+    badgeText: string;
+    badgeShape: string;
+    badgePosition: string;
+  } | null,
+): Pick<CampaignFormValues, "badgeText" | "badgeShape" | "badgePosition"> {
+  const values = toBadgeSettingsValues(settings);
+
+  return {
+    badgeText: values.badgeText,
+    badgeShape: values.badgeShape,
+    badgePosition: values.badgePosition,
+  };
+}
+
+function readDeliveryWorkingDays(value: string) {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (Array.isArray(parsed)) {
+      const days = parsed
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item >= 1 && item <= 7);
+
+      if (days.length > 0) return Array.from(new Set(days)).join(",");
+    }
+  } catch {
+    return defaultCampaignFormValues.deliveryWorkingDays;
+  }
+
+  return defaultCampaignFormValues.deliveryWorkingDays;
 }
 
 async function loadDiscountOptions(admin: ShopifyGraphqlClient): Promise<{

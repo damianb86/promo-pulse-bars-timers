@@ -9,9 +9,21 @@ import {
   type CampaignTargetingRules,
 } from "./campaign";
 import {
+  badgePositionOptions,
+  badgeShapeOptions,
+  defaultBadgeSettingsValues,
+  type BadgePositionValue,
+  type BadgeShapeValue,
+} from "./badge";
+import {
+  defaultDeliveryCutoffSettingsValues,
+  type AfterCutoffBehaviorValue,
+} from "./delivery-cutoff";
+import {
   defaultFreeShippingSettingsValues,
   type FreeShippingProgressStyleValue,
 } from "./free-shipping";
+import { defaultLowStockSettingsValues } from "./low-stock";
 
 export const productSelectionOptions = [
   "ALL_PRODUCTS",
@@ -93,6 +105,21 @@ export type CampaignFormValues = {
   freeShippingDiscountCode: string;
   freeShippingDiscountTitle: string;
   freeShippingDiscountAppliesOncePerCustomer: boolean;
+  cartTimerDurationMinutes: string;
+  cartTimerResetBehavior: CampaignTimerResetBehaviorValue;
+  deliveryCutoffHour: string;
+  deliveryCutoffMinute: string;
+  deliveryProcessingDays: string;
+  deliveryMinDays: string;
+  deliveryMaxDays: string;
+  deliveryWorkingDays: string;
+  deliveryAfterCutoffBehavior: AfterCutoffBehaviorValue;
+  lowStockThreshold: string;
+  lowStockShowExactQuantity: boolean;
+  lowStockFallbackMessage: string;
+  badgeText: string;
+  badgeShape: BadgeShapeValue;
+  badgePosition: BadgePositionValue;
 };
 
 export type CampaignFormErrors = Partial<
@@ -143,13 +170,37 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   freeShippingDiscountCode: "FREESHIP",
   freeShippingDiscountTitle: "Promo Pulse free shipping",
   freeShippingDiscountAppliesOncePerCustomer: false,
+  cartTimerDurationMinutes: "120",
+  cartTimerResetBehavior: "ON_SESSION_END",
+  deliveryCutoffHour: defaultDeliveryCutoffSettingsValues.cutoffHour,
+  deliveryCutoffMinute: defaultDeliveryCutoffSettingsValues.cutoffMinute,
+  deliveryProcessingDays: defaultDeliveryCutoffSettingsValues.processingDays,
+  deliveryMinDays: defaultDeliveryCutoffSettingsValues.minDeliveryDays,
+  deliveryMaxDays: defaultDeliveryCutoffSettingsValues.maxDeliveryDays,
+  deliveryWorkingDays: "1,2,3,4,5",
+  deliveryAfterCutoffBehavior:
+    defaultDeliveryCutoffSettingsValues.afterCutoffBehavior,
+  lowStockThreshold: defaultLowStockSettingsValues.threshold,
+  lowStockShowExactQuantity: defaultLowStockSettingsValues.showExactQuantity,
+  lowStockFallbackMessage: defaultLowStockSettingsValues.fallbackMessage,
+  badgeText: defaultBadgeSettingsValues.badgeText,
+  badgeShape: defaultBadgeSettingsValues.badgeShape,
+  badgePosition: defaultBadgeSettingsValues.badgePosition,
 };
 
 export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
   const mode = values.timerMode;
+  const durationSource =
+    values.type === "CART_TIMER" || values.goal === "CART_RESCUE"
+      ? values.cartTimerDurationMinutes
+      : values.timerDurationMinutes;
+  const resetBehaviorSource =
+    values.type === "CART_TIMER" || values.goal === "CART_RESCUE"
+      ? values.cartTimerResetBehavior
+      : values.timerResetBehavior;
   const durationMinutes =
     mode === "EVERGREEN_SESSION"
-      ? clampInteger(Number(values.timerDurationMinutes), 1, 10080, 120)
+      ? clampInteger(Number(durationSource), 1, 10080, 120)
       : null;
   const recurringHour = clampInteger(
     Number(values.timerRecurringHour),
@@ -174,7 +225,7 @@ export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
     resetBehavior:
       values.timerExpiredBehavior === "REPEAT_COUNTDOWN"
         ? "ON_SESSION_END"
-        : values.timerResetBehavior,
+        : resetBehaviorSource,
     expiredBehavior: values.timerExpiredBehavior,
   };
 }
@@ -247,6 +298,72 @@ export function buildCampaignFreeShippingSettingsValues(
       defaultFreeShippingSettingsValues.progressStyle,
     thresholdRulesJson: "",
   };
+}
+
+export function buildCampaignDeliveryCutoffSettingsValues(
+  values: CampaignFormValues,
+) {
+  const minDeliveryDays = clampInteger(Number(values.deliveryMinDays), 0, 60, 2);
+  const maxDeliveryDays = clampInteger(
+    Number(values.deliveryMaxDays),
+    minDeliveryDays,
+    90,
+    Math.max(minDeliveryDays, 5),
+  );
+
+  return {
+    cutoffHour: clampInteger(Number(values.deliveryCutoffHour), 0, 23, 14),
+    cutoffMinute: clampInteger(Number(values.deliveryCutoffMinute), 0, 59, 0),
+    processingDays: clampInteger(
+      Number(values.deliveryProcessingDays),
+      0,
+      60,
+      0,
+    ),
+    minDeliveryDays,
+    maxDeliveryDays,
+    workingDays: parseDeliveryWorkingDays(values.deliveryWorkingDays),
+    holidays: [],
+    countryRules: {},
+    afterCutoffBehavior: values.deliveryAfterCutoffBehavior,
+  };
+}
+
+export function buildCampaignLowStockSettingsValues(
+  values: CampaignFormValues,
+) {
+  return {
+    threshold: clampInteger(Number(values.lowStockThreshold), 1, 9999, 5),
+    showExactQuantity: values.lowStockShowExactQuantity,
+    fallbackMessage:
+      values.lowStockFallbackMessage ||
+      defaultLowStockSettingsValues.fallbackMessage,
+  };
+}
+
+export function buildCampaignBadgeSettingsValues(values: CampaignFormValues) {
+  return {
+    badgeText: values.badgeText || defaultBadgeSettingsValues.badgeText,
+    badgeShape: badgeShapeOptions.some(
+      (option) => option.value === values.badgeShape,
+    )
+      ? values.badgeShape
+      : defaultBadgeSettingsValues.badgeShape,
+    badgePosition: badgePositionOptions.some(
+      (option) => option.value === values.badgePosition,
+    )
+      ? values.badgePosition
+      : defaultBadgeSettingsValues.badgePosition,
+  };
+}
+
+export function parseDeliveryWorkingDays(value: string) {
+  const days = value
+    .split(/[\s,]+/)
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item >= 1 && item <= 7);
+
+  return Array.from(new Set(days)).sort((a, b) => a - b);
 }
 
 export function splitCampaignList(value: string) {

@@ -580,7 +580,10 @@ export async function updateFreeShippingSettingsForShop(
   });
 }
 
-function toCampaignDesignWriteData(input: CampaignDesignValues) {
+function toCampaignDesignWriteData(
+  input: CampaignDesignValues,
+  mobileInput: CampaignDesignValues = input,
+) {
   return {
     templateKey: input.templateKey,
     layout: input.layout,
@@ -641,6 +644,7 @@ function toCampaignDesignWriteData(input: CampaignDesignValues) {
     icon: input.icon,
     iconSize: input.iconSize,
     customIconUrl: input.customIconUrl,
+    mobileDesign: toCampaignDesignJson(mobileInput),
   };
 }
 
@@ -648,6 +652,7 @@ export async function updateCampaignDesignForShop(
   id: string,
   shopId: string,
   input: CampaignDesignValues,
+  mobileInput: CampaignDesignValues = input,
 ) {
   await assertCampaignBelongsToShop(id, shopId);
 
@@ -661,11 +666,17 @@ export async function updateCampaignDesignForShop(
       where: { campaignId: id },
       create: {
         campaignId: id,
-        ...toCampaignDesignWriteData(input),
+        ...toCampaignDesignWriteData(input, mobileInput),
       },
-      update: toCampaignDesignWriteData(input),
+      update: toCampaignDesignWriteData(input, mobileInput),
     });
   });
+}
+
+function toCampaignDesignJson(
+  input: CampaignDesignValues,
+): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(input)) as Prisma.InputJsonObject;
 }
 
 export async function publishCampaignForShop(id: string, shopId: string) {
@@ -937,6 +948,12 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 icon: campaign.design.icon,
                 iconSize: campaign.design.iconSize,
                 customIconUrl: campaign.design.customIconUrl,
+                ...(campaign.design.mobileDesign
+                  ? {
+                      mobileDesign:
+                        campaign.design.mobileDesign as Prisma.InputJsonValue,
+                    }
+                  : {}),
               },
             },
           }

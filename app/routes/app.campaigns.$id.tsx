@@ -77,7 +77,7 @@ import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
 import {
   hasCampaignDesignErrors,
-  parseCampaignDesignFormData,
+  parseResponsiveCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
 import {
   loadCampaignDesignFileOption,
@@ -276,6 +276,7 @@ type LoaderData = {
   targetingOptions: CampaignTargetingOptions;
   badgeValues: BadgeSettingsValues;
   designValues: CampaignDesignValues;
+  mobileDesignValues: CampaignDesignValues;
   designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
   deliveryCutoffValues: DeliveryCutoffSettingsValues;
@@ -332,6 +333,7 @@ type ActionData = {
   values?: CampaignFormValues;
   designErrors?: CampaignDesignErrors;
   designValues?: CampaignDesignValues;
+  mobileDesignValues?: CampaignDesignValues;
   deliveryCutoffErrors?: DeliveryCutoffSettingsErrors;
   deliveryCutoffValues?: DeliveryCutoffSettingsValues;
   discountErrors?: DiscountSettingsErrors;
@@ -394,6 +396,10 @@ export const loader = async ({
   );
   const placement = enabledPlacements[0] ?? campaign.placements[0];
   const designValues = toCampaignDesignValues(campaign.design);
+  const mobileDesignValues = toCampaignMobileDesignValues(
+    campaign.design,
+    designValues,
+  );
   const effectivePlan = getEffectiveShopPlan(shop);
   const lockedFeatures = {
     badge: getLockedFeatureReason(shop, "product_badges"),
@@ -509,6 +515,7 @@ export const loader = async ({
     },
     targetingOptions: await loadTargetingOptions(admin),
     designValues,
+    mobileDesignValues,
     designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
       name: campaign.name,
@@ -626,23 +633,33 @@ export const action = async ({
   }
 
   if (intent === "saveDesign") {
-    const parsed = parseCampaignDesignFormData(formData, effectivePlan);
+    const parsed = parseResponsiveCampaignDesignFormData(
+      formData,
+      effectivePlan,
+    );
 
     if (hasCampaignDesignErrors(parsed.errors)) {
       return {
         designErrors: parsed.errors,
         designValues: parsed.values,
+        mobileDesignValues: parsed.mobileValues,
       };
     }
 
     try {
-      await updateCampaignDesignForShop(id, shop.id, parsed.values);
+      await updateCampaignDesignForShop(
+        id,
+        shop.id,
+        parsed.values,
+        parsed.mobileValues,
+      );
       return redirect(`/app/campaigns/${id}`);
     } catch (error) {
       console.error("Failed to update campaign design", error);
 
       return {
         designValues: parsed.values,
+        mobileDesignValues: parsed.mobileValues,
         designErrors: {
           form: "Campaign design could not be saved. Check the fields and try again.",
         },
@@ -1494,7 +1511,10 @@ export const action = async ({
   const parsed = parseCampaignFormData(formData, {
     allowInactiveStatuses: true,
   });
-  const parsedDesign = parseCampaignDesignFormData(formData, effectivePlan);
+  const parsedDesign = parseResponsiveCampaignDesignFormData(
+    formData,
+    effectivePlan,
+  );
   const shouldSaveTranslationsWithBasics = hasTranslationInputs(formData);
   const parsedTranslations = shouldSaveTranslationsWithBasics
     ? parseCampaignTranslationsFormData(formData)
@@ -1512,6 +1532,7 @@ export const action = async ({
       values: parsed.values,
       designErrors: parsedDesign.errors,
       designValues: parsedDesign.values,
+      mobileDesignValues: parsedDesign.mobileValues,
       translationErrors: parsedTranslations?.errors,
       translationValues: parsedTranslations?.values,
     };
@@ -1550,6 +1571,7 @@ export const action = async ({
       return {
         values: parsed.values,
         designValues: parsedDesign.values,
+        mobileDesignValues: parsedDesign.mobileValues,
         errors: {
           form: planErrors.join(" "),
         },
@@ -1563,6 +1585,7 @@ export const action = async ({
         return {
           values: parsed.values,
           designValues: parsedDesign.values,
+          mobileDesignValues: parsedDesign.mobileValues,
           errors: {
             freeShippingDiscountCode: discountGate.reason,
           },
@@ -1577,6 +1600,7 @@ export const action = async ({
         return {
           values: parsed.values,
           designValues: parsedDesign.values,
+          mobileDesignValues: parsedDesign.mobileValues,
           translationValues: parsedTranslations.values,
           translationErrors: {
             form: translationGate.reason,
@@ -1613,7 +1637,12 @@ export const action = async ({
         parsedTranslations.translations,
       );
     }
-    await updateCampaignDesignForShop(id, shop.id, parsedDesign.values);
+    await updateCampaignDesignForShop(
+      id,
+      shop.id,
+      parsedDesign.values,
+      parsedDesign.mobileValues,
+    );
 
     if (isFreeShippingCampaign) {
       const freeShippingSettings = buildCampaignFreeShippingSettingsValues(
@@ -1694,6 +1723,7 @@ export const action = async ({
     return {
       values: parsed.values,
       designValues: parsedDesign.values,
+      mobileDesignValues: parsedDesign.mobileValues,
       errors: {
         form: isPublishRequest
           ? "Campaign could not be published. Check the fields and try again."
@@ -1709,6 +1739,7 @@ export default function EditCampaignPage() {
     values,
     targetingOptions,
     designValues,
+    mobileDesignValues,
     designMediaOptions,
     designViewModel,
     badgeValues,
@@ -1739,28 +1770,35 @@ export default function EditCampaignPage() {
   const navigation = useNavigation();
   const activeCampaignValues = actionData?.values ?? values;
   const activeDesignValues = actionData?.designValues ?? designValues;
+  const activeMobileDesignValues =
+    actionData?.mobileDesignValues ?? mobileDesignValues;
   const translationValues =
     actionData?.translationValues ?? translationsViewModel.values;
   const [draftCampaignValues, setDraftCampaignValues] =
     useState(activeCampaignValues);
   const [draftDesignValues, setDraftDesignValues] =
     useState(activeDesignValues);
+  const [draftMobileDesignValues, setDraftMobileDesignValues] = useState(
+    activeMobileDesignValues,
+  );
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
       JSON.stringify({
         campaign: activeCampaignValues,
         design: activeDesignValues,
+        mobileDesign: activeMobileDesignValues,
       }),
-    [activeCampaignValues, activeDesignValues],
+    [activeCampaignValues, activeDesignValues, activeMobileDesignValues],
   );
   const currentDraftKey = useMemo(
     () =>
       JSON.stringify({
         campaign: draftCampaignValues,
         design: draftDesignValues,
+        mobileDesign: draftMobileDesignValues,
       }),
-    [draftCampaignValues, draftDesignValues],
+    [draftCampaignValues, draftDesignValues, draftMobileDesignValues],
   );
   const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
   const merchandisingCapabilities = useMemo(
@@ -1795,6 +1833,7 @@ export default function EditCampaignPage() {
   const discardDraft = () => {
     setDraftCampaignValues(activeCampaignValues);
     setDraftDesignValues(activeDesignValues);
+    setDraftMobileDesignValues(activeMobileDesignValues);
     setDiscardVersion((version) => version + 1);
     window.dispatchEvent(new CustomEvent("promo-pulse:campaign-discard"));
   };
@@ -1803,10 +1842,16 @@ export default function EditCampaignPage() {
     const syncDraft = window.setTimeout(() => {
       setDraftCampaignValues(activeCampaignValues);
       setDraftDesignValues(activeDesignValues);
+      setDraftMobileDesignValues(activeMobileDesignValues);
     }, 0);
 
     return () => window.clearTimeout(syncDraft);
-  }, [activeCampaignValues, activeDesignValues, persistedDraftKey]);
+  }, [
+    activeCampaignValues,
+    activeDesignValues,
+    activeMobileDesignValues,
+    persistedDraftKey,
+  ]);
 
   useShopifySaveBar({
     dirty: hasUnsavedChanges,
@@ -1868,8 +1913,10 @@ export default function EditCampaignPage() {
                   campaignId={id}
                   confirmOnSubmit={false}
                   design={draftDesignValues}
+                  mobileDesign={draftMobileDesignValues}
                   designHiddenInputs={
                     <CampaignDesignDraftHiddenInputs
+                      mobileValues={draftMobileDesignValues}
                       values={draftDesignValues}
                     />
                   }
@@ -1907,6 +1954,7 @@ export default function EditCampaignPage() {
                   values={draftCampaignValues}
                   errors={actionData?.errors}
                   onDesignChange={setDraftDesignValues}
+                  onMobileDesignChange={setDraftMobileDesignValues}
                   onValuesChange={setDraftCampaignValues}
                 />
               ),
@@ -2019,8 +2067,10 @@ export default function EditCampaignPage() {
                     campaignId={id}
                     confirmOnSubmit={false}
                     design={draftDesignValues}
+                    mobileDesign={draftMobileDesignValues}
                     designHiddenInputs={
                       <CampaignDesignDraftHiddenInputs
+                        mobileValues={draftMobileDesignValues}
                         values={draftDesignValues}
                       />
                     }
@@ -2052,6 +2102,7 @@ export default function EditCampaignPage() {
                     values={draftCampaignValues}
                     errors={actionData?.errors}
                     onDesignChange={setDraftDesignValues}
+                    onMobileDesignChange={setDraftMobileDesignValues}
                     onValuesChange={setDraftCampaignValues}
                   />
                   <BehaviorTargetingEditor
@@ -2140,9 +2191,11 @@ export default function EditCampaignPage() {
                   designMediaOptions={designMediaOptions}
                   errors={actionData?.designErrors}
                   design={draftDesignValues}
+                  mobileDesign={draftMobileDesignValues}
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
                   onChange={setDraftDesignValues}
+                  onMobileChange={setDraftMobileDesignValues}
                   viewModel={draftPreviewViewModel}
                 />
               ),
@@ -2339,12 +2392,19 @@ function getDraftPlacementTypes(values: CampaignFormValues) {
 }
 
 function CampaignDesignDraftHiddenInputs({
+  mobileValues,
   values,
 }: {
+  mobileValues: CampaignDesignValues;
   values: CampaignDesignValues;
 }) {
   return (
     <>
+      <input
+        name="mobileDesignJson"
+        type="hidden"
+        value={JSON.stringify(mobileValues)}
+      />
       {Object.entries(values).map(([key, value]) => (
         <input
           key={key}
@@ -3794,17 +3854,46 @@ function targetingStringList(value: unknown) {
 type CampaignDesignRecord =
   | (Partial<Omit<CampaignDesignValues, "customCss">> & {
       customCss?: string | null;
+      mobileDesign?: unknown;
     })
   | null;
 
 function toCampaignDesignValues(
   design: CampaignDesignRecord,
 ): CampaignDesignValues {
+  const baseDesign = { ...(design ?? {}) } as Partial<CampaignDesignValues> & {
+    mobileDesign?: unknown;
+  };
+  delete baseDesign.mobileDesign;
+
   return {
     ...defaultCampaignDesignValues,
-    ...design,
+    ...baseDesign,
     customCss: design?.customCss ?? "",
   };
+}
+
+function toCampaignMobileDesignValues(
+  design: CampaignDesignRecord,
+  desktopValues: CampaignDesignValues,
+): CampaignDesignValues {
+  const mobileDesign =
+    design && readCampaignDesignJsonObject(design.mobileDesign);
+
+  return {
+    ...desktopValues,
+    ...mobileDesign,
+    customCss:
+      typeof mobileDesign?.customCss === "string"
+        ? mobileDesign.customCss
+        : desktopValues.customCss,
+  };
+}
+
+function readCampaignDesignJsonObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Partial<CampaignDesignValues>)
+    : null;
 }
 
 function toFreeShippingSettingsValues(

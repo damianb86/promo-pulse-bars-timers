@@ -14,6 +14,7 @@ import {
   parseStorefrontCampaignContext,
   serializeStorefrontCampaign,
   serializeStorefrontCampaigns,
+  serializeDesign,
   type StorefrontCampaignContext,
   type StorefrontCampaignResponseItem,
 } from "../../utils/storefront-campaigns";
@@ -294,7 +295,7 @@ function toAdvancedStorefrontBadge(
   context: StorefrontCampaignContext,
 ): StorefrontBadge {
   const ruleDesign = readDesign(rule.design);
-  const campaignDesign = rule.campaign.design;
+  const campaignDesign = serializeDesign(rule.campaign.design, context.device);
 
   return {
     id: rule.campaignId,
@@ -306,14 +307,14 @@ function toAdvancedStorefrontBadge(
     design: {
       backgroundColor:
         ruleDesign.backgroundColor ??
-        campaignDesign?.backgroundColor ??
+        campaignDesign.backgroundColor ??
         "#111827",
-      textColor: ruleDesign.textColor ?? campaignDesign?.textColor ?? "#FFFFFF",
+      textColor: ruleDesign.textColor ?? campaignDesign.textColor ?? "#FFFFFF",
       accentColor:
-        ruleDesign.accentColor ?? campaignDesign?.accentColor ?? "#22C55E",
-      fontSize: ruleDesign.fontSize ?? campaignDesign?.fontSize ?? 13,
+        ruleDesign.accentColor ?? campaignDesign.accentColor ?? "#22C55E",
+      fontSize: ruleDesign.fontSize ?? campaignDesign.fontSize ?? 13,
       borderRadius:
-        ruleDesign.borderRadius ?? campaignDesign?.borderRadius ?? 999,
+        ruleDesign.borderRadius ?? campaignDesign.borderRadius ?? 999,
     },
     badge: {
       badgeText: badge.text,

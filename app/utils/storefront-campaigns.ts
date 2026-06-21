@@ -21,7 +21,10 @@ import {
   type VisitorBehaviorProfile,
 } from "../services/behavior/behaviorTargeting";
 import { applyMarketCampaignRule } from "../services/markets/marketOverrides";
-import { defaultCampaignDesignValues } from "../types/campaign-design";
+import {
+  defaultCampaignDesignValues,
+  type CampaignDesignValues,
+} from "../types/campaign-design";
 import {
   campaignTranslationFields,
   type CampaignTextField,
@@ -159,7 +162,7 @@ export function serializeStorefrontCampaign(
     goal: campaign.goal,
     placement: placement.placementType,
     placementSelector: placement.customSelector ?? "",
-    design: serializeDesign(campaign.design),
+    design: serializeDesign(campaign.design, context.device),
     timer: serializeTimer(campaign.timerSettings),
     freeShipping: serializeFreeShipping(campaign.freeShippingSettings, context),
     deliveryCutoff: serializeDeliveryCutoff(
@@ -290,12 +293,46 @@ function isTargetingEligible(
   );
 }
 
-function serializeDesign(design: CampaignDesign | null) {
+export function serializeDesign(
+  design: CampaignDesign | null,
+  device: string = "desktop",
+) {
+  const desktopDesign = serializeDesktopDesign(design);
+  const mobileDesign =
+    device === "mobile"
+      ? readCampaignDesignJsonObject(design?.mobileDesign)
+      : null;
+
+  return {
+    ...desktopDesign,
+    ...mobileDesign,
+    customCss:
+      typeof mobileDesign?.customCss === "string"
+        ? mobileDesign.customCss
+        : desktopDesign.customCss,
+  };
+}
+
+function serializeDesktopDesign(design: CampaignDesign | null) {
+  if (!design) return defaultCampaignDesignValues;
+
+  const desktopDesign = { ...design } as Partial<CampaignDesignValues> & {
+    mobileDesign?: unknown;
+    customCss?: string | null;
+  };
+  delete desktopDesign.mobileDesign;
+
   return {
     ...defaultCampaignDesignValues,
-    ...design,
-    customCss: design?.customCss ?? "",
+    ...desktopDesign,
+    customCss: design.customCss ?? "",
   };
+}
+
+function readCampaignDesignJsonObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Partial<CampaignDesignValues>)
+    : null;
 }
 
 function serializeTimer(timerSettings: TimerSettings | null) {

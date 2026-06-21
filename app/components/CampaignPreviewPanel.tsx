@@ -31,6 +31,7 @@ type CampaignPreviewPanelProps = {
   design: CampaignDesignValues;
   device: PreviewDevice;
   meta?: ReactNode;
+  mobileDesign?: CampaignDesignValues;
   placement: PreviewPlacement;
   viewModel: CampaignViewModel;
   onDeviceChange: (device: PreviewDevice) => void;
@@ -43,6 +44,7 @@ export function CampaignPreviewPanel({
   design,
   device,
   meta,
+  mobileDesign,
   placement,
   viewModel,
   onDeviceChange,
@@ -60,6 +62,8 @@ export function CampaignPreviewPanel({
   )
     ? placement
     : (availablePlacementOptions[0]?.value ?? placement);
+  const resolvedDesign =
+    device === "mobile" && mobileDesign ? mobileDesign : design;
 
   return (
     <div
@@ -86,7 +90,7 @@ export function CampaignPreviewPanel({
         </label>
       </div>
       <CampaignPreview
-        design={design}
+        design={resolvedDesign}
         device={device}
         placement={selectedPlacement}
         viewModel={viewModel}

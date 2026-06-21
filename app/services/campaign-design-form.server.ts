@@ -27,6 +27,10 @@ export type ParsedCampaignDesignForm = {
   errors: CampaignDesignErrors;
 };
 
+export type ParsedResponsiveCampaignDesignForm = ParsedCampaignDesignForm & {
+  mobileValues: CampaignDesignValues;
+};
+
 export function parseCampaignDesignFormData(
   formData: FormData,
   plan: ShopPlan,
@@ -212,11 +216,95 @@ export function parseCampaignDesignFormData(
   return { values, errors };
 }
 
+export function parseResponsiveCampaignDesignFormData(
+  formData: FormData,
+  plan: ShopPlan,
+): ParsedResponsiveCampaignDesignForm {
+  const desktop = parseCampaignDesignFormData(formData, plan);
+  const mobile = parseMobileCampaignDesignFormData(
+    formData,
+    plan,
+    desktop.values,
+  );
+  const errors: CampaignDesignErrors = {
+    ...desktop.errors,
+    ...(hasCampaignDesignErrors(mobile.errors)
+      ? {
+          form:
+            mobile.errors.form ??
+            "Mobile design has invalid settings. Switch the preview to Mobile and check the design fields.",
+        }
+      : {}),
+  };
+
+  return {
+    values: desktop.values,
+    mobileValues: mobile.values,
+    errors,
+  };
+}
+
 export { hasCampaignDesignErrors };
 
 function readString(formData: FormData, key: keyof CampaignDesignValues) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseMobileCampaignDesignFormData(
+  formData: FormData,
+  plan: ShopPlan,
+  desktopValues: CampaignDesignValues,
+) {
+  const mobileDesignJson = readFormString(formData, "mobileDesignJson");
+
+  if (!mobileDesignJson) {
+    return {
+      values: desktopValues,
+      errors: {},
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(mobileDesignJson) as unknown;
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Invalid mobile design payload.");
+    }
+
+    return parseCampaignDesignFormData(
+      createCampaignDesignFormData({
+        ...desktopValues,
+        ...(parsed as Partial<CampaignDesignValues>),
+      }),
+      plan,
+    );
+  } catch {
+    return {
+      values: desktopValues,
+      errors: {
+        form: "Mobile design could not be read. Refresh the page and try again.",
+      },
+    };
+  }
+}
+
+function createCampaignDesignFormData(values: CampaignDesignValues) {
+  const formData = new FormData();
+
+  for (const [key, value] of Object.entries(values)) {
+    formData.set(
+      key,
+      typeof value === "boolean" ? String(value) : String(value),
+    );
+  }
+
+  return formData;
 }
 
 function readInteger(

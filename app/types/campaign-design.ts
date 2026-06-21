@@ -93,6 +93,11 @@ export type CampaignDesignValues = {
   customIconUrl: string;
 };
 
+export type CampaignResponsiveDesignValues = {
+  desktop: CampaignDesignValues;
+  mobile: CampaignDesignValues;
+};
+
 export type CampaignDesignErrors = Partial<
   Record<keyof CampaignDesignValues, string>
 > & {

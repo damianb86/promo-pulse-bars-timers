@@ -323,6 +323,7 @@ function createDesign(
     icon: CampaignDesignIcon.NONE,
     iconSize: 20,
     customIconUrl: "",
+    mobileDesign: null,
     ...overrides,
   };
 }

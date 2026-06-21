@@ -6,7 +6,10 @@ import {
   CampaignPreviewPanel,
   type PreviewPlacement,
 } from "./CampaignPreviewPanel";
-import type { PreviewDevice } from "./DevicePreviewToggle";
+import {
+  DevicePreviewToggle,
+  type PreviewDevice,
+} from "./DevicePreviewToggle";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 import type {
   CampaignDesignErrors,
@@ -22,7 +25,9 @@ type CampaignDesignEditorProps = {
   errors?: CampaignDesignErrors;
   isProPlan: boolean;
   lockedCustomCssReason?: string;
+  mobileDesign: CampaignDesignValues;
   onChange: (design: CampaignDesignValues) => void;
+  onMobileChange: (design: CampaignDesignValues) => void;
   viewModel: CampaignViewModel;
 };
 
@@ -32,7 +37,9 @@ export function CampaignDesignEditor({
   errors,
   isProPlan,
   lockedCustomCssReason,
+  mobileDesign,
   onChange,
+  onMobileChange,
   viewModel,
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
@@ -53,12 +60,15 @@ export function CampaignDesignEditor({
     placementOverride?.key === actualPlacementKey
       ? placementOverride.placement
       : primaryPlacement;
+  const activeDesign = device === "mobile" ? mobileDesign : design;
+  const updateActiveDesign =
+    device === "mobile" ? onMobileChange : onChange;
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
-      design,
+      design: activeDesign,
     }),
-    [design, viewModel],
+    [activeDesign, viewModel],
   );
   const selectPreviewPlacement = (nextPlacement: PreviewPlacement) => {
     setPlacementOverride({
@@ -84,13 +94,25 @@ export function CampaignDesignEditor({
 
       <div className="counterpulse-design-editor">
         <div className="counterpulse-design-editor__controls">
+          <section className="counterpulse-design-card">
+            <h3>Responsive design</h3>
+            <div className="counterpulse-design-card__body">
+              <DevicePreviewToggle value={device} onChange={setDevice} />
+              <p className="counterpulse-design-note">
+                You are editing the {device} design. Switching device changes
+                which campaign design is edited without copying changes to the
+                other one.
+              </p>
+            </div>
+          </section>
+
           <DesignControls
             mediaOptions={designMediaOptions}
             errors={errors}
             hasTimer={isTimerShown(previewViewModel.timer)}
             isProPlan={isProPlan}
-            values={design}
-            onChange={onChange}
+            values={activeDesign}
+            onChange={updateActiveDesign}
           />
         </div>
 
@@ -99,6 +121,7 @@ export function CampaignDesignEditor({
           className="counterpulse-design-editor__preview"
           design={design}
           device={device}
+          mobileDesign={mobileDesign}
           placement={placement}
           viewModel={previewViewModel}
           onDeviceChange={setDevice}

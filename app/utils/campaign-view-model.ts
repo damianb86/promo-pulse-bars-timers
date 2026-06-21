@@ -26,7 +26,12 @@ export type CampaignViewModelInput = {
   timezone?: string | null;
   placements: Array<{ placementType: string; enabled: boolean }>;
   translations: CampaignTranslationRecord[];
-  design: Partial<CampaignDesignValues> | null;
+  design:
+    | (Partial<CampaignDesignValues> & {
+        mobileDesign?: unknown;
+        customCss?: string | null;
+      })
+    | null;
   timerSettings?: {
     mode: string;
     durationMinutes?: number | null;
@@ -124,9 +129,12 @@ export function buildCampaignViewModel(
     campaign.translations.find((item) => item.locale === "en") ??
     campaign.translations[0];
 
+  const baseDesign = { ...(campaign.design ?? {}) };
+  delete baseDesign.mobileDesign;
+
   const design: CampaignDesignValues = {
     ...defaultCampaignDesignValues,
-    ...campaign.design,
+    ...baseDesign,
     customCss: campaign.design?.customCss ?? "",
   };
 

@@ -236,6 +236,7 @@ model CampaignDesign {
   icon                    CampaignDesignIcon       @default(NONE)
   iconSize                Int                      @default(20)
   customIconUrl           String                   @default("")
+  mobileDesign            Json?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }

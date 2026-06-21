@@ -67,6 +67,7 @@ type CampaignFormProps = {
   confirmOnSubmit?: boolean;
   design?: CampaignDesignValues;
   designHiddenInputs?: ReactNode;
+  mobileDesign?: CampaignDesignValues;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
@@ -94,6 +95,7 @@ type CampaignFormProps = {
   targetingOptions?: CampaignTargetingOptions;
   topbarActions?: ReactNode;
   onDesignChange?: (values: CampaignDesignValues) => void;
+  onMobileDesignChange?: (values: CampaignDesignValues) => void;
   onValuesChange?: (values: CampaignFormValues) => void;
 };
 
@@ -599,6 +601,7 @@ export function CampaignForm({
   confirmOnSubmit = true,
   design = defaultCampaignDesignValues,
   designHiddenInputs,
+  mobileDesign = design,
   values,
   errors = {},
   formId,
@@ -620,6 +623,7 @@ export function CampaignForm({
   targetingOptions = emptyCampaignTargetingOptions,
   topbarActions,
   onDesignChange,
+  onMobileDesignChange,
   onValuesChange,
 }: CampaignFormProps) {
   const navigation = useNavigation();
@@ -652,6 +656,9 @@ export function CampaignForm({
   } | null>(null);
   const [formValues, setFormValues] = useState(() => values);
   const [localDesignValues, setLocalDesignValues] = useState(() => design);
+  const [localMobileDesignValues, setLocalMobileDesignValues] = useState(
+    () => mobileDesign,
+  );
   const [submitAction, setSubmitAction] = useState("saveDraft");
   const [aiSuggestionJson, setAiSuggestionJson] = useState("");
   const [showProductExclusions, setShowProductExclusions] = useState(
@@ -672,6 +679,9 @@ export function CampaignForm({
   const isSubmitting = navigation.state === "submitting";
   const scopedId = (value: string) => `${idPrefix}-${value}`;
   const effectiveDesign = onDesignChange ? design : localDesignValues;
+  const effectiveMobileDesign = onMobileDesignChange
+    ? mobileDesign
+    : localMobileDesignValues;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
@@ -1227,25 +1237,28 @@ export function CampaignForm({
     (nextDesign: CampaignDesignValues) => {
       if (onDesignChange) {
         onDesignChange(nextDesign);
+        onMobileDesignChange?.(nextDesign);
         return;
       }
 
       setLocalDesignValues(nextDesign);
+      setLocalMobileDesignValues(nextDesign);
     },
-    [onDesignChange],
+    [onDesignChange, onMobileDesignChange],
   );
 
   useEffect(() => {
     if (!onDesignChange) {
       const syncDesign = window.setTimeout(() => {
         setLocalDesignValues(design);
+        setLocalMobileDesignValues(mobileDesign);
       }, 0);
 
       return () => window.clearTimeout(syncDesign);
     }
 
     return undefined;
-  }, [design, onDesignChange]);
+  }, [design, mobileDesign, onDesignChange]);
 
   useEffect(() => {
     onValuesChange?.(formValues);
@@ -2936,6 +2949,7 @@ export function CampaignForm({
                 className="counterpulse-campaign-preview-panel"
                 design={effectiveDesign}
                 device={previewDevice}
+                mobileDesign={effectiveMobileDesign}
                 placement={campaignPreviewPlacement}
                 viewModel={previewViewModel}
                 onDeviceChange={setPreviewDevice}

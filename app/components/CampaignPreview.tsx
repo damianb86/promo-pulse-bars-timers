@@ -567,7 +567,22 @@ function PromoSurface({
       )}
 
       {freeShippingPreview && (
-        <div className="counterpulse-preview-progress">
+        <div
+          className={[
+            "counterpulse-preview-progress",
+            `counterpulse-preview-progress--${freeShippingPreview.progressStyle.toLowerCase()}`,
+            freeShippingPreview.unlocked
+              ? "counterpulse-preview-progress--unlocked"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={
+            {
+              "--cp-progress": `${freeShippingPreview.percentage}%`,
+            } as CSSProperties
+          }
+        >
           <span>
             <span style={{ width: `${freeShippingPreview.percentage}%` }} />
           </span>
@@ -887,7 +902,10 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
     return null;
   }
 
-  const cartSubtotal = 0;
+  const cartSubtotal = Math.max(
+    0,
+    viewModel.freeShipping.thresholdAmount * 0.62,
+  );
   const progress = calculateFreeShippingProgress(
     viewModel.freeShipping.thresholdAmount,
     cartSubtotal,
@@ -909,6 +927,8 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
           amount,
         ),
       percentage: progress.percentage,
+      progressStyle: viewModel.freeShipping.progressStyle,
+      unlocked: progress.unlocked,
     };
   }
 
@@ -923,6 +943,8 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
           amount,
         ),
     percentage: progress.percentage,
+    progressStyle: viewModel.freeShipping.progressStyle,
+    unlocked: progress.unlocked,
   };
 }
 

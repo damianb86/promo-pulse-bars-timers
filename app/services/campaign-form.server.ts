@@ -24,6 +24,7 @@ import {
   type CountrySelectionValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
+import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 
 export type ParsedCampaignForm = {
   values: CampaignFormValues;
@@ -67,6 +68,9 @@ const timerExpiredBehaviors = new Set<string>([
   "SHOW_CUSTOM_TITLE",
   "DO_NOTHING",
 ]);
+const freeShippingProgressStyles = new Set<string>(
+  freeShippingProgressStyleOptions.map((option) => option.value),
+);
 
 export function parseCampaignFormData(
   formData: FormData,
@@ -154,6 +158,42 @@ export function parseCampaignFormData(
       defaultCampaignFormValues.countrySelection,
     ) as CountrySelectionValue,
     countries: readString(formData, "countries"),
+    freeShippingThresholdAmount:
+      readString(formData, "freeShippingThresholdAmount") ||
+      defaultCampaignFormValues.freeShippingThresholdAmount,
+    freeShippingCurrencyCode:
+      readString(formData, "freeShippingCurrencyCode").toUpperCase() ||
+      defaultCampaignFormValues.freeShippingCurrencyCode,
+    freeShippingIncludeDiscountedSubtotal: readBoolean(
+      formData,
+      "freeShippingIncludeDiscountedSubtotal",
+    ),
+    freeShippingProgressStyle: readOption(
+      formData,
+      "freeShippingProgressStyle",
+      freeShippingProgressStyles,
+      defaultCampaignFormValues.freeShippingProgressStyle,
+    ) as CampaignFormValues["freeShippingProgressStyle"],
+    freeShippingEmptyCartMessage:
+      readString(formData, "freeShippingEmptyCartMessage") ||
+      defaultCampaignFormValues.freeShippingEmptyCartMessage,
+    freeShippingSuccessMessage:
+      readString(formData, "freeShippingSuccessMessage") ||
+      defaultCampaignFormValues.freeShippingSuccessMessage,
+    freeShippingAutoDiscount: readBoolean(
+      formData,
+      "freeShippingAutoDiscount",
+    ),
+    freeShippingDiscountCode:
+      readString(formData, "freeShippingDiscountCode").toUpperCase() ||
+      defaultCampaignFormValues.freeShippingDiscountCode,
+    freeShippingDiscountTitle:
+      readString(formData, "freeShippingDiscountTitle") ||
+      defaultCampaignFormValues.freeShippingDiscountTitle,
+    freeShippingDiscountAppliesOncePerCustomer: readBoolean(
+      formData,
+      "freeShippingDiscountAppliesOncePerCustomer",
+    ),
   };
 
   const errors: CampaignFormErrors = {};
@@ -233,6 +273,45 @@ export function parseCampaignFormData(
     errors.customSelector = "Keep the selector under 120 characters.";
   }
 
+  if (values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING") {
+    const freeShippingThreshold = Number(values.freeShippingThresholdAmount);
+
+    if (
+      !Number.isFinite(freeShippingThreshold) ||
+      freeShippingThreshold <= 0
+    ) {
+      errors.freeShippingThresholdAmount =
+        "Enter a free shipping threshold greater than 0.";
+    }
+
+    if (!/^[A-Z]{3}$/.test(values.freeShippingCurrencyCode)) {
+      errors.freeShippingCurrencyCode =
+        "Currency code must use a 3-letter ISO code.";
+    }
+
+    if (values.freeShippingEmptyCartMessage.length > 500) {
+      errors.freeShippingEmptyCartMessage =
+        "Keep the empty cart message under 500 characters.";
+    }
+
+    if (values.freeShippingSuccessMessage.length > 500) {
+      errors.freeShippingSuccessMessage =
+        "Keep the success message under 500 characters.";
+    }
+
+    if (values.freeShippingAutoDiscount) {
+      if (!/^[A-Z0-9_-]{3,40}$/.test(values.freeShippingDiscountCode)) {
+        errors.freeShippingDiscountCode =
+          "Use 3-40 characters: letters, numbers, dashes, or underscores.";
+      }
+
+      if (!values.freeShippingDiscountTitle.trim()) {
+        errors.freeShippingDiscountTitle =
+          "Add a Shopify discount title.";
+      }
+    }
+  }
+
   if (values.status === "ACTIVE") {
     for (const error of validateActivationCandidate({
       placements: values.placementTypes.map(() => ({ enabled: true })),
@@ -261,6 +340,10 @@ export function hasCampaignFormErrors(errors: CampaignFormErrors) {
 function readString(formData: FormData, key: keyof CampaignFormValues) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readBoolean(formData: FormData, key: keyof CampaignFormValues) {
+  return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
 function readOption(

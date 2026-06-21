@@ -8,6 +8,10 @@ import {
   createEmptyTargetingRules,
   type CampaignTargetingRules,
 } from "./campaign";
+import {
+  defaultFreeShippingSettingsValues,
+  type FreeShippingProgressStyleValue,
+} from "./free-shipping";
 
 export const productSelectionOptions = [
   "ALL_PRODUCTS",
@@ -79,6 +83,16 @@ export type CampaignFormValues = {
   customSelector: string;
   countrySelection: CountrySelectionValue;
   countries: string;
+  freeShippingThresholdAmount: string;
+  freeShippingCurrencyCode: string;
+  freeShippingIncludeDiscountedSubtotal: boolean;
+  freeShippingProgressStyle: FreeShippingProgressStyleValue;
+  freeShippingEmptyCartMessage: string;
+  freeShippingSuccessMessage: string;
+  freeShippingAutoDiscount: boolean;
+  freeShippingDiscountCode: string;
+  freeShippingDiscountTitle: string;
+  freeShippingDiscountAppliesOncePerCustomer: boolean;
 };
 
 export type CampaignFormErrors = Partial<
@@ -116,6 +130,19 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   customSelector: "",
   countrySelection: "ALL_WORLD",
   countries: "",
+  freeShippingThresholdAmount:
+    defaultFreeShippingSettingsValues.thresholdAmount,
+  freeShippingCurrencyCode: defaultFreeShippingSettingsValues.currencyCode,
+  freeShippingIncludeDiscountedSubtotal:
+    defaultFreeShippingSettingsValues.includeDiscountedSubtotal,
+  freeShippingProgressStyle: defaultFreeShippingSettingsValues.progressStyle,
+  freeShippingEmptyCartMessage:
+    defaultFreeShippingSettingsValues.emptyCartMessage,
+  freeShippingSuccessMessage: defaultFreeShippingSettingsValues.successMessage,
+  freeShippingAutoDiscount: false,
+  freeShippingDiscountCode: "FREESHIP",
+  freeShippingDiscountTitle: "Promo Pulse free shipping",
+  freeShippingDiscountAppliesOncePerCustomer: false,
 };
 
 export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
@@ -196,6 +223,30 @@ export function buildCampaignTargetingValues(
   }
 
   return targeting;
+}
+
+export function buildCampaignFreeShippingSettingsValues(
+  values: CampaignFormValues,
+) {
+  return {
+    thresholdAmount:
+      values.freeShippingThresholdAmount ||
+      defaultFreeShippingSettingsValues.thresholdAmount,
+    currencyCode:
+      values.freeShippingCurrencyCode ||
+      defaultFreeShippingSettingsValues.currencyCode,
+    includeDiscountedSubtotal: values.freeShippingIncludeDiscountedSubtotal,
+    emptyCartMessage:
+      values.freeShippingEmptyCartMessage ||
+      defaultFreeShippingSettingsValues.emptyCartMessage,
+    successMessage:
+      values.freeShippingSuccessMessage ||
+      defaultFreeShippingSettingsValues.successMessage,
+    progressStyle:
+      values.freeShippingProgressStyle ||
+      defaultFreeShippingSettingsValues.progressStyle,
+    thresholdRulesJson: "",
+  };
 }
 
 export function splitCampaignList(value: string) {

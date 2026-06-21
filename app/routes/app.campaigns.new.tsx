@@ -13,6 +13,7 @@ import {
   toTargetingWriteData,
   updateCampaignDesignForShop,
   updateCampaignTranslationsForShop,
+  updateDiscountSyncForShop,
 } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
@@ -31,9 +32,15 @@ import { loadCampaignTargetingOptions } from "../services/campaign-targeting-opt
 import { createExperiment } from "../services/experiments";
 import {
   canCreateCampaign,
+  canUseFeature,
   getLockedFeatureReason,
   validateCampaignPlanAccess,
 } from "../services/planLimits.server";
+import {
+  createFreeShippingCodeDiscount,
+  getDiscountByCodeOrId,
+  type ShopifyDiscountSummary,
+} from "../services/shopifyDiscounts.server";
 import { canUsePremiumFeature } from "../services/premiumFeatures.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
 import {
@@ -49,6 +56,7 @@ import type {
 import {
   buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
+  buildCampaignFreeShippingSettingsValues,
   defaultCampaignFormValues,
   emptyCampaignTargetingOptions,
   type CampaignFormErrors,
@@ -58,7 +66,6 @@ import {
 import type { StorefrontLocale } from "../types/localization";
 import { defaultBadgeSettingsValues } from "../types/badge";
 import { defaultDeliveryCutoffSettingsValues } from "../types/delivery-cutoff";
-import { defaultFreeShippingSettingsValues } from "../types/free-shipping";
 import { defaultLowStockSettingsValues } from "../types/low-stock";
 import { buildDefaultCampaignTranslations } from "../utils/campaign-localization";
 
@@ -189,6 +196,11 @@ export const action = async ({
   );
   const targeting = buildCampaignTargetingValues(parsed.values);
   const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
+  const isFreeShippingCampaign =
+    parsed.values.type === "FREE_SHIPPING_GOAL" ||
+    parsed.values.goal === "FREE_SHIPPING";
+  const freeShippingSettings =
+    buildCampaignFreeShippingSettingsValues(parsed.values);
 
   try {
     const createGate = await canCreateCampaign(shop);
@@ -228,6 +240,19 @@ export const action = async ({
           form: planErrors.join(" "),
         },
       };
+    }
+
+    if (isFreeShippingCampaign && parsed.values.freeShippingAutoDiscount) {
+      const discountGate = canUseFeature(shop, "discount_sync");
+
+      if (!discountGate.allowed) {
+        return {
+          values: parsed.values,
+          errors: {
+            freeShippingDiscountCode: discountGate.reason,
+          },
+        };
+      }
     }
 
     const campaign = await createCampaign({
@@ -276,21 +301,19 @@ export const action = async ({
           expiredBehavior: timerSettings.expiredBehavior,
         },
       },
-      ...(parsed.values.type === "FREE_SHIPPING_GOAL" ||
-      parsed.values.goal === "FREE_SHIPPING"
+      ...(isFreeShippingCampaign
         ? {
             freeShippingSettings: {
               create: {
-                thresholdAmount:
-                  defaultFreeShippingSettingsValues.thresholdAmount,
-                currencyCode: defaultFreeShippingSettingsValues.currencyCode,
+                thresholdAmount: Number(
+                  freeShippingSettings.thresholdAmount,
+                ).toFixed(2),
+                currencyCode: freeShippingSettings.currencyCode,
                 includeDiscountedSubtotal:
-                  defaultFreeShippingSettingsValues.includeDiscountedSubtotal,
-                emptyCartMessage:
-                  defaultFreeShippingSettingsValues.emptyCartMessage,
-                successMessage:
-                  defaultFreeShippingSettingsValues.successMessage,
-                progressStyle: defaultFreeShippingSettingsValues.progressStyle,
+                  freeShippingSettings.includeDiscountedSubtotal,
+                emptyCartMessage: freeShippingSettings.emptyCartMessage,
+                successMessage: freeShippingSettings.successMessage,
+                progressStyle: freeShippingSettings.progressStyle,
               },
             },
           }
@@ -357,6 +380,17 @@ export const action = async ({
         formValues: parsed.values,
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
+      });
+    }
+
+    if (isFreeShippingCampaign && parsed.values.freeShippingAutoDiscount) {
+      await createOrLinkFreeShippingDiscountForCampaign({
+        admin,
+        campaignId: campaign.id,
+        shopId: shop.id,
+        values: parsed.values,
+        startsAt: parsed.startsAt,
+        endsAt: parsed.endsAt,
       });
     }
 
@@ -533,6 +567,66 @@ function buildTranslationsForSavedCampaign(
       lowStockText: translation.lowStockText,
       badgeText: translation.badgeText,
     };
+  });
+}
+
+async function createOrLinkFreeShippingDiscountForCampaign({
+  admin,
+  campaignId,
+  shopId,
+  values,
+  startsAt,
+  endsAt,
+}: {
+  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"];
+  campaignId: string;
+  shopId: string;
+  values: CampaignFormValues;
+  startsAt: Date | null;
+  endsAt: Date | null;
+}) {
+  const thresholdAmount = Number(values.freeShippingThresholdAmount);
+  const discountCode = values.freeShippingDiscountCode.trim().toUpperCase();
+  let discount: ShopifyDiscountSummary | null = null;
+
+  try {
+    discount = await createFreeShippingCodeDiscount(admin, {
+      title: values.freeShippingDiscountTitle,
+      code: discountCode,
+      startsAt,
+      endsAt,
+      minimumSubtotal: thresholdAmount,
+      appliesOncePerCustomer:
+        values.freeShippingDiscountAppliesOncePerCustomer,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (!/already|exists|taken|code/i.test(message)) {
+      throw error;
+    }
+
+    discount = await getDiscountByCodeOrId(admin, discountCode);
+
+    if (!discount) {
+      throw error;
+    }
+  }
+
+  return updateDiscountSyncForShop(campaignId, shopId, {
+    shopifyDiscountId: discount.id,
+    discountCode: discount.code ?? discountCode,
+    method: "CODE",
+    syncStartEnd: false,
+    startsAt,
+    endsAt,
+    lastSyncedAt: new Date(),
+    title: values.freeShippingDiscountTitle,
+    valueType: "FREE_SHIPPING",
+    value: null,
+    minimumSubtotal: thresholdAmount.toFixed(2),
+    appliesOncePerCustomer:
+      values.freeShippingDiscountAppliesOncePerCustomer,
   });
 }
 

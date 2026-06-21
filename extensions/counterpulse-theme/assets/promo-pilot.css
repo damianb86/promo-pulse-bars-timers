@@ -233,6 +233,11 @@
   max-width: 260px;
 }
 
+.pp-progress--compact {
+  flex-basis: 110px;
+  max-width: 170px;
+}
+
 .pp-progress__track {
   width: 100%;
   height: 7px;
@@ -248,6 +253,38 @@
   display: block;
   background: var(--pp-accent, #22c55e);
   transition: width 160ms ease;
+}
+
+.pp-progress--compact .pp-progress__track {
+  height: 5px;
+}
+
+.pp-progress--circular {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    var(--pp-accent, #22c55e) var(--pp-progress, 0%),
+    rgba(255, 255, 255, 0.28) 0
+  );
+}
+
+.pp-progress--circular .pp-progress__track {
+  width: 30px;
+  height: 30px;
+  background: var(--pp-bg, #111827);
+}
+
+.pp-progress--circular .pp-progress__fill {
+  display: none;
+}
+
+.pp-progress.is-unlocked .pp-progress__fill,
+.pp-progress--circular.is-unlocked {
+  animation: pp-free-shipping-unlocked 620ms ease-out both;
 }
 
 .pp-bar--expired {
@@ -505,6 +542,46 @@
   gap: 5px;
 }
 
+.pp-cart-progress--compact {
+  flex-basis: 120px;
+  max-width: 180px;
+}
+
+.pp-cart-progress--compact .pp-progress__track {
+  height: 5px;
+}
+
+.pp-cart-progress--circular {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  place-items: center;
+  background: conic-gradient(
+    var(--pp-accent, #22c55e) var(--pp-progress, 0%),
+    rgba(255, 255, 255, 0.28) 0
+  );
+}
+
+.pp-cart-progress--circular .pp-cart-progress__label {
+  display: none;
+}
+
+.pp-cart-progress--circular .pp-progress__track {
+  width: 34px;
+  height: 34px;
+  background: var(--pp-bg, #111827);
+}
+
+.pp-cart-progress--circular .pp-progress__fill {
+  display: none;
+}
+
+.pp-cart-progress.is-unlocked .pp-progress__fill,
+.pp-cart-progress--circular.is-unlocked {
+  animation: pp-free-shipping-unlocked 620ms ease-out both;
+}
+
 .pp-cart-progress__label {
   color: inherit;
   font-size: 0.9em;
@@ -573,5 +650,19 @@
 @media (prefers-reduced-motion: reduce) {
   .pp-progress__fill {
     transition: none;
+  }
+}
+
+@keyframes pp-free-shipping-unlocked {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }

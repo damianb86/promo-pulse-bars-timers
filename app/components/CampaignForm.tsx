@@ -41,10 +41,12 @@ import type {
   ProductSelectionValue,
 } from "../types/campaign-form";
 import {
+  buildCampaignFreeShippingSettingsValues,
   buildCampaignTimerSettingsValues,
   emptyCampaignTargetingOptions,
   splitCampaignList,
 } from "../types/campaign-form";
+import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
@@ -311,25 +313,28 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       design: {
         alignment: "CENTER",
         borderRadius: 8,
-        contentMaxWidth: 420,
+        contentMaxWidth: 520,
         fullWidth: false,
         icon: "TRUCK",
-        layout: "STANDARD",
+        layout: "BALANCED",
         paddingBlock: 12,
         paddingInline: 14,
         positionMode: "FLOW",
         positionSticky: false,
         showButton: false,
         showIcon: true,
-        timerFormat: "UNITS",
-        timerShowLabels: true,
+        templateKey: "free-shipping",
+        timerFormat: "COLON",
+        timerShowLabels: false,
+        timerShowSeconds: false,
         timerStyle: "PLAIN",
       },
       form: {
-        timerDurationMinutes: "120",
-        timerExpiredBehavior: "HIDE_TIMER",
-        timerMode: "EVERGREEN_SESSION",
-        timerResetBehavior: "ON_SESSION_END",
+        freeShippingAutoDiscount: true,
+        freeShippingDiscountCode: "FREESHIP",
+        freeShippingDiscountTitle: "Promo Pulse free shipping",
+        timerExpiredBehavior: "DO_NOTHING",
+        timerMode: "FIXED_DATE",
       },
       goal: "FREE_SHIPPING",
       placementType: "CART_DRAWER",
@@ -722,6 +727,16 @@ export function CampaignForm({
         ],
         design: effectiveDesign,
         timerSettings: buildCampaignTimerSettingsValues(formValues),
+        freeShippingSettings:
+          formValues.type === "FREE_SHIPPING_GOAL" ||
+          formValues.goal === "FREE_SHIPPING"
+            ? buildCampaignFreeShippingSettingsValues(formValues)
+            : null,
+        discountSync: formValues.freeShippingAutoDiscount
+          ? {
+              discountCode: formValues.freeShippingDiscountCode,
+            }
+          : null,
       }),
     [activeGoalLabel, effectiveDesign, formValues],
   );
@@ -758,6 +773,38 @@ export function CampaignForm({
         [field]: value,
       }));
     };
+
+  const updateCheckboxField =
+    <Key extends keyof CampaignFormValues>(field: Key) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.currentTarget.checked as CampaignFormValues[Key];
+
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        [field]: value,
+      }));
+    };
+
+  const toggleFreeShippingAutoDiscount = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const checked = event.currentTarget.checked;
+
+    if (
+      checked &&
+      typeof window !== "undefined" &&
+      !window.confirm(
+        "Promo Pulse will create or link a Shopify free shipping discount code with this threshold the next time you save.",
+      )
+    ) {
+      return;
+    }
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      freeShippingAutoDiscount: checked,
+    }));
+  };
 
   const togglePlacement = (
     placementType: CampaignFormValues["placementType"],
@@ -1401,6 +1448,182 @@ export function CampaignForm({
                     ))}
                   </div>
                 </FormGroup>
+
+                {(formValues.type === "FREE_SHIPPING_GOAL" ||
+                  formValues.goal === "FREE_SHIPPING") && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card"
+                    aria-labelledby={scopedId("free-shipping-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("free-shipping-setup-heading")}>
+                        Free shipping threshold
+                      </h3>
+                      <p>
+                        Configure the cart subtotal goal used by the storefront
+                        progress bar. Optional discount sync creates or links a
+                        real Shopify free-shipping code with the same threshold.
+                      </p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField
+                        label="Threshold amount"
+                        error={errors.freeShippingThresholdAmount}
+                      >
+                        <input
+                          inputMode="decimal"
+                          min="0.01"
+                          name="freeShippingThresholdAmount"
+                          step="0.01"
+                          type="number"
+                          value={formValues.freeShippingThresholdAmount}
+                          onChange={updateField(
+                            "freeShippingThresholdAmount",
+                          )}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Currency code"
+                        error={errors.freeShippingCurrencyCode}
+                      >
+                        <input
+                          maxLength={3}
+                          name="freeShippingCurrencyCode"
+                          value={formValues.freeShippingCurrencyCode}
+                          onChange={updateField("freeShippingCurrencyCode")}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Progress style"
+                        error={errors.freeShippingProgressStyle}
+                      >
+                        <select
+                          name="freeShippingProgressStyle"
+                          value={formValues.freeShippingProgressStyle}
+                          onChange={updateField("freeShippingProgressStyle")}
+                        >
+                          {freeShippingProgressStyleOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+
+                      <div className="counterpulse-toggle">
+                        <label className="counterpulse-toggle-label">
+                          <input
+                            checked={
+                              formValues.freeShippingIncludeDiscountedSubtotal
+                            }
+                            name="freeShippingIncludeDiscountedSubtotal"
+                            type="checkbox"
+                            onChange={updateCheckboxField(
+                              "freeShippingIncludeDiscountedSubtotal",
+                            )}
+                          />
+                          <span>Use discounted subtotal when available</span>
+                        </label>
+                      </div>
+
+                      <FormField
+                        label="Empty cart message"
+                        error={errors.freeShippingEmptyCartMessage}
+                        fullWidth
+                      >
+                        <textarea
+                          name="freeShippingEmptyCartMessage"
+                          rows={2}
+                          value={formValues.freeShippingEmptyCartMessage}
+                          onChange={updateField(
+                            "freeShippingEmptyCartMessage",
+                          )}
+                        />
+                      </FormField>
+
+                      <FormField
+                        label="Unlocked message"
+                        error={errors.freeShippingSuccessMessage}
+                        fullWidth
+                      >
+                        <textarea
+                          name="freeShippingSuccessMessage"
+                          rows={2}
+                          value={formValues.freeShippingSuccessMessage}
+                          onChange={updateField(
+                            "freeShippingSuccessMessage",
+                          )}
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="counterpulse-free-shipping-discount-box">
+                      <label className="counterpulse-toggle-label">
+                        <input
+                          checked={formValues.freeShippingAutoDiscount}
+                          name="freeShippingAutoDiscount"
+                          type="checkbox"
+                          onChange={toggleFreeShippingAutoDiscount}
+                        />
+                        <span>Create or link the real Shopify discount code</span>
+                      </label>
+                      <p>
+                        When enabled, saving creates or links a Shopify free
+                        shipping code and sets its minimum subtotal to this
+                        threshold, so checkout enforces the same rule.
+                      </p>
+
+                      {formValues.freeShippingAutoDiscount && (
+                        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                          <FormField
+                            label="Discount code"
+                            error={errors.freeShippingDiscountCode}
+                          >
+                            <input
+                              name="freeShippingDiscountCode"
+                              value={formValues.freeShippingDiscountCode}
+                              onChange={updateField(
+                                "freeShippingDiscountCode",
+                              )}
+                            />
+                          </FormField>
+
+                          <FormField
+                            label="Discount title"
+                            error={errors.freeShippingDiscountTitle}
+                          >
+                            <input
+                              name="freeShippingDiscountTitle"
+                              value={formValues.freeShippingDiscountTitle}
+                              onChange={updateField(
+                                "freeShippingDiscountTitle",
+                              )}
+                            />
+                          </FormField>
+
+                          <div className="counterpulse-toggle">
+                            <label className="counterpulse-toggle-label">
+                              <input
+                                checked={
+                                  formValues.freeShippingDiscountAppliesOncePerCustomer
+                                }
+                                name="freeShippingDiscountAppliesOncePerCustomer"
+                                type="checkbox"
+                                onChange={updateCheckboxField(
+                                  "freeShippingDiscountAppliesOncePerCustomer",
+                                )}
+                              />
+                              <span>Limit to one use per customer</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
               </div>
             </BuilderPanel>
 

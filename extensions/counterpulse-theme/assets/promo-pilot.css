@@ -2,10 +2,6 @@
   display: none;
 }
 
-.pp-root--debug {
-  display: block;
-}
-
 .pp-container {
   width: 100%;
   box-sizing: border-box;
@@ -528,101 +524,6 @@
   }
 }
 
-.pp-debug {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  display: block;
-  margin: 12px 0;
-  padding: 12px;
-  border: 1px solid #f59e0b;
-  border-radius: 6px;
-  background: #fffbeb;
-  color: #111827;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  font-size: 13px;
-  line-height: 1.35;
-  text-align: left;
-  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
-}
-
-.pp-debug--embed {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 214748001;
-  width: min(440px, calc(100vw - 24px));
-  max-height: min(72vh, 560px);
-  overflow: auto;
-}
-
-.pp-debug--warning {
-  border-color: #dc2626;
-  background: #fef2f2;
-}
-
-.pp-debug strong {
-  display: block;
-  margin: 0 0 6px;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.pp-debug p {
-  margin: 6px 0;
-  color: #374151;
-}
-
-.pp-debug dl {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 4px 10px;
-  margin: 10px 0;
-}
-
-.pp-debug dt {
-  color: #6b7280;
-  font-weight: 700;
-}
-
-.pp-debug dd {
-  min-width: 0;
-  margin: 0;
-  color: #111827;
-  overflow-wrap: anywhere;
-}
-
-.pp-debug code {
-  display: inline;
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: rgba(17, 24, 39, 0.08);
-  color: #111827;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    monospace;
-  font-size: 12px;
-  word-break: break-word;
-}
-
-.pp-debug__status {
-  padding: 8px 10px;
-  border-left: 3px solid #2563eb;
-  background: #eff6ff;
-  color: #1e3a8a;
-}
-
-.pp-debug__hint {
-  font-size: 12px;
-}
-
 @media (max-width: 767px) {
   .pp-bar {
     justify-content: center;
@@ -666,22 +567,6 @@
 
   .pp-container--bottom-bar {
     padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  .pp-debug {
-    font-size: 12px;
-  }
-
-  .pp-debug--embed {
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-    width: auto;
-    max-height: 65vh;
-  }
-
-  .pp-debug dl {
-    grid-template-columns: 1fr;
   }
 }
 

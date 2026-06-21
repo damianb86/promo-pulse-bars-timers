@@ -5,7 +5,7 @@
     {% assign pp_badge_metafield_value = pp_badge_metafield.value | default: pp_badge_metafield %}
   {% endif %}
   <div
-    class="pp-root pp-product-badge{% if block.settings.debugMode %} pp-root--debug{% endif %}"
+    class="pp-root pp-product-badge"
     data-shop="{{ shop.permanent_domain | escape }}"
     data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
     data-country="{{ localization.country.iso_code | default: '' | escape }}"
@@ -26,65 +26,7 @@
     data-debug="{{ block.settings.debugMode }}"
     data-debug-block="Promo Pulse badge"
     {{ block.shopify_attributes }}
-  >
-    {% if block.settings.debugMode %}
-      <aside class="pp-debug" role="status" aria-live="polite">
-        <strong>Promo Pulse badge renderizado</strong>
-        <p>
-          Este bloque busca campanas PRODUCT_BADGE para el placement configurado.
-        </p>
-        <dl>
-          <dt>Bloque</dt>
-          <dd>Promo Pulse badge</dd>
-          <dt>Placement</dt>
-          <dd>{{ block.settings.placement | escape }}</dd>
-          <dt>Selection</dt>
-          <dd>{{ block.settings.fallbackMode | escape }}</dd>
-          <dt>Campaign ID</dt>
-          <dd>{% if block.settings.campaignId != blank %}{{ block.settings.campaignId | escape }}{% else %}auto{% endif %}</dd>
-          <dt>Product ID</dt>
-          <dd>gid://shopify/Product/{{ product.id }}</dd>
-          <dt>Tags</dt>
-          <dd>{% if product.tags.size > 0 %}{{ product.tags | join: ', ' | escape }}{% else %}none{% endif %}</dd>
-          <dt>Vendor</dt>
-          <dd>{{ product.vendor | default: 'none' | escape }}</dd>
-          <dt>Inventory</dt>
-          <dd>{{ product.selected_or_first_available_variant.inventory_quantity | default: 'unknown' }}</dd>
-          <dt>Locale</dt>
-          <dd>{{ request.locale.iso_code | default: 'en' | escape }}</dd>
-          <dt>API ejemplo</dt>
-          <dd>
-            <code data-pp-debug-url>/apps/counterpulse-campaigns?shop={{ shop.permanent_domain | escape }}&amp;placement={{ block.settings.placement | escape }}&amp;productId=gid://shopify/Product/{{ product.id }}&amp;locale={{ request.locale.iso_code | default: 'en' | escape }}</code>
-          </dd>
-        </dl>
-        <p class="pp-debug__status" data-pp-debug-status>
-          Bloque Liquid renderizado. Esperando que product-badge.js consulte la API.
-        </p>
-        <p class="pp-debug__hint">
-          Promo Pulse no modifica automaticamente todas las cards de coleccion en Etapa 1; coloca este bloque donde el theme permita app blocks.
-        </p>
-      </aside>
-    {% endif %}
-  </div>
-{% elsif block.settings.debugMode %}
-  <div
-    class="pp-root pp-product-badge pp-root--debug"
-    data-shop="{{ shop.permanent_domain | escape }}"
-    data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
-    data-country="{{ localization.country.iso_code | default: '' | escape }}"
-    data-product-id=""
-    data-placement="{{ block.settings.placement | escape }}"
-    data-debug="{{ block.settings.debugMode }}"
-    data-debug-block="Promo Pulse badge"
-    {{ block.shopify_attributes }}
-  >
-    <aside class="pp-debug pp-debug--warning" role="status" aria-live="polite">
-      <strong>Promo Pulse badge renderizado sin producto</strong>
-      <p class="pp-debug__status" data-pp-debug-status>
-        Shopify no expuso un objeto product en esta ubicacion. En Etapa 1, el badge necesita estar en un contexto con producto.
-      </p>
-    </aside>
-  </div>
+  ></div>
 {% endif %}
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
 

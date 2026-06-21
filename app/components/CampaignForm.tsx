@@ -54,6 +54,9 @@ type CampaignFormProps = {
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
+  hiddenBuilderTabs?: BuilderTabKey[];
+  idPrefix?: string;
+  initialTab?: BuilderTabKey;
   lockedTargetingFeatures?: {
     advanced: string;
     basic: string;
@@ -61,8 +64,12 @@ type CampaignFormProps = {
     recurringTimers?: string;
     scheduling?: string;
   };
+  listenForSaveEvents?: boolean;
   mode: "create" | "edit";
+  showBuilderTabs?: boolean;
+  showPreview?: boolean;
   showTopbar?: boolean;
+  syncExternalValues?: boolean;
   targetingOptions?: CampaignTargetingOptions;
   onDesignChange?: (values: CampaignDesignValues) => void;
   onValuesChange?: (values: CampaignFormValues) => void;
@@ -447,16 +454,36 @@ export function CampaignForm({
   values,
   errors = {},
   formId,
+  hiddenBuilderTabs = [],
+  idPrefix = "campaign",
+  initialTab = "setup",
+  listenForSaveEvents = true,
   lockedTargetingFeatures,
   mode,
+  showBuilderTabs = true,
+  showPreview = true,
   showTopbar = true,
+  syncExternalValues = false,
   targetingOptions = emptyCampaignTargetingOptions,
   onDesignChange,
   onValuesChange,
 }: CampaignFormProps) {
   const navigation = useNavigation();
   const formRef = useRef<HTMLFormElement | null>(null);
-  const [activeTab, setActiveTab] = useState<BuilderTabKey>("setup");
+  const hiddenBuilderTabSet = useMemo(
+    () => new Set(hiddenBuilderTabs),
+    [hiddenBuilderTabs],
+  );
+  const visibleBuilderTabs = useMemo(() => {
+    const tabs = builderTabs.filter((tab) => !hiddenBuilderTabSet.has(tab.key));
+
+    return tabs.length > 0 ? tabs : builderTabs;
+  }, [hiddenBuilderTabSet]);
+  const [activeTab, setActiveTab] = useState<BuilderTabKey>(() =>
+    visibleBuilderTabs.some((tab) => tab.key === initialTab)
+      ? initialTab
+      : visibleBuilderTabs[0].key,
+  );
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
   const [
     campaignPreviewPlacementOverride,
@@ -485,6 +512,7 @@ export function CampaignForm({
     productIds: buildResourceChips(values.productIds),
   }));
   const isSubmitting = navigation.state === "submitting";
+  const scopedId = (value: string) => `${idPrefix}-${value}`;
   const effectiveDesign = onDesignChange ? design : localDesignValues;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
@@ -517,7 +545,8 @@ export function CampaignForm({
     formValues.placementTypes,
   );
   const activeTabMeta =
-    builderTabs.find((tab) => tab.key === activeTab) ?? builderTabs[0];
+    visibleBuilderTabs.find((tab) => tab.key === activeTab) ??
+    visibleBuilderTabs[0];
   const selectedProductTags = splitCampaignList(formValues.productTags);
   const selectedCountries = splitCampaignList(formValues.countries).map(
     (country) => country.toUpperCase(),
@@ -957,6 +986,14 @@ export function CampaignForm({
   }, [formValues, onValuesChange]);
 
   useEffect(() => {
+    if (!syncExternalValues) return;
+
+    setFormValues(values);
+  }, [syncExternalValues, values]);
+
+  useEffect(() => {
+    if (!listenForSaveEvents) return undefined;
+
     const submitWithAction = (action: "saveDraft" | "publishCampaign") => {
       setSubmitAction(action);
       window.setTimeout(() => formRef.current?.requestSubmit(), 0);
@@ -992,10 +1029,22 @@ export function CampaignForm({
         handleDiscardRequest,
       );
     };
-  }, [values]);
+  }, [listenForSaveEvents, values]);
 
   useEffect(() => {
-    const handleReviewRequest = () => setActiveTab("review");
+    if (!visibleBuilderTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(visibleBuilderTabs[0].key);
+    }
+  }, [activeTab, visibleBuilderTabs]);
+
+  useEffect(() => {
+    const handleReviewRequest = () => {
+      setActiveTab(
+        visibleBuilderTabs.some((tab) => tab.key === "review")
+          ? "review"
+          : visibleBuilderTabs[0].key,
+      );
+    };
     const handleAiSuggestionJson = (event: Event) => {
       setAiSuggestionJson(
         event instanceof CustomEvent && typeof event.detail === "string"
@@ -1023,7 +1072,11 @@ export function CampaignForm({
         handleAiSuggestionJson,
       );
     };
-  }, []);
+  }, [visibleBuilderTabs]);
+
+  const canReview = visibleBuilderTabs.some((tab) => tab.key === "review");
+  const shouldShowBuilderTabs =
+    showBuilderTabs && visibleBuilderTabs.length > 1;
 
   return (
     <>
@@ -1062,13 +1115,15 @@ export function CampaignForm({
               <span>{activePlacementLabel}</span>
             </div>
             <div className="counterpulse-create-actions">
-              <button
-                className="counterpulse-button-secondary"
-                type="button"
-                onClick={() => setActiveTab("review")}
-              >
-                Review
-              </button>
+              {canReview && (
+                <button
+                  className="counterpulse-button-secondary"
+                  type="button"
+                  onClick={() => setActiveTab("review")}
+                >
+                  Review
+                </button>
+              )}
               <button
                 className="counterpulse-button"
                 data-testid="campaign-save-button"
@@ -1080,33 +1135,42 @@ export function CampaignForm({
           </div>
         )}
 
-        <div
-          className="counterpulse-builder-tabs"
-          aria-label="Campaign builder"
-          role="tablist"
-        >
-          {builderTabs.map((tab) => (
-            <button
-              aria-controls={`campaign-builder-panel-${tab.key}`}
-              aria-selected={activeTab === tab.key}
-              className={activeTab === tab.key ? "is-active" : undefined}
-              id={`campaign-builder-tab-${tab.key}`}
-              key={tab.key}
-              role="tab"
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {shouldShowBuilderTabs && (
+          <div
+            className="counterpulse-builder-tabs"
+            aria-label="Campaign builder"
+            role="tablist"
+          >
+            {visibleBuilderTabs.map((tab) => (
+              <button
+                aria-controls={`campaign-builder-panel-${tab.key}`}
+                aria-selected={activeTab === tab.key}
+                className={activeTab === tab.key ? "is-active" : undefined}
+                id={`campaign-builder-tab-${tab.key}`}
+                key={tab.key}
+                role="tab"
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div className="counterpulse-create-builder-grid">
+        <div
+          className={[
+            "counterpulse-create-builder-grid",
+            showPreview ? "" : "counterpulse-create-builder-grid--single",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
           <section className="counterpulse-create-panel">
             <div className="counterpulse-panel-heading">
               <div>
                 <p className="counterpulse-kicker">{activeTabMeta.label}</p>
-                <h2 id="campaign-builder-heading">{activeTabMeta.title}</h2>
+                <h2 id={scopedId("builder-heading")}>{activeTabMeta.title}</h2>
                 <p className="counterpulse-panel-description">
                   {activeTabMeta.description}
                 </p>
@@ -1169,9 +1233,10 @@ export function CampaignForm({
                   </select>
                 </FormField>
 
-                <FormField
+                <FormGroup
                   label="Campaign type"
                   error={errors.type}
+                  fullWidth
                   info={
                     <FieldInfoButton
                       label="Campaign type"
@@ -1213,22 +1278,34 @@ export function CampaignForm({
                     </FieldInfoButton>
                   }
                 >
-                  <select
-                    name="type"
-                    value={formValues.type}
-                    onChange={(event) =>
-                      selectCampaignType(
-                        event.currentTarget.value as CampaignTypeValue,
-                      )
-                    }
-                  >
+                  <div className="counterpulse-goal-list" role="radiogroup">
                     {campaignTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
+                      <button
+                        aria-checked={formValues.type === option.value}
+                        className="counterpulse-goal-card"
+                        key={option.value}
+                        role="radio"
+                        type="button"
+                        onClick={() => selectCampaignType(option.value)}
+                      >
+                        <input
+                          checked={formValues.type === option.value}
+                          type="radio"
+                          name="type"
+                          value={option.value}
+                          onChange={() => selectCampaignType(option.value)}
+                        />
+                        <span
+                          className="counterpulse-goal-card__icon"
+                          aria-hidden="true"
+                        >
+                          <CampaignTypeIcon type={option.value} />
+                        </span>
+                        <span>{option.label}</span>
+                      </button>
                     ))}
-                  </select>
-                </FormField>
+                  </div>
+                </FormGroup>
 
                 <FormGroup
                   label="Goal"
@@ -1351,10 +1428,12 @@ export function CampaignForm({
             <BuilderPanel activeTab={activeTab} tabKey="placement">
               <section
                 className="counterpulse-targeting-card"
-                aria-labelledby="campaign-placement-heading"
+                aria-labelledby={scopedId("placement-heading")}
               >
                 <div className="counterpulse-targeting-card__header">
-                  <h3 id="campaign-placement-heading">Campaign placements</h3>
+                  <h3 id={scopedId("placement-heading")}>
+                    Campaign placements
+                  </h3>
                   <p>
                     Select every storefront surface where this campaign should
                     be eligible to render. The first selected placement is used
@@ -1408,10 +1487,10 @@ export function CampaignForm({
               {formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
                 <section
                   className="counterpulse-targeting-card"
-                  aria-labelledby="campaign-custom-placement-heading"
+                  aria-labelledby={scopedId("custom-placement-heading")}
                 >
                   <div className="counterpulse-targeting-card__header">
-                    <h3 id="campaign-custom-placement-heading">
+                    <h3 id={scopedId("custom-placement-heading")}>
                       Custom selector
                     </h3>
                     <p>
@@ -1421,11 +1500,11 @@ export function CampaignForm({
                   </div>
                   <div className="counterpulse-placement-custom">
                     <div className="counterpulse-targeting-field">
-                      <label htmlFor="campaign-custom-selector">
+                      <label htmlFor={scopedId("custom-selector")}>
                         Theme selector
                       </label>
                       <input
-                        id="campaign-custom-selector"
+                        id={scopedId("custom-selector")}
                         name="customSelector"
                         value={formValues.customSelector}
                         placeholder=".product-form__buttons"
@@ -1488,10 +1567,12 @@ export function CampaignForm({
                 )}
                 <section
                   className="counterpulse-targeting-card"
-                  aria-labelledby="campaign-products-heading"
+                  aria-labelledby={scopedId("products-heading")}
                 >
                   <div className="counterpulse-targeting-card__header">
-                    <h3 id="campaign-products-heading">Product eligibility</h3>
+                    <h3 id={scopedId("products-heading")}>
+                      Product eligibility
+                    </h3>
                   </div>
 
                   <TargetingRadioOption
@@ -1612,6 +1693,7 @@ export function CampaignForm({
                   >
                     <TagSelectorField
                       error={errors.productTags}
+                      searchId={scopedId("product-tag-search")}
                       matchingTags={matchingProductTags}
                       query={tagQuery}
                       selectedTags={selectedProductTags}
@@ -1627,10 +1709,10 @@ export function CampaignForm({
 
                 <section
                   className="counterpulse-targeting-card"
-                  aria-labelledby="campaign-geolocation-heading"
+                  aria-labelledby={scopedId("geolocation-heading")}
                 >
                   <div className="counterpulse-targeting-card__header">
-                    <h3 id="campaign-geolocation-heading">
+                    <h3 id={scopedId("geolocation-heading")}>
                       Geolocation targeting
                     </h3>
                   </div>
@@ -1666,6 +1748,7 @@ export function CampaignForm({
                       countryLabelsByCode={countryLabelsByCode}
                       error={errors.countries}
                       query={countryQuery}
+                      searchId={scopedId("country-search")}
                       selectedCountries={selectedCountries}
                       value={formValues.countries}
                       onAddCountry={addCountry}
@@ -1681,12 +1764,12 @@ export function CampaignForm({
 
             <BuilderPanel activeTab={activeTab} tabKey="schedule">
               <div className="counterpulse-schedule-stack">
-                <section className="counterpulse-targeting-card">
+                <section className="counterpulse-targeting-card counterpulse-schedule-card">
                   <div className="counterpulse-targeting-card__header">
                     <h3>Timer Type</h3>
                   </div>
 
-                  <div className="counterpulse-radio-stack">
+                  <div className="counterpulse-radio-stack counterpulse-schedule-card__group">
                     {timerModeOptions.map((option) => {
                       const lockReason =
                         option.disabledFeature === "recurringTimers"
@@ -1800,8 +1883,8 @@ export function CampaignForm({
 
                   {formValues.timerMode === "FIXED_DATE" ? (
                     <>
-                      <div className="counterpulse-targeting-option">
-                        <label>
+                      <div className="counterpulse-schedule-card__group counterpulse-schedule-start-options">
+                        <label className="counterpulse-radio counterpulse-radio--stacked">
                           <input
                             aria-label="Right now"
                             checked={!formValues.startsAt}
@@ -1814,16 +1897,14 @@ export function CampaignForm({
                             <strong>Right now</strong>
                           </span>
                         </label>
-                      </div>
-                      <div
-                        className={[
-                          "counterpulse-targeting-option",
-                          schedulingLocked ? "is-disabled" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        <label>
+                        <label
+                          className={[
+                            "counterpulse-radio counterpulse-radio--stacked",
+                            schedulingLocked ? "is-disabled" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
                           <input
                             aria-label="Schedule to start later"
                             checked={Boolean(formValues.startsAt)}
@@ -1961,6 +2042,7 @@ export function CampaignForm({
                   }
                   label="Timezone"
                   name="timezone"
+                  className="counterpulse-schedule-card__field"
                   value={formValues.timezone}
                   onChange={(timezone) =>
                     setFormValues((currentValues) => ({
@@ -1993,37 +2075,39 @@ export function CampaignForm({
             </BuilderPanel>
           </section>
 
-          <aside
-            className="counterpulse-create-side-panel"
-            aria-label="Live campaign preview"
-          >
-            <CampaignPreviewPanel
-              actualPlacements={previewPlacements}
-              className="counterpulse-campaign-preview-panel"
-              design={effectiveDesign}
-              device={previewDevice}
-              placement={campaignPreviewPlacement}
-              viewModel={previewViewModel}
-              onDeviceChange={setPreviewDevice}
-              onPlacementChange={selectCampaignPreviewPlacement}
-              meta={
-                <dl className="counterpulse-preview-meta">
-                  <div>
-                    <dt>Goal</dt>
-                    <dd>{activeGoalLabel}</dd>
-                  </div>
-                  <div>
-                    <dt>Type</dt>
-                    <dd>{activeTypeLabel}</dd>
-                  </div>
-                  <div>
-                    <dt>Placement</dt>
-                    <dd>{activePlacementLabel}</dd>
-                  </div>
-                </dl>
-              }
-            />
-          </aside>
+          {showPreview && (
+            <aside
+              className="counterpulse-create-side-panel"
+              aria-label="Live campaign preview"
+            >
+              <CampaignPreviewPanel
+                actualPlacements={previewPlacements}
+                className="counterpulse-campaign-preview-panel"
+                design={effectiveDesign}
+                device={previewDevice}
+                placement={campaignPreviewPlacement}
+                viewModel={previewViewModel}
+                onDeviceChange={setPreviewDevice}
+                onPlacementChange={selectCampaignPreviewPlacement}
+                meta={
+                  <dl className="counterpulse-preview-meta">
+                    <div>
+                      <dt>Goal</dt>
+                      <dd>{activeGoalLabel}</dd>
+                    </div>
+                    <div>
+                      <dt>Type</dt>
+                      <dd>{activeTypeLabel}</dd>
+                    </div>
+                    <div>
+                      <dt>Placement</dt>
+                      <dd>{activePlacementLabel}</dd>
+                    </div>
+                  </dl>
+                }
+              />
+            </aside>
+          )}
         </div>
       </Form>
       {confirmOnSubmit ? confirmSubmit.modal : null}
@@ -2228,6 +2312,7 @@ function TagSelectorField({
   onRemoveTag,
   onSelectFirst,
   query,
+  searchId,
   selectedTags,
   value,
 }: {
@@ -2239,16 +2324,17 @@ function TagSelectorField({
   onRemoveTag: (tag: string) => void;
   onSelectFirst: (event: KeyboardEvent<HTMLInputElement>) => void;
   query: string;
+  searchId: string;
   selectedTags: string[];
   value: string;
 }) {
   return (
     <div className="counterpulse-targeting-field">
       <input name="productTags" type="hidden" value={value} />
-      <label htmlFor="campaign-product-tag-search">Product tags</label>
+      <label htmlFor={searchId}>Product tags</label>
       <div className="counterpulse-combo-field">
         <input
-          id="campaign-product-tag-search"
+          id={searchId}
           value={query}
           placeholder="Search product tags"
           onChange={(event) => onQueryChange(event.currentTarget.value)}
@@ -2297,6 +2383,7 @@ function CountrySelectorField({
   onRemoveCountry,
   onSelectFirst,
   query,
+  searchId,
   selectedCountries,
   value,
 }: {
@@ -2309,16 +2396,17 @@ function CountrySelectorField({
   onRemoveCountry: (code: string) => void;
   onSelectFirst: (event: KeyboardEvent<HTMLInputElement>) => void;
   query: string;
+  searchId: string;
   selectedCountries: string[];
   value: string;
 }) {
   return (
     <div className="counterpulse-targeting-field">
       <input name="countries" type="hidden" value={value} />
-      <label htmlFor="campaign-country-search">Countries</label>
+      <label htmlFor={searchId}>Countries</label>
       <div className="counterpulse-combo-field">
         <input
-          id="campaign-country-search"
+          id={searchId}
           value={query}
           placeholder="Search Shopify countries"
           onChange={(event) => onQueryChange(event.currentTarget.value)}
@@ -2532,6 +2620,124 @@ function GoalIcon({ goal }: { goal: CampaignFormValues["goal"] }) {
       {goal === "ANNOUNCEMENT" && (
         <path
           d="M4 10v4h4l8 4V6l-8 4H4Zm12 0 4-2v8l-4-2"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
+  );
+}
+
+function CampaignTypeIcon({ type }: { type: CampaignTypeValue }) {
+  const title =
+    campaignTypeOptions.find((option) => option.value === type)?.label ?? type;
+
+  return (
+    <svg
+      aria-label={title}
+      fill="none"
+      height="22"
+      role="img"
+      viewBox="0 0 24 24"
+      width="22"
+    >
+      {type === "COUNTDOWN_BAR" && (
+        <>
+          <path
+            d="M4 7h16v10H4z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M9 12h6M17 12h.01"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "PRODUCT_TIMER" && (
+        <>
+          <path
+            d="M5 6h6l8 8-6 6-8-8V6Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <circle cx="9" cy="10" r="1.3" fill="currentColor" />
+          <path
+            d="M14 11v3l2 1"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "CART_TIMER" && (
+        <>
+          <path
+            d="M5 5h2l2 10h8l2-7H8"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M12 9v3l2 1M11 19h.01M17 19h.01"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "FREE_SHIPPING_GOAL" && (
+        <>
+          <path
+            d="M3 8h10v8H3V8Zm10 3h4l3 3v2h-7v-5Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M6 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm11 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "DELIVERY_CUTOFF" && (
+        <>
+          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 7v5l4 2"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "LOW_STOCK" && (
+        <>
+          <path
+            d="M5 8h14v11H5zM8 5h8l1 3H7l1-3Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M9 13h6"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {type === "PRODUCT_BADGE" && (
+        <path
+          d="M4 7V4h3m10 0h3v3M4 17v3h3m10 0h3v-3M8 8h8v8H8V8Zm2.5 4h3"
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"

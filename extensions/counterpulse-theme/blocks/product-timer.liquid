@@ -1,6 +1,6 @@
 {% if product %}
   <div
-    class="pp-root pp-product-timer{% if block.settings.debugMode %} pp-root--debug{% endif %}"
+    class="pp-root pp-product-timer"
     data-shop="{{ shop.permanent_domain | escape }}"
     data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
     data-country="{{ localization.country.iso_code | default: '' | escape }}"
@@ -18,50 +18,7 @@
     data-debug="{{ block.settings.debugMode }}"
     data-debug-block="Promo Pulse product timer"
     {{ block.shopify_attributes }}
-  >
-    {% if block.settings.debugMode %}
-      <aside class="pp-debug" role="status" aria-live="polite">
-        <strong>Promo Pulse product timer renderizado</strong>
-        <p>
-          Este bloque busca campanas elegibles para la pagina de producto.
-        </p>
-        <dl>
-          <dt>Bloque</dt>
-          <dd>Promo Pulse product timer</dd>
-          <dt>Placement</dt>
-          <dd>PRODUCT_PAGE</dd>
-          <dt>Selection</dt>
-          <dd>{{ block.settings.fallbackMode | escape }}</dd>
-          <dt>Campaign ID</dt>
-          <dd>{% if block.settings.campaignId != blank %}{{ block.settings.campaignId | escape }}{% else %}auto{% endif %}</dd>
-          <dt>Product ID</dt>
-          <dd>gid://shopify/Product/{{ product.id }}</dd>
-          <dt>Variant ID</dt>
-          <dd>{{ product.selected_or_first_available_variant.id }}</dd>
-          <dt>Inventory</dt>
-          <dd>{{ product.selected_or_first_available_variant.inventory_quantity | default: 'not exposed' }}</dd>
-          <dt>Tags</dt>
-          <dd>{% if product.tags.size > 0 %}{{ product.tags | join: ', ' | escape }}{% else %}none{% endif %}</dd>
-          <dt>Locale</dt>
-          <dd>{{ request.locale.iso_code | default: 'en' | escape }}</dd>
-          <dt>Country</dt>
-          <dd>{{ localization.country.iso_code | default: 'unknown' | escape }}</dd>
-          <dt>API ejemplo</dt>
-          <dd>
-            <code data-pp-debug-url>/apps/counterpulse-campaigns?shop={{ shop.permanent_domain | escape }}&amp;placement=PRODUCT_PAGE&amp;productId=gid://shopify/Product/{{ product.id }}&amp;locale={{ request.locale.iso_code | default: 'en' | escape }}</code>
-          </dd>
-          <dt>Scripts</dt>
-          <dd>product-timer.js, delivery-cutoff.js, low-stock.js</dd>
-        </dl>
-        <p class="pp-debug__status" data-pp-debug-status>
-          Bloque Liquid renderizado. Esperando que product-timer.js consulte la API.
-        </p>
-        <p class="pp-debug__hint">
-          Usa este bloque para PRODUCT_TIMER, DELIVERY_CUTOFF, LOW_STOCK y FREE_SHIPPING_GOAL cuando la ubicacion sea PRODUCT_PAGE.
-        </p>
-      </aside>
-    {% endif %}
-  </div>
+  ></div>
   <script id="counterpulse-variants-{{ block.id }}" type="application/json">
     [
       {%- for variant in product.variants -%}
@@ -74,24 +31,6 @@
       {%- endfor -%}
     ]
   </script>
-{% elsif block.settings.debugMode %}
-  <div
-    class="pp-root pp-product-timer pp-root--debug"
-    data-shop="{{ shop.permanent_domain | escape }}"
-    data-locale="{{ request.locale.iso_code | default: 'en' | escape }}"
-    data-country="{{ localization.country.iso_code | default: '' | escape }}"
-    data-product-id=""
-    data-debug="{{ block.settings.debugMode }}"
-    data-debug-block="Promo Pulse product timer"
-    {{ block.shopify_attributes }}
-  >
-    <aside class="pp-debug pp-debug--warning" role="status" aria-live="polite">
-      <strong>Promo Pulse product timer renderizado sin producto</strong>
-      <p class="pp-debug__status" data-pp-debug-status>
-        Shopify no expuso un objeto product en este contexto. Agrega este bloque dentro de un template de producto.
-      </p>
-    </aside>
-  </div>
 {% endif %}
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
 <script src="{{ 'delivery-cutoff.js' | asset_url }}" defer></script>

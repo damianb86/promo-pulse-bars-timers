@@ -56,9 +56,11 @@ export function CampaignEditorLayout({
               type="button"
               onClick={() => {
                 setActiveSectionKey(actionBar.campaignSectionKey ?? "campaign");
-                window.dispatchEvent(
-                  new CustomEvent("counterpulse:campaign-review"),
-                );
+                window.setTimeout(() => {
+                  window.dispatchEvent(
+                    new CustomEvent("counterpulse:campaign-review"),
+                  );
+                }, 0);
               }}
             >
               Review

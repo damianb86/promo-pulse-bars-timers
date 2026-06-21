@@ -278,10 +278,6 @@ type LoaderData = {
   marketRules: MarketRuleRow[];
   freeShippingValues: FreeShippingSettingsValues;
   lowStockValues: LowStockSettingsValues;
-  hasBadge: boolean;
-  hasDeliveryCutoff: boolean;
-  hasFreeShippingGoal: boolean;
-  hasLowStock: boolean;
   translationsViewModel: CampaignTranslationsViewModel;
   publication: {
     hasPublishedVersion: boolean;
@@ -380,14 +376,6 @@ export const loader = async ({
   );
   const placement = enabledPlacements[0] ?? campaign.placements[0];
   const designValues = toCampaignDesignValues(campaign.design);
-  const hasFreeShippingGoal =
-    campaign.type === "FREE_SHIPPING_GOAL" || campaign.goal === "FREE_SHIPPING";
-  const hasDeliveryCutoff =
-    campaign.type === "DELIVERY_CUTOFF" || campaign.goal === "DELIVERY_CUTOFF";
-  const hasLowStock =
-    campaign.type === "LOW_STOCK" || campaign.goal === "LOW_STOCK_URGENCY";
-  const hasBadge =
-    campaign.type === "PRODUCT_BADGE" || campaign.goal === "PRODUCT_BADGE";
   const effectivePlan = getEffectiveShopPlan(shop);
   const lockedFeatures = {
     badge: getLockedFeatureReason(shop, "product_badges"),
@@ -524,10 +512,6 @@ export const loader = async ({
       campaign.freeShippingSettings,
     ),
     lowStockValues: toLowStockSettingsValues(campaign.lowStockSettings),
-    hasBadge,
-    hasDeliveryCutoff,
-    hasFreeShippingGoal,
-    hasLowStock,
     translationsViewModel: getCampaignTranslationsViewModel({
       name: campaign.name,
       type: campaign.type,
@@ -1592,10 +1576,6 @@ export default function EditCampaignPage() {
     uniqueCodePools,
     uniqueCodeStats,
     uniqueCodes,
-    hasBadge,
-    hasDeliveryCutoff,
-    hasFreeShippingGoal,
-    hasLowStock,
     translationsViewModel,
     publication,
     isProPlan,
@@ -1629,6 +1609,10 @@ export default function EditCampaignPage() {
     [draftCampaignValues, draftDesignValues],
   );
   const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
+  const merchandisingCapabilities = useMemo(
+    () => getMerchandisingCapabilities(draftCampaignValues),
+    [draftCampaignValues],
+  );
   const draftPreviewViewModel = useMemo(
     () => ({
       ...designViewModel,
@@ -1720,7 +1704,7 @@ export default function EditCampaignPage() {
               key: "campaign",
               label: "Campaign",
               description:
-                "Configure the campaign goal, copy, schedule, status, product eligibility, geolocation rules, and storefront placement. These settings determine whether the campaign can render before design, offers, or experiments are applied.",
+                "Configure the campaign goal, copy, schedule, status, and storefront placement. Product, country, and visitor eligibility now live in Targeting so campaign setup stays focused on what the campaign is and where it appears.",
               content: (
                 <CampaignForm
                   campaignId={id}
@@ -1732,6 +1716,8 @@ export default function EditCampaignPage() {
                     />
                   }
                   formId="campaign-basics-form"
+                  hiddenBuilderTabs={["targeting"]}
+                  idPrefix="campaign-basics"
                   key={`${JSON.stringify(activeCampaignValues)}:${discardVersion}`}
                   lockedTargetingFeatures={{
                     advanced: lockedFeatures.advancedTargeting,
@@ -1742,8 +1728,9 @@ export default function EditCampaignPage() {
                   }}
                   mode="edit"
                   showTopbar={false}
+                  syncExternalValues
                   targetingOptions={targetingOptions}
-                  values={activeCampaignValues}
+                  values={draftCampaignValues}
                   errors={actionData?.errors}
                   onDesignChange={setDraftDesignValues}
                   onValuesChange={setDraftCampaignValues}
@@ -1852,17 +1839,58 @@ export default function EditCampaignPage() {
               key: "targeting",
               label: "Targeting",
               description:
-                "Define behavior-based eligibility using consent-safe visitor history. Use this when the campaign should depend on previous campaign exposure, cart intent, or high-intent browsing behavior.",
+                "Control who can see this campaign across product eligibility, collections, tags, countries, and consent-safe behavior signals. Placement decides where the widget appears; targeting decides whether a shopper is eligible.",
               content: (
-                <BehaviorTargetingEditor
-                  errors={actionData?.behaviorTargetingErrors}
-                  lockedReason={lockedFeatures.behaviorTargeting}
-                  notice={actionData?.behaviorTargetingNotice}
-                  values={
-                    actionData?.behaviorTargetingValues ??
-                    behaviorTargetingValues
-                  }
-                />
+                <div className="counterpulse-targeting-section-stack">
+                  <CampaignForm
+                    campaignId={id}
+                    confirmOnSubmit={false}
+                    design={draftDesignValues}
+                    designHiddenInputs={
+                      <CampaignDesignDraftHiddenInputs
+                        values={draftDesignValues}
+                      />
+                    }
+                    formId="campaign-targeting-form"
+                    hiddenBuilderTabs={[
+                      "setup",
+                      "message",
+                      "placement",
+                      "schedule",
+                      "review",
+                    ]}
+                    idPrefix="campaign-targeting"
+                    initialTab="targeting"
+                    key={`targeting:${JSON.stringify(activeCampaignValues)}:${discardVersion}`}
+                    lockedTargetingFeatures={{
+                      advanced: lockedFeatures.advancedTargeting,
+                      basic: lockedFeatures.basicTargeting,
+                      geo: lockedFeatures.geoMarketTargeting,
+                      recurringTimers: lockedFeatures.recurringTimers,
+                      scheduling: lockedFeatures.scheduling,
+                    }}
+                    listenForSaveEvents={false}
+                    mode="edit"
+                    showBuilderTabs={false}
+                    showPreview={false}
+                    showTopbar={false}
+                    syncExternalValues
+                    targetingOptions={targetingOptions}
+                    values={draftCampaignValues}
+                    errors={actionData?.errors}
+                    onDesignChange={setDraftDesignValues}
+                    onValuesChange={setDraftCampaignValues}
+                  />
+                  <BehaviorTargetingEditor
+                    errors={actionData?.behaviorTargetingErrors}
+                    lockedReason={lockedFeatures.behaviorTargeting}
+                    notice={actionData?.behaviorTargetingNotice}
+                    values={
+                      actionData?.behaviorTargetingValues ??
+                      behaviorTargetingValues
+                    }
+                  />
+                </div>
               ),
             },
             {
@@ -1885,57 +1913,49 @@ export default function EditCampaignPage() {
               key: "merchandising",
               label: "Merchandising",
               description:
-                "Configure product-facing merchandising modules: badges, real stock messaging, delivery cutoff promises, and free-shipping progress. Only settings relevant to this campaign type are shown.",
-              content:
-                hasBadge ||
-                hasDeliveryCutoff ||
-                hasFreeShippingGoal ||
-                hasLowStock ? (
-                  <>
-                    <LowStockSettingsEditor
-                      enabled={hasLowStock}
-                      errors={actionData?.lowStockErrors}
-                      values={actionData?.lowStockValues ?? lowStockValues}
+                "Configure merchandising modules tied to the current draft type or goal: product badges, real stock messaging, delivery promises, and cart free-shipping progress. The tab stays visible while you edit; individual panels appear only when that module can be used.",
+              content: (
+                <>
+                  <MerchandisingOverview
+                    capabilities={merchandisingCapabilities}
+                    values={draftCampaignValues}
+                  />
+                  <LowStockSettingsEditor
+                    enabled={merchandisingCapabilities.hasLowStock}
+                    errors={actionData?.lowStockErrors}
+                    values={actionData?.lowStockValues ?? lowStockValues}
+                  />
+                  <BadgeSettingsEditor
+                    enabled={merchandisingCapabilities.hasBadge}
+                    errors={actionData?.badgeErrors}
+                    lockedReason={lockedFeatures.badge}
+                    values={actionData?.badgeValues ?? badgeValues}
+                  />
+                  {merchandisingCapabilities.hasBadge && (
+                    <AdvancedBadgeRulesEditor
+                      errors={actionData?.advancedBadgeErrors}
+                      lockedReason={lockedFeatures.advancedBadges}
+                      notice={actionData?.advancedBadgeNotice}
+                      rules={advancedBadgeRules}
                     />
-                    <BadgeSettingsEditor
-                      enabled={hasBadge}
-                      errors={actionData?.badgeErrors}
-                      lockedReason={lockedFeatures.badge}
-                      values={actionData?.badgeValues ?? badgeValues}
-                    />
-                    {hasBadge && (
-                      <AdvancedBadgeRulesEditor
-                        errors={actionData?.advancedBadgeErrors}
-                        lockedReason={lockedFeatures.advancedBadges}
-                        notice={actionData?.advancedBadgeNotice}
-                        rules={advancedBadgeRules}
-                      />
-                    )}
-                    <DeliveryCutoffSettingsEditor
-                      enabled={hasDeliveryCutoff}
-                      errors={actionData?.deliveryCutoffErrors}
-                      lockedReason={lockedFeatures.deliveryCutoff}
-                      values={
-                        actionData?.deliveryCutoffValues ?? deliveryCutoffValues
-                      }
-                    />
-                    <FreeShippingSettingsEditor
-                      enabled={hasFreeShippingGoal}
-                      errors={actionData?.freeShippingErrors}
-                      values={
-                        actionData?.freeShippingValues ?? freeShippingValues
-                      }
-                    />
-                  </>
-                ) : (
-                  <s-section heading="Merchandising">
-                    <s-paragraph>
-                      Merchandising settings are hidden for this campaign type.
-                      Choose a badge, low-stock, delivery-cutoff, or
-                      free-shipping campaign type to configure those panels.
-                    </s-paragraph>
-                  </s-section>
-                ),
+                  )}
+                  <DeliveryCutoffSettingsEditor
+                    enabled={merchandisingCapabilities.hasDeliveryCutoff}
+                    errors={actionData?.deliveryCutoffErrors}
+                    lockedReason={lockedFeatures.deliveryCutoff}
+                    values={
+                      actionData?.deliveryCutoffValues ?? deliveryCutoffValues
+                    }
+                  />
+                  <FreeShippingSettingsEditor
+                    enabled={merchandisingCapabilities.hasFreeShippingGoal}
+                    errors={actionData?.freeShippingErrors}
+                    values={
+                      actionData?.freeShippingValues ?? freeShippingValues
+                    }
+                  />
+                </>
+              ),
             },
             {
               key: "design",
@@ -2040,6 +2060,127 @@ function useShopifySaveBar({
     },
     [],
   );
+}
+
+type MerchandisingCapabilities = {
+  hasBadge: boolean;
+  hasDeliveryCutoff: boolean;
+  hasFreeShippingGoal: boolean;
+  hasLowStock: boolean;
+};
+
+function MerchandisingOverview({
+  capabilities,
+  values,
+}: {
+  capabilities: MerchandisingCapabilities;
+  values: CampaignFormValues;
+}) {
+  const activeLabels = getActiveMerchandisingLabels(capabilities);
+  const compatibleLabels = getCompatibleMerchandisingLabels(
+    values,
+    capabilities,
+  );
+  const placementLabels =
+    getDraftPlacementTypes(values).map(formatCampaignOption);
+
+  return (
+    <s-section heading="Merchandising modules">
+      <p className="counterpulse-section-description">
+        These settings follow the current draft type and goal, so they update as
+        soon as you change Campaign Setup. Current placements:{" "}
+        {placementLabels.join(", ")}.
+      </p>
+
+      {activeLabels.length > 0 ? (
+        <>
+          <p className="counterpulse-section-description">
+            Active modules for this campaign:
+          </p>
+          <div className="counterpulse-detail-list">
+            {activeLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="counterpulse-section-description">
+          No merchandising module is active yet. Choose a merchandising campaign
+          type or matching goal, such as Product badge, Low stock, Delivery
+          cutoff, or Free shipping goal, to show the related settings here.
+        </p>
+      )}
+
+      {compatibleLabels.length > 0 && (
+        <>
+          <p className="counterpulse-section-description">
+            Based on the selected placement, this campaign can also support:
+          </p>
+          <div className="counterpulse-detail-list">
+            {compatibleLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        </>
+      )}
+    </s-section>
+  );
+}
+
+function getMerchandisingCapabilities(
+  values: CampaignFormValues,
+): MerchandisingCapabilities {
+  return {
+    hasBadge:
+      values.type === "PRODUCT_BADGE" || values.goal === "PRODUCT_BADGE",
+    hasDeliveryCutoff:
+      values.type === "DELIVERY_CUTOFF" || values.goal === "DELIVERY_CUTOFF",
+    hasFreeShippingGoal:
+      values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING",
+    hasLowStock:
+      values.type === "LOW_STOCK" || values.goal === "LOW_STOCK_URGENCY",
+  };
+}
+
+function getActiveMerchandisingLabels(capabilities: MerchandisingCapabilities) {
+  return [
+    capabilities.hasBadge ? "Product badge" : "",
+    capabilities.hasLowStock ? "Low stock message" : "",
+    capabilities.hasDeliveryCutoff ? "Delivery cutoff" : "",
+    capabilities.hasFreeShippingGoal ? "Free shipping goal" : "",
+  ].filter(Boolean);
+}
+
+function getCompatibleMerchandisingLabels(
+  values: CampaignFormValues,
+  capabilities: MerchandisingCapabilities,
+) {
+  const placements = new Set(getDraftPlacementTypes(values));
+  const labels = new Set<string>();
+  const hasProductSurface =
+    placements.has("PRODUCT_PAGE") ||
+    placements.has("COLLECTION_CARD") ||
+    placements.has("CUSTOM_SELECTOR");
+  const hasCartSurface =
+    placements.has("CART_PAGE") || placements.has("CART_DRAWER");
+
+  if (hasProductSurface) {
+    if (!capabilities.hasBadge) labels.add("Product badge");
+    if (!capabilities.hasLowStock) labels.add("Low stock message");
+    if (!capabilities.hasDeliveryCutoff) labels.add("Delivery cutoff");
+  }
+
+  if (hasCartSurface && !capabilities.hasFreeShippingGoal) {
+    labels.add("Free shipping goal");
+  }
+
+  return Array.from(labels);
+}
+
+function getDraftPlacementTypes(values: CampaignFormValues) {
+  return values.placementTypes.length > 0
+    ? values.placementTypes
+    : [values.placementType];
 }
 
 function CampaignDesignDraftHiddenInputs({

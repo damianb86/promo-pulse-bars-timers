@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import {
+  campaignDesignTemplates,
   designAlignmentOptions,
   designBackgroundTypeOptions,
   designBannerAnimationOptions,
@@ -13,13 +14,14 @@ import {
   type CampaignDesignErrors,
   type CampaignDesignImageOption,
   type CampaignDesignMediaOptions,
+  type CampaignDesignTemplate,
   type CampaignDesignValues,
 } from "../types/campaign-design";
-import { TemplatePicker } from "./TemplatePicker";
 
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
+  hasTimerEndDate?: boolean;
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
   onChange: (values: CampaignDesignValues) => void;
@@ -28,6 +30,7 @@ type DesignControlsProps = {
 export function DesignControls({
   values,
   errors = {},
+  hasTimerEndDate = true,
   isProPlan,
   onChange,
 }: DesignControlsProps) {
@@ -37,6 +40,17 @@ export function DesignControls({
   >(null);
   const [isBackgroundPickerBusy, setIsBackgroundPickerBusy] = useState(false);
   const [isIconPickerBusy, setIsIconPickerBusy] = useState(false);
+  const [openTemplateDropdown, setOpenTemplateDropdown] = useState<
+    "layout" | "preset" | null
+  >(null);
+  const selectedLayoutOption =
+    designLayoutOptions.find((option) => option.value === values.layout) ??
+    designLayoutOptions[0];
+  const selectedTemplate =
+    campaignDesignTemplates.find(
+      (template) => template.templateKey === values.templateKey,
+    ) ?? campaignDesignTemplates[0];
+
   const updateValue = <Key extends keyof CampaignDesignValues>(
     key: Key,
     value: CampaignDesignValues[Key],
@@ -108,50 +122,110 @@ export function DesignControls({
     });
   };
 
+  const selectLayout = (layout: CampaignDesignValues["layout"]) => {
+    onChange(applyLayoutDefaults({ ...values }, layout));
+    setOpenTemplateDropdown(null);
+  };
+
+  const selectTemplate = (template: CampaignDesignTemplate) => {
+    onChange(
+      applyLayoutDefaults(
+        {
+          ...values,
+          ...template,
+          customCss: values.customCss,
+          layout: values.layout,
+        },
+        values.layout,
+      ),
+    );
+    setOpenTemplateDropdown(null);
+  };
+
   return (
     <div className="counterpulse-design-controls">
       <DesignPanel title="Template">
         <DesignGroup error={errors.layout} label="Layout">
-          <div className="counterpulse-layout-picker">
+          <PreviewSelectDropdown
+            isOpen={openTemplateDropdown === "layout"}
+            label="Layout options"
+            preview={<LayoutPreview layout={selectedLayoutOption.value} />}
+            selectedLabel={selectedLayoutOption.label}
+            onClose={() => setOpenTemplateDropdown(null)}
+            onToggle={() =>
+              setOpenTemplateDropdown((open) =>
+                open === "layout" ? null : "layout",
+              )
+            }
+          >
             {designLayoutOptions.map((option) => (
               <button
-                aria-pressed={values.layout === option.value}
+                aria-selected={values.layout === option.value}
                 className={
                   values.layout === option.value
-                    ? "counterpulse-layout-option is-active"
-                    : "counterpulse-layout-option"
+                    ? "counterpulse-preview-select__option is-selected"
+                    : "counterpulse-preview-select__option"
                 }
                 key={option.value}
+                role="option"
                 type="button"
-                onClick={() =>
-                  onChange(applyLayoutDefaults({ ...values }, option.value))
-                }
+                onClick={() => selectLayout(option.value)}
               >
-                <LayoutPreview layout={option.value} />
-                <span>{option.label}</span>
+                <span className="counterpulse-preview-select__visual">
+                  <LayoutPreview layout={option.value} />
+                </span>
+                <span className="counterpulse-preview-select__content">
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                </span>
               </button>
             ))}
-          </div>
+          </PreviewSelectDropdown>
           <input name="layout" type="hidden" value={values.layout} />
         </DesignGroup>
 
         <DesignGroup error={errors.templateKey} label="Preset">
-          <TemplatePicker
-            value={values.templateKey}
-            onChange={(template) =>
-              onChange(
-                applyLayoutDefaults(
-                  {
-                    ...values,
-                    ...template,
-                    customCss: values.customCss,
-                    layout: values.layout,
-                  },
-                  values.layout,
-                ),
+          <PreviewSelectDropdown
+            isOpen={openTemplateDropdown === "preset"}
+            label="Preset options"
+            preview={<TemplatePreview template={selectedTemplate} />}
+            selectedLabel={selectedTemplate.label}
+            onClose={() => setOpenTemplateDropdown(null)}
+            onToggle={() =>
+              setOpenTemplateDropdown((open) =>
+                open === "preset" ? null : "preset",
               )
             }
-          />
+          >
+            {campaignDesignTemplates.map((template) => (
+              <button
+                aria-selected={values.templateKey === template.templateKey}
+                className={
+                  values.templateKey === template.templateKey
+                    ? "counterpulse-preview-select__option is-selected"
+                    : "counterpulse-preview-select__option"
+                }
+                key={template.templateKey}
+                role="option"
+                type="button"
+                onClick={() => selectTemplate(template)}
+              >
+                <span className="counterpulse-preview-select__visual">
+                  <TemplatePreview template={template} />
+                </span>
+                <span className="counterpulse-preview-select__content">
+                  <strong>{template.label}</strong>
+                  <small>
+                    {template.backgroundType === "GRADIENT"
+                      ? "Gradient preset"
+                      : template.backgroundType === "IMAGE"
+                        ? "Image preset"
+                        : "Solid preset"}
+                  </small>
+                </span>
+              </button>
+            ))}
+          </PreviewSelectDropdown>
           <input name="templateKey" type="hidden" value={values.templateKey} />
           <input name="textColor" type="hidden" value={values.textColor} />
           <input name="fontSize" type="hidden" value={values.fontSize} />
@@ -463,206 +537,233 @@ export function DesignControls({
       </DesignPanel>
 
       <DesignPanel title="Timer Style">
-        <DesignGroup error={errors.timerFormat} label="Format">
-          <div className="counterpulse-segmented counterpulse-segmented--compact">
-            {designTimerFormatOptions.map((option) => (
-              <button
-                className={
-                  values.timerFormat === option.value ? "is-active" : ""
-                }
-                key={option.value}
-                type="button"
-                onClick={() => updateValue("timerFormat", option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <input name="timerFormat" type="hidden" value={values.timerFormat} />
-        </DesignGroup>
-
-        <DesignGroup label="Timer labels">
-          <div className="counterpulse-design-toggle-row">
-            <span>Timer labels</span>
-            <ToggleSwitch
-              checked={values.timerShowLabels}
-              label="Show timer labels"
-              name="timerShowLabels"
-              onChange={(checked) => updateValue("timerShowLabels", checked)}
-            />
-          </div>
-          <div className="counterpulse-timer-label-grid">
-            <input
-              aria-label="Days label"
-              disabled={!values.timerShowLabels}
-              maxLength={12}
-              name="timerDaysLabel"
-              value={values.timerDaysLabel}
-              onChange={(event) =>
-                updateValue("timerDaysLabel", event.target.value)
-              }
-            />
-            <input
-              aria-label="Hours label"
-              disabled={!values.timerShowLabels}
-              maxLength={12}
-              name="timerHoursLabel"
-              value={values.timerHoursLabel}
-              onChange={(event) =>
-                updateValue("timerHoursLabel", event.target.value)
-              }
-            />
-            <input
-              aria-label="Minutes label"
-              disabled={!values.timerShowLabels}
-              maxLength={12}
-              name="timerMinutesLabel"
-              value={values.timerMinutesLabel}
-              onChange={(event) =>
-                updateValue("timerMinutesLabel", event.target.value)
-              }
-            />
-            <input
-              aria-label="Seconds label"
-              disabled={!values.timerShowLabels}
-              maxLength={12}
-              name="timerSecondsLabel"
-              value={values.timerSecondsLabel}
-              onChange={(event) =>
-                updateValue("timerSecondsLabel", event.target.value)
-              }
-            />
-          </div>
-          {!values.timerShowLabels && (
-            <>
-              <input
-                name="timerDaysLabel"
-                type="hidden"
-                value={values.timerDaysLabel}
-              />
-              <input
-                name="timerHoursLabel"
-                type="hidden"
-                value={values.timerHoursLabel}
-              />
-              <input
-                name="timerMinutesLabel"
-                type="hidden"
-                value={values.timerMinutesLabel}
-              />
-              <input
-                name="timerSecondsLabel"
-                type="hidden"
-                value={values.timerSecondsLabel}
-              />
-            </>
-          )}
-          <ToggleField
-            checked={values.timerHideZeroDays}
-            label="Hide Days when value is 00"
-            name="timerHideZeroDays"
-            onChange={(checked) => updateValue("timerHideZeroDays", checked)}
-          />
-        </DesignGroup>
-
-        <ToggleField
-          checked={values.timerShowSeconds}
-          label="Show seconds"
-          name="timerShowSeconds"
-          onChange={(checked) => updateValue("timerShowSeconds", checked)}
-        />
-
-        <DesignGroup error={errors.timerStyle} label="Type">
-          <div className="counterpulse-timer-style-picker">
-            {designTimerStyleOptions.map((option) => (
-              <button
-                aria-pressed={values.timerStyle === option.value}
-                className={
-                  values.timerStyle === option.value
-                    ? "counterpulse-timer-style-option is-active"
-                    : "counterpulse-timer-style-option"
-                }
-                key={option.value}
-                type="button"
-                onClick={() => updateValue("timerStyle", option.value)}
-              >
-                <TimerStylePreview timerStyle={option.value} />
-                <span>{option.label}</span>
-              </button>
-            ))}
-          </div>
-          <input name="timerStyle" type="hidden" value={values.timerStyle} />
-        </DesignGroup>
-
-        {values.timerStyle !== "PLAIN" && (
-          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-            <ColorField
-              error={errors.timerSurfaceColor}
-              label={
-                values.timerStyle === "BOXES"
-                  ? "Box background"
-                  : "Group background"
-              }
-              name="timerSurfaceColor"
-              value={values.timerSurfaceColor}
-              onChange={(value) => updateColor("timerSurfaceColor", value)}
-            />
-            <NumberField
-              error={errors.timerSurfaceRadius}
-              label={
-                values.timerStyle === "BOXES" ? "Box radius" : "Group radius"
-              }
-              max={40}
-              min={0}
-              name="timerSurfaceRadius"
-              value={values.timerSurfaceRadius}
-              onChange={(value) => updateNumber("timerSurfaceRadius", value)}
-            />
-            <NumberField
-              error={errors.timerSurfaceBorderSize}
-              label="Timer border size"
-              max={6}
-              min={0}
-              name="timerSurfaceBorderSize"
-              value={values.timerSurfaceBorderSize}
-              onChange={(value) =>
-                updateNumber("timerSurfaceBorderSize", value)
-              }
-            />
-            <ColorField
-              error={errors.timerSurfaceBorderColor}
-              label="Timer border color"
-              name="timerSurfaceBorderColor"
-              value={values.timerSurfaceBorderColor}
-              onChange={(value) =>
-                updateColor("timerSurfaceBorderColor", value)
-              }
-            />
-          </div>
-        )}
-
-        {values.timerStyle === "PLAIN" && (
+        {hasTimerEndDate ? (
           <>
-            <input
-              name="timerSurfaceColor"
-              type="hidden"
-              value={values.timerSurfaceColor}
+            <DesignGroup error={errors.timerFormat} label="Format">
+              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+                {designTimerFormatOptions.map((option) => (
+                  <button
+                    className={
+                      values.timerFormat === option.value ? "is-active" : ""
+                    }
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateValue("timerFormat", option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                name="timerFormat"
+                type="hidden"
+                value={values.timerFormat}
+              />
+            </DesignGroup>
+
+            <DesignGroup label="Timer labels">
+              <div className="counterpulse-design-toggle-row">
+                <ToggleSwitch
+                  checked={values.timerShowLabels}
+                  label="Show timer labels"
+                  name="timerShowLabels"
+                  onChange={(checked) =>
+                    updateValue("timerShowLabels", checked)
+                  }
+                />
+              </div>
+              <div className="counterpulse-timer-label-grid">
+                <input
+                  aria-label="Days label"
+                  disabled={!values.timerShowLabels}
+                  maxLength={12}
+                  name="timerDaysLabel"
+                  value={values.timerDaysLabel}
+                  onChange={(event) =>
+                    updateValue("timerDaysLabel", event.target.value)
+                  }
+                />
+                <input
+                  aria-label="Hours label"
+                  disabled={!values.timerShowLabels}
+                  maxLength={12}
+                  name="timerHoursLabel"
+                  value={values.timerHoursLabel}
+                  onChange={(event) =>
+                    updateValue("timerHoursLabel", event.target.value)
+                  }
+                />
+                <input
+                  aria-label="Minutes label"
+                  disabled={!values.timerShowLabels}
+                  maxLength={12}
+                  name="timerMinutesLabel"
+                  value={values.timerMinutesLabel}
+                  onChange={(event) =>
+                    updateValue("timerMinutesLabel", event.target.value)
+                  }
+                />
+                <input
+                  aria-label="Seconds label"
+                  disabled={!values.timerShowLabels}
+                  maxLength={12}
+                  name="timerSecondsLabel"
+                  value={values.timerSecondsLabel}
+                  onChange={(event) =>
+                    updateValue("timerSecondsLabel", event.target.value)
+                  }
+                />
+              </div>
+              {!values.timerShowLabels && (
+                <>
+                  <input
+                    name="timerDaysLabel"
+                    type="hidden"
+                    value={values.timerDaysLabel}
+                  />
+                  <input
+                    name="timerHoursLabel"
+                    type="hidden"
+                    value={values.timerHoursLabel}
+                  />
+                  <input
+                    name="timerMinutesLabel"
+                    type="hidden"
+                    value={values.timerMinutesLabel}
+                  />
+                  <input
+                    name="timerSecondsLabel"
+                    type="hidden"
+                    value={values.timerSecondsLabel}
+                  />
+                </>
+              )}
+              <ToggleField
+                checked={values.timerHideZeroDays}
+                label="Hide Days when value is 00"
+                name="timerHideZeroDays"
+                onChange={(checked) =>
+                  updateValue("timerHideZeroDays", checked)
+                }
+              />
+            </DesignGroup>
+
+            <ToggleField
+              checked={values.timerShowSeconds}
+              label="Show seconds"
+              name="timerShowSeconds"
+              onChange={(checked) => updateValue("timerShowSeconds", checked)}
             />
-            <input
-              name="timerSurfaceBorderColor"
-              type="hidden"
-              value={values.timerSurfaceBorderColor}
-            />
-            <input
-              name="timerSurfaceBorderSize"
-              type="hidden"
-              value={values.timerSurfaceBorderSize}
-            />
-            <input
-              name="timerSurfaceRadius"
-              type="hidden"
-              value={values.timerSurfaceRadius}
-            />
+
+            <DesignGroup error={errors.timerStyle} label="Type">
+              <div className="counterpulse-timer-style-picker">
+                {designTimerStyleOptions.map((option) => (
+                  <button
+                    aria-pressed={values.timerStyle === option.value}
+                    className={
+                      values.timerStyle === option.value
+                        ? "counterpulse-timer-style-option is-active"
+                        : "counterpulse-timer-style-option"
+                    }
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateValue("timerStyle", option.value)}
+                  >
+                    <TimerStylePreview timerStyle={option.value} />
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+              <input
+                name="timerStyle"
+                type="hidden"
+                value={values.timerStyle}
+              />
+            </DesignGroup>
+
+            {values.timerStyle !== "PLAIN" && (
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <ColorField
+                  error={errors.timerSurfaceColor}
+                  label={
+                    values.timerStyle === "BOXES"
+                      ? "Box background"
+                      : "Group background"
+                  }
+                  name="timerSurfaceColor"
+                  value={values.timerSurfaceColor}
+                  onChange={(value) => updateColor("timerSurfaceColor", value)}
+                />
+                <NumberField
+                  error={errors.timerSurfaceRadius}
+                  label={
+                    values.timerStyle === "BOXES"
+                      ? "Box radius"
+                      : "Group radius"
+                  }
+                  max={40}
+                  min={0}
+                  name="timerSurfaceRadius"
+                  value={values.timerSurfaceRadius}
+                  onChange={(value) =>
+                    updateNumber("timerSurfaceRadius", value)
+                  }
+                />
+                <NumberField
+                  error={errors.timerSurfaceBorderSize}
+                  label="Timer border size"
+                  max={6}
+                  min={0}
+                  name="timerSurfaceBorderSize"
+                  value={values.timerSurfaceBorderSize}
+                  onChange={(value) =>
+                    updateNumber("timerSurfaceBorderSize", value)
+                  }
+                />
+                <ColorField
+                  error={errors.timerSurfaceBorderColor}
+                  label="Timer border color"
+                  name="timerSurfaceBorderColor"
+                  value={values.timerSurfaceBorderColor}
+                  onChange={(value) =>
+                    updateColor("timerSurfaceBorderColor", value)
+                  }
+                />
+              </div>
+            )}
+
+            {values.timerStyle === "PLAIN" && (
+              <>
+                <input
+                  name="timerSurfaceColor"
+                  type="hidden"
+                  value={values.timerSurfaceColor}
+                />
+                <input
+                  name="timerSurfaceBorderColor"
+                  type="hidden"
+                  value={values.timerSurfaceBorderColor}
+                />
+                <input
+                  name="timerSurfaceBorderSize"
+                  type="hidden"
+                  value={values.timerSurfaceBorderSize}
+                />
+                <input
+                  name="timerSurfaceRadius"
+                  type="hidden"
+                  value={values.timerSurfaceRadius}
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="counterpulse-design-note">
+              Set an End date in Campaign Schedule to edit timer design
+              controls.
+            </div>
+            <TimerStyleHiddenInputs values={values} />
           </>
         )}
       </DesignPanel>
@@ -953,6 +1054,82 @@ function applyLayoutDefaults(
     ...values,
     layout,
   };
+}
+
+function PreviewSelectDropdown({
+  isOpen,
+  label,
+  preview,
+  selectedLabel,
+  children,
+  onClose,
+  onToggle,
+}: {
+  isOpen: boolean;
+  label: string;
+  preview: ReactNode;
+  selectedLabel: string;
+  children: ReactNode;
+  onClose: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      className={
+        isOpen
+          ? "counterpulse-preview-select is-open"
+          : "counterpulse-preview-select"
+      }
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+
+        if (
+          !(nextTarget instanceof Node) ||
+          !event.currentTarget.contains(nextTarget)
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={label}
+        className="counterpulse-preview-select__button"
+        type="button"
+        onClick={onToggle}
+      >
+        <span className="counterpulse-preview-select__visual">{preview}</span>
+        <span className="counterpulse-preview-select__content">
+          <strong>{selectedLabel}</strong>
+        </span>
+        <span className="counterpulse-preview-select__chevron" aria-hidden />
+      </button>
+      {isOpen ? (
+        <div className="counterpulse-preview-select__menu" role="listbox">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TemplatePreview({ template }: { template: CampaignDesignTemplate }) {
+  return (
+    <span
+      className="counterpulse-template__swatch counterpulse-template__swatch--dropdown"
+      style={{
+        background:
+          template.backgroundType === "GRADIENT"
+            ? `linear-gradient(${template.gradientAngle}deg, ${template.gradientStartColor}, ${template.gradientEndColor})`
+            : template.backgroundColor,
+        borderColor: template.accentColor,
+        color: template.titleColor,
+      }}
+    >
+      <span style={{ background: template.timerColor }} />
+    </span>
+  );
 }
 
 function DesignPanel({
@@ -1353,6 +1530,70 @@ function ToggleField({
       />
       <span>{label}</span>
     </label>
+  );
+}
+
+function TimerStyleHiddenInputs({ values }: { values: CampaignDesignValues }) {
+  return (
+    <>
+      <input name="timerFormat" type="hidden" value={values.timerFormat} />
+      <input
+        name="timerShowLabels"
+        type="hidden"
+        value={String(values.timerShowLabels)}
+      />
+      <input
+        name="timerShowSeconds"
+        type="hidden"
+        value={String(values.timerShowSeconds)}
+      />
+      <input
+        name="timerHideZeroDays"
+        type="hidden"
+        value={String(values.timerHideZeroDays)}
+      />
+      <input
+        name="timerDaysLabel"
+        type="hidden"
+        value={values.timerDaysLabel}
+      />
+      <input
+        name="timerHoursLabel"
+        type="hidden"
+        value={values.timerHoursLabel}
+      />
+      <input
+        name="timerMinutesLabel"
+        type="hidden"
+        value={values.timerMinutesLabel}
+      />
+      <input
+        name="timerSecondsLabel"
+        type="hidden"
+        value={values.timerSecondsLabel}
+      />
+      <input name="timerStyle" type="hidden" value={values.timerStyle} />
+      <input
+        name="timerSurfaceColor"
+        type="hidden"
+        value={values.timerSurfaceColor}
+      />
+      <input
+        name="timerSurfaceBorderColor"
+        type="hidden"
+        value={values.timerSurfaceBorderColor}
+      />
+      <input
+        name="timerSurfaceBorderSize"
+        type="hidden"
+        value={values.timerSurfaceBorderSize}
+      />
+      <input
+        name="timerSurfaceRadius"
+        type="hidden"
+        value={values.timerSurfaceRadius}
+      />
+    </>
   );
 }
 

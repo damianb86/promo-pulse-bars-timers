@@ -217,9 +217,9 @@ export default function Dashboard() {
         {dashboard.campaigns.length === 0 ? (
           <EmptyStateCard
             title="No campaigns yet"
-            message="Use guided setup or create a campaign manually to start showing promotional messages on your storefront."
-            actionLabel="Start guided setup"
-            actionHref="/app/onboarding"
+            message="Create a campaign manually to start showing promotional messages on your storefront."
+            actionLabel="Create campaign"
+            actionHref="/app/campaigns/new"
           />
         ) : (
           <div className="counterpulse-campaign-list">

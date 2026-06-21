@@ -1,7 +1,7 @@
 {% if block.settings.enabled %}
   <div
     id="counterpulse-app-embed"
-    class="pp-root pp-embed{% if block.settings.debugMode %} pp-root--debug{% endif %}"
+    class="pp-root pp-embed"
     data-shop="{{ shop.permanent_domain | escape }}"
     data-default-locale="{{ block.settings.defaultLocale | escape }}"
     data-locale="{{ request.locale.iso_code | default: block.settings.defaultLocale | escape }}"
@@ -18,42 +18,7 @@
     data-debug="{{ block.settings.debugMode }}"
     data-debug-block="Promo Pulse embed"
     {{ block.shopify_attributes }}
-  >
-    {% if block.settings.debugMode %}
-      <aside class="pp-debug pp-debug--embed" role="status" aria-live="polite">
-        <strong>Promo Pulse embed renderizado</strong>
-        <p>
-          Este App Embed carga las barras globales y el soporte automatico de cart drawer.
-        </p>
-        <dl>
-          <dt>Bloque</dt>
-          <dd>Promo Pulse embed</dd>
-          <dt>Shop</dt>
-          <dd>{{ shop.permanent_domain | escape }}</dd>
-          <dt>Locale</dt>
-          <dd>{{ request.locale.iso_code | default: block.settings.defaultLocale | escape }}</dd>
-          <dt>Country</dt>
-          <dd>{{ localization.country.iso_code | default: 'unknown' | escape }}</dd>
-          <dt>Cart subtotal</dt>
-          <dd>{{ cart.total_price | default: 0 | divided_by: 100.0 }} {{ cart.currency.iso_code | default: shop.currency | escape }}</dd>
-          <dt>Placements automaticos</dt>
-          <dd>TOP_BAR, BOTTOM_BAR, CUSTOM_SELECTOR, CART_DRAWER</dd>
-          <dt>Product context</dt>
-          <dd>{% if product %}gid://shopify/Product/{{ product.id }}{% else %}none{% endif %}</dd>
-          <dt>API ejemplo</dt>
-          <dd>
-            <code data-pp-debug-url>/apps/counterpulse-campaigns?shop={{ shop.permanent_domain | escape }}&amp;placement=TOP_BAR&amp;locale={{ request.locale.iso_code | default: block.settings.defaultLocale | escape }}</code>
-          </dd>
-        </dl>
-        <p class="pp-debug__status" data-pp-debug-status>
-          Embed Liquid renderizado. Esperando que carguen los assets JavaScript.
-        </p>
-        <p class="pp-debug__hint">
-          Si ves este panel y no aparece una barra, revisa que exista una campana ACTIVE con placement TOP_BAR, BOTTOM_BAR, CUSTOM_SELECTOR o CART_DRAWER y targeting compatible.
-        </p>
-      </aside>
-    {% endif %}
-  </div>
+  ></div>
   <script>
     window.CounterPulseCartSubtotal = {{ cart.total_price | default: 0 | divided_by: 100.0 }};
     window.CounterPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";

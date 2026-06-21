@@ -9,7 +9,6 @@ type AppShellProps = {
 
 const navigationItems = [
   { label: "Dashboard", href: "/app" },
-  { label: "Guided setup", href: "/app/onboarding" },
   { label: "Campaigns", href: "/app/campaigns" },
   { label: "Analytics", href: "/app/analytics" },
   { label: "Reports", href: "/app/reports" },

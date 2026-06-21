@@ -87,6 +87,7 @@ export function CampaignDesignEditor({
           <DesignControls
             mediaOptions={designMediaOptions}
             errors={errors}
+            hasTimerEndDate={Boolean(previewViewModel.timer?.endsAt)}
             isProPlan={isProPlan}
             values={design}
             onChange={onChange}

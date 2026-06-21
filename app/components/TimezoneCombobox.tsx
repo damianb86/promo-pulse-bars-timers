@@ -13,6 +13,7 @@ type TimezoneOption = {
 };
 
 type TimezoneComboboxProps = {
+  className?: string;
   defaultValue?: string;
   error?: string;
   info?: ReactNode;
@@ -70,6 +71,7 @@ const representativeTimezoneOptions: TimezoneOption[] = [
 });
 
 export function TimezoneCombobox({
+  className = "",
   defaultValue = "UTC",
   error,
   info,
@@ -109,9 +111,13 @@ export function TimezoneCombobox({
     onChange?.(optionToSelect.value);
   };
 
-  const labelClassName = error
-    ? "counterpulse-form-field counterpulse-timezone-combobox has-error"
-    : "counterpulse-form-field counterpulse-timezone-combobox";
+  const labelClassName = [
+    "counterpulse-form-field counterpulse-timezone-combobox",
+    error ? "has-error" : "",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={labelClassName}>

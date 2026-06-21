@@ -1,5 +1,5 @@
 import { ShopPlan } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseBadgeSettingsFormData } from "./badge-settings-form.server";
 import { parseCampaignDesignFormData } from "./campaign-design-form.server";
@@ -11,6 +11,10 @@ import { parseFreeShippingSettingsFormData } from "./free-shipping-settings-form
 import { parseLowStockSettingsFormData } from "./low-stock-settings-form.server";
 
 describe("campaign form parsing and validation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("validates required campaign fields, active campaign rules, dates, and CTA URLs", () => {
     const parsed = parseCampaignFormData(
       formData({
@@ -58,6 +62,11 @@ describe("campaign form parsing and validation", () => {
   });
 
   it("validates design colors, ranges, contrast, and Pro-only custom CSS", () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
+    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
+    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
+
     const parsed = parseCampaignDesignFormData(
       formData({
         accentColor: "#FFFFFF",
@@ -68,6 +77,7 @@ describe("campaign form parsing and validation", () => {
         customCss: ".pp-bar { opacity: .9; }",
         fontSize: "9",
         icon: "FIRE",
+        iconSize: "99",
         templateKey: "clean-minimal",
         textColor: "#FFFFFF",
       }),
@@ -81,8 +91,29 @@ describe("campaign form parsing and validation", () => {
         "Button text color needs stronger contrast with button color.",
       customCss: "Custom CSS requires the Pro plan.",
       fontSize: "Font size must be between 10 and 24.",
+      iconSize: "Icon size must be between 12 and 64.",
       textColor: "Text color needs stronger contrast with background.",
     });
+  });
+
+  it("parses valid design icon size", () => {
+    const parsed = parseCampaignDesignFormData(
+      formData({
+        accentColor: "#2563EB",
+        backgroundColor: "#FFFFFF",
+        buttonColor: "#111827",
+        buttonTextColor: "#FFFFFF",
+        fontSize: "14",
+        icon: "FIRE",
+        iconSize: "36",
+        templateKey: "clean-minimal",
+        textColor: "#111827",
+      }),
+      ShopPlan.PRO,
+    );
+
+    expect(parsed.errors.iconSize).toBeUndefined();
+    expect(parsed.values.iconSize).toBe(36);
   });
 
   it("sanitizes custom CSS for Pro campaigns", () => {

@@ -27,8 +27,12 @@ test("merchant filters templates and creates a draft campaign", async ({
   await buenFinTemplate.getByRole("button", { name: "Use template" }).click();
 
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
-  await expect(page.getByLabel("Campaign name")).toHaveValue(/Buen Fin/);
-  await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
+  await expect(
+    page.locator("#campaign-basics-form").getByTestId("campaign-name-input"),
+  ).toHaveValue(/Buen Fin/);
+  await expect(
+    page.locator("#campaign-basics-form").getByTestId("campaign-status-select"),
+  ).toHaveValue("DRAFT");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

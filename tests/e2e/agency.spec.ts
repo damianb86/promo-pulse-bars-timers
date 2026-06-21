@@ -51,10 +51,12 @@ test("agency dashboard shows assigned shops and copies a campaign as draft", asy
 
   await page.getByRole("link", { name: "Open draft" }).click();
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
-  await expect(page.getByLabel("Campaign name")).toHaveValue(
-    "E2E Second Shop Campaign agency copy",
-  );
-  await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
+  await expect(
+    page.locator("#campaign-basics-form").getByTestId("campaign-name-input"),
+  ).toHaveValue("E2E Second Shop Campaign agency copy");
+  await expect(
+    page.locator("#campaign-basics-form").getByTestId("campaign-status-select"),
+  ).toHaveValue("DRAFT");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

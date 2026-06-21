@@ -296,6 +296,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       status: CampaignStatus.ACTIVE,
       type: CampaignType.COUNTDOWN_BAR,
       goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: new Date(Date.now() + 60 * 60 * 1000),
       placements: [{ placementType: PlacementType.TOP_BAR }],
       targeting: {
         countries: ["US"],
@@ -380,6 +382,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       status: CampaignStatus.ACTIVE,
       type: CampaignType.COUNTDOWN_BAR,
       goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: new Date(Date.now() + 60 * 60 * 1000),
       placements: [{ placementType: PlacementType.TOP_BAR }],
       targeting: {
         behaviorRules: {

@@ -472,6 +472,9 @@ export const loader = async ({
       ctaUrl: translation?.ctaUrl ?? "",
       expiredText: translation?.expiredText ?? "This offer has ended.",
       ...toCampaignTimerFormValues(campaign.timerSettings),
+      cartTimerDurationMinutes:
+        defaultCampaignFormValues.cartTimerDurationMinutes,
+      cartTimerResetBehavior: defaultCampaignFormValues.cartTimerResetBehavior,
       productSelection,
       productIds: targetingListText(campaign.targeting?.productIds),
       excludeProductIds: targetingListText(
@@ -3835,6 +3838,8 @@ function toCampaignDeliveryCutoffFormValues(
     minDeliveryDays: number;
     maxDeliveryDays: number;
     workingDays: unknown;
+    holidays: unknown;
+    countryRules: unknown;
     afterCutoffBehavior?: string | null;
   } | null,
   campaignTimezone: string,

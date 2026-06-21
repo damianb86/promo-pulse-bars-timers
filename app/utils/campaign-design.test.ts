@@ -30,10 +30,12 @@ describe("campaign design validation", () => {
         ...defaultCampaignDesignValues,
         backgroundColor: "black",
         fontSize: 42,
+        iconSize: 99,
       }),
     ).toMatchObject({
       backgroundColor: "Enter a valid 6-digit hex color.",
       fontSize: "Font size must be between 10 and 24.",
+      iconSize: "Icon size must be between 12 and 64.",
     });
 
     expect(

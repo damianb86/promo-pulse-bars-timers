@@ -792,6 +792,7 @@ s-page::part(page) {
 }
 
 .counterpulse-modal--css-reference {
+  box-sizing: border-box;
   width: min(80vw, 1120px);
   max-width: calc(100vw - 40px);
   max-height: min(86vh, 900px);

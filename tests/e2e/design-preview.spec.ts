@@ -2,6 +2,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectOnlyCampaignPlacement,
   test,
 } from "./fixtures";
 
@@ -17,13 +18,16 @@ test("design changes update live preview and persist", async ({
   await page.getByRole("tab", { name: "Design" }).click();
   const editor = page.getByRole("tabpanel", { name: "Design" });
 
-  await page.getByRole("button", { name: "Button right" }).click();
-  await page.getByRole("button", { name: "Dawn" }).click();
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Button right\b/ }).click();
+  await editor.getByRole("button", { name: "Preset options" }).click();
+  await editor.getByRole("option", { name: /^Dawn\b/ }).click();
   await expect(editor.locator('input[name="layout"]')).toHaveValue("CTA_RIGHT");
   await page.getByRole("button", { name: "Plain" }).click();
   await page.getByRole("button", { name: "Colon" }).click();
   await page.getByLabel("Show timer labels").uncheck();
   await editor.locator('select[name="icon"]').selectOption("FIRE");
+  await editor.locator('input[name="iconSize"]').fill("36");
   await editor.locator('input[name="gradientStartColor"]').fill("#123456");
   await editor.locator('input[name="closeButtonColor"]').fill("#00FF88");
   await editor.locator('input[name="titleFontSize"]').fill("30");
@@ -57,7 +61,10 @@ test("design changes update live preview and persist", async ({
   await expect(
     preview.locator(".counterpulse-preview-timer small"),
   ).toHaveCount(0);
-  await expect(preview.locator(".counterpulse-preview-icon svg")).toBeVisible();
+  const previewIcon = preview.locator(".counterpulse-preview-icon");
+  await expect(previewIcon.locator("svg")).toBeVisible();
+  await expect(previewIcon).toHaveCSS("width", "36px");
+  await expect(previewIcon).toHaveCSS("height", "36px");
   await expect(preview.locator(".counterpulse-preview-close")).toHaveCSS(
     "color",
     "rgb(0, 255, 136)",
@@ -99,6 +106,9 @@ test("design changes update live preview and persist", async ({
   await expect(reloadedEditor.locator('select[name="icon"]')).toHaveValue(
     "FIRE",
   );
+  await expect(reloadedEditor.locator('input[name="iconSize"]')).toHaveValue(
+    "36",
+  );
   await expect(
     reloadedEditor.locator('input[name="titleFontSize"]'),
   ).toHaveValue("30");
@@ -117,6 +127,75 @@ test("design changes update live preview and persist", async ({
   await expect(
     reloadedEditor.locator('select[name="timerTickAnimation"]'),
   ).toHaveValue("PULSE");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("placement preview only lists selected campaign placements and CSS reference is scrollable", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("countdown");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Campaign" }).click();
+  await page.getByRole("tab", { name: "Placement" }).click();
+  await selectOnlyCampaignPlacement(page, "PRODUCT_PAGE");
+  await page.getByRole("button", { name: /^Cart drawer\b/ }).click();
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  const placementSelect = page
+    .locator(".counterpulse-design-editor__preview")
+    .getByLabel("Placement preview");
+
+  await expect(placementSelect).toHaveValue("CART_DRAWER");
+  await expect(
+    page.locator(".counterpulse-design-editor__preview"),
+  ).not.toContainText("* Campaign placement");
+
+  const placementOptions = await placementSelect
+    .locator("option")
+    .evaluateAll((options) =>
+      options.map((option) => option.textContent?.trim() ?? ""),
+    );
+  expect(placementOptions).toHaveLength(2);
+  expect(placementOptions).toEqual(
+    expect.arrayContaining(["Cart drawer block", "Product page block"]),
+  );
+  expect(placementOptions).not.toEqual(
+    expect.arrayContaining(["Top bar", "Bottom bar", "Badge"]),
+  );
+  expect(placementOptions.some((label) => label.includes("*"))).toBe(false);
+
+  await placementSelect.selectOption("PRODUCT_PAGE");
+  await expect(
+    page.locator(
+      ".counterpulse-design-editor__preview .counterpulse-preview-browser-bar strong",
+    ),
+  ).toHaveText("Product page");
+
+  await page.getByTitle("About Custom CSS").click();
+  const cssDialog = page.getByRole("dialog", {
+    name: "Custom CSS reference",
+  });
+  await expect(cssDialog).toBeVisible();
+  await expect(cssDialog).toHaveClass(/counterpulse-modal--css-reference/);
+
+  const dialogBox = await cssDialog.boundingBox();
+  const viewport = page.viewportSize();
+  expect(dialogBox).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(dialogBox!.width).toBeGreaterThan(viewport!.width * 0.7);
+  expect(dialogBox!.width).toBeLessThanOrEqual(viewport!.width * 0.82);
+  await expect(cssDialog.locator(".counterpulse-modal__body")).toHaveCSS(
+    "overflow-y",
+    "auto",
+  );
+
+  await cssDialog.getByRole("button", { name: "Close" }).click();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

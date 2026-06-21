@@ -34,6 +34,9 @@ describe("post-purchase campaign endpoint", () => {
   beforeEach(() => {
     vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
+    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
+    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
     vi.clearAllMocks();
 
     shopifyMock.checkout.mockResolvedValue({

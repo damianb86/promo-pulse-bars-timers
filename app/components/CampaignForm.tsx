@@ -2,6 +2,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -358,7 +359,7 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         timerStyle: "PLAIN",
       },
       form: {
-        freeShippingAutoDiscount: true,
+        freeShippingAutoDiscount: false,
         freeShippingDiscountCode: "FREESHIP",
         freeShippingDiscountTitle: "Promo Pulse free shipping",
         timerExpiredBehavior: "DO_NOTHING",
@@ -1183,14 +1184,14 @@ export function CampaignForm({
     });
   };
 
-  const updateDesignValues = (nextDesign: CampaignDesignValues) => {
+  const updateDesignValues = useCallback((nextDesign: CampaignDesignValues) => {
     if (onDesignChange) {
       onDesignChange(nextDesign);
       return;
     }
 
     setLocalDesignValues(nextDesign);
-  };
+  }, [onDesignChange]);
 
   useEffect(() => {
     if (!onDesignChange) {
@@ -1209,9 +1210,13 @@ export function CampaignForm({
   }, [formValues, onValuesChange]);
 
   useEffect(() => {
-    if (!syncExternalValues) return;
+    if (!syncExternalValues) return undefined;
 
-    setFormValues(values);
+    const syncFormValues = window.setTimeout(() => {
+      setFormValues(values);
+    }, 0);
+
+    return () => window.clearTimeout(syncFormValues);
   }, [syncExternalValues, values]);
 
   useEffect(() => {
@@ -1256,8 +1261,14 @@ export function CampaignForm({
 
   useEffect(() => {
     if (!visibleBuilderTabs.some((tab) => tab.key === activeTab)) {
-      setActiveTab(visibleBuilderTabs[0].key);
+      const syncActiveTab = window.setTimeout(() => {
+        setActiveTab(visibleBuilderTabs[0].key);
+      }, 0);
+
+      return () => window.clearTimeout(syncActiveTab);
     }
+
+    return undefined;
   }, [activeTab, visibleBuilderTabs]);
 
   useEffect(() => {

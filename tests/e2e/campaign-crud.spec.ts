@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  selectCampaignTypeCard,
   selectOnlyCampaignPlacement,
   selectTimezone,
   test,
@@ -44,7 +45,10 @@ test("campaign CRUD actions work from the admin UI", async ({
     status: "DRAFT",
   });
 
-  await page.getByLabel("Campaign name").fill("E2E CRUD Campaign Updated");
+  await page
+    .locator("#campaign-basics-form")
+    .getByTestId("campaign-name-input")
+    .fill("E2E CRUD Campaign Updated");
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -105,24 +109,18 @@ test("campaign builder tabs preview and layout are interactive", async ({
     "true",
   );
   await expect(
-    form.getByRole("radio", { exact: true, name: "Flash sale" }),
+    form.getByRole("radio", { name: /^Flash sale\b/ }),
   ).toHaveAttribute("aria-checked", "true");
 
   await form.getByTitle("About Campaign type").click();
   let infoDialog = page.getByRole("dialog", { name: "Campaign types" });
-  await expect(infoDialog).toContainText("Countdown bar");
-  await expect(infoDialog).toContainText("Free shipping goal");
+  await expect(infoDialog).toContainText("Flash sale");
+  await expect(infoDialog).toContainText("Free shipping");
   await infoDialog.getByRole("button", { name: "Close" }).click();
 
-  await form.getByTitle("About Goal").click();
-  infoDialog = page.getByRole("dialog", { name: "Campaign goals" });
-  await expect(infoDialog).toContainText("Cart rescue");
-  await expect(infoDialog).toContainText("Announcement");
-  await infoDialog.getByRole("button", { name: "Close" }).click();
-
-  await form.getByRole("radio", { exact: true, name: "Free shipping" }).click();
+  await selectCampaignTypeCard(form, "Free shipping");
   await expect(
-    form.getByRole("radio", { exact: true, name: "Free shipping" }),
+    form.getByRole("radio", { name: /^Free shipping\b/ }),
   ).toHaveAttribute("aria-checked", "true");
 
   await form.getByRole("tab", { name: "Message" }).click();

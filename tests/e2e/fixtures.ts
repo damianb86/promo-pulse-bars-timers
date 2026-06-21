@@ -116,31 +116,30 @@ export const test = base.extend<E2EFixtures>({
         ...options,
       };
 
+      const form = page.locator("[data-campaign-form]");
+
       await page.goto("/app/campaigns/new");
-      await page.getByLabel("Campaign name").fill(values.name);
-      await page.getByRole("radio", { exact: true, name: values.goal }).click();
-      await page.getByLabel("Campaign type").selectOption(values.type);
-      await page
+      await form.getByTestId("campaign-name-input").fill(values.name);
+      await selectCampaignTypeCard(form, values.goal);
+      await form
         .getByRole("combobox", { name: /^Status$/ })
         .selectOption(values.status);
-      await page.getByRole("tab", { name: "Placement" }).click();
-      await selectOnlyCampaignPlacement(page, values.placement);
-      await page.getByRole("tab", { name: "Schedule" }).click();
-      const endDate = page.getByLabel("End date");
+      await form.getByRole("tab", { name: "Placement" }).click();
+      await selectOnlyCampaignPlacement(form, values.placement);
+      await form.getByRole("tab", { name: "Schedule" }).click();
+      const endDate = form.getByLabel("End date");
       if ((await endDate.count()) > 0) {
         await endDate.fill(
           toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)),
         );
       }
-      await selectTimezone(page, "Timezone", "UTC-05", "America/New_York");
-      await page.getByRole("tab", { name: "Message" }).click();
-      await page.locator('input[name="headline"]').fill(values.headline);
-      await page.getByLabel("CTA text").fill(values.ctaText);
-      await page.getByLabel("CTA URL").fill(values.ctaUrl);
-      await page
-        .locator('textarea[name="subheadline"]')
-        .fill(values.subheadline);
-      await page.getByRole("button", { name: "Save campaign" }).click();
+      await selectTimezone(form, "Timezone", "UTC-05", "America/New_York");
+      await form.getByRole("tab", { name: "Message" }).click();
+      await form.locator('input[name="headline"]').fill(values.headline);
+      await form.getByLabel("CTA text").fill(values.ctaText);
+      await form.getByLabel("CTA URL").fill(values.ctaUrl);
+      await form.locator('textarea[name="subheadline"]').fill(values.subheadline);
+      await form.getByRole("button", { name: "Save campaign" }).click();
       await confirmAction(page, "Save campaign");
       await page.waitForURL((url) => {
         const segments = url.pathname.split("/").filter(Boolean);
@@ -158,6 +157,14 @@ export const test = base.extend<E2EFixtures>({
 });
 
 export { expect } from "@playwright/test";
+
+export async function selectCampaignTypeCard(scope: Locator | Page, label: string) {
+  await scope
+    .getByRole("radio", {
+      name: new RegExp(`^${escapeRegExp(label)}\\b`),
+    })
+    .click();
+}
 
 export async function selectOnlyCampaignPlacement(
   scope: Locator | Page,

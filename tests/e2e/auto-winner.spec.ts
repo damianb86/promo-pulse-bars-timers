@@ -47,10 +47,12 @@ test("experiment results can auto-detect and apply a winning variant", async ({
   await page.getByRole("tab", { name: "Campaign" }).click();
   await page.getByRole("tab", { name: "Message" }).click();
 
-  await expect(page.locator('input[name="headline"]')).toHaveValue(
+  const campaignForm = page.locator("#campaign-basics-form");
+
+  await expect(campaignForm.locator('input[name="headline"]')).toHaveValue(
     "Winning headline",
   );
-  await expect(page.locator('textarea[name="subheadline"]')).toHaveValue(
+  await expect(campaignForm.locator('textarea[name="subheadline"]')).toHaveValue(
     "Winning treatment copy.",
   );
   await page.getByRole("tab", { name: "Offers" }).click();

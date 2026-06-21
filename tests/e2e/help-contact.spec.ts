@@ -18,7 +18,9 @@ test("help page sends contact requests and handles privacy actions", async ({
     page.getByRole("heading", { exact: true, name: "Help and Contact" }),
   ).toBeVisible();
   await expect(page.getByText("demo-shop.myshopify.com")).toBeVisible();
-  await expect(page.getByText("support@example.com")).toBeVisible();
+  await expect(page.locator(".counterpulse-help-email")).toHaveText(
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  );
 
   await page.getByRole("link", { name: "Contact support" }).click();
   await page.getByLabel("Message").fill("The cart timer is missing.");

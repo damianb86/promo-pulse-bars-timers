@@ -467,7 +467,7 @@ async function triggerDraftSave(app: AppScope) {
   }
 
   await app.evaluate(() => {
-    window.dispatchEvent(new CustomEvent("counterpulse:campaign-save"));
+    window.dispatchEvent(new CustomEvent("promo-pulse:campaign-save"));
   });
 }
 

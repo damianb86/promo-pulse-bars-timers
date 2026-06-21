@@ -27,7 +27,7 @@ describe("post-purchase extension API helpers", () => {
 
     expect(request.requiresSessionToken).toBe(false);
     expect(request.url).toContain(
-      "https://demo-shop.myshopify.com/apps/counterpulse-campaigns/api/post-purchase/campaign?",
+      "https://demo-shop.myshopify.com/apps/promo-pulse/api/post-purchase/campaign?",
     );
     expect(request.url).toContain("mode=AUTO_ELIGIBLE");
     expect(request.url).toContain("surface=ORDER_STATUS_PAGE");
@@ -71,7 +71,7 @@ describe("post-purchase extension API helpers", () => {
 
     expect(result).toEqual({ ok: true, status: 201 });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://demo-shop.myshopify.com/apps/counterpulse-campaigns",
+      "https://demo-shop.myshopify.com/apps/promo-pulse",
       expect.objectContaining({ method: "POST" }),
     );
     expect(payload).toEqual({

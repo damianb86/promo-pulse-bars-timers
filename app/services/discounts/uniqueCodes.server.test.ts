@@ -54,8 +54,6 @@ describe("Stage 2 unique discount code pools", () => {
     vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
     vi.clearAllMocks();
     prismaMock.campaign.findFirst.mockResolvedValue(campaign());
     prismaMock.discountCodePool.create.mockImplementation(async ({ data }) => ({

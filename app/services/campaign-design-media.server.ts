@@ -53,7 +53,7 @@ export async function loadCampaignDesignMediaOptions(
 
   const response = await admin.graphql(
     `#graphql
-      query CounterPulseDesignImages($first: Int!, $query: String!) {
+      query PromoPulseDesignImages($first: Int!, $query: String!) {
         files(first: $first, query: $query, sortKey: CREATED_AT, reverse: true) {
           nodes {
             ... on MediaImage {
@@ -99,7 +99,7 @@ export async function loadCampaignDesignFileOption(
 ) {
   const response = await admin.graphql(
     `#graphql
-      query CounterPulseDesignFile($id: ID!) {
+      query PromoPulseDesignFile($id: ID!) {
         node(id: $id) {
           __typename
           ... on MediaImage {

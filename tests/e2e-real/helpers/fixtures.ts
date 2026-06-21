@@ -89,7 +89,7 @@ function isIgnoredConsoleError(message: string) {
 
 function isCriticalFailedResponse(url: string) {
   return (
-    url.includes("/apps/counterpulse-campaigns") ||
+    url.includes("/apps/promo-pulse") ||
     url.includes("/api/storefront") ||
     url.includes("/api/analytics") ||
     url.includes("/app/campaigns") ||
@@ -109,7 +109,7 @@ function isIgnoredFailedRequest(url: string, failureText: string) {
       url.includes("admin.shopify.com/.well-known/") ||
       url.includes("/api/collect") ||
       url.includes("/services/login_with_shop/authorize") ||
-      url.endsWith("/apps/counterpulse-campaigns") ||
+      url.endsWith("/apps/promo-pulse") ||
       isAbortedViteDevAsset(url) ||
       url.endsWith(".map")
     );

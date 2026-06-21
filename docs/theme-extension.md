@@ -6,34 +6,33 @@ bars without requiring manual Liquid edits.
 
 ## Files
 
-- `extensions/counterpulse-theme/blocks/promo-pilot-embed.liquid`
-- `extensions/counterpulse-theme/blocks/product-timer.liquid`
-- `extensions/counterpulse-theme/blocks/product-badge.liquid`
-- `extensions/counterpulse-theme/blocks/cart-timer.liquid`
-- `theme-extension-src/counterpulse-theme/promo-pilot.js`
-- `theme-extension-src/counterpulse-theme/product-timer.js`
-- `theme-extension-src/counterpulse-theme/low-stock.js`
-- `theme-extension-src/counterpulse-theme/product-badge.js`
-- `theme-extension-src/counterpulse-theme/cart-timer.js`
-- `theme-extension-src/counterpulse-theme/free-shipping.js`
-- `theme-extension-src/counterpulse-theme/delivery-cutoff.js`
-- `theme-extension-src/counterpulse-theme/discount-code.js`
-- `extensions/counterpulse-theme/assets/promo-pilot.js`
-- `extensions/counterpulse-theme/assets/product-timer.js`
-- `extensions/counterpulse-theme/assets/low-stock.js`
-- `extensions/counterpulse-theme/assets/product-badge.js`
-- `extensions/counterpulse-theme/assets/cart-timer.js`
-- `extensions/counterpulse-theme/assets/free-shipping.js`
-- `extensions/counterpulse-theme/assets/delivery-cutoff.js`
-- `extensions/counterpulse-theme/assets/discount-code.js`
-- `extensions/counterpulse-theme/assets/promo-pilot.css`
+- `extensions/promo-pulse-theme/blocks/promo-pulse-embed.liquid`
+- `extensions/promo-pulse-theme/blocks/product-timer.liquid`
+- `extensions/promo-pulse-theme/blocks/product-badge.liquid`
+- `extensions/promo-pulse-theme/blocks/cart-timer.liquid`
+- `theme-extension-src/promo-pulse-theme/promo-pulse.js`
+- `theme-extension-src/promo-pulse-theme/product-timer.js`
+- `theme-extension-src/promo-pulse-theme/low-stock.js`
+- `theme-extension-src/promo-pulse-theme/product-badge.js`
+- `theme-extension-src/promo-pulse-theme/cart-timer.js`
+- `theme-extension-src/promo-pulse-theme/free-shipping.js`
+- `theme-extension-src/promo-pulse-theme/delivery-cutoff.js`
+- `theme-extension-src/promo-pulse-theme/discount-code.js`
+- `extensions/promo-pulse-theme/assets/promo-pulse.js`
+- `extensions/promo-pulse-theme/assets/product-timer.js`
+- `extensions/promo-pulse-theme/assets/low-stock.js`
+- `extensions/promo-pulse-theme/assets/product-badge.js`
+- `extensions/promo-pulse-theme/assets/cart-timer.js`
+- `extensions/promo-pulse-theme/assets/free-shipping.js`
+- `extensions/promo-pulse-theme/assets/delivery-cutoff.js`
+- `extensions/promo-pulse-theme/assets/discount-code.js`
+- `extensions/promo-pulse-theme/assets/promo-pulse.css`
 
-The asset names keep historical `promo-pilot` and `counterpulse` technical
-names for backward compatibility, but the product and UI use
-Promo Pulse: Bars & Timers.
+Asset names, app proxy paths, and extension folders use the Promo Pulse naming
+scheme so storefront configuration does not expose older project aliases.
 
 `discount-code.js` is a shared storefront helper for coupon copy buttons. It
-copies the code, dispatches `counterpulse:copy-code`, and provides the
+copies the code, dispatches `promo-pulse:copy-code`, and provides the
 non-blocking analytics bridge used by the embed.
 
 ## App Embed Settings
@@ -66,14 +65,14 @@ placement, campaign type, targeting, locale/country/product/cart context, and
 plan gating. If the debug panel does not appear, the block or App Embed is not
 enabled in the active theme/template.
 
-If Network shows `302 Found` for `/apps/counterpulse-campaigns` and redirects
+If Network shows `302 Found` for `/apps/promo-pulse` and redirects
 to `/password`, Shopify is not proxying that request to the app. Check that
 `shopify.app.toml` has:
 
 ```toml
 [app_proxy]
-url = "https://shopify.dev/apps/counterpulse-campaigns"
-subpath = "counterpulse-campaigns"
+url = "https://shopify.dev/apps/promo-pulse"
+subpath = "promo-pulse"
 prefix = "apps"
 ```
 
@@ -89,7 +88,7 @@ for example:
 https://encoding-exhibits-doctor-garcia.trycloudflare.com
 ```
 
-Do not include `/apps/counterpulse-campaigns`; the storefront runtime appends
+Do not include `/apps/promo-pulse`; the storefront runtime appends
 `/api/storefront/campaigns` automatically. Product/cart/badge blocks have the
 same optional setting when you need to debug them without relying on the global
 embed. Leave this setting blank in production so Shopify App Proxy remains the
@@ -166,7 +165,7 @@ messages in global bars and product page blocks.
 The embed calls the storefront App Proxy path:
 
 ```text
-/apps/counterpulse-campaigns
+/apps/promo-pulse
 ```
 
 Shopify forwards that request to the Promo Pulse app endpoint configured in
@@ -198,16 +197,16 @@ It supports:
 - recurring daily and weekly countdown calculations with timezone-aware cutoffs;
 - delivery cutoff promise windows with working days and holidays;
 - free shipping progress when cart subtotal is available from Liquid,
-  `window.CounterPulseCartSubtotal`, or `/cart.js`.
+  `window.PromoPulseCartSubtotal`, or `/cart.js`.
 
 The admin app uses the shared TypeScript timer engine in `app/lib/timer.ts`.
 The storefront extension cannot import that module directly because Shopify
-serves static theme assets, so `theme-extension-src/counterpulse-theme/promo-pilot.js`
+serves static theme assets, so `theme-extension-src/promo-pulse-theme/promo-pulse.js`
 contains a minimal duplicated timer implementation and generates the minified
-`assets/promo-pilot.js` file.
+`assets/promo-pulse.js` file.
 
 The editable JavaScript sources intentionally live outside
-`extensions/counterpulse-theme`. Shopify Theme App Extensions only allow
+`extensions/promo-pulse-theme`. Shopify Theme App Extensions only allow
 `assets`, `blocks`, `snippets`, and `locales` directories inside the extension.
 Regenerate the static assets with:
 
@@ -221,7 +220,7 @@ The extension also provides `Promo Pulse product timer`, an app block for
 product templates. It requests:
 
 ```text
-/apps/counterpulse-campaigns?placement=PRODUCT_PAGE
+/apps/promo-pulse?placement=PRODUCT_PAGE
 ```
 
 and passes product context:
@@ -270,7 +269,7 @@ The extension provides `Promo Pulse badge`, an app block for product and
 collection templates. It requests:
 
 ```text
-/apps/counterpulse-campaigns?placement=COLLECTION_CARD
+/apps/promo-pulse?placement=COLLECTION_CARD
 ```
 
 by default, and can be switched to `PRODUCT_PAGE` in the block settings. The
@@ -291,7 +290,7 @@ The extension provides `Promo Pulse cart timer`, an app block for cart
 templates. It requests:
 
 ```text
-/apps/counterpulse-campaigns?placement=CART_PAGE
+/apps/promo-pulse?placement=CART_PAGE
 ```
 
 and passes cart context:
@@ -326,7 +325,7 @@ The global App Embed loads `cart-timer.js`, which observes theme changes with a
 `MutationObserver` and requests:
 
 ```text
-/apps/counterpulse-campaigns?placement=CART_DRAWER
+/apps/promo-pulse?placement=CART_DRAWER
 ```
 
 Default drawer selectors are tried in this order:
@@ -338,7 +337,7 @@ Default drawer selectors are tried in this order:
 
 If a `CART_DRAWER` campaign placement has `customSelector`, that selector is
 tried before the defaults. Use this for themes with non-standard drawer markup.
-The runtime inserts a single `#counterpulse-cart-drawer-slot` and reuses it, so
+The runtime inserts a single `#promo-pulse-cart-drawer-slot` and reuses it, so
 opening and closing the drawer repeatedly should not create duplicates.
 
 If no drawer selector matches, Promo Pulse does nothing and the theme continues
@@ -384,13 +383,13 @@ The embed and shared coupon helper dispatch browser events and post them to the
 app without blocking storefront UX:
 
 ```text
-counterpulse:impression
-counterpulse:click
-counterpulse:copy-code
+promo-pulse:impression
+promo-pulse:click
+promo-pulse:copy-code
 ```
 
 `discount-code.js` listens for those events and sends `POST
-/apps/counterpulse-campaigns` through the same Shopify App Proxy used for
+/apps/promo-pulse` through the same Shopify App Proxy used for
 campaign fetching. The app proxy route forwards analytics payloads to the same
 backend logic as `/api/analytics/event`, with `shop`, `campaignId`, `eventType`,
 `placementType`, `sessionId`, cart context, locale, country, path, and user

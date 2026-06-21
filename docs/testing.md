@@ -38,7 +38,6 @@ E2E_TEST_MODE=true
 NODE_ENV=development
 DATABASE_URL=file:./e2e.sqlite
 PROMO_PULSE_DEV_PLAN=AGENCY
-PROMOPILOT_DEV_PLAN=AGENCY
 PORT=31338
 ```
 
@@ -69,7 +68,7 @@ during development.
 
 The fake storefront routes load the same theme assets through
 `/__test/theme-asset/:asset` and call the local app proxy route
-`/apps/counterpulse-campaigns`.
+`/apps/promo-pulse`.
 
 ## E2E Coverage
 

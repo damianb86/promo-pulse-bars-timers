@@ -70,7 +70,7 @@ export function CampaignEditorLayout({
                 setActiveSectionKey(actionBar.campaignSectionKey ?? "campaign");
                 window.setTimeout(() => {
                   window.dispatchEvent(
-                    new CustomEvent("counterpulse:campaign-review"),
+                    new CustomEvent("promo-pulse:campaign-review"),
                   );
                 }, 0);
               }}

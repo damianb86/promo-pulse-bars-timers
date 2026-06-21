@@ -10,7 +10,7 @@ import { getOnboardingChecklistStatus } from "../services/onboarding.server";
 import { getEffectiveShopPlan } from "../services/planLimits.server";
 import type { OnboardingChecklistStatus } from "../types/onboarding";
 
-const demoShopDomain = "counterpulse-demo.myshopify.com";
+const demoShopDomain = "promo-pulse-demo.myshopify.com";
 
 export type DashboardDataSource = "shop" | "demo" | "empty";
 

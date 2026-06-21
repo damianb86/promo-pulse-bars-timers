@@ -26,7 +26,7 @@ console.log("This auth flow connects to a Chrome window that you launch manually
 console.log("Start Chrome with remote debugging before continuing:");
 console.log("");
 console.log(
-  '/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.countpulse-real-e2e-chrome"',
+  '/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.promo-pulse-real-e2e-chrome"',
 );
 console.log("");
 console.log(`Then open or let this script open: ${adminUrl}`);

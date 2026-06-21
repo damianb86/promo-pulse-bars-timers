@@ -13,7 +13,7 @@ target de order-status vive en `extensions/promo-pulse-order-status`; ver
 
 El bloque consume `/api/checkout/campaign` o, por defecto, el App Proxy:
 
-`/apps/counterpulse-campaigns/api/checkout/campaign`
+`/apps/promo-pulse/api/checkout/campaign`
 
 El backend selecciona una campana activa y checkout-safe para estos casos:
 
@@ -54,7 +54,7 @@ El endpoint directo `/api/checkout/campaign` autentica requests de checkout con
 el `dest` del session token.
 
 El endpoint de App Proxy
-`/apps/counterpulse-campaigns/api/checkout/campaign` valida el request con
+`/apps/promo-pulse/api/checkout/campaign` valida el request con
 `authenticate.public.appProxy()` antes de resolver campanas.
 
 En `E2E_TEST_MODE=true` se permite llamar el endpoint sin Shopify real para

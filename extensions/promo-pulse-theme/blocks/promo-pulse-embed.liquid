@@ -1,6 +1,6 @@
 {% if block.settings.enabled %}
   <div
-    id="counterpulse-app-embed"
+    id="promo-pulse-app-embed"
     class="pp-root pp-embed"
     data-shop="{{ shop.permanent_domain | escape }}"
     data-default-locale="{{ block.settings.defaultLocale | escape }}"
@@ -14,28 +14,28 @@
     data-collection-ids="{% if product %}{% for collection in product.collections %}gid://shopify/Collection/{{ collection.id }}{% unless forloop.last %},{% endunless %}{% endfor %}{% endif %}"
     data-cart-timer-src="{{ 'cart-timer.js' | asset_url }}"
     data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
-    data-analytics-path="/apps/counterpulse-campaigns"
+    data-analytics-path="/apps/promo-pulse"
     data-debug="{{ block.settings.debugMode }}"
     data-debug-block="Promo Pulse embed"
     {{ block.shopify_attributes }}
   ></div>
   <script>
-    window.CounterPulseCartSubtotal = {{ cart.total_price | default: 0 | divided_by: 100.0 }};
-    window.CounterPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";
-    window.CounterPulseApiBaseUrl = "{{ block.settings.apiBaseUrl | escape }}";
+    window.PromoPulseCartSubtotal = {{ cart.total_price | default: 0 | divided_by: 100.0 }};
+    window.PromoPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";
+    window.PromoPulseApiBaseUrl = "{{ block.settings.apiBaseUrl | escape }}";
   </script>
   <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
   <script src="{{ 'free-shipping.js' | asset_url }}" defer></script>
   <script src="{{ 'delivery-cutoff.js' | asset_url }}" defer></script>
   <script src="{{ 'cart-timer.js' | asset_url }}" defer></script>
-  <script src="{{ 'promo-pilot.js' | asset_url }}" defer></script>
+  <script src="{{ 'promo-pulse.js' | asset_url }}" defer></script>
 {% endif %}
 
 {% schema %}
 {
   "name": "Promo Pulse embed",
   "target": "body",
-  "stylesheet": "promo-pilot.css",
+  "stylesheet": "promo-pulse.css",
   "settings": [
     {
       "type": "checkbox",

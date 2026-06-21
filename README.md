@@ -13,10 +13,9 @@ countdown timers, badges avanzados, Shopify Markets avanzado, AI Campaign
 Builder, reporting avanzado, recomendaciones, biblioteca de plantillas y
 dashboard multi-store para agencias.
 
-El producto fue definido originalmente con los alias PromoPilot y CounterPulse.
-El nombre publico final de la app es `Promo Pulse: Bars & Timers`. El namespace
-tecnico `counterpulse` se mantiene en rutas, assets, eventos y nombres internos
-para no romper contratos existentes de la Theme App Extension.
+El nombre publico final de la app es `Promo Pulse: Bars & Timers` y el nombre
+corto es `Promo Pulse`. Las rutas de app proxy, assets de theme y extensiones
+usan ese nombre para evitar alias heredados en superficies visibles.
 
 ## Stack base
 
@@ -86,8 +85,6 @@ El callback OAuth esperado por este template es `/auth/callback`.
   `GROWTH`, `PRO`, `PREMIUM`, `AGENCY`) para probar plan gating sin cambiar la
   base de datos. En `NODE_ENV=development`, si no hay override valido, el plan
   efectivo por defecto es `AGENCY`.
-- `COUNTERPULSE_DEV_PLAN` y `PROMOPILOT_DEV_PLAN`: aliases legacy aceptados en
-  desarrollo local.
 
 Para produccion con Postgres, cambia el datasource Prisma a `postgresql`,
 configura `DATABASE_URL` con la URL administrada y genera una migracion dedicada.
@@ -171,8 +168,8 @@ en `shopify.app.toml`:
 
 - `application_url = "$SHOPIFY_APP_URL"`
 - `redirect_urls = ["$SHOPIFY_APP_URL/auth/callback"]`
-- `[app_proxy].url = "$SHOPIFY_APP_URL/apps/counterpulse-campaigns"`
+- `[app_proxy].url = "$SHOPIFY_APP_URL/apps/promo-pulse"`
 
-Si `/apps/counterpulse-campaigns` en storefront devuelve 404, vuelve a correr
+Si `/apps/promo-pulse` en storefront devuelve 404, vuelve a correr
 `SHOPIFY_APP_URL=https://tu-backend npm run deploy` para publicar el App Proxy
 en la app de Shopify correcta.

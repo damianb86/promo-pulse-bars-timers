@@ -25,7 +25,7 @@
       variants: readVariants(root.dataset.variantsScriptId),
       customProductFormSelector: root.dataset.customProductFormSelector || "",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -98,8 +98,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -119,7 +119,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -148,8 +148,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -340,7 +340,7 @@
 
   function emitImpression(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -514,7 +514,7 @@
 
   function detectCurrency() {
     return (
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -525,7 +525,7 @@
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debug = settings.enableDebugMode === true || config.debug;
     config.customProductFormSelector =
       settings.customProductFormSelector || config.customProductFormSelector;

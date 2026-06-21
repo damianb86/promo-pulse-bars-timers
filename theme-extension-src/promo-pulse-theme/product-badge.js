@@ -24,7 +24,7 @@
       placement: root.dataset.placement || "COLLECTION_CARD",
       debug: root.dataset.debug === "true",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -118,8 +118,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -155,7 +155,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -167,7 +167,7 @@
       .replace(/\/+$/, "");
 
     if (!/^https?:\/\//i.test(value)) {
-      return "/apps/counterpulse-campaigns/api/storefront/badges";
+      return "/apps/promo-pulse/api/storefront/badges";
     }
     if (/\/api\/storefront\/badges$/i.test(value)) return value;
 
@@ -212,8 +212,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -337,7 +337,7 @@
 
   function emitBadgeImpression(badge) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:badge-impression", {
+      new CustomEvent("promo-pulse:badge-impression", {
         detail: {
           campaignId: badge.campaignId || badge.id,
           badgeRuleId: badge.ruleId || null,
@@ -349,7 +349,7 @@
 
   function emitBadgeClick(badge) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:badge-click", {
+      new CustomEvent("promo-pulse:badge-click", {
         detail: {
           campaignId: badge.campaignId || badge.id,
           badgeRuleId: badge.ruleId || null,
@@ -430,7 +430,7 @@
 
   function detectCurrency() {
     return (
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -441,7 +441,7 @@
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debug = settings.enableDebugMode === true || config.debug;
     config.locale = config.locale || settings.defaultLocale || "";
     config.country = config.country || settings.defaultCountry || "";

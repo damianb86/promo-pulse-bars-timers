@@ -64,8 +64,6 @@ describe("campaign form parsing and validation", () => {
   it("validates design colors, ranges, contrast, and Pro-only custom CSS", () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
 
     const parsed = parseCampaignDesignFormData(
       formData({

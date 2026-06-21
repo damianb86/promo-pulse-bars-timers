@@ -28,7 +28,7 @@ import { buildSystemCampaignTemplates } from "../app/services/templates/systemTe
 
 const prisma = new PrismaClient();
 
-const demoShopDomain = "counterpulse-demo.myshopify.com";
+const demoShopDomain = "promo-pulse-demo.myshopify.com";
 const demoCampaignIds = [
   "demo-flash-sale-countdown-bar",
   "demo-free-shipping-goal",

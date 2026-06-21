@@ -1,13 +1,13 @@
 (function () {
   "use strict";
 
-  var visitorIdStorageKey = "counterpulse_visitor_id";
-  var sessionIdStorageKey = "counterpulse_session_id";
-  var attributionStorageKey = "counterpulse_last_seen_campaign";
-  var lastSeenCampaignIdStorageKey = "counterpulse_last_seen_campaign_id";
-  var lastSeenExperimentIdStorageKey = "counterpulse_last_seen_experiment_id";
-  var lastSeenVariantIdStorageKey = "counterpulse_last_seen_variant_id";
-  var lastPromoTouchStorageKey = "counterpulse_last_promo_touch";
+  var visitorIdStorageKey = "promo_pulse_visitor_id";
+  var sessionIdStorageKey = "promo_pulse_session_id";
+  var attributionStorageKey = "promo_pulse_last_seen_campaign";
+  var lastSeenCampaignIdStorageKey = "promo_pulse_last_seen_campaign_id";
+  var lastSeenExperimentIdStorageKey = "promo_pulse_last_seen_experiment_id";
+  var lastSeenVariantIdStorageKey = "promo_pulse_last_seen_variant_id";
+  var lastPromoTouchStorageKey = "promo_pulse_last_promo_touch";
   var uniqueCodeRequestCache = {};
   var uniqueCodeRequestTtlMs = 30000;
   var memoryVisitorId = "";
@@ -15,10 +15,10 @@
 
   installFetchGuard();
 
-  if (!window.CounterPulseAnalyticsReady) {
-    window.CounterPulseAnalyticsReady = true;
+  if (!window.PromoPulseAnalyticsReady) {
+    window.PromoPulseAnalyticsReady = true;
 
-    window.CounterPulseTrackEvent = function (eventType, campaign, extra) {
+    window.PromoPulseTrackEvent = function (eventType, campaign, extra) {
       var root = getRoot();
       var campaignId = campaign && (campaign.id || campaign.campaignId);
       var shop = detectShop(root);
@@ -27,7 +27,7 @@
 
       if (!shop || !campaignId) return;
       if (!analyticsAllowed()) return;
-      if (isPaused("CounterPulseProxyPausedUntil")) return;
+      if (isPaused("PromoPulseProxyPausedUntil")) return;
 
       tracking = getVisitorSessionTracking(campaign);
       rememberCampaign(campaign, tracking);
@@ -76,35 +76,35 @@
       }
     };
 
-    window.CounterPulseTrackCopy = function (campaign) {
-      window.CounterPulseTrackEvent("COPY_CODE", campaign);
+    window.PromoPulseTrackCopy = function (campaign) {
+      window.PromoPulseTrackEvent("COPY_CODE", campaign);
     };
 
-    document.addEventListener("counterpulse:impression", function (event) {
-      window.CounterPulseTrackEvent("IMPRESSION", event.detail || {});
+    document.addEventListener("promo-pulse:impression", function (event) {
+      window.PromoPulseTrackEvent("IMPRESSION", event.detail || {});
     });
 
-    document.addEventListener("counterpulse:click", function (event) {
-      window.CounterPulseTrackEvent("CLICK", event.detail || {});
+    document.addEventListener("promo-pulse:click", function (event) {
+      window.PromoPulseTrackEvent("CLICK", event.detail || {});
     });
 
-    document.addEventListener("counterpulse:copy-code", function (event) {
-      window.CounterPulseTrackEvent("COPY_CODE", event.detail || {});
+    document.addEventListener("promo-pulse:copy-code", function (event) {
+      window.PromoPulseTrackEvent("COPY_CODE", event.detail || {});
     });
 
     document.addEventListener(
-      "counterpulse:badge-impression",
+      "promo-pulse:badge-impression",
       function (event) {
-        window.CounterPulseTrackEvent("BADGE_IMPRESSION", event.detail || {});
+        window.PromoPulseTrackEvent("BADGE_IMPRESSION", event.detail || {});
       },
     );
 
-    document.addEventListener("counterpulse:badge-click", function (event) {
-      window.CounterPulseTrackEvent("BADGE_CLICK", event.detail || {});
+    document.addEventListener("promo-pulse:badge-click", function (event) {
+      window.PromoPulseTrackEvent("BADGE_CLICK", event.detail || {});
     });
   }
 
-  window.CounterPulseGetVisitorSessionTracking = function (options) {
+  window.PromoPulseGetVisitorSessionTracking = function (options) {
     var includeIdentity =
       isFunctionalTrackingRequest(options) || analyticsAllowed();
 
@@ -116,19 +116,19 @@
     };
   };
 
-  window.CounterPulseCopyCode = function (code, campaign) {
+  window.PromoPulseCopyCode = function (code, campaign) {
     if (window.navigator.clipboard && window.navigator.clipboard.writeText) {
       window.navigator.clipboard.writeText(code).catch(function () {});
     }
 
     document.dispatchEvent(
-      new CustomEvent("counterpulse:copy-code", {
+      new CustomEvent("promo-pulse:copy-code", {
         detail: buildCampaignTrackingDetail(campaign),
       }),
     );
   };
 
-  window.CPcb = window.CounterPulseCouponButton = function (code, campaign) {
+  window.CPcb = window.PromoPulseCouponButton = function (code, campaign) {
     if (
       campaign &&
       campaign.discount &&
@@ -143,12 +143,12 @@
     button.type = "button";
     button.textContent = code;
     button.onclick = function () {
-      window.CounterPulseCopyCode(code, campaign);
+      window.PromoPulseCopyCode(code, campaign);
     };
     return button;
   };
 
-  window.CounterPulseApplyExperiment = function (campaign) {
+  window.PromoPulseApplyExperiment = function (campaign) {
     var experiment = campaign && campaign.experiment;
     var variants =
       experiment && Array.isArray(experiment.variants)
@@ -168,7 +168,7 @@
     if (!analyticsAllowed()) return campaign;
 
     visitorId = getVisitorId();
-    assignmentKey = "counterpulse_experiment_assignment_" + experiment.id;
+    assignmentKey = "promo_pulse_experiment_assignment_" + experiment.id;
     assignedVariantId = readStoredValue("localStorage", assignmentKey);
     variant = findExperimentVariant(variants, assignedVariantId);
 
@@ -411,7 +411,7 @@
     copyButton.textContent = "Copy code";
     copyButton.setAttribute("aria-label", "Copy code " + payload.code);
     copyButton.addEventListener("click", function () {
-      window.CounterPulseCopyCode(payload.code, campaign);
+      window.PromoPulseCopyCode(payload.code, campaign);
     });
     wrapper.appendChild(copyButton);
 
@@ -422,7 +422,7 @@
       applyLink.textContent = "Apply discount";
       applyLink.setAttribute("aria-label", "Apply discount " + payload.code);
       applyLink.addEventListener("click", function () {
-        window.CounterPulseTrackEvent("APPLY_CODE_CLICKED", campaign);
+        window.PromoPulseTrackEvent("APPLY_CODE_CLICKED", campaign);
       });
       wrapper.appendChild(applyLink);
     }
@@ -435,7 +435,7 @@
       startUniqueCodeCountdown(wrapper, timer, campaign, config, payload);
     }
 
-    window.CounterPulseTrackEvent("UNIQUE_CODE_ASSIGNED", campaign, {
+    window.PromoPulseTrackEvent("UNIQUE_CODE_ASSIGNED", campaign, {
       reused: payload.reused === true,
     });
   }
@@ -508,7 +508,7 @@
     if (/^https?:\/\//i.test(value)) return value;
     if (apiBaseUrl && value.charAt(0) === "/") return apiBaseUrl + value;
     if (value === "/api/storefront/unique-code/assign") {
-      return "/apps/counterpulse-campaigns" + value;
+      return "/apps/promo-pulse" + value;
     }
 
     return value || "/api/storefront/unique-code/assign";
@@ -548,7 +548,7 @@
 
   function getRoot() {
     return (
-      document.getElementById("counterpulse-app-embed") ||
+      document.getElementById("promo-pulse-app-embed") ||
       document.querySelector(".pp-root")
     );
   }
@@ -567,15 +567,15 @@
     if (apiBaseUrl) return apiBaseUrl + "/api/analytics/event";
 
     return (
-      window.CounterPulseAnalyticsEndpoint ||
+      window.PromoPulseAnalyticsEndpoint ||
       (root && root.dataset.analyticsPath) ||
-      "/apps/counterpulse-campaigns"
+      "/apps/promo-pulse"
     );
   }
 
   function getApiBaseUrl(root) {
     var value =
-      window.CounterPulseApiBaseUrl || (root && root.dataset.apiBaseUrl) || "";
+      window.PromoPulseApiBaseUrl || (root && root.dataset.apiBaseUrl) || "";
 
     value = String(value).trim().replace(/\/+$/, "");
 
@@ -585,7 +585,7 @@
   }
 
   function analyticsAllowed() {
-    var settings = window.CounterPulseSettings || {};
+    var settings = window.PromoPulseSettings || {};
 
     if (settings.analyticsEnabled === false) return false;
 
@@ -623,7 +623,7 @@
   }
 
   function getVisitorSessionTracking(campaign, options) {
-    var publicTracking = window.CounterPulseGetVisitorSessionTracking(options);
+    var publicTracking = window.PromoPulseGetVisitorSessionTracking(options);
     var touchTime = Date.now();
 
     return {
@@ -784,22 +784,22 @@
   function debug(root, error) {
     if (
       ((root && root.dataset.debug === "true") ||
-        (window.CounterPulseSettings || {}).enableDebugMode === true) &&
+        (window.PromoPulseSettings || {}).enableDebugMode === true) &&
       window.console
     ) {
-      window.console.log("[CounterPulse analytics]", error);
+      window.console.log("[PromoPulse analytics]", error);
     }
   }
 
   function installFetchGuard() {
-    if (window.CounterPulseFetchGuardReady || !window.fetch) return;
+    if (window.PromoPulseFetchGuardReady || !window.fetch) return;
 
     var nativeFetch = window.fetch.bind(window);
     var pending = {};
     var proxyPauseMs = 60000;
     var cartPauseMs = 30000;
 
-    window.CounterPulseFetchGuardReady = true;
+    window.PromoPulseFetchGuardReady = true;
 
     window.fetch = function (input, init) {
       var request = normalizeRequest(input, init);
@@ -865,7 +865,7 @@
     var method = (init && init.method) || (input && input.method) || "GET";
     var url = new URL(rawUrl || "", window.location.href);
     var path = url.pathname;
-    var isProxy = path === "/apps/counterpulse-campaigns";
+    var isProxy = path === "/apps/promo-pulse";
     var isCart = path === "/cart.js";
 
     return {
@@ -893,9 +893,9 @@
   function pauseKeyFor(url) {
     var pathname = new URL(url, window.location.href).pathname;
 
-    if (pathname === "/cart.js") return "CounterPulseCartPausedUntil";
-    if (pathname === "/apps/counterpulse-campaigns") {
-      return "CounterPulseProxyPausedUntil";
+    if (pathname === "/cart.js") return "PromoPulseCartPausedUntil";
+    if (pathname === "/apps/promo-pulse") {
+      return "PromoPulseProxyPausedUntil";
     }
 
     return "";
@@ -928,10 +928,10 @@
     if (request.kind === "cart") {
       body = JSON.stringify({
         total_price:
-          typeof window.CounterPulseCartSubtotal === "number"
-            ? Math.round(window.CounterPulseCartSubtotal * 100)
+          typeof window.PromoPulseCartSubtotal === "number"
+            ? Math.round(window.PromoPulseCartSubtotal * 100)
             : 0,
-        currency: window.CounterPulseCartCurrency || "USD",
+        currency: window.PromoPulseCartCurrency || "USD",
         token: "",
       });
     } else if (request.method === "POST") {
@@ -944,7 +944,7 @@
     } else {
       body = JSON.stringify({
         campaigns: [],
-        settings: window.CounterPulseSettings || null,
+        settings: window.PromoPulseSettings || null,
       });
     }
 

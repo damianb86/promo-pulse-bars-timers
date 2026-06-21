@@ -11,8 +11,8 @@ export async function setStorefrontIdentity(
 ) {
   await page.addInitScript(
     ({ visitorId: nextVisitorId, sessionId: nextSessionId }) => {
-      window.localStorage.setItem("counterpulse_visitor_id", nextVisitorId);
-      window.sessionStorage.setItem("counterpulse_session_id", nextSessionId);
+      window.localStorage.setItem("promo_pulse_visitor_id", nextVisitorId);
+      window.sessionStorage.setItem("promo_pulse_session_id", nextSessionId);
     },
     { visitorId, sessionId },
   );

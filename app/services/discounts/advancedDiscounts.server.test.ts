@@ -39,8 +39,6 @@ describe("advanced discounts service", () => {
     vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
     vi.clearAllMocks();
     prismaMock.shop.findUnique.mockResolvedValue({ plan: ShopPlan.PREMIUM });
     prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });

@@ -131,7 +131,7 @@ export function realE2ECacheBustPath(label: string) {
 }
 
 export async function expectStorefrontEmbedOrSkip(page: Page, testInfo: TestInfo) {
-  const embed = page.locator("#counterpulse-app-embed, .pp-root").first();
+  const embed = page.locator("#promo-pulse-app-embed, .pp-root").first();
   if ((await embed.count()) === 0) {
     testInfo.skip(
       true,

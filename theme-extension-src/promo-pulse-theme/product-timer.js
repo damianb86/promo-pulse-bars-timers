@@ -14,8 +14,8 @@
       productId: root.dataset.productId || "",
       productTags: splitList(root.dataset.productTags),
       cartSubtotal:
-        typeof window.CounterPulseCartSubtotal === "number"
-          ? window.CounterPulseCartSubtotal
+        typeof window.PromoPulseCartSubtotal === "number"
+          ? window.PromoPulseCartSubtotal
           : null,
       currency: root.dataset.cartCurrency || detectCurrency(),
       campaignId: root.dataset.campaignId || "",
@@ -25,7 +25,7 @@
       showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -125,8 +125,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -146,7 +146,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -203,10 +203,10 @@
       !timerState.isExpired &&
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
-      typeof window.CounterPulseCouponButton === "function"
+      typeof window.PromoPulseCouponButton === "function"
     ) {
       card.appendChild(
-        window.CounterPulseCouponButton(
+        window.PromoPulseCouponButton(
           campaign.discount.discountCode,
           campaign,
         ),
@@ -229,8 +229,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -445,7 +445,7 @@
         ? "sessionStorage"
         : "localStorage",
     );
-    var key = "counterpulse_product_deadline_" + id;
+    var key = "promo_pulse_product_deadline_" + id;
     var stored = storage ? parseDate(storage.getItem(key)) : null;
     var duration = Number(timer.durationMinutes);
     var endsAt;
@@ -741,7 +741,7 @@
 
   function emitImpression(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -842,7 +842,7 @@
 
   function detectCurrency() {
     return (
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -968,7 +968,7 @@
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debugMode = settings.enableDebugMode === true || config.debugMode;
     config.currency = config.currency || settings.defaultCurrency || "";
     config.locale = config.locale || settings.defaultLocale || "";

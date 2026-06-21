@@ -4,7 +4,7 @@ import {
   type PixelEvents,
 } from "@shopify/web-pixels-extension";
 
-type CounterPulsePixelEventName =
+type PromoPulsePixelEventName =
   | "page_viewed"
   | "product_viewed"
   | "collection_viewed"
@@ -24,7 +24,7 @@ type AttributionState = {
   seenAt?: number;
 };
 
-const subscribedEvents: CounterPulsePixelEventName[] = [
+const subscribedEvents: PromoPulsePixelEventName[] = [
   "page_viewed",
   "product_viewed",
   "collection_viewed",
@@ -34,13 +34,13 @@ const subscribedEvents: CounterPulsePixelEventName[] = [
   "checkout_completed",
 ];
 
-const visitorIdStorageKey = "counterpulse_visitor_id";
-const sessionIdStorageKey = "counterpulse_session_id";
-const attributionStorageKey = "counterpulse_last_seen_campaign";
-const lastSeenCampaignIdStorageKey = "counterpulse_last_seen_campaign_id";
-const lastSeenExperimentIdStorageKey = "counterpulse_last_seen_experiment_id";
-const lastSeenVariantIdStorageKey = "counterpulse_last_seen_variant_id";
-const lastPromoTouchStorageKey = "counterpulse_last_promo_touch";
+const visitorIdStorageKey = "promo_pulse_visitor_id";
+const sessionIdStorageKey = "promo_pulse_session_id";
+const attributionStorageKey = "promo_pulse_last_seen_campaign";
+const lastSeenCampaignIdStorageKey = "promo_pulse_last_seen_campaign_id";
+const lastSeenExperimentIdStorageKey = "promo_pulse_last_seen_experiment_id";
+const lastSeenVariantIdStorageKey = "promo_pulse_last_seen_variant_id";
+const lastPromoTouchStorageKey = "promo_pulse_last_promo_touch";
 const attributionMaxAgeMs = 24 * 60 * 60 * 1000;
 
 register(({ analytics, browser, settings, init }) => {
@@ -60,8 +60,8 @@ register(({ analytics, browser, settings, init }) => {
 });
 
 async function sendPixelEvent(
-  eventName: CounterPulsePixelEventName,
-  event: PixelEvents[CounterPulsePixelEventName],
+  eventName: PromoPulsePixelEventName,
+  event: PixelEvents[PromoPulsePixelEventName],
   browser: ExtensionApi["browser"],
   config: { appEndpoint: string; shop: string },
 ) {
@@ -218,7 +218,7 @@ async function getAttributionFromIndividualKeys(
   }
 }
 
-function readCheckout(event: PixelEvents[CounterPulsePixelEventName]) {
+function readCheckout(event: PixelEvents[PromoPulsePixelEventName]) {
   if (
     event.name === "checkout_started" ||
     event.name === "checkout_completed"
@@ -230,7 +230,7 @@ function readCheckout(event: PixelEvents[CounterPulsePixelEventName]) {
 }
 
 function readCartToken(
-  event: PixelEvents[CounterPulsePixelEventName],
+  event: PixelEvents[PromoPulsePixelEventName],
   checkout: ReturnType<typeof readCheckout>,
 ) {
   if (checkout?.token) return checkout.token;
@@ -243,7 +243,7 @@ function readCartToken(
 }
 
 function readCountry(
-  event: PixelEvents[CounterPulsePixelEventName],
+  event: PixelEvents[PromoPulsePixelEventName],
   checkout: ReturnType<typeof readCheckout>,
 ) {
   return (

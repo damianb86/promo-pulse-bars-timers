@@ -47,12 +47,9 @@ SHOPIFY_APP_URL
 SHOP_CUSTOM_DOMAIN
 DATABASE_URL
 PROMO_PULSE_DEV_PLAN
-COUNTERPULSE_DEV_PLAN
-PROMOPILOT_DEV_PLAN
 ```
 
-`PROMO_PULSE_DEV_PLAN` is the preferred local plan override. The CounterPulse
-and PromoPilot variants remain accepted as legacy development aliases.
+`PROMO_PULSE_DEV_PLAN` is the local plan override.
 
 ## Critical TODOs Before Public App Review
 
@@ -68,7 +65,7 @@ and PromoPilot variants remain accepted as legacy development aliases.
   Stage 1 scopes.
 - Decide production database strategy. SQLite is fine locally; production should
   use managed Postgres with a dedicated Prisma migration plan.
-- Validate app proxy `/apps/counterpulse-campaigns` in the dev store after app
+- Validate app proxy `/apps/promo-pulse` in the dev store after app
   linking. Storefront rendering depends on this proxy reaching
   `/api/storefront/campaigns`.
 - Validate Theme App Extension blocks in Dawn and at least one non-Dawn theme.
@@ -87,5 +84,4 @@ and PromoPilot variants remain accepted as legacy development aliases.
   automatically in Stage 1.
 - Shopify Billing subscription creation, cancellation, and sync are placeholders.
 - Web Pixel activation requires manual setup until pixel creation is wired.
-- Theme assets keep historical `counterpulse` and `promo-pilot` technical names
-  for backward compatibility.
+- Theme assets and app proxy paths use the final Promo Pulse naming.

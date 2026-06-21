@@ -89,7 +89,7 @@ test("storefront embed fails closed when campaign API fails", async ({
   page,
   resetDb,
 }) => {
-  await page.route("**/apps/counterpulse-campaigns**", async (route) => {
+  await page.route("**/apps/promo-pulse**", async (route) => {
     await route.fulfill({
       body: "not-json",
       contentType: "application/json",

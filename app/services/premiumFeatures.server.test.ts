@@ -9,8 +9,6 @@ import {
 describe("premium Stage 2 feature gates", () => {
   beforeEach(() => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
   });
 
   afterEach(() => {
@@ -95,17 +93,6 @@ describe("premium Stage 2 feature gates", () => {
       reason: "",
     });
   });
-
-  it("supports PROMOPILOT_DEV_PLAN=PREMIUM for premium feature gates", () => {
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "PREMIUM");
-
-    expect(canUsePremiumFeature({ plan: "FREE" }, "AB_TESTING")).toEqual({
-      allowed: true,
-      enabled: true,
-      reason: "",
-    });
-  });
-
   it("treats local development as Agency for premium feature gates", () => {
     vi.stubEnv("NODE_ENV", "development");
 

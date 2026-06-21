@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var root = document.getElementById("counterpulse-app-embed");
+  var root = document.getElementById("promo-pulse-app-embed");
   if (!root) return;
 
   var config = {
@@ -24,7 +24,7 @@
       ? "mobile"
       : "desktop",
     debugMode: root.dataset.debug === "true",
-    apiBaseUrl: root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+    apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
   };
   var refreshTimer = 0;
   var refreshInFlight = false;
@@ -64,7 +64,7 @@
     if (refreshInFlight) return;
     if (!force && now - lastRefreshAt < minimumRefreshGapMs) return;
     if (force && now - lastRefreshAt < 500) return;
-    if (isPaused("CounterPulseProxyPausedUntil")) {
+    if (isPaused("PromoPulseProxyPausedUntil")) {
       updateDebug(
         root,
         "Free shipping pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
@@ -120,7 +120,7 @@
     appendBehaviorTargetingParams(params);
     var url = getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
 
-    if (isPaused("CounterPulseProxyPausedUntil")) {
+    if (isPaused("PromoPulseProxyPausedUntil")) {
       updateDebug(
         root,
         "App Proxy pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
@@ -173,8 +173,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -191,7 +191,7 @@
       response.url.indexOf("/password") !== -1 ||
       contentType.indexOf("application/json") === -1
     ) {
-      pauseRequests("CounterPulseProxyPausedUntil", proxyPauseMs);
+      pauseRequests("PromoPulseProxyPausedUntil", proxyPauseMs);
       throw new Error(
         "Expected JSON from app proxy but received " +
           (contentType || "unknown content-type") +
@@ -206,8 +206,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -227,7 +227,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -235,7 +235,7 @@
 
   function renderCampaign(campaign) {
     var design = campaign.design || {};
-    var slotId = "counterpulse-free-shipping-" + campaign.placement;
+    var slotId = "promo-pulse-free-shipping-" + campaign.placement;
     var existing = document.getElementById(slotId);
     var container;
     var bar;
@@ -318,10 +318,10 @@
     if (
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
-      typeof window.CounterPulseCouponButton === "function"
+      typeof window.PromoPulseCouponButton === "function"
     ) {
       bar.appendChild(
-        window.CounterPulseCouponButton(
+        window.PromoPulseCouponButton(
           campaign.discount.discountCode,
           campaign,
         ),
@@ -437,7 +437,7 @@
   }
 
   function readAjaxCartState() {
-    if (isPaused("CounterPulseCartPausedUntil")) {
+    if (isPaused("PromoPulseCartPausedUntil")) {
       return Promise.resolve({ subtotal: null, currency: "" });
     }
 
@@ -473,7 +473,7 @@
       response.url.indexOf("/password") !== -1 ||
       contentType.indexOf("application/json") === -1
     ) {
-      pauseRequests("CounterPulseCartPausedUntil", cartPauseMs);
+      pauseRequests("PromoPulseCartPausedUntil", cartPauseMs);
       throw new Error(
         "Expected JSON from /cart.js but received storefront HTML.",
       );
@@ -483,8 +483,8 @@
   function readCartSubtotal(element) {
     var cents = Number(element.dataset.cartTotalCents);
     if (Number.isFinite(cents)) return cents / 100;
-    if (typeof window.CounterPulseCartSubtotal === "number") {
-      return window.CounterPulseCartSubtotal;
+    if (typeof window.PromoPulseCartSubtotal === "number") {
+      return window.PromoPulseCartSubtotal;
     }
     return null;
   }
@@ -503,7 +503,7 @@
   function detectCurrency(element) {
     return (
       element.dataset.cartCurrency ||
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -600,7 +600,7 @@
 
   function emitImpression(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -752,7 +752,7 @@
   function applyStorefrontSettings(settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debugMode = settings.enableDebugMode === true || config.debugMode;
     config.currency = config.currency || settings.defaultCurrency || "";
     config.locale = config.locale || settings.defaultLocale || "";

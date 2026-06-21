@@ -11,7 +11,7 @@ test("storefront assigns a stable experiment variant and tracks variant attribut
 }) => {
   await resetDb("ab-test");
   await page.addInitScript(() => {
-    window.localStorage.setItem("counterpulse_visitor_id", "cpv_e2e_variant");
+    window.localStorage.setItem("promo_pulse_visitor_id", "cpv_e2e_variant");
   });
   await page.goto("/__test/storefront");
 
@@ -24,7 +24,7 @@ test("storefront assigns a stable experiment variant and tracks variant attribut
     .poll(async () =>
       page.evaluate(() =>
         window.localStorage.getItem(
-          "counterpulse_experiment_assignment_e2e-experiment-headline",
+          "promo_pulse_experiment_assignment_e2e-experiment-headline",
         ),
       ),
     )
@@ -57,7 +57,7 @@ test("storefront campaigns without experiments render unchanged", async ({
 
   const experimentAssignments = await page.evaluate(() =>
     Object.keys(window.localStorage).filter((key) =>
-      key.startsWith("counterpulse_experiment_assignment_"),
+      key.startsWith("promo_pulse_experiment_assignment_"),
     ),
   );
 

@@ -616,12 +616,7 @@ export function formatFeatureName(featureKey: PlanFeatureKey) {
 function readDevPlanOverride() {
   if (process.env.NODE_ENV === "production") return null;
 
-  const value = [
-    process.env.PROMO_PULSE_DEV_PLAN,
-    process.env.COUNTERPULSE_DEV_PLAN,
-    process.env.PROMOPILOT_DEV_PLAN,
-  ]
-    .find((candidate) => candidate?.trim())
+  const value = process.env.PROMO_PULSE_DEV_PLAN
     ?.trim()
     .toUpperCase();
 

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var embed = document.getElementById("counterpulse-app-embed");
+  var embed = document.getElementById("promo-pulse-app-embed");
   var device = window.matchMedia("(max-width: 767px)").matches
     ? "mobile"
     : "desktop";
@@ -31,7 +31,7 @@
         (window.Shopify && window.Shopify.shop) ||
         window.location.hostname,
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -69,7 +69,7 @@
       productTags: split(root.dataset.productTags),
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -128,8 +128,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -149,7 +149,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -204,8 +204,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -219,7 +219,7 @@
       campaign.design || {},
     );
     var existing = document.getElementById(
-      "counterpulse-delivery-" + campaign.placement,
+      "promo-pulse-delivery-" + campaign.placement,
     );
     var container;
     var bar;
@@ -239,7 +239,7 @@
       campaign,
       promise,
     );
-    bar.id = "counterpulse-delivery-" + campaign.placement;
+    bar.id = "promo-pulse-delivery-" + campaign.placement;
 
     if ((campaign.design || {}).fullWidth) {
       bar.classList.add("pp-bar--full-width");
@@ -337,10 +337,10 @@
     if (
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
-      typeof window.CounterPulseCouponButton === "function"
+      typeof window.PromoPulseCouponButton === "function"
     ) {
       surface.appendChild(
-        window.CounterPulseCouponButton(
+        window.PromoPulseCouponButton(
           campaign.discount.discountCode,
           campaign,
         ),
@@ -727,7 +727,7 @@
 
   function emit(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -880,7 +880,7 @@
 
   function detectCurrency() {
     return (
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -891,7 +891,7 @@
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debug = settings.enableDebugMode === true || config.debug;
     config.locale = config.locale || settings.defaultLocale || "";
     config.country = config.country || settings.defaultCountry || "";

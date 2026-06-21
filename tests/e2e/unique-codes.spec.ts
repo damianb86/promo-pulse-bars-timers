@@ -152,7 +152,7 @@ function isStorefrontCampaignResponse(
   return (
     response.ok() &&
     response.request().method() === "GET" &&
-    url.includes("/apps/counterpulse-campaigns") &&
+    url.includes("/apps/promo-pulse") &&
     url.includes(`visitorId=${visitorId}`) &&
     url.includes(`placement=${placement}`)
   );

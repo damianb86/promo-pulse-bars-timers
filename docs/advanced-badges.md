@@ -28,7 +28,7 @@ The product badge block calls:
 
 ```text
 GET /api/storefront/badges
-GET /apps/counterpulse-campaigns/api/storefront/badges
+GET /apps/promo-pulse/api/storefront/badges
 ```
 
 The app-proxy route is used by the Theme App Extension in production. The direct

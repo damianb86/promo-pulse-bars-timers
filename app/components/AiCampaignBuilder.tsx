@@ -603,12 +603,12 @@ function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
   setFieldValue("ctaUrl", suggestion.campaign.ctaUrl);
   setFieldValue("aiSuggestionJson", payload);
   window.dispatchEvent(
-    new CustomEvent("counterpulse:ai-suggestion-json", { detail: payload }),
+    new CustomEvent("promo-pulse:ai-suggestion-json", { detail: payload }),
   );
   window.requestAnimationFrame(() => {
     setFieldValue("aiSuggestionJson", payload);
     window.dispatchEvent(
-      new CustomEvent("counterpulse:ai-suggestion-json", { detail: payload }),
+      new CustomEvent("promo-pulse:ai-suggestion-json", { detail: payload }),
     );
   });
 }

@@ -64,7 +64,7 @@ export async function fetchShopMarkets(
 
   const response = await admin.graphql(
     `#graphql
-      query CounterPulseMarkets($first: Int!) {
+      query PromoPulseMarkets($first: Int!) {
         markets(first: $first) {
           nodes {
             id

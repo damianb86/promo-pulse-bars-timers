@@ -413,7 +413,7 @@ async function createRemoteAutomaticAppDiscount(
   }>(
     admin,
     `#graphql
-    mutation CounterPulseCreateAdvancedAppDiscount($automaticAppDiscount: DiscountAutomaticAppInput!) {
+    mutation PromoPulseCreateAdvancedAppDiscount($automaticAppDiscount: DiscountAutomaticAppInput!) {
       discountAutomaticAppCreate(automaticAppDiscount: $automaticAppDiscount) {
         automaticAppDiscount {
           discountId
@@ -453,7 +453,7 @@ async function updateRemoteAutomaticAppDiscount(
   }>(
     admin,
     `#graphql
-    mutation CounterPulseUpdateAdvancedAppDiscount($id: ID!, $automaticAppDiscount: DiscountAutomaticAppInput!) {
+    mutation PromoPulseUpdateAdvancedAppDiscount($id: ID!, $automaticAppDiscount: DiscountAutomaticAppInput!) {
       discountAutomaticAppUpdate(id: $id, automaticAppDiscount: $automaticAppDiscount) {
         automaticAppDiscount {
           discountId
@@ -489,7 +489,7 @@ async function deleteRemoteAutomaticDiscount(
   }>(
     admin,
     `#graphql
-    mutation CounterPulseDeleteAdvancedAppDiscount($id: ID!) {
+    mutation PromoPulseDeleteAdvancedAppDiscount($id: ID!) {
       discountAutomaticDelete(id: $id) {
         deletedAutomaticDiscountId
         userErrors {

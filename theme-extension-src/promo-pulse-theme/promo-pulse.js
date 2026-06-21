@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var root = document.getElementById("counterpulse-app-embed");
+  var root = document.getElementById("promo-pulse-app-embed");
   if (!root) return;
 
   var config = {
@@ -154,8 +154,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -171,11 +171,11 @@
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {
-    var value = (window.CounterPulseApiBaseUrl || apiBaseUrl || "")
+    var value = (window.PromoPulseApiBaseUrl || apiBaseUrl || "")
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -183,16 +183,16 @@
 
   function renderInlineSnippets() {
     [].slice
-      .call(document.querySelectorAll("[data-counterpulse-campaign-id]"))
+      .call(document.querySelectorAll("[data-promo-pulse-campaign-id]"))
       .forEach(function (slot, index) {
-        var campaignId = slot.dataset.counterpulseCampaignId || "";
+        var campaignId = slot.dataset.promoPulseCampaignId || "";
 
-        if (!campaignId || slot.dataset.counterpulseRenderStarted === "true") {
+        if (!campaignId || slot.dataset.promoPulseRenderStarted === "true") {
           return;
         }
 
-        slot.dataset.counterpulseRenderStarted = "true";
-        slot.dataset.counterpulseSlotIndex = String(index);
+        slot.dataset.promoPulseRenderStarted = "true";
+        slot.dataset.promoPulseSlotIndex = String(index);
 
         fetchCampaigns("CUSTOM_SELECTOR", campaignId).then(
           function (campaigns) {
@@ -221,7 +221,7 @@
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) return;
     var renderKey =
       (targetContainer
-        ? "snippet:" + targetContainer.dataset.counterpulseSlotIndex
+        ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
         : campaign.placement) +
       ":" +
       campaign.id;
@@ -274,10 +274,10 @@
       !timerState.isExpired &&
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
-      typeof window.CounterPulseCouponButton === "function"
+      typeof window.PromoPulseCouponButton === "function"
     ) {
       bar.appendChild(
-        window.CounterPulseCouponButton(
+        window.PromoPulseCouponButton(
           campaign.discount.discountCode,
           campaign,
         ),
@@ -305,8 +305,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -545,7 +545,7 @@
     cta.setAttribute("aria-label", text);
     cta.addEventListener("click", function () {
       document.dispatchEvent(
-        new CustomEvent("counterpulse:click", {
+        new CustomEvent("promo-pulse:click", {
           detail: {
             campaignId: campaign.id,
             experimentId:
@@ -687,7 +687,7 @@
     var timer = campaign.timer || {};
     var durationMinutes = Number(timer.durationMinutes);
     var storage = getEvergreenStorage(timer.resetBehavior);
-    var key = "counterpulse_deadline_" + campaign.id;
+    var key = "promo_pulse_deadline_" + campaign.id;
     var stored = readStorage(storage, key);
     var startedAt = parseDate(stored && stored.startedAt);
     var endsAt = parseDate(stored && stored.endsAt);
@@ -1139,7 +1139,7 @@
 
   function emitImpression(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -1196,7 +1196,7 @@
   function detectCurrency(element) {
     return (
       element.dataset.cartCurrency ||
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -1211,8 +1211,8 @@
   }
 
   function detectCartSubtotal() {
-    return typeof window.CounterPulseCartSubtotal === "number"
-      ? window.CounterPulseCartSubtotal
+    return typeof window.PromoPulseCartSubtotal === "number"
+      ? window.PromoPulseCartSubtotal
       : null;
   }
 
@@ -1302,7 +1302,7 @@
   function applyStorefrontSettings(settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debugMode = settings.enableDebugMode === true || config.debugMode;
 
     if (settings.defaultLocale && !config.locale) {

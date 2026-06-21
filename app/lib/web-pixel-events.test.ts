@@ -7,7 +7,7 @@ describe("web pixel analytics mapper", () => {
   it("maps product_viewed to PRODUCT_VIEWED with campaign attribution", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
-        shop: "counterpulse-demo.myshopify.com",
+        shop: "promo-pulse-demo.myshopify.com",
         eventName: "product_viewed",
         visitorId: "visitor-1",
         sessionId: "session-1",
@@ -28,7 +28,7 @@ describe("web pixel analytics mapper", () => {
   it("maps product_added_to_cart to ADD_TO_CART with campaign attribution", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
-        shop: "https://CounterPulse-Demo.myshopify.com",
+        shop: "https://PromoPulse-Demo.myshopify.com",
         eventName: "product_added_to_cart",
         visitorId: "visitor-1",
         sessionId: "session-1",
@@ -43,7 +43,7 @@ describe("web pixel analytics mapper", () => {
     ).toEqual({
       ok: true,
       payload: expect.objectContaining({
-        shop: "counterpulse-demo.myshopify.com",
+        shop: "promo-pulse-demo.myshopify.com",
         campaignId: "campaign-1",
         experimentId: "experiment-1",
         variantId: "variant-1",
@@ -60,7 +60,7 @@ describe("web pixel analytics mapper", () => {
   it("maps checkout_started to CHECKOUT_STARTED", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
-        shop: "counterpulse-demo.myshopify.com",
+        shop: "promo-pulse-demo.myshopify.com",
         eventName: "checkout_started",
         sessionId: "session-1",
         lastSeenCampaignId: "campaign-1",
@@ -77,7 +77,7 @@ describe("web pixel analytics mapper", () => {
   it("maps checkout_completed to ORDER_ATTRIBUTED with safe revenue fields", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
-        shop: "counterpulse-demo.myshopify.com",
+        shop: "promo-pulse-demo.myshopify.com",
         eventName: "checkout_completed",
         sessionId: "session-1",
         lastSeenCampaignId: "campaign-1",
@@ -99,7 +99,7 @@ describe("web pixel analytics mapper", () => {
   it("does not map campaign metrics without a recently seen campaign", () => {
     expect(
       mapWebPixelEventToAnalyticsPayload({
-        shop: "counterpulse-demo.myshopify.com",
+        shop: "promo-pulse-demo.myshopify.com",
         eventName: "product_added_to_cart",
         sessionId: "session-1",
       }),

@@ -65,7 +65,7 @@ REAL_E2E_CLEANUP=false
 REAL_E2E_HEADLESS=true
 REAL_E2E_DEBUG=false
 REAL_E2E_LOCAL_THEME_ASSET_FALLBACK=false
-REAL_E2E_THEME_ASSETS_DIR=extensions/counterpulse-theme/assets
+REAL_E2E_THEME_ASSETS_DIR=extensions/promo-pulse-theme/assets
 PROMOPULSE_REAL_E2E_PLAN=PRO
 REAL_E2E_TIMEOUT_MS=90000
 ```
@@ -107,7 +107,7 @@ Chrome window you launch manually:
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
   --remote-debugging-port=9222 \
-  --user-data-dir="$HOME/.countpulse-real-e2e-chrome"
+  --user-data-dir="$HOME/.promo-pulse-real-e2e-chrome"
 ```
 
 Then run:

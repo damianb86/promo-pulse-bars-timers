@@ -37,7 +37,7 @@ if (
 }
 
 const redirectUrl = `${applicationUrl}/auth/callback`;
-const appProxyUrl = `${applicationUrl}/apps/counterpulse-campaigns`;
+const appProxyUrl = `${applicationUrl}/apps/promo-pulse`;
 const next = updateSectionKey(
   updateSectionKey(
     updateTopLevelKey(source, "application_url", applicationUrl),

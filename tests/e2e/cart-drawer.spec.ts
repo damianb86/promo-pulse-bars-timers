@@ -16,7 +16,7 @@ test("cart drawer support inserts one widget without duplicates", async ({
     const url = new URL(request.url());
 
     if (
-      url.pathname === "/apps/counterpulse-campaigns" &&
+      url.pathname === "/apps/promo-pulse" &&
       url.searchParams.get("placement") === "CART_DRAWER"
     ) {
       drawerAppProxyRequests += 1;
@@ -56,7 +56,7 @@ test("cart drawer pauses retries when Shopify returns password HTML", async ({
 }) => {
   let appProxyRequests = 0;
 
-  await page.route("**/apps/counterpulse-campaigns**", async (route) => {
+  await page.route("**/apps/promo-pulse**", async (route) => {
     appProxyRequests += 1;
     await route.fulfill({
       body: "<html>Password</html>",
@@ -74,9 +74,9 @@ test("cart drawer pauses retries when Shopify returns password HTML", async ({
     () =>
       (
         window as Window & {
-          __counterpulseFetchCounts?: { cart?: number };
+          __promoPulseFetchCounts?: { cart?: number };
         }
-      ).__counterpulseFetchCounts?.cart ?? 0,
+      ).__promoPulseFetchCounts?.cart ?? 0,
   );
 
   expect(appProxyRequests).toBeLessThanOrEqual(5);

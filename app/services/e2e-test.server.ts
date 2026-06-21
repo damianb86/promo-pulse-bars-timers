@@ -35,7 +35,7 @@ import prisma from "../db.server";
 import { publishCampaignForShop } from "../models/campaign.server";
 
 export const E2E_DEMO_SHOP_DOMAIN = "demo-shop.myshopify.com";
-export const E2E_AUTH_COOKIE = "counterpulse_e2e_shop";
+export const E2E_AUTH_COOKIE = "promo_pulse_e2e_shop";
 
 export type E2ETestScenario =
   | "empty"

@@ -1,7 +1,7 @@
 export const POST_PURCHASE_CAMPAIGN_PATH = "/api/post-purchase/campaign";
 export const APP_PROXY_POST_PURCHASE_CAMPAIGN_PATH =
-  "/apps/counterpulse-campaigns/api/post-purchase/campaign";
-export const APP_PROXY_ANALYTICS_PATH = "/apps/counterpulse-campaigns";
+  "/apps/promo-pulse/api/post-purchase/campaign";
+export const APP_PROXY_ANALYTICS_PATH = "/apps/promo-pulse";
 
 export function normalizePostPurchaseSettings(settings = {}) {
   const mode =

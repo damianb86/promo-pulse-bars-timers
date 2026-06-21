@@ -38,8 +38,6 @@ Local and E2E environments may override `Shop.plan` with:
 
 ```bash
 PROMO_PULSE_DEV_PLAN=AGENCY
-PROMOPILOT_DEV_PLAN=AGENCY
-COUNTERPULSE_DEV_PLAN=AGENCY
 ```
 
 When no override is provided, `NODE_ENV=development` defaults to the `AGENCY`

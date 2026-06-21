@@ -10,14 +10,14 @@ Promo Pulse uses two storefront signals for Etapa 1 analytics:
 The storefront helper stores a session id in browser storage using:
 
 ```text
-counterpulse_session_id
+promo_pulse_session_id
 ```
 
 When a campaign is rendered, clicked, or copied, it also stores a short
 attribution record:
 
 ```text
-counterpulse_last_seen_campaign
+promo_pulse_last_seen_campaign
 ```
 
 The value contains only:

@@ -85,7 +85,7 @@ const DISCOUNT_FIELDS = `#graphql
 `;
 
 const DISCOUNT_CODE_NODE_FRAGMENT = `#graphql
-  fragment CounterPulseCodeDiscountFields on DiscountCodeNode {
+  fragment PromoPulseCodeDiscountFields on DiscountCodeNode {
     id
     codeDiscount {
 ${DISCOUNT_FIELDS}
@@ -94,7 +94,7 @@ ${DISCOUNT_FIELDS}
 `;
 
 const DISCOUNT_NODE_FRAGMENT = `#graphql
-  fragment CounterPulseDiscountNodeFields on DiscountNode {
+  fragment PromoPulseDiscountNodeFields on DiscountNode {
     id
     discount {
 ${DISCOUNT_FIELDS}
@@ -113,10 +113,10 @@ export async function listCodeDiscounts(
   }>(
     admin,
     `${DISCOUNT_NODE_FRAGMENT}
-    query CounterPulseListCodeDiscounts($first: Int!, $query: String) {
+    query PromoPulseListCodeDiscounts($first: Int!, $query: String) {
       discountNodes(first: $first, query: $query) {
         nodes {
-          ...CounterPulseDiscountNodeFields
+          ...PromoPulseDiscountNodeFields
         }
       }
     }`,
@@ -148,13 +148,13 @@ export async function getDiscountByCodeOrId(
       admin,
       `${DISCOUNT_CODE_NODE_FRAGMENT}
       ${DISCOUNT_NODE_FRAGMENT}
-      query CounterPulseDiscountById($id: ID!) {
+      query PromoPulseDiscountById($id: ID!) {
         node(id: $id) {
           ... on DiscountCodeNode {
-            ...CounterPulseCodeDiscountFields
+            ...PromoPulseCodeDiscountFields
           }
           ... on DiscountNode {
-            ...CounterPulseDiscountNodeFields
+            ...PromoPulseDiscountNodeFields
           }
         }
       }`,
@@ -169,9 +169,9 @@ export async function getDiscountByCodeOrId(
   }>(
     admin,
     `${DISCOUNT_CODE_NODE_FRAGMENT}
-    query CounterPulseDiscountByCode($code: String!) {
+    query PromoPulseDiscountByCode($code: String!) {
       codeDiscountNodeByCode(code: $code) {
-        ...CounterPulseCodeDiscountFields
+        ...PromoPulseCodeDiscountFields
       }
     }`,
     { code: value },
@@ -198,10 +198,10 @@ export async function createBasicCodeDiscount(
   }>(
     admin,
     `${DISCOUNT_CODE_NODE_FRAGMENT}
-    mutation CounterPulseCreateBasicDiscount($input: DiscountCodeBasicInput!) {
+    mutation PromoPulseCreateBasicDiscount($input: DiscountCodeBasicInput!) {
       discountCodeBasicCreate(basicCodeDiscount: $input) {
         codeDiscountNode {
-          ...CounterPulseCodeDiscountFields
+          ...PromoPulseCodeDiscountFields
         }
         userErrors {
           field
@@ -255,10 +255,10 @@ export async function createFreeShippingCodeDiscount(
   }>(
     admin,
     `${DISCOUNT_CODE_NODE_FRAGMENT}
-    mutation CounterPulseCreateFreeShippingDiscount($input: DiscountCodeFreeShippingInput!) {
+    mutation PromoPulseCreateFreeShippingDiscount($input: DiscountCodeFreeShippingInput!) {
       discountCodeFreeShippingCreate(freeShippingCodeDiscount: $input) {
         codeDiscountNode {
-          ...CounterPulseCodeDiscountFields
+          ...PromoPulseCodeDiscountFields
         }
         userErrors {
           field
@@ -291,7 +291,7 @@ export async function deactivateCodeDiscount(
   }>(
     admin,
     `#graphql
-    mutation CounterPulseDeactivateCodeDiscount($id: ID!) {
+    mutation PromoPulseDeactivateCodeDiscount($id: ID!) {
       discountCodeDeactivate(id: $id) {
         codeDiscountNode {
           id

@@ -8,7 +8,7 @@
     data-product-tags="{{ product.tags | join: ',' | escape }}"
     data-selected-variant-id="{{ product.selected_or_first_available_variant.id }}"
     data-inventory-quantity="{{ product.selected_or_first_available_variant.inventory_quantity }}"
-    data-variants-script-id="counterpulse-variants-{{ block.id }}"
+    data-variants-script-id="promo-pulse-variants-{{ block.id }}"
     data-campaign-id="{{ block.settings.campaignId | escape }}"
     data-fallback-mode="{{ block.settings.fallbackMode | escape }}"
     data-alignment="{{ block.settings.alignment | escape }}"
@@ -19,7 +19,7 @@
     data-debug-block="Promo Pulse product timer"
     {{ block.shopify_attributes }}
   ></div>
-  <script id="counterpulse-variants-{{ block.id }}" type="application/json">
+  <script id="promo-pulse-variants-{{ block.id }}" type="application/json">
     [
       {%- for variant in product.variants -%}
         {
@@ -40,7 +40,7 @@
 {
   "name": "Promo Pulse product timer",
   "target": "section",
-  "stylesheet": "promo-pilot.css",
+  "stylesheet": "promo-pulse.css",
   "javascript": "product-timer.js",
   "templates": ["product"],
   "settings": [

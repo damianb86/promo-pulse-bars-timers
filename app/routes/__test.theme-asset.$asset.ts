@@ -12,8 +12,8 @@ const allowedAssets = new Set([
   "low-stock.js",
   "product-badge.js",
   "product-timer.js",
-  "promo-pilot.css",
-  "promo-pilot.js",
+  "promo-pulse.css",
+  "promo-pulse.js",
 ]);
 
 export const loader = async ({ params }: LoaderFunctionArgs) => {
@@ -27,7 +27,7 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
 
   const filePath = path.join(
     process.cwd(),
-    "extensions/counterpulse-theme/assets",
+    "extensions/promo-pulse-theme/assets",
     asset,
   );
   const body = await readFile(filePath);

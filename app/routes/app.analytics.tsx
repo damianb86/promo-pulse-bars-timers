@@ -20,7 +20,7 @@ import { getShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
 import { getLockedFeatureReason } from "../services/planLimits.server";
 
-const demoShopDomain = "counterpulse-demo.myshopify.com";
+const demoShopDomain = "promo-pulse-demo.myshopify.com";
 
 type LoaderData = {
   summary: AnalyticsSummary;

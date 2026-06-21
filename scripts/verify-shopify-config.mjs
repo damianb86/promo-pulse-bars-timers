@@ -17,7 +17,7 @@ const expectedRedirectUrl = applicationUrl
   ? `${applicationUrl.replace(/\/+$/, "")}/auth/callback`
   : "";
 const expectedAppProxyUrl = applicationUrl
-  ? `${applicationUrl.replace(/\/+$/, "")}/apps/counterpulse-campaigns`
+  ? `${applicationUrl.replace(/\/+$/, "")}/apps/promo-pulse`
   : "";
 const errors = [];
 const warnings = [];
@@ -48,7 +48,7 @@ if (redirectUrls.length === 0) {
 
 if (!appProxyUrl || !appProxySubpath || !appProxyPrefix) {
   errors.push(
-    "shopify.app.toml is missing [app_proxy] url, subpath, or prefix. Storefront calls to /apps/counterpulse-campaigns will redirect to storefront pages instead of the app.",
+    "shopify.app.toml is missing [app_proxy] url, subpath, or prefix. Storefront calls to /apps/promo-pulse will redirect to storefront pages instead of the app.",
   );
 }
 
@@ -74,9 +74,9 @@ if (
   errors.push("app_proxy.prefix must be one of: a, apps, community, tools.");
 }
 
-if (appProxySubpath && appProxySubpath !== "counterpulse-campaigns") {
+if (appProxySubpath && appProxySubpath !== "promo-pulse") {
   warnings.push(
-    `app_proxy.subpath is ${appProxySubpath}; storefront assets currently request /apps/counterpulse-campaigns.`,
+    `app_proxy.subpath is ${appProxySubpath}; storefront assets currently request /apps/promo-pulse.`,
   );
 }
 

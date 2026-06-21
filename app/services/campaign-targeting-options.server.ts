@@ -37,7 +37,7 @@ export async function loadCampaignTargetingOptions(
 
   const response = await admin.graphql(
     `#graphql
-      query CounterPulseCampaignTargetingOptions($tagsFirst: Int!, $marketsFirst: Int!) {
+      query PromoPulseCampaignTargetingOptions($tagsFirst: Int!, $marketsFirst: Int!) {
         productTags(first: $tagsFirst) {
           edges {
             node

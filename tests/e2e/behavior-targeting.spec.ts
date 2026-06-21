@@ -12,11 +12,11 @@ test("behavior targeting hides a new-visitor campaign after the first touch", as
   await resetDb("behavior-targeting");
   await page.addInitScript(() => {
     window.localStorage.setItem(
-      "counterpulse_visitor_id",
+      "promo_pulse_visitor_id",
       "cpv_e2e_behavior",
     );
     window.sessionStorage.setItem(
-      "counterpulse_session_id",
+      "promo_pulse_session_id",
       "cps_e2e_behavior",
     );
   });

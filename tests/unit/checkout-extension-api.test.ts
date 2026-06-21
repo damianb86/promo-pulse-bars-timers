@@ -22,7 +22,7 @@ describe("checkout extension API helpers", () => {
 
     expect(request.requiresSessionToken).toBe(false);
     expect(request.url).toContain(
-      "https://demo-shop.myshopify.com/apps/counterpulse-campaigns/api/checkout/campaign?",
+      "https://demo-shop.myshopify.com/apps/promo-pulse/api/checkout/campaign?",
     );
     expect(request.url).toContain("mode=AUTO_ELIGIBLE");
     expect(request.url).toContain("compactMode=true");

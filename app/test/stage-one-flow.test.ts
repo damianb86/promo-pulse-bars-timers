@@ -110,8 +110,6 @@ function createActionArgs(request: Request): ActionFunctionArgs {
 describe("Promo Pulse Stage 1 critical flow", () => {
   beforeEach(() => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
     vi.clearAllMocks();
 
     prismaMock.shop.findUnique.mockResolvedValue({

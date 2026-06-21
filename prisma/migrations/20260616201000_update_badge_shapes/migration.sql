@@ -1,5 +1,5 @@
 -- SQLite stores Prisma enum values as text. Normalize earlier prototype values
--- to the Etapa 1 badge shapes used by CounterPulse.
+-- to the Etapa 1 badge shapes used by PromoPulse.
 UPDATE "BadgeSettings"
 SET "badgeShape" = 'ROUNDED'
 WHERE "badgeShape" = 'RECTANGLE';

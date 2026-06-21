@@ -32,7 +32,7 @@ export function buildE2EStorefrontHtml(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>${title}</title>
-    <link rel="stylesheet" href="/__test/theme-asset/promo-pilot.css" />
+    <link rel="stylesheet" href="/__test/theme-asset/promo-pulse.css" />
     <style>
       body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #202223; }
       main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
@@ -50,23 +50,23 @@ export function buildE2EStorefrontHtml(
         currency: { active: "${escapeJs(currency)}" },
         customerPrivacy: { analyticsProcessingAllowed: function () { return ${consentAllowed ? "true" : "false"}; } }
       };
-      window.CounterPulseAnalyticsEndpoint = "/api/analytics/event";
-      window.CounterPulseCartSubtotal = ${subtotalCents / 100};
-      window.CounterPulseCartCurrency = "${escapeJs(currency)}";
+      window.PromoPulseAnalyticsEndpoint = "/api/analytics/event";
+      window.PromoPulseCartSubtotal = ${subtotalCents / 100};
+      window.PromoPulseCartCurrency = "${escapeJs(currency)}";
       try {
         ${
           visitorId
-            ? `window.localStorage.setItem("counterpulse_visitor_id", "${escapeJs(visitorId)}");`
+            ? `window.localStorage.setItem("promo_pulse_visitor_id", "${escapeJs(visitorId)}");`
             : ""
         }
         ${
           sessionId
-            ? `window.sessionStorage.setItem("counterpulse_session_id", "${escapeJs(sessionId)}");`
+            ? `window.sessionStorage.setItem("promo_pulse_session_id", "${escapeJs(sessionId)}");`
             : ""
         }
       } catch {}
-      window.__counterpulseFetchCounts = { cart: 0 };
-      window.__counterpulseCart = {
+      window.__promoPulseFetchCounts = { cart: 0 };
+      window.__promoPulseCart = {
         token: "e2e-cart-token",
         total_price: ${subtotalCents},
         currency: "${escapeJs(currency)}",
@@ -78,7 +78,7 @@ export function buildE2EStorefrontHtml(
           var rawUrl = typeof input === "string" ? input : input && input.url;
           var target = new URL(rawUrl || "", window.location.href);
           if (target.pathname === "/cart.js") {
-            window.__counterpulseFetchCounts.cart += 1;
+            window.__promoPulseFetchCounts.cart += 1;
             ${
               badCart
                 ? `return Promise.resolve(new Response("<html>Password</html>", {
@@ -87,7 +87,7 @@ export function buildE2EStorefrontHtml(
             }));`
                 : ""
             }
-            return Promise.resolve(new Response(JSON.stringify(window.__counterpulseCart), {
+            return Promise.resolve(new Response(JSON.stringify(window.__promoPulseCart), {
               status: 200,
               headers: { "Content-Type": "application/json" }
             }));
@@ -119,7 +119,7 @@ function embedRoot({
   subtotalCents: number;
 }) {
   return `<div
-    id="counterpulse-app-embed"
+    id="promo-pulse-app-embed"
     class="pp-root"
     data-shop="${E2E_DEMO_SHOP_DOMAIN}"
     data-default-locale="en"
@@ -136,7 +136,7 @@ function embedRoot({
   >
     <aside class="pp-debug" role="status" aria-live="polite">
       <p data-pp-debug-status>Debug fixture mounted.</p>
-      <code data-pp-debug-url>/apps/counterpulse-campaigns</code>
+      <code data-pp-debug-url>/apps/promo-pulse</code>
     </aside>
   </div>`;
 }
@@ -206,9 +206,9 @@ function bodyForKind(
         drawer.dataset.open = drawer.dataset.open === "true" ? "false" : "true";
         document.dispatchEvent(new Event("cart:updated"));
       });
-      window.__setCounterPulseSubtotal = function (amount) {
-        window.CounterPulseCartSubtotal = amount;
-        window.__counterpulseCart.total_price = Math.round(amount * 100);
+      window.__setPromoPulseSubtotal = function (amount) {
+        window.PromoPulseCartSubtotal = amount;
+        window.__promoPulseCart.total_price = Math.round(amount * 100);
         document.getElementById("e2e-subtotal").textContent = "$" + amount.toFixed(2);
         document.dispatchEvent(new Event("cart:updated"));
       };
@@ -242,7 +242,7 @@ function scriptsForKind(kind: StorefrontPageKind) {
     <script src="/__test/theme-asset/free-shipping.js" defer></script>
     <script src="/__test/theme-asset/delivery-cutoff.js" defer></script>
     <script src="/__test/theme-asset/cart-timer.js" defer></script>
-    <script src="/__test/theme-asset/promo-pilot.js" defer></script>`;
+    <script src="/__test/theme-asset/promo-pulse.js" defer></script>`;
 }
 
 function escapeHtml(value: string) {

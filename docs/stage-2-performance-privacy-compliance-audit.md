@@ -35,7 +35,7 @@ Audited Stage 2 storefront and attribution surfaces:
 ## Privacy Findings
 
 - Promo Pulse stores opaque anonymous IDs only:
-  `counterpulse_visitor_id`, `counterpulse_session_id`, and last-touch campaign
+  `promo_pulse_visitor_id`, `promo_pulse_session_id`, and last-touch campaign
   metadata. It does not store names, email, phone, address, IP address, or
   Shopify customer IDs in browser storage.
 - Analytics events are blocked when merchant settings disable analytics, when

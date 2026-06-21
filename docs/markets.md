@@ -14,7 +14,7 @@ El endpoint storefront `GET /api/storefront/campaigns` acepta:
 - `cartSubtotal`: subtotal real cuando el bloque lo puede obtener.
 
 Los assets del Theme App Extension intentan leer estos valores desde datasets
-del bloque, `window.Shopify`, `window.CounterPulseCartCurrency` y settings
+del bloque, `window.Shopify`, `window.PromoPulseCartCurrency` y settings
 publicos. Si no estan disponibles, no se envian y el backend usa la campaña
 global.
 

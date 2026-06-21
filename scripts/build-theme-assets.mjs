@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { transformWithEsbuild } from "vite";
 
 const assets = [
-  "promo-pilot",
+  "promo-pulse",
   "product-timer",
   "cart-timer",
   "free-shipping",
@@ -15,7 +15,7 @@ const assets = [
 
 for (const name of assets) {
   const source = await readFile(
-    `theme-extension-src/counterpulse-theme/${name}.js`,
+    `theme-extension-src/promo-pulse-theme/${name}.js`,
     "utf8",
   );
   const result = await transformWithEsbuild(source, `${name}.js`, {
@@ -25,7 +25,7 @@ for (const name of assets) {
   });
 
   await writeFile(
-    `extensions/counterpulse-theme/assets/${name}.js`,
-    `${result.code}\n`,
+    `extensions/promo-pulse-theme/assets/${name}.js`,
+    `${result.code.trimEnd()}\n`,
   );
 }

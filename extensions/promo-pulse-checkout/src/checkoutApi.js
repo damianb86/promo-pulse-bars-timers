@@ -1,6 +1,6 @@
 export const CHECKOUT_CAMPAIGN_PATH = "/api/checkout/campaign";
 export const APP_PROXY_CHECKOUT_CAMPAIGN_PATH =
-  "/apps/counterpulse-campaigns/api/checkout/campaign";
+  "/apps/promo-pulse/api/checkout/campaign";
 
 export function normalizeBlockSettings(settings = {}) {
   const mode =

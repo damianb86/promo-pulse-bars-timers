@@ -98,7 +98,7 @@ export function getConfig(): RealE2EConfig {
     ),
     themeAssetsDir: readEnv(
       "REAL_E2E_THEME_ASSETS_DIR",
-      "extensions/counterpulse-theme/assets",
+      "extensions/promo-pulse-theme/assets",
     ),
     themeName: readEnv("REAL_E2E_THEME_NAME"),
     timeoutMs: readNumberEnv("REAL_E2E_TIMEOUT_MS", 90_000),

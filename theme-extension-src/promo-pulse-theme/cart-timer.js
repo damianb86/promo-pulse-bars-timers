@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  if (window.CounterPulseCartTimer && window.CounterPulseCartTimer.init) {
-    window.CounterPulseCartTimer.init();
+  if (window.PromoPulseCartTimer && window.PromoPulseCartTimer.init) {
+    window.PromoPulseCartTimer.init();
     return;
   }
 
@@ -21,7 +21,7 @@
   var proxyPauseMs = 60000;
   var cartPauseMs = 30000;
 
-  window.CounterPulseCartTimer = { init: init };
+  window.PromoPulseCartTimer = { init: init };
 
   init();
   document.addEventListener("shopify:section:load", init);
@@ -83,7 +83,7 @@
     drawerObserverStarted = true;
     scheduleDrawerRender();
     updateDebug(
-      document.getElementById("counterpulse-app-embed"),
+      document.getElementById("promo-pulse-app-embed"),
       "Soporte CART_DRAWER activo. Observando apertura/cambios del drawer.",
     );
 
@@ -110,7 +110,7 @@
   }
 
   function renderDrawerCampaign(force) {
-    var embed = document.getElementById("counterpulse-app-embed");
+    var embed = document.getElementById("promo-pulse-app-embed");
     var config;
     var now = Date.now();
 
@@ -196,7 +196,7 @@
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
   }
 
@@ -220,14 +220,14 @@
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
       apiBaseUrl:
-        root.dataset.apiBaseUrl || window.CounterPulseApiBaseUrl || "",
+        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
   }
 
   function fetchCampaigns(config, debugRoot) {
     var url = buildCampaignUrl(config);
 
-    if (isPaused("CounterPulseProxyPausedUntil")) {
+    if (isPaused("PromoPulseProxyPausedUntil")) {
       updateDebug(
         debugRoot,
         "App Proxy pausado temporalmente porque Shopify devolvio password/HTML en una llamada anterior.",
@@ -279,8 +279,8 @@
   }
 
   function applyExperiment(campaign) {
-    if (window.CounterPulseApplyExperiment) {
-      return window.CounterPulseApplyExperiment(campaign);
+    if (window.PromoPulseApplyExperiment) {
+      return window.PromoPulseApplyExperiment(campaign);
     }
 
     return campaign;
@@ -297,7 +297,7 @@
       response.url.indexOf("/password") !== -1 ||
       contentType.indexOf("application/json") === -1
     ) {
-      pauseRequests("CounterPulseProxyPausedUntil", proxyPauseMs);
+      pauseRequests("PromoPulseProxyPausedUntil", proxyPauseMs);
       throw new Error(
         "Expected JSON from app proxy but received " +
           (contentType || "unknown content-type") +
@@ -334,8 +334,8 @@
 
   function appendBehaviorTargetingParams(params) {
     var tracking =
-      typeof window.CounterPulseGetVisitorSessionTracking === "function"
-        ? window.CounterPulseGetVisitorSessionTracking()
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
         : null;
 
     if (!tracking) return;
@@ -355,7 +355,7 @@
       .trim()
       .replace(/\/+$/, "");
 
-    if (!/^https?:\/\//i.test(value)) return "/apps/counterpulse-campaigns";
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
     if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
 
     return value + "/api/storefront/campaigns";
@@ -475,7 +475,7 @@
     if (!element || !element.closest) return true;
 
     return !!element.closest(
-      "#counterpulse-app-embed, .pp-debug, #counterpulse-cart-drawer-slot, .pp-cart-drawer-slot, .pp-container, .pp-cart-card",
+      "#promo-pulse-app-embed, .pp-debug, #promo-pulse-cart-drawer-slot, .pp-cart-drawer-slot, .pp-container, .pp-cart-card",
     );
   }
 
@@ -633,7 +633,7 @@
         : "localStorage",
     );
     var token = config.cartToken || "session";
-    var key = "counterpulse_cart_deadline_" + campaign.id + "_" + token;
+    var key = "promo_pulse_cart_deadline_" + campaign.id + "_" + token;
     var stored = readStorage(storage, key);
     var startedAt = parseDate(stored && stored.startedAt);
     var endsAt = parseDate(stored && stored.endsAt);
@@ -698,12 +698,12 @@
   }
 
   function ensureDrawerSlot(target) {
-    var existing = document.getElementById("counterpulse-cart-drawer-slot");
+    var existing = document.getElementById("promo-pulse-cart-drawer-slot");
     var slot = existing || document.createElement("div");
 
     if (existing && existing.parentElement !== target) existing.remove();
 
-    slot.id = "counterpulse-cart-drawer-slot";
+    slot.id = "promo-pulse-cart-drawer-slot";
     slot.className = "pp-cart-drawer-slot";
     slot.dataset.testid = "cart-drawer-widget";
 
@@ -715,10 +715,10 @@
   }
 
   function readAjaxCartState() {
-    if (isPaused("CounterPulseCartPausedUntil")) {
+    if (isPaused("PromoPulseCartPausedUntil")) {
       return Promise.resolve({
         subtotal: detectWindowCartSubtotal(),
-        currency: window.CounterPulseCartCurrency || "",
+        currency: window.PromoPulseCartCurrency || "",
         token: "",
       });
     }
@@ -746,7 +746,7 @@
       .catch(function () {
         return {
           subtotal: detectWindowCartSubtotal(),
-          currency: window.CounterPulseCartCurrency || "",
+          currency: window.PromoPulseCartCurrency || "",
           token: "",
         };
       });
@@ -760,7 +760,7 @@
       response.url.indexOf("/password") !== -1 ||
       contentType.indexOf("application/json") === -1
     ) {
-      pauseRequests("CounterPulseCartPausedUntil", cartPauseMs);
+      pauseRequests("PromoPulseCartPausedUntil", cartPauseMs);
       throw new Error(
         "Expected JSON from /cart.js but received storefront HTML.",
       );
@@ -897,7 +897,7 @@
 
   function detectCurrency() {
     return (
-      window.CounterPulseCartCurrency ||
+      window.PromoPulseCartCurrency ||
       (window.Shopify &&
         window.Shopify.currency &&
         window.Shopify.currency.active) ||
@@ -912,8 +912,8 @@
   }
 
   function detectWindowCartSubtotal() {
-    return typeof window.CounterPulseCartSubtotal === "number"
-      ? window.CounterPulseCartSubtotal
+    return typeof window.PromoPulseCartSubtotal === "number"
+      ? window.PromoPulseCartSubtotal
       : null;
   }
 
@@ -993,7 +993,7 @@
 
   function emitImpression(campaign) {
     document.dispatchEvent(
-      new CustomEvent("counterpulse:impression", {
+      new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
           experimentId:
@@ -1207,7 +1207,7 @@
   function applyStorefrontSettings(config, settings) {
     if (!settings || typeof settings !== "object") return;
 
-    window.CounterPulseSettings = settings;
+    window.PromoPulseSettings = settings;
     config.debugMode = settings.enableDebugMode === true || config.debugMode;
     config.customCartDrawerSelector =
       settings.customCartDrawerSelector || config.customCartDrawerSelector;

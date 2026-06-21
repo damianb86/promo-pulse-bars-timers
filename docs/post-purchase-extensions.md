@@ -28,7 +28,7 @@ El plan minimo es `PRO`; `PREMIUM` y `AGENCY` tambien quedan incluidos.
 Los bloques consumen:
 
 - Directo: `/api/post-purchase/campaign`
-- App Proxy: `/apps/counterpulse-campaigns/api/post-purchase/campaign`
+- App Proxy: `/apps/promo-pulse/api/post-purchase/campaign`
 
 Parametros principales:
 

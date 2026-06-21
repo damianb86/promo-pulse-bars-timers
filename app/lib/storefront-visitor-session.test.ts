@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const sourcePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../theme-extension-src/counterpulse-theme/discount-code.js",
+  "../../theme-extension-src/promo-pulse-theme/discount-code.js",
 );
 const source = readFileSync(sourcePath, "utf8");
 
@@ -24,23 +24,23 @@ describe("storefront visitor and session tracking", () => {
 
     expect(secondPayload.visitorId).toBe(firstPayload.visitorId);
     expect(secondPayload.sessionId).toBe(firstPayload.sessionId);
-    expect(localStorage.data.counterpulse_visitor_id).toBe(
+    expect(localStorage.data.promo_pulse_visitor_id).toBe(
       firstPayload.visitorId,
     );
-    expect(sessionStorage.data.counterpulse_session_id).toBe(
+    expect(sessionStorage.data.promo_pulse_session_id).toBe(
       firstPayload.sessionId,
     );
-    expect(localStorage.data.counterpulse_last_seen_campaign_id).toBe(
+    expect(localStorage.data.promo_pulse_last_seen_campaign_id).toBe(
       "campaign-1",
     );
-    expect(localStorage.data.counterpulse_last_seen_experiment_id).toBe(
+    expect(localStorage.data.promo_pulse_last_seen_experiment_id).toBe(
       "experiment-1",
     );
-    expect(localStorage.data.counterpulse_last_seen_variant_id).toBe(
+    expect(localStorage.data.promo_pulse_last_seen_variant_id).toBe(
       "variant-1",
     );
     expect(
-      JSON.parse(localStorage.data.counterpulse_last_seen_campaign),
+      JSON.parse(localStorage.data.promo_pulse_last_seen_campaign),
     ).toEqual(
       expect.objectContaining({
         campaignId: "campaign-1",
@@ -104,10 +104,10 @@ describe("storefront visitor and session tracking", () => {
     trackCampaign(context, "IMPRESSION");
 
     expect(context.fetchMock).not.toHaveBeenCalled();
-    expect(localStorage.data.counterpulse_visitor_id).toBeUndefined();
-    expect(sessionStorage.data.counterpulse_session_id).toBeUndefined();
+    expect(localStorage.data.promo_pulse_visitor_id).toBeUndefined();
+    expect(sessionStorage.data.promo_pulse_session_id).toBeUndefined();
     expect(
-      localStorage.data.counterpulse_last_seen_campaign_id,
+      localStorage.data.promo_pulse_last_seen_campaign_id,
     ).toBeUndefined();
   });
 
@@ -122,11 +122,11 @@ describe("storefront visitor and session tracking", () => {
     });
     const getTracking = (
       context.context.window as {
-        CounterPulseGetVisitorSessionTracking: (options?: {
+        PromoPulseGetVisitorSessionTracking: (options?: {
           purpose?: string;
         }) => Record<string, unknown>;
       }
-    ).CounterPulseGetVisitorSessionTracking;
+    ).PromoPulseGetVisitorSessionTracking;
 
     expect(getTracking()).toMatchObject({
       visitorId: "",
@@ -149,12 +149,12 @@ describe("storefront visitor and session tracking", () => {
     });
     const copyCode = (
       loaded.context.window as {
-        CounterPulseCopyCode: (
+        PromoPulseCopyCode: (
           code: string,
           campaign: Record<string, string>,
         ) => void;
       }
-    ).CounterPulseCopyCode;
+    ).PromoPulseCopyCode;
 
     copyCode("SECRET-CODE", {
       id: "campaign-1",
@@ -168,7 +168,7 @@ describe("storefront visitor and session tracking", () => {
       type: string;
     };
 
-    expect(event.type).toBe("counterpulse:copy-code");
+    expect(event.type).toBe("promo-pulse:copy-code");
     expect(event.detail).toEqual({
       campaignId: "campaign-1",
       experimentId: "experiment-1",
@@ -207,7 +207,7 @@ function loadDiscountCodeScript({
           analyticsProcessingAllowed: vi.fn(() => analyticsProcessingAllowed),
         };
   const windowMock = {
-    CounterPulseSettings: settings,
+    PromoPulseSettings: settings,
     Shopify: { shop: "demo.myshopify.com", customerPrivacy },
     crypto: createCryptoMock(),
     doNotTrack: "0",
@@ -269,12 +269,12 @@ function trackCampaign(
 ) {
   const trackEvent = (
     loaded.context.window as {
-      CounterPulseTrackEvent: (
+      PromoPulseTrackEvent: (
         eventType: string,
         campaign: Record<string, string>,
       ) => void;
     }
-  ).CounterPulseTrackEvent;
+  ).PromoPulseTrackEvent;
 
   trackEvent(eventType, {
     id: "campaign-1",

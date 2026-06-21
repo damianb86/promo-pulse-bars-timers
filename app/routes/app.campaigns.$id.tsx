@@ -1748,7 +1748,7 @@ export default function EditCampaignPage() {
     setDraftCampaignValues(activeCampaignValues);
     setDraftDesignValues(activeDesignValues);
     setDiscardVersion((version) => version + 1);
-    window.dispatchEvent(new CustomEvent("counterpulse:campaign-discard"));
+    window.dispatchEvent(new CustomEvent("promo-pulse:campaign-discard"));
   };
 
   useEffect(() => {
@@ -1784,7 +1784,7 @@ export default function EditCampaignPage() {
         saving={isSavingDraft}
         onDiscard={discardDraft}
         onSave={() => {
-          window.dispatchEvent(new CustomEvent("counterpulse:campaign-save"));
+          window.dispatchEvent(new CustomEvent("promo-pulse:campaign-save"));
         }}
       />
       <s-page inlineSize="large" heading="Edit campaign">
@@ -1797,7 +1797,7 @@ export default function EditCampaignPage() {
             isPublishing,
             onPublish: () => {
               window.dispatchEvent(
-                new CustomEvent("counterpulse:campaign-publish"),
+                new CustomEvent("promo-pulse:campaign-publish"),
               );
             },
             placementLabel: campaignPlacementLabel,

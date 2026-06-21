@@ -30,10 +30,10 @@ describe("shopifyDiscounts service", () => {
       }),
     );
     expect(firstGraphqlQuery(admin)).toContain(
-      "fragment CounterPulseDiscountNodeFields on DiscountNode",
+      "fragment PromoPulseDiscountNodeFields on DiscountNode",
     );
     expect(firstGraphqlQuery(admin)).toContain(
-      "...CounterPulseDiscountNodeFields",
+      "...PromoPulseDiscountNodeFields",
     );
   });
 

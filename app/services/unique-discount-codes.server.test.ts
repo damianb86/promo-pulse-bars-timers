@@ -39,8 +39,6 @@ describe("unique discount codes", () => {
 
   beforeEach(() => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
     vi.clearAllMocks();
     prismaMock.discountCodeGrant.updateMany.mockResolvedValue({ count: 0 });
     prismaMock.discountCodeGrant.findFirst.mockResolvedValue(null);

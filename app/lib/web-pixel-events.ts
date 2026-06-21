@@ -12,12 +12,12 @@ export const counterPulseWebPixelEventNames = [
   "checkout_completed",
 ] as const;
 
-export type CounterPulseWebPixelEventName =
+export type PromoPulseWebPixelEventName =
   (typeof counterPulseWebPixelEventNames)[number];
 
-export type CounterPulseWebPixelPayload = {
+export type PromoPulseWebPixelPayload = {
   shop: string;
-  eventName: CounterPulseWebPixelEventName;
+  eventName: PromoPulseWebPixelEventName;
   visitorId: string | null;
   sessionId: string | null;
   lastSeenCampaignId: string | null;
@@ -70,7 +70,7 @@ export type WebPixelMappingResult =
     };
 
 const campaignMetricEventTypes: Partial<
-  Record<CounterPulseWebPixelEventName, AnalyticsEventType>
+  Record<PromoPulseWebPixelEventName, AnalyticsEventType>
 > = {
   product_viewed: AnalyticsEventType.PRODUCT_VIEWED,
   product_added_to_cart: AnalyticsEventType.ADD_TO_CART,
@@ -78,15 +78,15 @@ const campaignMetricEventTypes: Partial<
   checkout_completed: AnalyticsEventType.ORDER_ATTRIBUTED,
 };
 
-const nonCampaignMetricEvents = new Set<CounterPulseWebPixelEventName>([
+const nonCampaignMetricEvents = new Set<PromoPulseWebPixelEventName>([
   "page_viewed",
   "collection_viewed",
   "cart_viewed",
 ]);
 
-export function parseCounterPulseWebPixelPayload(
+export function parsePromoPulseWebPixelPayload(
   value: unknown,
-): CounterPulseWebPixelPayload | null {
+): PromoPulseWebPixelPayload | null {
   const input = readObject(value);
   const eventName = readWebPixelEventName(input.eventName);
   const shop = normalizeShopDomain(readText(input.shop, 255));
@@ -119,7 +119,7 @@ export function parseCounterPulseWebPixelPayload(
 export function mapWebPixelEventToAnalyticsPayload(
   value: unknown,
 ): WebPixelMappingResult {
-  const payload = parseCounterPulseWebPixelPayload(value);
+  const payload = parsePromoPulseWebPixelPayload(value);
 
   if (!payload) {
     return {
@@ -205,9 +205,9 @@ function normalizeUppercaseText(value: unknown, maxLength: number) {
 
 function readWebPixelEventName(value: unknown) {
   return counterPulseWebPixelEventNames.includes(
-    value as CounterPulseWebPixelEventName,
+    value as PromoPulseWebPixelEventName,
   )
-    ? (value as CounterPulseWebPixelEventName)
+    ? (value as PromoPulseWebPixelEventName)
     : null;
 }
 

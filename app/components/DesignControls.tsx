@@ -1311,7 +1311,7 @@ async function resolveShopifyFileWithDirectApi(
     },
     body: JSON.stringify({
       query: `#graphql
-        query CounterPulseDesignFile($id: ID!) {
+        query PromoPulseDesignFile($id: ID!) {
           node(id: $id) {
             __typename
             ... on MediaImage {

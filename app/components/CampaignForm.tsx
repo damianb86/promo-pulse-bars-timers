@@ -745,7 +745,7 @@ export function CampaignForm({
     [targetingOptions.countries],
   );
   const campaignEmbedHtml = campaignId
-    ? `<div class="pp-campaign-slot" data-counterpulse-campaign-id="${campaignId}"></div>`
+    ? `<div class="pp-campaign-slot" data-promo-pulse-campaign-id="${campaignId}"></div>`
     : "";
   const previewPlacements = useMemo(
     () =>
@@ -1236,27 +1236,27 @@ export function CampaignForm({
       setSubmitAction("saveDraft");
     };
 
-    window.addEventListener("counterpulse:campaign-save", handleSaveRequest);
+    window.addEventListener("promo-pulse:campaign-save", handleSaveRequest);
     window.addEventListener(
-      "counterpulse:campaign-publish",
+      "promo-pulse:campaign-publish",
       handlePublishRequest,
     );
     window.addEventListener(
-      "counterpulse:campaign-discard",
+      "promo-pulse:campaign-discard",
       handleDiscardRequest,
     );
 
     return () => {
       window.removeEventListener(
-        "counterpulse:campaign-save",
+        "promo-pulse:campaign-save",
         handleSaveRequest,
       );
       window.removeEventListener(
-        "counterpulse:campaign-publish",
+        "promo-pulse:campaign-publish",
         handlePublishRequest,
       );
       window.removeEventListener(
-        "counterpulse:campaign-discard",
+        "promo-pulse:campaign-discard",
         handleDiscardRequest,
       );
     };
@@ -1291,21 +1291,21 @@ export function CampaignForm({
     };
 
     window.addEventListener(
-      "counterpulse:campaign-review",
+      "promo-pulse:campaign-review",
       handleReviewRequest,
     );
     window.addEventListener(
-      "counterpulse:ai-suggestion-json",
+      "promo-pulse:ai-suggestion-json",
       handleAiSuggestionJson,
     );
 
     return () => {
       window.removeEventListener(
-        "counterpulse:campaign-review",
+        "promo-pulse:campaign-review",
         handleReviewRequest,
       );
       window.removeEventListener(
-        "counterpulse:ai-suggestion-json",
+        "promo-pulse:ai-suggestion-json",
         handleAiSuggestionJson,
       );
     };

@@ -13,8 +13,6 @@ import {
 describe("plan limits", () => {
   beforeEach(() => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "");
-    vi.stubEnv("COUNTERPULSE_DEV_PLAN", "");
   });
 
   afterEach(() => {
@@ -81,20 +79,7 @@ describe("plan limits", () => {
       allowed: true,
     });
   });
-
-  it("supports PROMOPILOT_DEV_PLAN=PREMIUM", () => {
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", " premium ");
-
-    expect(
-      canUseFeature({ plan: "FREE" }, "unique_discount_codes"),
-    ).toMatchObject({
-      allowed: true,
-    });
-  });
-
   it("does not let a development override downgrade Agency", () => {
-    vi.stubEnv("PROMOPILOT_DEV_PLAN", "PREMIUM");
-
     expect(getPlanLimits("AGENCY").monthlyPriceUsd).toBe(149);
     expect(
       canUseFeature({ plan: "AGENCY" }, "unique_discount_codes"),

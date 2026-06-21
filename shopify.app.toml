@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "3d18b230d925009893696ea39efcb15a"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://app-promo-pulse.zuam.dev"
 embedded = true
 name = "Promo Pulse: Bars & Timers"
 
@@ -33,11 +33,11 @@ embedded_app_direct_api_access = true
 direct_api_mode = "online"
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/auth/callback" ]
+redirect_urls = [ "https://app-promo-pulse.zuam.dev/auth/callback" ]
 
 [app_proxy]
-url = "https://shopify.dev/apps/counterpulse-campaigns"
-subpath = "counterpulse-campaigns"
+url = "https://app-promo-pulse.zuam.dev/apps/promo-pulse"
+subpath = "promo-pulse"
 prefix = "apps"
 
 [build]

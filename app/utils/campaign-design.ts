@@ -296,6 +296,8 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     errors.icon = "Choose a valid icon.";
   }
 
+  validateIntegerRange(values, errors, "iconSize", 12, 64, "Icon size");
+
   if (values.icon === "CUSTOM" && !values.customIconUrl) {
     errors.customIconUrl = "Upload an SVG, PNG, JPG, or JPEG icon.";
   } else if (

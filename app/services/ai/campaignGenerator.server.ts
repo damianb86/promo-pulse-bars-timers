@@ -1188,6 +1188,9 @@ function sanitizePartialDesign(
     design.icon === "NONE"
       ? { icon: design.icon }
       : {}),
+    ...(typeof design.iconSize === "number"
+      ? { iconSize: clampInteger(design.iconSize, 12, 64) }
+      : {}),
     ...(typeof design.customIconUrl === "string"
       ? { customIconUrl: design.customIconUrl.slice(0, 150_000) }
       : {}),

@@ -195,6 +195,11 @@ export function parseCampaignDesignFormData(
     showButton: readBoolean(formData, "showButton"),
     showIcon: readBoolean(formData, "showIcon"),
     icon: readIcon(formData),
+    iconSize: readInteger(
+      formData,
+      "iconSize",
+      defaultCampaignDesignValues.iconSize,
+    ),
     customIconUrl: readString(formData, "customIconUrl").slice(0, 150_000),
   };
 

@@ -821,6 +821,15 @@ export function DesignControls({
             type="hidden"
             value={values.icon === "CUSTOM" ? values.customIconUrl : ""}
           />
+          <NumberField
+            error={errors.iconSize}
+            label="Icon size"
+            max={64}
+            min={12}
+            name="iconSize"
+            value={values.iconSize}
+            onChange={(value) => updateNumber("iconSize", value)}
+          />
           <ColorField
             error={errors.accentColor}
             label="Accent"
@@ -986,7 +995,11 @@ export function DesignControls({
             <span className="counterpulse-field-label-row">
               <span>Custom CSS</span>
               {!isProPlan && <ProPlanBadge />}
-              <FieldInfoButton label="Custom CSS" title="Custom CSS reference">
+              <FieldInfoButton
+                label="Custom CSS"
+                modalClassName="counterpulse-modal--css-reference"
+                title="Custom CSS reference"
+              >
                 <CustomCssInfoContent />
               </FieldInfoButton>
             </span>
@@ -1059,8 +1072,9 @@ function CustomCssInfoContent() {
             You can override <code>--pp-bg</code>, <code>--pp-text</code>,{" "}
             <code>--pp-accent</code>, <code>--pp-button</code>,{" "}
             <code>--pp-button-text</code>, <code>--pp-close</code>,{" "}
-            <code>--pp-radius</code>, <code>--pp-padding-block</code>,{" "}
-            <code>--pp-padding-inline</code>, and{" "}
+            <code>--pp-icon-size</code>, <code>--pp-radius</code>,{" "}
+            <code>--pp-padding-block</code>, <code>--pp-padding-inline</code>,
+            and{" "}
             <code>--pp-content-max-width</code>.
           </span>
         </li>

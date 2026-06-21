@@ -33,6 +33,7 @@ type ConfirmModalProps = {
 
 type InfoModalProps = {
   children?: ReactNode;
+  className?: string;
   closeLabel?: string;
   open: boolean;
   title: string;
@@ -42,6 +43,7 @@ type InfoModalProps = {
 type FieldInfoButtonProps = {
   children: ReactNode;
   label: string;
+  modalClassName?: string;
   title: string;
 };
 
@@ -160,6 +162,7 @@ export function AppToast({
 export function FieldInfoButton({
   children,
   label,
+  modalClassName,
   title,
 }: FieldInfoButtonProps) {
   const [open, setOpen] = useState(false);
@@ -188,7 +191,12 @@ export function FieldInfoButton({
       >
         <span aria-hidden="true">i</span>
       </span>
-      <InfoModal open={open} title={title} onClose={() => setOpen(false)}>
+      <InfoModal
+        className={modalClassName}
+        open={open}
+        title={title}
+        onClose={() => setOpen(false)}
+      >
         {children}
       </InfoModal>
     </>
@@ -197,6 +205,7 @@ export function FieldInfoButton({
 
 export function InfoModal({
   children,
+  className = "",
   closeLabel = "Close",
   open,
   title,
@@ -239,7 +248,9 @@ export function InfoModal({
       <div
         aria-labelledby={titleId}
         aria-modal="true"
-        className="counterpulse-modal counterpulse-modal--info"
+        className={["counterpulse-modal counterpulse-modal--info", className]
+          .filter(Boolean)
+          .join(" ")}
         role="dialog"
       >
         <div className="counterpulse-modal__header">

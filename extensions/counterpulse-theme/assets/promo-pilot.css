@@ -98,8 +98,8 @@
 
 .pp-icon {
   flex: 0 0 auto;
-  width: 1.35em;
-  height: 1.35em;
+  width: var(--pp-icon-size, 20px);
+  height: var(--pp-icon-size, 20px);
   display: inline-grid;
   place-items: center;
   color: var(--pp-accent, #22c55e);

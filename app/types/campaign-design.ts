@@ -89,6 +89,7 @@ export type CampaignDesignValues = {
   showButton: boolean;
   showIcon: boolean;
   icon: CampaignDesignIconValue;
+  iconSize: number;
   customIconUrl: string;
 };
 
@@ -176,6 +177,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   showButton: true,
   showIcon: false,
   icon: "NONE",
+  iconSize: 20,
   customIconUrl: "",
 };
 

@@ -791,6 +791,19 @@ s-page::part(page) {
   width: min(620px, 100%);
 }
 
+.counterpulse-modal--css-reference {
+  width: min(80vw, 1120px);
+  max-width: calc(100vw - 40px);
+  max-height: min(86vh, 900px);
+  overflow: hidden;
+}
+
+.counterpulse-modal--css-reference .counterpulse-modal__body {
+  max-height: min(68vh, 720px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
 .counterpulse-modal h2 {
   margin: 0;
   color: #202223;
@@ -4179,14 +4192,6 @@ s-page::part(page) {
   justify-self: end;
 }
 
-.counterpulse-preview-placement-field small {
-  display: block;
-  margin-top: 3px;
-  color: #6d7175;
-  font-size: 11px;
-  line-height: 14px;
-}
-
 .counterpulse-segmented {
   display: inline-flex;
   border: 1px solid #8c9196;
@@ -5125,8 +5130,8 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-icon {
-  width: 1.35em;
-  height: 1.35em;
+  width: var(--cp-icon-size, 20px);
+  height: var(--cp-icon-size, 20px);
   flex: 0 0 auto;
   display: inline-grid;
   place-items: center;

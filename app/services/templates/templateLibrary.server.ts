@@ -642,6 +642,7 @@ function readTemplateDesign(value: Prisma.JsonValue) {
         "CUSTOM",
         "NONE",
       ]) ?? defaultCampaignDesignValues.icon,
+    iconSize: readInteger(input.iconSize, defaultCampaignDesignValues.iconSize),
     customIconUrl: readString(input.customIconUrl),
   };
 

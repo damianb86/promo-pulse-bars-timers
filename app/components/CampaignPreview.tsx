@@ -677,9 +677,17 @@ function TimerDisplay({
 function PreviewIcon({ design }: { design: CampaignDesignValues }) {
   if (!design.showIcon) return null;
 
+  const iconStyle = {
+    "--cp-icon-size": `${clampNumber(design.iconSize, 12, 64, 20)}px`,
+  } as CSSProperties;
+
   if (design.icon === "CUSTOM" && design.customIconUrl) {
     return (
-      <span className="counterpulse-preview-icon" aria-hidden="true">
+      <span
+        className="counterpulse-preview-icon"
+        style={iconStyle}
+        aria-hidden="true"
+      >
         <img alt="" src={design.customIconUrl} />
       </span>
     );
@@ -688,7 +696,11 @@ function PreviewIcon({ design }: { design: CampaignDesignValues }) {
   if (design.icon === "NONE") return null;
 
   return (
-    <span className="counterpulse-preview-icon" aria-hidden="true">
+    <span
+      className="counterpulse-preview-icon"
+      style={iconStyle}
+      aria-hidden="true"
+    >
       <PreviewIconSvg icon={design.icon} />
     </span>
   );
@@ -843,6 +855,12 @@ function formatTimerPartsAsColon(
   timerParts: Array<{ value: string; label: string; shortLabel: string }>,
 ) {
   return timerParts.map((part) => part.value).join(":");
+}
+
+function clampNumber(value: number, min: number, max: number, fallback: number) {
+  return Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.round(value)))
+    : fallback;
 }
 
 function pad(value: number) {

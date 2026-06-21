@@ -49,6 +49,17 @@ export function CampaignPreviewPanel({
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
   const actualPlacementSet = new Set(actualPlacements);
+  const availablePlacementOptions =
+    actualPlacements.length > 0
+      ? previewPlacementOptions.filter((option) =>
+          actualPlacementSet.has(option.value),
+        )
+      : previewPlacementOptions;
+  const selectedPlacement = availablePlacementOptions.some(
+    (option) => option.value === placement,
+  )
+    ? placement
+    : (availablePlacementOptions[0]?.value ?? placement);
 
   return (
     <div
@@ -61,25 +72,23 @@ export function CampaignPreviewPanel({
         <label className="counterpulse-form-field counterpulse-preview-placement-field">
           <span>Placement preview</span>
           <select
-            value={placement}
+            value={selectedPlacement}
             onChange={(event) =>
               onPlacementChange(event.target.value as PreviewPlacement)
             }
           >
-            {previewPlacementOptions.map((option) => (
+            {availablePlacementOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
-                {actualPlacementSet.has(option.value) ? " *" : ""}
               </option>
             ))}
           </select>
-          {actualPlacements.length > 0 && <small>* Campaign placement</small>}
         </label>
       </div>
       <CampaignPreview
         design={design}
         device={device}
-        placement={placement}
+        placement={selectedPlacement}
         viewModel={viewModel}
       />
       {meta}

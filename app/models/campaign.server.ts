@@ -636,6 +636,7 @@ function toCampaignDesignWriteData(input: CampaignDesignValues) {
     showButton: input.showButton,
     showIcon: input.showIcon,
     icon: input.icon,
+    iconSize: input.iconSize,
     customIconUrl: input.customIconUrl,
   };
 }
@@ -929,6 +930,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 showButton: campaign.design.showButton,
                 showIcon: campaign.design.showIcon,
                 icon: campaign.design.icon,
+                iconSize: campaign.design.iconSize,
                 customIconUrl: campaign.design.customIconUrl,
               },
             },

@@ -234,6 +234,7 @@ model CampaignDesign {
   showButton              Boolean                  @default(true)
   showIcon                Boolean                  @default(true)
   icon                    CampaignDesignIcon       @default(NONE)
+  iconSize                Int                      @default(20)
   customIconUrl           String                   @default("")
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

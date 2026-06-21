@@ -32,16 +32,21 @@ export type SentEmailPayload = {
 function getSmtpConfig() {
   const configuredPort = Number(process.env.EMAIL_PORT ?? 587);
   const port = Number.isFinite(configuredPort) ? configuredPort : 587;
+  const configuredSecure = process.env.EMAIL_SECURE;
 
   return {
     host: process.env.EMAIL_HOST,
     port,
-    secure: port === 465,
+    secure:
+      configuredSecure === undefined
+        ? port === 465
+        : configuredSecure.toLowerCase() === "true",
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
     recipient: process.env.CONTACT_EMAIL,
     fromEmail: process.env.EMAIL_FROM || DEFAULT_FROM_EMAIL,
     fromName: process.env.EMAIL_FROM_NAME || DEFAULT_FROM_NAME,
+    replyToEmail: process.env.EMAIL_REPLY_TO || process.env.CONTACT_EMAIL,
   };
 }
 
@@ -72,7 +77,9 @@ export async function sendPromoPulseEmail({
   const recipients = normalizeEmailRecipients(to);
   const normalizedReplyEmail = isValidEmail(replyEmail)
     ? replyEmail
-    : undefined;
+    : isValidEmail(smtp.replyToEmail)
+      ? smtp.replyToEmail
+      : undefined;
   const payload = {
     app: APP_NAME,
     type,

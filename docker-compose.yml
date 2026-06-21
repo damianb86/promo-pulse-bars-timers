@@ -1,0 +1,88 @@
+name: ${COMPOSE_PROJECT_NAME:?Set COMPOSE_PROJECT_NAME in the app .env}
+
+services:
+  db-init:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD in ../shared-docker/.env}
+      APP_DB_NAME: ${APP_DB_NAME:?Set APP_DB_NAME in the app .env}
+      APP_DB_USER: ${APP_DB_USER:?Set APP_DB_USER in the app .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in the app .env}
+    volumes:
+      - ./docker/app/init-db.sh:/init-db.sh:ro
+    command: ["/bin/sh", "/init-db.sh"]
+    networks:
+      - shared_apps
+
+  app:
+    build: .
+    env_file:
+      - .env
+    restart: unless-stopped
+    init: true
+    expose:
+      - "3000"
+    environment:
+      APP_ENV: production
+      NODE_ENV: production
+      NODE_OPTIONS: ${NODE_OPTIONS:-}
+      PORT: 3000
+      PROMO_PULSE_APP_NAME: "${PROMO_PULSE_APP_NAME:-Promo Pulse: Bars & Timers}"
+      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY:?Set SHOPIFY_API_KEY in the app .env}
+      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET:?Set SHOPIFY_API_SECRET in the app .env}
+      SHOPIFY_API_VERSION: ${SHOPIFY_API_VERSION:-2025-10}
+      SCOPES: ${SCOPES:?Set SCOPES in the app .env}
+      DATABASE_URL: "postgresql://${APP_DB_USER:?Set APP_DB_USER in the app .env}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in the app .env}@postgres:5432/${APP_DB_NAME:?Set APP_DB_NAME in the app .env}?schema=public&connection_limit=3"
+      SHOPIFY_APP_URL: ${PROD_SHOPIFY_APP_URL:-${SHOPIFY_APP_URL}}
+      SHOP_CUSTOM_DOMAIN: ${SHOP_CUSTOM_DOMAIN:-}
+      PROMO_PULSE_PLAN_LIMITS_JSON: ${PROMO_PULSE_PLAN_LIMITS_JSON:-}
+      PROMO_PULSE_STAGE2_FLAGS_JSON: ${PROMO_PULSE_STAGE2_FLAGS_JSON:-}
+      PROMO_PULSE_PREMIUM_FEATURE_PLANS_JSON: ${PROMO_PULSE_PREMIUM_FEATURE_PLANS_JSON:-}
+      PROMO_PULSE_AI_PROVIDER: ${PROMO_PULSE_AI_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+      OPENAI_RESPONSES_URL: ${OPENAI_RESPONSES_URL:-https://api.openai.com/v1/responses}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-contact@zuam.dev}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.resend.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_SECURE: ${EMAIL_SECURE:-false}
+      EMAIL_USER: ${EMAIL_USER:-resend}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@zuam.dev}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Promo Pulse}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-contact@zuam.dev}
+      SHOPIFY_ADVANCED_DISCOUNT_FUNCTION_HANDLE: ${SHOPIFY_ADVANCED_DISCOUNT_FUNCTION_HANDLE:-promo-pulse-advanced-discounts}
+      SHOPIFY_ADVANCED_DISCOUNT_FUNCTION_ID: ${SHOPIFY_ADVANCED_DISCOUNT_FUNCTION_ID:-}
+      SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_NAMESPACE: "${SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_NAMESPACE:-$$app:promo-pulse}"
+      SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_KEY: ${SHOPIFY_ADVANCED_DISCOUNT_METAFIELD_KEY:-advanced-discount-config}
+      STOREFRONT_RATE_LIMIT_WINDOW_MS: ${STOREFRONT_RATE_LIMIT_WINDOW_MS:-60000}
+      STOREFRONT_RATE_LIMIT_MAX_REQUESTS: ${STOREFRONT_RATE_LIMIT_MAX_REQUESTS:-120}
+      E2E_TEST_MODE: "false"
+    labels:
+      observability.stack: qorve
+      observability.app: promo-pulse-bars-timers
+      observability.service: app
+      caddy: ${APP_HOST:?Set APP_HOST in the app .env}
+      caddy.encode: zstd gzip
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+      caddy_ingress_network: ${SHARED_DOCKER_NETWORK:-shared_apps}
+    logging:
+      driver: json-file
+      options:
+        max-size: ${DOCKER_LOG_MAX_SIZE:-10m}
+        max-file: ${DOCKER_LOG_MAX_FILE:-5}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - shared_apps
+
+networks:
+  shared_apps:
+    external: true
+    name: ${SHARED_DOCKER_NETWORK:-shared_apps}

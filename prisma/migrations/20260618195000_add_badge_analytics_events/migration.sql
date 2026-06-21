@@ -1,3 +1,0 @@
--- SQLite stores Prisma enum values as text, so adding BADGE_IMPRESSION and
--- BADGE_CLICK does not require a table rewrite. This migration documents the
--- schema-level enum expansion for advanced product badge analytics.

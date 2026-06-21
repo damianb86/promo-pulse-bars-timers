@@ -1,3 +1,0 @@
-ALTER TABLE "CampaignDesign" ADD COLUMN "timerFormat" TEXT NOT NULL DEFAULT 'UNITS';
-ALTER TABLE "CampaignDesign" ADD COLUMN "timerShowLabels" BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "CampaignDesign" ADD COLUMN "customIconUrl" TEXT NOT NULL DEFAULT '';

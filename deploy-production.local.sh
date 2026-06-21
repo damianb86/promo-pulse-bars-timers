@@ -14,17 +14,7 @@ REMOTE_GIT_SYNC_COMMAND=${REMOTE_GIT_SYNC_COMMAND:-"git fetch --prune origin && 
 REMOTE_DEPLOY_COMMAND=${REMOTE_DEPLOY_COMMAND:-"APP_ENV_FILE=.env BUILD_APP_BUNDLE=0 ./deploy.sh"}
 SSH_CONNECT_TIMEOUT_SECONDS=${SSH_CONNECT_TIMEOUT_SECONDS:-15}
 
-if [ -n "${PEM_FILE:-}" ]; then
-  :
-elif [ -f "$APP_DIR/ssh.pem" ]; then
-  PEM_FILE="$APP_DIR/ssh.pem"
-elif [ -f "$APP_DIR/../ssh.pem" ]; then
-  PEM_FILE="$APP_DIR/../ssh.pem"
-elif [ -f "$APP_DIR/../LightsailDefaultKey-us-east-2.pem" ]; then
-  PEM_FILE="$APP_DIR/../LightsailDefaultKey-us-east-2.pem"
-else
-  PEM_FILE="$APP_DIR/ssh.pem"
-fi
+PEM_FILE=${PEM_FILE:-"$HOME/.ssh/ubuntu-1-2026-06"}
 
 SSH_TARGET="$REMOTE_USER@$REMOTE_HOST"
 SSH_OPTS="-i $PEM_FILE -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=$SSH_CONNECT_TIMEOUT_SECONDS -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o StrictHostKeyChecking=accept-new"
@@ -78,7 +68,7 @@ fi
 require_command npm
 require_command rsync
 require_command ssh
-require_file "$PEM_FILE" "Missing PEM file: $PEM_FILE. Run with PEM_FILE=/path/to/ssh.pem ./deploy-production.local.sh if it lives elsewhere."
+require_file "$PEM_FILE" "Missing SSH key file: $PEM_FILE. Run with PEM_FILE=/path/to/key ./deploy-production.local.sh if it lives elsewhere."
 require_file "$LOCAL_ENV_FILE" "Missing production env file: $LOCAL_ENV_FILE"
 
 chmod 400 "$PEM_FILE" 2>/dev/null || true

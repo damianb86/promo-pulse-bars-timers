@@ -4,7 +4,15 @@ import fs from "node:fs";
 const port = Number(process.env.E2E_PORT || 31338);
 const baseURL = process.env.E2E_BASE_URL || `http://localhost:${port}`;
 const envFile = readEnvFile(".env");
-const databaseUrl = process.env.DATABASE_URL || envFile.DATABASE_URL;
+const appEnv = process.env.APP_ENV || envFile.APP_ENV || "development";
+const nodeEnv = process.env.NODE_ENV || envFile.NODE_ENV || "development";
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  (appEnv === "development" || nodeEnv === "development"
+    ? process.env.DEVELOPMENT_DATABASE_URL ||
+      envFile.DEVELOPMENT_DATABASE_URL ||
+      "file:./dev.sqlite"
+    : envFile.DATABASE_URL);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -35,7 +43,8 @@ export default defineConfig({
       ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
       E2E_TEST_MODE: "true",
       HMR_PORT: String(port + 1000),
-      NODE_ENV: "development",
+      APP_ENV: appEnv,
+      NODE_ENV: nodeEnv,
       PORT: String(port),
       PROMO_PULSE_DEV_PLAN: "AGENCY",
       SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY || "e2e_test_api_key",

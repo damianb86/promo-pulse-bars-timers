@@ -13,6 +13,7 @@ node_modules
 /prisma/dev.sqlite-journal
 /prisma/e2e.sqlite
 /prisma/e2e.sqlite-journal
+/prisma/schema.sqlite.generated.prisma
 database.sqlite
 
 .env

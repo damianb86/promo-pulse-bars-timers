@@ -2,7 +2,15 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 
 const envFile = readEnvFile(".env");
-const databaseUrl = process.env.DATABASE_URL || envFile.DATABASE_URL;
+const appEnv = process.env.APP_ENV || envFile.APP_ENV || "development";
+const nodeEnv = process.env.NODE_ENV || envFile.NODE_ENV || "development";
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  (appEnv === "development" || nodeEnv === "development"
+    ? process.env.DEVELOPMENT_DATABASE_URL ||
+      envFile.DEVELOPMENT_DATABASE_URL ||
+      "file:./dev.sqlite"
+    : envFile.DATABASE_URL);
 const env = {
   ...process.env,
   ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
@@ -11,7 +19,8 @@ const env = {
     process.env.HMR_PORT ||
     process.env.E2E_HMR_PORT ||
     String(Number(process.env.PORT || process.env.E2E_PORT || "31338") + 1000),
-  NODE_ENV: "development",
+  APP_ENV: appEnv,
+  NODE_ENV: nodeEnv,
   PORT: process.env.PORT || process.env.E2E_PORT || "31338",
   PROMO_PULSE_DEV_PLAN: process.env.PROMO_PULSE_DEV_PLAN || "AGENCY",
   SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY || "e2e_test_api_key",
@@ -24,11 +33,15 @@ const env = {
     "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events,read_markets,write_markets",
 };
 
-await run("npm", ["exec", "prisma", "generate"], env);
-await run("npm", ["exec", "prisma", "migrate", "deploy"], env);
-await run("npm", ["exec", "react-router", "dev"], env, {
-  inheritStdio: true,
-});
+await run("node", ["scripts/prisma-env.mjs", "setup"], env);
+await run(
+  "node",
+  ["scripts/prisma-env.mjs", "exec", "npm", "exec", "react-router", "dev"],
+  env,
+  {
+    inheritStdio: true,
+  },
+);
 
 function run(command, args, childEnv, options = {}) {
   return new Promise((resolve, reject) => {

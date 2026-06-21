@@ -11,6 +11,7 @@ ENV APP_ENV=production
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
+COPY scripts ./scripts
 
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 

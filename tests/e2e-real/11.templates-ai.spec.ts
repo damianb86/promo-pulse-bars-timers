@@ -33,7 +33,9 @@ test.describe("real templates and AI builder", () => {
     await expect(app.getByTestId("campaign-publish-button")).toBeVisible({
       timeout: 30_000,
     });
-    const campaignStatus = app.getByTestId("campaign-status-select");
+    const campaignStatus = app
+      .getByRole("tabpanel", { name: "Setup" })
+      .getByTestId("campaign-status-select");
     await expect(campaignStatus).toHaveValue("DRAFT");
 
     const aiGenerate = app.getByRole("button", { name: /generate/i }).first();

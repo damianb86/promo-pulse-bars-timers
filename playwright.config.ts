@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import fs from "node:fs";
 
 const port = Number(process.env.E2E_PORT || 31338);
 const baseURL = process.env.E2E_BASE_URL || `http://localhost:${port}`;
+const envFile = readEnvFile(".env");
+const databaseUrl = process.env.DATABASE_URL || envFile.DATABASE_URL;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -29,7 +32,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
-      DATABASE_URL: process.env.DATABASE_URL || "file:./e2e.sqlite",
+      ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
       E2E_TEST_MODE: "true",
       HMR_PORT: String(port + 1000),
       NODE_ENV: "development",
@@ -51,3 +54,29 @@ export default defineConfig({
   ],
   outputDir: "test-results",
 });
+
+function readEnvFile(path: string) {
+  if (!fs.existsSync(path)) return {};
+
+  return Object.fromEntries(
+    fs
+      .readFileSync(path, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => {
+        const separatorIndex = line.indexOf("=");
+
+        if (separatorIndex === -1) return null;
+
+        const key = line.slice(0, separatorIndex).trim();
+        const value = line
+          .slice(separatorIndex + 1)
+          .trim()
+          .replace(/^['"]|['"]$/g, "");
+
+        return key ? [key, value] : null;
+      })
+      .filter((entry): entry is [string, string] => Boolean(entry)),
+  );
+}

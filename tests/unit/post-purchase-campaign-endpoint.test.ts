@@ -244,6 +244,7 @@ function baseCampaign({
       value: null,
       minimumSubtotal: null,
       appliesOncePerCustomer: false,
+      showCodeOnStorefront: true,
       uniqueCodePrefix: null,
       uniqueCodeExpiresMinutes: null,
       uniqueCodeAutoApply: false,

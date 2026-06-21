@@ -428,5 +428,6 @@ function createDiscountSync(
     uniqueCodeStartsAt: null,
     uniqueCodeEndsAt: null,
     ...overrides,
+    showCodeOnStorefront: overrides.showCodeOnStorefront ?? true,
   };
 }

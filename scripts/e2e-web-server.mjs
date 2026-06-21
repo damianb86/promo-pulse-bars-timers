@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 
+const envFile = readEnvFile(".env");
+const databaseUrl = process.env.DATABASE_URL || envFile.DATABASE_URL;
 const env = {
   ...process.env,
-  DATABASE_URL: process.env.DATABASE_URL || "file:./e2e.sqlite",
+  ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
   E2E_TEST_MODE: "true",
   HMR_PORT:
     process.env.HMR_PORT ||
@@ -61,4 +64,30 @@ function run(command, args, childEnv, options = {}) {
       }
     });
   });
+}
+
+function readEnvFile(path) {
+  if (!fs.existsSync(path)) return {};
+
+  return Object.fromEntries(
+    fs
+      .readFileSync(path, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => {
+        const separatorIndex = line.indexOf("=");
+
+        if (separatorIndex === -1) return null;
+
+        const key = line.slice(0, separatorIndex).trim();
+        const value = line
+          .slice(separatorIndex + 1)
+          .trim()
+          .replace(/^['"]|['"]$/g, "");
+
+        return key ? [key, value] : null;
+      })
+      .filter(Boolean),
+  );
 }

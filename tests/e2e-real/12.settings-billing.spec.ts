@@ -19,8 +19,18 @@ test.describe("real settings and billing", () => {
 
     await app.getByLabel("Support email").fill(supportEmail);
     await app.getByRole("button", { name: /save settings/i }).click();
+    const confirmDialog = app.getByRole("dialog", {
+      name: /save shop defaults/i,
+    });
+
+    if (await confirmDialog.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await confirmDialog
+        .getByRole("button", { name: /^save settings$/i })
+        .click();
+    }
+
     await expect(
-      app.getByRole("status").filter({ hasText: /settings saved/i }).first(),
+      app.getByText(/settings saved/i).first(),
     ).toBeVisible({ timeout: 20_000 });
 
     await page.reload({ waitUntil: "domcontentloaded" });

@@ -67,7 +67,6 @@ type CampaignFormProps = {
   hiddenBuilderTabs?: BuilderTabKey[];
   idPrefix?: string;
   initialTab?: BuilderTabKey;
-  topbarActions?: ReactNode;
   lockedTargetingFeatures?: {
     advanced: string;
     basic: string;
@@ -83,11 +82,16 @@ type CampaignFormProps = {
   showTopbar?: boolean;
   syncExternalValues?: boolean;
   targetingOptions?: CampaignTargetingOptions;
+  topbarActions?: ReactNode;
   onDesignChange?: (values: CampaignDesignValues) => void;
   onValuesChange?: (values: CampaignFormValues) => void;
 };
 
 type ResourceFieldName = "productIds" | "excludeProductIds" | "collectionIds";
+type AiApplyValuesEventDetail = {
+  design?: CampaignDesignValues;
+  values?: Partial<CampaignFormValues>;
+};
 
 type ResourceChip = {
   id: string;
@@ -615,6 +619,10 @@ export function CampaignForm({
 
     return tabs.length > 0 ? tabs : builderTabs;
   }, [hiddenBuilderTabSet]);
+  const visibleBuilderTabSet = useMemo(
+    () => new Set(visibleBuilderTabs.map((tab) => tab.key)),
+    [visibleBuilderTabs],
+  );
   const [activeTab, setActiveTab] = useState<BuilderTabKey>(() =>
     visibleBuilderTabs.some((tab) => tab.key === initialTab)
       ? initialTab
@@ -1289,6 +1297,37 @@ export function CampaignForm({
           : "",
       );
     };
+    const handleAiApplyValues = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+
+      const detail = event.detail as AiApplyValuesEventDetail | undefined;
+      const nextValues = detail?.values;
+
+      if (nextValues) {
+        setFormValues((currentValues) => ({
+          ...currentValues,
+          ...nextValues,
+          placementTypes:
+            nextValues.placementTypes && nextValues.placementTypes.length > 0
+              ? nextValues.placementTypes
+              : currentValues.placementTypes,
+        }));
+        setResourceLabels({
+          collectionIds: buildResourceChips(nextValues.collectionIds ?? ""),
+          excludeProductIds: buildResourceChips(
+            nextValues.excludeProductIds ?? "",
+          ),
+          productIds: buildResourceChips(nextValues.productIds ?? ""),
+        });
+        setShowProductExclusions(
+          Boolean(nextValues.excludeProductIds?.trim().length),
+        );
+      }
+
+      if (detail?.design) {
+        updateDesignValues(detail.design);
+      }
+    };
 
     window.addEventListener(
       "promo-pulse:campaign-review",
@@ -1297,6 +1336,10 @@ export function CampaignForm({
     window.addEventListener(
       "promo-pulse:ai-suggestion-json",
       handleAiSuggestionJson,
+    );
+    window.addEventListener(
+      "promo-pulse:ai-apply-values",
+      handleAiApplyValues,
     );
 
     return () => {
@@ -1308,12 +1351,24 @@ export function CampaignForm({
         "promo-pulse:ai-suggestion-json",
         handleAiSuggestionJson,
       );
+      window.removeEventListener(
+        "promo-pulse:ai-apply-values",
+        handleAiApplyValues,
+      );
     };
-  }, [visibleBuilderTabs]);
+  }, [updateDesignValues, visibleBuilderTabs]);
 
   const canReview = visibleBuilderTabs.some((tab) => tab.key === "review");
   const shouldShowBuilderTabs =
     showBuilderTabs && visibleBuilderTabs.length > 1;
+  const builderTabId = (key: BuilderTabKey) =>
+    idPrefix === "campaign"
+      ? `campaign-builder-tab-${key}`
+      : scopedId(`builder-tab-${key}`);
+  const builderPanelId = (key: BuilderTabKey) =>
+    idPrefix === "campaign"
+      ? `campaign-builder-panel-${key}`
+      : scopedId(`builder-panel-${key}`);
 
   return (
     <>
@@ -1384,10 +1439,10 @@ export function CampaignForm({
           >
             {visibleBuilderTabs.map((tab) => (
               <button
-                aria-controls={`campaign-builder-panel-${tab.key}`}
+                aria-controls={builderPanelId(tab.key)}
                 aria-selected={activeTab === tab.key}
                 className={activeTab === tab.key ? "is-active" : undefined}
-                id={`campaign-builder-tab-${tab.key}`}
+                id={builderTabId(tab.key)}
                 key={tab.key}
                 role="tab"
                 type="button"
@@ -1419,7 +1474,13 @@ export function CampaignForm({
               <span className="counterpulse-pill">{activeTabMeta.pill}</span>
             </div>
 
-            <BuilderPanel activeTab={activeTab} tabKey="setup">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("setup")}
+              shouldRender={visibleBuilderTabSet.has("setup")}
+              tabId={builderTabId("setup")}
+              tabKey="setup"
+            >
               <div className="counterpulse-form-grid counterpulse-form-grid--wide">
                 <FormField label="Campaign name" error={errors.name} fullWidth>
                   <input
@@ -2077,7 +2138,13 @@ export function CampaignForm({
               </div>
             </BuilderPanel>
 
-            <BuilderPanel activeTab={activeTab} tabKey="message">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("message")}
+              shouldRender={visibleBuilderTabSet.has("message")}
+              tabId={builderTabId("message")}
+              tabKey="message"
+            >
               <div className="counterpulse-form-grid counterpulse-form-grid--wide">
                 <FormField label="Headline" error={errors.headline} fullWidth>
                   <input
@@ -2127,7 +2194,13 @@ export function CampaignForm({
               )}
             </BuilderPanel>
 
-            <BuilderPanel activeTab={activeTab} tabKey="placement">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("placement")}
+              shouldRender={visibleBuilderTabSet.has("placement")}
+              tabId={builderTabId("placement")}
+              tabKey="placement"
+            >
               <section
                 className="counterpulse-targeting-card"
                 aria-labelledby={scopedId("placement-heading")}
@@ -2260,7 +2333,13 @@ export function CampaignForm({
               </div>
             </BuilderPanel>
 
-            <BuilderPanel activeTab={activeTab} tabKey="targeting">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("targeting")}
+              shouldRender={visibleBuilderTabSet.has("targeting")}
+              tabId={builderTabId("targeting")}
+              tabKey="targeting"
+            >
               <div className="counterpulse-targeting-grid">
                 {pickerError && (
                   <div className="counterpulse-targeting-warning">
@@ -2464,7 +2543,13 @@ export function CampaignForm({
               </div>
             </BuilderPanel>
 
-            <BuilderPanel activeTab={activeTab} tabKey="schedule">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("schedule")}
+              shouldRender={visibleBuilderTabSet.has("schedule")}
+              tabId={builderTabId("schedule")}
+              tabKey="schedule"
+            >
               <div className="counterpulse-schedule-stack">
                 <section className="counterpulse-targeting-card counterpulse-schedule-card">
                   <div className="counterpulse-targeting-card__header">
@@ -2779,7 +2864,13 @@ export function CampaignForm({
               </div>
             </BuilderPanel>
 
-            <BuilderPanel activeTab={activeTab} tabKey="review">
+            <BuilderPanel
+              activeTab={activeTab}
+              panelId={builderPanelId("review")}
+              shouldRender={visibleBuilderTabSet.has("review")}
+              tabId={builderTabId("review")}
+              tabKey="review"
+            >
               <TabSummaryGrid rows={summaryRows} />
               <div className="counterpulse-validation-strip">
                 {[
@@ -2889,18 +2980,24 @@ function getCampaignTypeChoiceKey(values: CampaignFormValues) {
 function BuilderPanel({
   activeTab,
   children,
+  panelId,
+  shouldRender,
+  tabId,
   tabKey,
 }: {
   activeTab: BuilderTabKey;
   children: ReactNode;
+  panelId: string;
+  shouldRender: boolean;
+  tabId: string;
   tabKey: BuilderTabKey;
 }) {
   return (
     <div
-      aria-labelledby={`campaign-builder-tab-${tabKey}`}
+      aria-labelledby={tabId}
       className="counterpulse-builder-panel"
-      hidden={activeTab !== tabKey}
-      id={`campaign-builder-panel-${tabKey}`}
+      hidden={activeTab !== tabKey || !shouldRender}
+      id={panelId}
       role="tabpanel"
       tabIndex={0}
     >

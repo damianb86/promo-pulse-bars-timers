@@ -8,6 +8,11 @@ import { parseCampaignTranslationsFormData } from "./campaign-translations-form.
 import { parseDeliveryCutoffSettingsFormData } from "./delivery-cutoff-settings-form.server";
 import { parseDiscountSettingsFormData } from "./discount-settings-form.server";
 import { parseFreeShippingSettingsFormData } from "./free-shipping-settings-form.server";
+import {
+  buildCampaignFreeShippingSettingsValues,
+  buildCampaignTargetingValues,
+  buildCampaignTimerSettingsValues,
+} from "../types/campaign-form";
 import { parseLowStockSettingsFormData } from "./low-stock-settings-form.server";
 
 describe("campaign form parsing and validation", () => {
@@ -114,6 +119,112 @@ describe("campaign form parsing and validation", () => {
     expect(parsed.values.iconSize).toBe(36);
   });
 
+  it("parses modern design controls, media, timer labels, and motion settings", () => {
+    const parsed = parseCampaignDesignFormData(
+      formData({
+        templateKey: "premium-dark",
+        layout: "CTA_TOP",
+        backgroundType: "IMAGE",
+        backgroundImageUrl: "https://cdn.shopify.com/s/files/background.png",
+        gradientStartColor: "#123456",
+        gradientEndColor: "#ABCDEF",
+        gradientAngle: "271",
+        backgroundColor: "#FFFFFF",
+        textColor: "#111827",
+        accentColor: "#2563EB",
+        buttonColor: "#111827",
+        buttonTextColor: "#FFFFFF",
+        closeButtonColor: "#F8FAFC",
+        fontSize: "16",
+        borderRadius: "0",
+        borderSize: "2",
+        borderColor: "#E5E7EB",
+        fontFamily: "CASUAL",
+        titleFontSize: "28",
+        titleColor: "#111827",
+        subheadingFontSize: "18",
+        subheadingColor: "#4B5563",
+        timerFontSize: "44",
+        timerColor: "#111827",
+        legendFontSize: "14",
+        legendColor: "#6B7280",
+        timerStyle: "BOXES",
+        timerFormat: "COLON",
+        timerShowLabels: "on",
+        timerShowSeconds: "true",
+        timerHideZeroDays: "on",
+        timerDaysLabel: "D",
+        timerHoursLabel: "Hr",
+        timerMinutesLabel: "Min",
+        timerSecondsLabel: "Sec",
+        timerSurfaceColor: "#FFFFFF",
+        timerSurfaceBorderColor: "#D1D5DB",
+        timerSurfaceBorderSize: "1",
+        timerSurfaceRadius: "10",
+        paddingBlock: "12",
+        paddingInline: "18",
+        contentGap: "14",
+        contentMaxWidth: "720",
+        fullWidth: "on",
+        positionMode: "OVERLAY",
+        positionSticky: "on",
+        entranceAnimation: "SLIDE",
+        exitAnimation: "POP",
+        animationDurationMs: "480",
+        timerTickAnimation: "FLIP",
+        mobileEnabled: "true",
+        alignment: "RIGHT",
+        showCloseButton: "on",
+        showButton: "on",
+        showIcon: "on",
+        icon: "CUSTOM",
+        iconSize: "48",
+        customIconUrl: "data:image/png;base64,AAAA",
+        customCss: ".pp-banner { opacity: .98; }",
+      }),
+      ShopPlan.PRO,
+    );
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values).toMatchObject({
+      layout: "CTA_TOP",
+      backgroundType: "IMAGE",
+      backgroundImageUrl: "https://cdn.shopify.com/s/files/background.png",
+      gradientAngle: 271,
+      fontFamily: "CASUAL",
+      timerStyle: "BOXES",
+      timerFormat: "COLON",
+      timerShowLabels: true,
+      timerShowSeconds: true,
+      timerHideZeroDays: true,
+      timerDaysLabel: "D",
+      timerHoursLabel: "Hr",
+      timerMinutesLabel: "Min",
+      timerSecondsLabel: "Sec",
+      timerSurfaceRadius: 10,
+      paddingBlock: 12,
+      paddingInline: 18,
+      contentGap: 14,
+      contentMaxWidth: 720,
+      fullWidth: true,
+      positionMode: "OVERLAY",
+      positionSticky: true,
+      entranceAnimation: "SLIDE",
+      exitAnimation: "POP",
+      animationDurationMs: 480,
+      timerTickAnimation: "FLIP",
+      mobileEnabled: true,
+      alignment: "RIGHT",
+      showCloseButton: true,
+      showButton: true,
+      showIcon: true,
+      icon: "CUSTOM",
+      iconSize: 48,
+      customIconUrl: "data:image/png;base64,AAAA",
+    });
+    expect(parsed.values.customCss).toContain(".pp-banner");
+  });
+
   it("sanitizes custom CSS for Pro campaigns", () => {
     const parsed = parseCampaignDesignFormData(
       formData({
@@ -183,6 +294,204 @@ describe("advanced campaign settings form parsing", () => {
     expect(valid.values.currencyCode).toBe("USD");
     expect(valid.values.includeDiscountedSubtotal).toBe(true);
     expect(valid.thresholdRules).toEqual({ AR: 120 });
+  });
+
+  it("parses free shipping campaign settings, targeting, placements, and discount code visibility", () => {
+    const parsed = parseCampaignFormData(
+      formData({
+        goal: "FREE_SHIPPING",
+        type: "FREE_SHIPPING_GOAL",
+        name: "Free shipping push",
+        headline: "Free shipping unlocked soon",
+        placementTypes: "TOP_BAR",
+        productSelection: "TAGS",
+        productTags: "summer, vip",
+        countrySelection: "SPECIFIC_COUNTRIES",
+        countries: "us, ar",
+        freeShippingThresholdAmount: "100",
+        freeShippingCurrencyCode: "usd",
+        freeShippingIncludeDiscountedSubtotal: "on",
+        freeShippingProgressStyle: "CIRCULAR",
+        freeShippingEmptyCartMessage: "Add {{amount}} more",
+        freeShippingSuccessMessage: "Shipping is free",
+        freeShippingAutoDiscount: "on",
+        freeShippingDiscountCode: "ship100",
+        freeShippingDiscountTitle: "Free shipping over 100",
+        freeShippingDiscountAppliesOncePerCustomer: "on",
+        freeShippingShowDiscountCode: "on",
+      }),
+    );
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values).toMatchObject({
+      goal: "FREE_SHIPPING",
+      type: "FREE_SHIPPING_GOAL",
+      placementTypes: ["TOP_BAR"],
+      placementType: "TOP_BAR",
+      productSelection: "TAGS",
+      productTags: "summer, vip",
+      countrySelection: "SPECIFIC_COUNTRIES",
+      countries: "us, ar",
+      freeShippingThresholdAmount: "100",
+      freeShippingCurrencyCode: "USD",
+      freeShippingProgressStyle: "CIRCULAR",
+      freeShippingAutoDiscount: true,
+      freeShippingDiscountCode: "SHIP100",
+      freeShippingDiscountAppliesOncePerCustomer: true,
+      freeShippingShowDiscountCode: true,
+    });
+    expect(buildCampaignTargetingValues(parsed.values)).toMatchObject({
+      productTags: ["summer", "vip"],
+      countries: ["US", "AR"],
+    });
+    expect(buildCampaignFreeShippingSettingsValues(parsed.values)).toMatchObject({
+      thresholdAmount: "100",
+      currencyCode: "USD",
+      includeDiscountedSubtotal: true,
+      progressStyle: "CIRCULAR",
+      emptyCartMessage: "Add {{amount}} more",
+      successMessage: "Shipping is free",
+    });
+  });
+
+  it("validates goal-specific campaign settings", () => {
+    expect(
+      parseCampaignFormData(
+        formData({
+          goal: "FREE_SHIPPING",
+          type: "FREE_SHIPPING_GOAL",
+          name: "Bad free shipping",
+          headline: "Free shipping",
+          freeShippingThresholdAmount: "0",
+          freeShippingCurrencyCode: "US",
+          freeShippingAutoDiscount: "on",
+          freeShippingDiscountCode: "!!",
+          freeShippingDiscountTitle: "",
+        }),
+      ).errors,
+    ).toMatchObject({
+      freeShippingThresholdAmount:
+        "Enter a free shipping threshold greater than 0.",
+      freeShippingCurrencyCode: "Currency code must use a 3-letter ISO code.",
+      freeShippingDiscountCode:
+        "Use 3-40 characters: letters, numbers, dashes, or underscores.",
+    });
+
+    expect(
+      parseCampaignFormData(
+        formData({
+          goal: "CART_RESCUE",
+          type: "CART_TIMER",
+          name: "Cart timer",
+          cartTimerDurationMinutes: "0",
+        }),
+      ).errors,
+    ).toMatchObject({
+      cartTimerDurationMinutes:
+        "Enter cart reservation minutes between 1 and 10080.",
+    });
+
+    expect(
+      parseCampaignFormData(
+        formData({
+          goal: "DELIVERY_CUTOFF",
+          type: "DELIVERY_CUTOFF",
+          name: "Delivery cutoff",
+          deliveryCutoffHour: "25",
+          deliveryCutoffMinute: "99",
+          deliveryProcessingDays: "-1",
+          deliveryMinDays: "5",
+          deliveryMaxDays: "3",
+          deliveryWorkingDays: "0,8",
+        }),
+      ).errors,
+    ).toMatchObject({
+      deliveryCutoffHour: "Enter a cutoff hour from 0 to 23.",
+      deliveryCutoffMinute: "Enter a cutoff minute from 0 to 59.",
+      deliveryProcessingDays: "Enter processing days from 0 to 60.",
+      deliveryMaxDays:
+        "Maximum delivery days must be greater than or equal to minimum delivery days.",
+      deliveryWorkingDays: "Choose at least one fulfillment day.",
+    });
+
+    expect(
+      parseCampaignFormData(
+        formData({
+          goal: "LOW_STOCK_URGENCY",
+          type: "LOW_STOCK",
+          name: "Low stock",
+          lowStockThreshold: "0",
+          lowStockFallbackMessage: "x".repeat(181),
+        }),
+      ).errors,
+    ).toMatchObject({
+      lowStockThreshold: "Enter a low-stock threshold from 1 to 9999.",
+      lowStockFallbackMessage: "Keep the fallback message under 180 characters.",
+    });
+
+    expect(
+      parseCampaignFormData(
+        formData({
+          goal: "PRODUCT_BADGE",
+          type: "PRODUCT_BADGE",
+          name: "Badge",
+          badgeText: "x".repeat(49),
+        }),
+      ).errors,
+    ).toMatchObject({
+      badgeText: "Keep badge text under 48 characters.",
+    });
+  });
+
+  it("builds timer settings for fixed, evergreen, recurring, and cart-rescue modes", () => {
+    const evergreen = parseCampaignFormData(
+      formData({
+        name: "Evergreen",
+        timerMode: "EVERGREEN_SESSION",
+        timerDurationMinutes: "90",
+        timerExpiredBehavior: "REPEAT_COUNTDOWN",
+        timerResetBehavior: "DAILY",
+      }),
+    ).values;
+
+    expect(buildCampaignTimerSettingsValues(evergreen)).toMatchObject({
+      mode: "EVERGREEN_SESSION",
+      durationMinutes: 90,
+      resetBehavior: "ON_SESSION_END",
+      expiredBehavior: "REPEAT_COUNTDOWN",
+    });
+
+    const recurring = parseCampaignFormData(
+      formData({
+        name: "Recurring",
+        timerMode: "RECURRING_DAILY",
+        timerRecurringHour: "17",
+        timerRecurringMinute: "45",
+      }),
+    ).values;
+
+    expect(buildCampaignTimerSettingsValues(recurring)).toMatchObject({
+      mode: "RECURRING_DAILY",
+      durationMinutes: null,
+      recurringDays: [{ cutoffHour: 17, cutoffMinute: 45 }],
+    });
+
+    const cart = parseCampaignFormData(
+      formData({
+        goal: "CART_RESCUE",
+        type: "CART_TIMER",
+        name: "Cart timer",
+        timerMode: "EVERGREEN_SESSION",
+        cartTimerDurationMinutes: "35",
+        cartTimerResetBehavior: "WEEKLY",
+      }),
+    ).values;
+
+    expect(buildCampaignTimerSettingsValues(cart)).toMatchObject({
+      mode: "EVERGREEN_SESSION",
+      durationMinutes: 35,
+      resetBehavior: "WEEKLY",
+    });
   });
 
   it("validates delivery cutoff windows, working days, holidays, and timezone", () => {

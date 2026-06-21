@@ -7,10 +7,13 @@ import {
 import { getAppFrameOrPage } from "./helpers/auth";
 import {
   activateCampaign,
+  clickCampaignBuilderTab,
+  clickCampaignEditorTab,
   createCampaignViaUI,
   deleteCampaignIfExists,
   editCampaignBasics,
   openCampaignEditor,
+  pauseAllPrefixedCampaigns,
   pauseCampaign,
   searchCampaign,
 } from "./helpers/admin-app";
@@ -25,6 +28,8 @@ test.describe("real admin campaign CRUD", () => {
   }) => {
     const campaignName = uniqueName("Countdown Bar");
     const updatedHeadline = `${campaignName} updated headline`;
+
+    await pauseAllPrefixedCampaigns(page);
 
     await createCampaignViaUI(page, {
       headline: campaignName,
@@ -41,7 +46,13 @@ test.describe("real admin campaign CRUD", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     const app = await getAppFrameOrPage(page);
-    await expect(app.locator('input[name="headline"]')).toHaveValue(
+    await clickCampaignEditorTab(app, "campaign");
+    await clickCampaignBuilderTab(app, "message");
+    await expect(
+      app
+        .getByRole("tabpanel", { name: "Message" })
+        .locator('input[name="headline"]'),
+    ).toHaveValue(
       updatedHeadline,
     );
 

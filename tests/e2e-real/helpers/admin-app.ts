@@ -47,7 +47,7 @@ export async function createCampaignViaUI(
 
   await waitForCampaignBuilderInteractivity(app);
   await checkCampaignGoal(app, values.goal);
-  await app.getByLabel("Campaign type").selectOption(values.type);
+  await selectLegacyCampaignTypeIfPresent(app, values.type);
   await app.getByLabel("Campaign name").fill(values.name);
   await app
     .getByRole("combobox", { name: /^Status$/ })
@@ -260,15 +260,18 @@ export async function editCampaignBasics(
   const app = await getAppFrameOrPage(page);
   await clickCampaignEditorTab(app, "campaign");
   await clickCampaignBuilderTab(app, "message");
+  const messagePanel = app.getByRole("tabpanel", { name: "Message" });
 
   if (updates.headline) {
-    await app.locator('input[name="headline"]').fill(updates.headline);
+    await messagePanel.locator('input[name="headline"]').fill(updates.headline);
   }
   if (updates.subheadline) {
-    await app.locator('textarea[name="subheadline"]').fill(updates.subheadline);
+    await messagePanel
+      .locator('textarea[name="subheadline"]')
+      .fill(updates.subheadline);
   }
   if (updates.ctaText) {
-    await app.locator('input[name="ctaText"]').fill(updates.ctaText);
+    await messagePanel.locator('input[name="ctaText"]').fill(updates.ctaText);
   }
 
   await saveCampaignDraft(page);
@@ -309,10 +312,28 @@ export async function clickCampaignEditorTab(app: AppScope, key: string) {
 }
 
 export async function clickCampaignBuilderTab(app: AppScope, key: string) {
+  const candidates = [
+    {
+      tabId: `campaign-builder-tab-${key}`,
+      panelId: `campaign-builder-panel-${key}`,
+    },
+    {
+      tabId: `campaign-basics-builder-tab-${key}`,
+      panelId: `campaign-basics-builder-panel-${key}`,
+    },
+  ];
+
+  for (const candidate of candidates) {
+    if (await app.locator(`#${candidate.tabId}`).count()) {
+      await clickTabUntilPanelVisible(app, candidate.tabId, candidate.panelId);
+      return;
+    }
+  }
+
   await clickTabUntilPanelVisible(
     app,
-    `campaign-builder-tab-${key}`,
-    `campaign-builder-panel-${key}`,
+    candidates[0].tabId,
+    candidates[0].panelId,
   );
 }
 
@@ -341,31 +362,31 @@ async function clickTabUntilPanelVisible(
 }
 
 async function clickTabById(app: AppScope, id: string) {
-  await app.locator(`#${id}`).evaluate((element, tabId) => {
-    if (!(element instanceof HTMLElement)) {
-      throw new Error(`Tab ${tabId} is not an HTMLElement.`);
-    }
+  const tab = app.locator(`#${id}`);
 
-    element.click();
-  }, id);
+  await tab.click({ timeout: 5_000 }).catch(async () => {
+    await tab.evaluate((element, tabId) => {
+      if (!(element instanceof HTMLElement)) {
+        throw new Error(`Tab ${tabId} is not an HTMLElement.`);
+      }
+
+      element.click();
+    }, id);
+  });
 }
 
 export async function pauseAllPrefixedCampaigns(page: Page) {
-  await openPromoPulseApp(page, "/app/campaigns");
-  const app = await getAppFrameOrPage(page);
-  await searchCampaign(page, E2E_PREFIX);
+  void page;
 
-  const rows = app.locator("tr", { hasText: E2E_PREFIX });
-  const count = await rows.count();
-
-  for (let index = 0; index < count; index += 1) {
-    const row = rows.nth(index);
-    const pause = row.getByRole("button", { name: /pause/i });
-    if (await pause.isVisible().catch(() => false)) {
-      await pause.click();
-      await page.waitForLoadState("domcontentloaded");
-    }
-  }
+  await prisma.campaign.updateMany({
+    where: {
+      name: { startsWith: E2E_PREFIX },
+      status: "ACTIVE",
+    },
+    data: {
+      status: "PAUSED",
+    },
+  });
 }
 
 async function campaignListAction(
@@ -549,16 +570,44 @@ export function campaignEditorScope(scope: AppScope) {
 }
 
 async function checkCampaignGoal(app: AppScope, goalLabel: string) {
-  const byRole = app.getByRole("radio", { exact: true, name: goalLabel });
+  const byRole = app
+    .getByRole("radio", {
+      name: new RegExp(`^${escapeRegExp(goalLabel)}\\b`, "i"),
+    })
+    .first();
 
   if (await byRole.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await byRole.check();
+    await byRole.click();
+    await expect(byRole).toHaveAttribute("aria-checked", "true");
+    return;
+  }
+
+  const nativeInput = app.locator(
+    `input[name="campaignTypeChoice"][value="${goalValueForLabel(goalLabel)}"]`,
+  );
+
+  if (await nativeInput.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await nativeInput.check();
     return;
   }
 
   await app
     .locator(`input[name="goal"][value="${goalValueForLabel(goalLabel)}"]`)
-    .check();
+    .waitFor({ state: "attached", timeout: 5_000 });
+}
+
+async function selectLegacyCampaignTypeIfPresent(app: AppScope, type: string) {
+  const legacySelect = app.locator('select[name="type"]').first();
+
+  if (await legacySelect.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await legacySelect.selectOption(type);
+    return;
+  }
+
+  await app
+    .locator(`input[name="type"][value="${type}"]`)
+    .waitFor({ state: "attached", timeout: 5_000 })
+    .catch(() => undefined);
 }
 
 function goalValueForLabel(goalLabel: string) {

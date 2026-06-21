@@ -34,8 +34,10 @@ import {
 import prisma from "../db.server";
 import { publishCampaignForShop } from "../models/campaign.server";
 
-export const E2E_DEMO_SHOP_DOMAIN = "demo-shop.myshopify.com";
-export const E2E_AUTH_COOKIE = "promo_pulse_e2e_shop";
+export const E2E_DEMO_SHOP_DOMAIN =
+  process.env.E2E_DEMO_SHOP_DOMAIN?.trim() || "demo-shop.myshopify.com";
+export const E2E_AUTH_COOKIE =
+  process.env.E2E_AUTH_COOKIE?.trim() || "promo_pulse_e2e_shop";
 
 export type E2ETestScenario =
   | "empty"
@@ -89,14 +91,7 @@ export function buildE2ELogoutCookie() {
 export async function ensureE2EShop() {
   requireE2ETestMode();
 
-  const shop = await prisma.shop.upsert({
-    where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
-    update: {},
-    create: {
-      shopifyDomain: E2E_DEMO_SHOP_DOMAIN,
-      plan: ShopPlan.PRO,
-    },
-  });
+  const shop = await upsertE2EShop();
 
   await prisma.shopSettings.upsert({
     where: { shopId: shop.id },
@@ -122,6 +117,32 @@ export async function ensureE2EShop() {
   });
 
   return shop;
+}
+
+async function upsertE2EShop() {
+  try {
+    return await prisma.shop.upsert({
+      where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
+      update: {},
+      create: {
+        shopifyDomain: E2E_DEMO_SHOP_DOMAIN,
+        plan: ShopPlan.PRO,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const shop = await prisma.shop.findUnique({
+        where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
+      });
+
+      if (shop) return shop;
+    }
+
+    throw error;
+  }
 }
 
 export async function resetE2ETestDatabase(

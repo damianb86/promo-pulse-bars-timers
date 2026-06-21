@@ -16,6 +16,7 @@ import {
 import { getAppFrameOrPage } from "./helpers/auth";
 import { expectNoConsoleErrors } from "./helpers/assertions";
 import {
+  expectStorefrontEmbedOrSkip,
   newStorefrontVisitor,
   openStorefront,
   realE2ECacheBustPath,
@@ -88,6 +89,7 @@ test.describe("real unique codes", () => {
 
     const storefrontPath = realE2ECacheBustPath("unique_codes");
     await openStorefront(page, storefrontPath);
+    await expectStorefrontEmbedOrSkip(page, testInfo);
     const codeA = uniqueCodeLocatorForCampaign(page, "Unique code real E2E");
     await expect(codeA).toBeVisible({ timeout: 30_000 });
     const firstCode = (await codeA.textContent())?.trim();

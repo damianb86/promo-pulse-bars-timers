@@ -32,6 +32,9 @@ test.describe("real design and timer configuration", () => {
   }, testInfo) => {
     const campaignName = uniqueName("Timer Configuration");
     const headline = `${campaignName} headline`;
+    const endDate = toDateTimeLocalInputValue(
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    );
 
     await createCampaignViaUI(page, {
       headline,
@@ -45,56 +48,56 @@ test.describe("real design and timer configuration", () => {
     let app = await getAppFrameOrPage(page);
     await clickCampaignEditorTab(app, "campaign");
     await clickCampaignBuilderTab(app, "schedule");
+    let schedulePanel = app.getByRole("tabpanel", { name: "Schedule" });
 
     await selectTimerMode(app, "EVERGREEN_SESSION");
-    await app.locator('input[name="timerDurationMinutes"]').fill("45");
-    await app.getByLabel("Once it ends").selectOption("SHOW_CUSTOM_TITLE");
-    await app
+    await schedulePanel.locator('input[name="timerDurationMinutes"]').fill("45");
+    await schedulePanel
+      .getByLabel("Once it ends")
+      .selectOption("SHOW_CUSTOM_TITLE");
+    await schedulePanel
       .locator('input[name="expiredText"]')
       .fill("Timer finished for this buyer");
 
-    const recurringTimer = app.locator(
+    const recurringTimer = schedulePanel.locator(
       'input[type="radio"][name="timerMode"][value="RECURRING_DAILY"]',
     );
     await expect(recurringTimer).toHaveCount(1);
 
     await selectTimerMode(app, "FIXED_DATE");
-    const scheduledStart = app.locator(
+    const scheduledStart = schedulePanel.locator(
       'input[type="radio"][name="timerStartsMode"][value="SCHEDULED"]',
     );
     if (await scheduledStart.isDisabled().catch(() => false)) {
       await expect(scheduledStart).toBeDisabled();
     } else {
       await scheduledStart.check({ force: true });
-      await expect(
-        app.locator(
-          '#campaign-builder-panel-schedule input[name="startsAt"][type="datetime-local"]',
-        ),
-      ).toBeVisible();
-      await app
+      await expect(schedulePanel.getByLabel("Start date/time")).toBeVisible();
+      await schedulePanel
         .locator('input[type="radio"][name="timerStartsMode"][value="NOW"]')
         .check({ force: true });
     }
+    await schedulePanel.getByLabel("End date").fill(endDate);
 
-    await selectTimerMode(app, "EVERGREEN_SESSION");
     await saveCampaignDraft(page);
 
     await page.reload({ waitUntil: "domcontentloaded" });
     app = await getAppFrameOrPage(page);
     await clickCampaignEditorTab(app, "campaign");
     await clickCampaignBuilderTab(app, "schedule");
+    schedulePanel = app.getByRole("tabpanel", { name: "Schedule" });
     await expect(
-      app.locator(
-        'input[type="radio"][name="timerMode"][value="EVERGREEN_SESSION"]',
+      schedulePanel.locator(
+        'input[type="radio"][name="timerMode"][value="FIXED_DATE"]',
       ),
     ).toBeChecked();
-    await expect(app.locator('input[name="timerDurationMinutes"]')).toHaveValue(
-      "45",
-    );
-    await expect(app.getByLabel("Once it ends")).toHaveValue(
+    await expect(
+      schedulePanel.getByLabel("End date"),
+    ).toHaveValue(endDate);
+    await expect(schedulePanel.getByLabel("Once it ends")).toHaveValue(
       "SHOW_CUSTOM_TITLE",
     );
-    await expect(app.locator('input[name="expiredText"]')).toHaveValue(
+    await expect(schedulePanel.locator('input[name="expiredText"]')).toHaveValue(
       "Timer finished for this buyer",
     );
 
@@ -116,15 +119,15 @@ test.describe("real design and timer configuration", () => {
     ] as const;
 
     for (const [label, value] of layouts) {
-      await controls.getByRole("button", { name: label }).click();
+      await selectPreviewDropdownOption(controls, "Layout options", label);
       await expect(controls.locator('input[name="layout"]')).toHaveValue(value);
       await expect(preview).toHaveClass(
         new RegExp(`counterpulse-preview-promo--layout-${value.toLowerCase()}`),
       );
     }
 
-    await controls.getByRole("button", { name: "Button left" }).click();
-    await controls.getByRole("button", { name: "Dawn" }).click();
+    await selectPreviewDropdownOption(controls, "Layout options", "Button left");
+    await selectPreviewDropdownOption(controls, "Preset options", "Dawn");
     await expect(controls.locator('input[name="layout"]')).toHaveValue(
       "CTA_LEFT",
     );
@@ -297,8 +300,20 @@ test.describe("real design and timer configuration", () => {
 
 async function selectTimerMode(app: AppScope, value: string) {
   await app
+    .getByRole("tabpanel", { name: "Schedule" })
     .locator(`input[type="radio"][name="timerMode"][value="${value}"]`)
     .check({ force: true });
+}
+
+async function selectPreviewDropdownOption(
+  container: Locator,
+  dropdownLabel: string,
+  optionLabel: string,
+) {
+  await container.getByRole("button", { name: dropdownLabel }).click();
+  await container
+    .getByRole("option", { name: new RegExp(`^${escapeRegExp(optionLabel)}\\b`) })
+    .click();
 }
 
 async function ensureCheckbox(locator: Locator, checked: boolean) {
@@ -310,4 +325,14 @@ async function ensureCheckbox(locator: Locator, checked: boolean) {
   } else {
     await locator.first().uncheck({ force: true });
   }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toDateTimeLocalInputValue(date: Date) {
+  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+
+  return localTime.toISOString().slice(0, 16);
 }

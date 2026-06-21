@@ -43,7 +43,7 @@ describe("web pixel analytics mapper", () => {
     ).toEqual({
       ok: true,
       payload: expect.objectContaining({
-        shop: "promo-pulse-demo.myshopify.com",
+        shop: "promopulse-demo.myshopify.com",
         campaignId: "campaign-1",
         experimentId: "experiment-1",
         variantId: "variant-1",

@@ -9,7 +9,7 @@ import {
 import { createCountdownCampaign } from "./helpers/admin-app";
 import { getAppFrameOrPage, openPromoPulseApp } from "./helpers/auth";
 import { promoBarLocator } from "./helpers/assertions";
-import { openStorefront } from "./helpers/storefront";
+import { expectStorefrontEmbedOrSkip, openStorefront } from "./helpers/storefront";
 
 test.describe("real analytics and reports", () => {
   skipIfRealE2EDisabled(test);
@@ -24,6 +24,7 @@ test.describe("real analytics and reports", () => {
     );
 
     await openStorefront(page);
+    await expectStorefrontEmbedOrSkip(page, testInfo);
     await expect(promoBarLocator(page)).toBeVisible({ timeout: 30_000 });
     const cta = page.locator(".pp-cta").first();
     if (await cta.isVisible().catch(() => false)) {

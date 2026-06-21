@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 
+import { FieldInfoButton } from "./Notifications";
 import {
   campaignDesignTemplates,
   designAlignmentOptions,
@@ -981,7 +982,15 @@ export function DesignControls({
 
       <DesignPanel title="Advanced">
         <DesignField
-          label={isProPlan ? "Custom CSS" : "Custom CSS (Pro plan)"}
+          label={
+            <span className="counterpulse-field-label-row">
+              <span>Custom CSS</span>
+              {!isProPlan && <ProPlanBadge />}
+              <FieldInfoButton label="Custom CSS" title="Custom CSS reference">
+                <CustomCssInfoContent />
+              </FieldInfoButton>
+            </span>
+          }
           error={errors.customCss}
         >
           <textarea
@@ -993,6 +1002,93 @@ export function DesignControls({
           />
         </DesignField>
       </DesignPanel>
+    </div>
+  );
+}
+
+function ProPlanBadge() {
+  return (
+    <span className="counterpulse-pro-badge" title="Requires Pro plan">
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16">
+        <path d="M8 1.5 9.8 5l3.9.6-2.8 2.7.7 3.9L8 10.3l-3.5 1.9.7-3.9-2.8-2.7L6.2 5 8 1.5Z" />
+      </svg>
+      Pro
+    </span>
+  );
+}
+
+function CustomCssInfoContent() {
+  return (
+    <div className="counterpulse-info-copy counterpulse-info-copy--wide">
+      <p>
+        Custom CSS should target Promo Pulse storefront classes only. Use it for
+        small visual adjustments that are not covered by the normal design
+        controls.
+      </p>
+      <ul className="counterpulse-info-list">
+        <li>
+          <strong>Main surfaces</strong>
+          <span>
+            Use <code>.pp-bar</code> for top, bottom, and custom selector bars;{" "}
+            <code>.pp-product-card</code> for product-page timers;{" "}
+            <code>.pp-cart-card</code> for cart timers; and{" "}
+            <code>.pp-badge</code> for product badges.
+          </span>
+        </li>
+        <li>
+          <strong>Inner elements</strong>
+          <span>
+            Use <code>.pp-message</code>, <code>.pp-countdown</code>,{" "}
+            <code>.pp-cta</code>, <code>.pp-close</code>, <code>.pp-icon</code>,{" "}
+            <code>.pp-progress</code>, and <code>.pp-code</code> for text,
+            timer, button, close icon, campaign icon, progress bar, and
+            discount-code styling.
+          </span>
+        </li>
+        <li>
+          <strong>Useful modifiers</strong>
+          <span>
+            Placements add classes like <code>.pp-bar--top-bar</code>,{" "}
+            <code>.pp-bar--bottom-bar</code>, <code>.pp-bar--full-width</code>,{" "}
+            <code>.pp-bar--overlay</code>, and <code>.pp-bar--sticky</code>.
+          </span>
+        </li>
+        <li>
+          <strong>CSS variables</strong>
+          <span>
+            You can override <code>--pp-bg</code>, <code>--pp-text</code>,{" "}
+            <code>--pp-accent</code>, <code>--pp-button</code>,{" "}
+            <code>--pp-button-text</code>, <code>--pp-close</code>,{" "}
+            <code>--pp-radius</code>, <code>--pp-padding-block</code>,{" "}
+            <code>--pp-padding-inline</code>, and{" "}
+            <code>--pp-content-max-width</code>.
+          </span>
+        </li>
+        <li>
+          <strong>Safety</strong>
+          <span>
+            The app strips <code>&lt;style&gt;</code> tags, <code>@import</code>
+            , JavaScript URLs, and legacy CSS expressions. Keep snippets scoped
+            and under 2,000 characters.
+          </span>
+        </li>
+      </ul>
+      <pre className="counterpulse-code-example">{`.pp-bar {
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+}
+
+.pp-countdown {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.pp-cta {
+  text-transform: uppercase;
+}
+
+.pp-close {
+  color: #ffffff;
+}`}</pre>
     </div>
   );
 }
@@ -1372,7 +1468,7 @@ function DesignField({
   error,
   children,
 }: {
-  label: string;
+  label: ReactNode;
   error?: string;
   children: ReactNode;
 }) {

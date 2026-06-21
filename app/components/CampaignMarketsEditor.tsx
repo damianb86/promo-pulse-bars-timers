@@ -511,23 +511,35 @@ export function CampaignMarketsEditor({
           <PanelHeader
             eyebrow="Preview"
             title="Market context"
-            description="Use these selectors to mirror how a storefront request will resolve market settings."
+            description="Simulate a Shopify Market, locale, and currency to preview which override would be used. This does not change who can see the campaign."
           />
+          <AppAlert tone="info" title="Preview only">
+            <p>
+              These fields do not geolocate you and do not filter the live
+              storefront. Country and audience visibility are configured in the
+              Targeting tab; this panel only helps check market-specific copy,
+              thresholds, currency, and delivery settings.
+            </p>
+          </AppAlert>
           <div className="counterpulse-form-grid">
             <FormField
               label="Preview market"
               info={
                 <FieldInfoButton label="Preview market" title="Market preview">
                   <MarketInfoContent
-                    intro="Preview selectors help verify which text, threshold, and delivery settings would resolve for a storefront context."
+                    intro="Preview market simulates the market context sent to Promo Pulse so you can inspect market overrides without changing live eligibility."
                     items={[
                       [
-                        "No save",
-                        "Changing preview selectors does not change campaign behavior.",
+                        "What it affects",
+                        "It helps you verify localized copy, free-shipping thresholds, currency assumptions, and delivery settings for this editor preview.",
                       ],
                       [
-                        "Use case",
-                        "Check fallback behavior before testing on the storefront.",
+                        "What it does not affect",
+                        "It does not save a rule, publish targeting, geolocate the admin user, or decide whether the campaign should render for Argentina, United States, or any other country.",
+                      ],
+                      [
+                        "Where visibility lives",
+                        "Use the Targeting tab for country, market, product, customer, device, and URL eligibility rules.",
                       ],
                     ]}
                   />

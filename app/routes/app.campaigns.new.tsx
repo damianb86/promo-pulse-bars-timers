@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
+import { useEffect, useState } from "react";
 import {
   ExperimentPrimaryMetric,
   ExperimentVariantStatus,
@@ -382,6 +383,15 @@ export default function CreateCampaignPage() {
     targetingOptions,
     templateSourceName,
   } = useLoaderData<typeof loader>();
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(
+    Boolean(actionData?.aiErrors || actionData?.aiSuggestion),
+  );
+
+  useEffect(() => {
+    if (actionData?.aiErrors || actionData?.aiSuggestion) {
+      setIsAiDrawerOpen(true);
+    }
+  }, [actionData?.aiErrors, actionData?.aiSuggestion]);
 
   return (
     <s-page inlineSize="large" heading="Create campaign">
@@ -394,22 +404,66 @@ export default function CreateCampaignPage() {
             targetingOptions={targetingOptions}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
+            topbarActions={
+              <button
+                className="counterpulse-ai-launch-button"
+                type="button"
+                onClick={() => setIsAiDrawerOpen(true)}
+              >
+                <AiSparkIcon />
+                <span>AI campaign</span>
+              </button>
+            }
           />
         </div>
-        <aside
-          className="counterpulse-ai-drawer"
-          aria-label="AI Campaign Assistant"
-        >
-          <AiCampaignBuilder
-            errors={actionData?.aiErrors}
-            lockedReason={aiLockedReason}
-            suggestion={actionData?.aiSuggestion}
-            templateSourceName={templateSourceName}
-            values={actionData?.aiInput ?? aiInput}
-          />
-        </aside>
       </div>
+      {isAiDrawerOpen && (
+        <div className="counterpulse-ai-drawer-shell">
+          <button
+            aria-label="Close AI campaign drawer"
+            className="counterpulse-ai-drawer-backdrop"
+            type="button"
+            onClick={() => setIsAiDrawerOpen(false)}
+          />
+          <aside
+            aria-label="AI Campaign Assistant"
+            className="counterpulse-ai-drawer"
+          >
+            <div className="counterpulse-ai-drawer__header">
+              <div>
+                <p className="counterpulse-kicker">AI campaign assistant</p>
+                <h2>Generate a campaign draft</h2>
+              </div>
+              <button
+                aria-label="Close AI campaign drawer"
+                className="counterpulse-ai-drawer__close"
+                type="button"
+                onClick={() => setIsAiDrawerOpen(false)}
+              >
+                x
+              </button>
+            </div>
+            <AiCampaignBuilder
+              errors={actionData?.aiErrors}
+              lockedReason={aiLockedReason}
+              suggestion={actionData?.aiSuggestion}
+              templateSourceName={templateSourceName}
+              values={actionData?.aiInput ?? aiInput}
+            />
+          </aside>
+        </div>
+      )}
     </s-page>
+  );
+}
+
+function AiSparkIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M12 2.5 13.6 8l5.6 1.6-5.6 1.6L12 16.7l-1.6-5.5-5.6-1.6L10.4 8 12 2.5Z" />
+      <path d="M18.5 14.2 19.4 17l2.9.9-2.9.9-.9 2.8-.9-2.8-2.8-.9 2.8-.9.9-2.8Z" />
+      <path d="M5.3 15.4 6 17.5l2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" />
+    </svg>
   );
 }
 

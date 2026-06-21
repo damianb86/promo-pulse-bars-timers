@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { AppAlert } from "./Notifications";
 import type { CampaignTypeValue } from "../types/campaign-options";
@@ -23,7 +23,6 @@ type OffersEditorProps = {
   campaignTypeLabel: string;
   discountMode: DiscountModeValue;
   sections: OfferSection[];
-  uniquePoolsCount: number;
 };
 
 const merchandisingOnlyTypes = new Set<CampaignTypeValue>([
@@ -37,7 +36,6 @@ export function OffersEditor({
   campaignTypeLabel,
   discountMode,
   sections,
-  uniquePoolsCount,
 }: OffersEditorProps) {
   const [activeSectionKey, setActiveSectionKey] = useState<OfferSectionKey>(
     () =>
@@ -49,48 +47,20 @@ export function OffersEditor({
   );
   const activeSection =
     sections.find((section) => section.key === activeSectionKey) ?? sections[0];
-  const offerStateItems = useMemo(
-    () => [
-      ["Shared discount", formatDiscountMode(discountMode)],
-      ["Unique code pools", String(uniquePoolsCount)],
-      ["Advanced rules", String(advancedRulesCount)],
-      ["Campaign type", campaignTypeLabel],
-    ],
-    [advancedRulesCount, campaignTypeLabel, discountMode, uniquePoolsCount],
-  );
 
   if (!activeSection) return null;
 
   return (
     <div className="counterpulse-offers-workspace">
-      <div className="counterpulse-offer-overview">
-        <AppAlert tone="info" title="Choose one offer strategy at a time">
+      {merchandisingOnlyTypes.has(campaignType) && (
+        <AppAlert tone="warning" title="Some offer settings are optional">
           <p>
-            Basic discounts are shared Shopify codes, Unique Codes assigns one
-            code per visitor, and Advanced Rules are Shopify Function based
-            discount logic. Email timers are assets that can support any offer.
+            {campaignTypeLabel} campaigns usually rely on the Merchandising tab.
+            Discount configuration remains available, but unrelated discount
+            fields are hidden inside each offer strategy.
           </p>
         </AppAlert>
-
-        {merchandisingOnlyTypes.has(campaignType) && (
-          <AppAlert tone="warning" title="Some offer settings are optional">
-            <p>
-              {campaignTypeLabel} campaigns usually rely on the Merchandising
-              tab. Discount configuration remains available, but unrelated
-              discount fields are hidden inside each offer strategy.
-            </p>
-          </AppAlert>
-        )}
-
-        <dl className="counterpulse-offer-summary">
-          {offerStateItems.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+      )}
 
       <div
         aria-label="Offer strategy"
@@ -128,11 +98,4 @@ export function OffersEditor({
       ))}
     </div>
   );
-}
-
-function formatDiscountMode(value: DiscountModeValue) {
-  if (value === "NONE") return "No shared discount";
-  if (value === "LINK_EXISTING") return "Linked Shopify discount";
-  if (value === "CREATE_NEW") return "Created Shopify code";
-  return "Unique codes active";
 }

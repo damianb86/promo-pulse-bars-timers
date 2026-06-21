@@ -23,7 +23,7 @@ Para probar un provider real:
 ```bash
 PROMO_PULSE_AI_PROVIDER=openai
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
 Si el provider externo falla, el servicio registra el error y vuelve al mock.

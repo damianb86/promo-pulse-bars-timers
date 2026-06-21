@@ -10,9 +10,25 @@ import prisma from "../../db.server";
 export type CreateEmailTimerInput = {
   shopId: string;
   campaignId: string;
+  design: EmailTimerDesignInput;
+  expiredBehavior: EmailTimerExpiredBehavior;
+};
+
+export type EmailTimerFontFamily = "BLOCK" | "DIGITAL" | "WIDE" | "COMPACT";
+
+export type EmailTimerDesignInput = {
+  presetKey: string;
   width: number;
   height: number;
-  expiredBehavior: EmailTimerExpiredBehavior;
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  labelColor: string;
+  fontFamily: EmailTimerFontFamily;
+  cornerRadius: number;
+  showHeading: boolean;
+  headingText: string;
+  showLabels: boolean;
 };
 
 export type EmailTimerListItem = Awaited<
@@ -22,8 +38,7 @@ export type EmailTimerListItem = Awaited<
 export async function createEmailTimerForCampaign({
   shopId,
   campaignId,
-  width,
-  height,
+  design,
   expiredBehavior,
 }: CreateEmailTimerInput) {
   const campaign = await prisma.campaign.findFirst({
@@ -44,9 +59,19 @@ export async function createEmailTimerForCampaign({
     throw new Error("Email timers require a real campaign end date.");
   }
 
-  const design = {
-    width,
-    height,
+  const timerDesign = {
+    presetKey: design.presetKey,
+    width: design.width,
+    height: design.height,
+    backgroundColor: design.backgroundColor,
+    textColor: design.textColor,
+    accentColor: design.accentColor,
+    labelColor: design.labelColor,
+    fontFamily: design.fontFamily,
+    cornerRadius: design.cornerRadius,
+    showHeading: design.showHeading,
+    headingText: design.headingText,
+    showLabels: design.showLabels,
   } satisfies Prisma.InputJsonObject;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -61,7 +86,7 @@ export async function createEmailTimerForCampaign({
           endsAt: campaign.endsAt,
           timezone: campaign.timezone,
           expiredBehavior,
-          design,
+          design: timerDesign,
         },
       });
     } catch (error) {
@@ -100,9 +125,7 @@ export function buildEmailTimerImageUrl(request: Request, publicToken: string) {
     process.env.SHOPIFY_APP_URL?.trim().replace(/\/+$/, "") ||
     new URL(request.url).origin;
 
-  return `${appBaseUrl}/api/email-timer/${encodeURIComponent(
-    publicToken,
-  )}.png`;
+  return `${appBaseUrl}/api/email-timer/${encodeURIComponent(publicToken)}.png`;
 }
 
 export function buildEmailTimerSnippet(imageUrl: string, width: number) {

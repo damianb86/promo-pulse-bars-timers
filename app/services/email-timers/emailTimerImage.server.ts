@@ -30,6 +30,11 @@ export function renderEmailTimerPng(
   const design = readDesign(timer.design);
   const width = clampInteger(design.width, 240, 1200, 600);
   const height = clampInteger(design.height, 80, 400, 180);
+  const cornerRadius = clampInteger(design.cornerRadius, 0, 40, 0);
+  const fontFamily = readFontFamily(design.fontFamily);
+  const showHeading = readBoolean(design.showHeading, true);
+  const showLabels = readBoolean(design.showLabels, true);
+  const headingText = readBitmapText(design.headingText, "ENDS IN", 24);
   const remainingSeconds = getRemainingSeconds(timer.endsAt, now);
   const expired = remainingSeconds <= 0;
 
@@ -59,6 +64,7 @@ export function renderEmailTimerPng(
       timer.campaign.design?.accentColor,
       "#F97316",
     ),
+    label: readHexColor(design.labelColor, design.accentColor, "#FDBA74"),
   };
   const canvas = createCanvas(width, height, colors.background);
   const accentHeight = Math.max(4, Math.floor(height * 0.05));
@@ -70,7 +76,17 @@ export function renderEmailTimerPng(
       timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO
         ? "00:00:00"
         : "EXPIRED";
-    const scale = fitTextScale(label, width - 40, Math.floor(height * 0.34), 7);
+    const expiredFont =
+      timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO
+        ? fontFamily
+        : "BLOCK";
+    const scale = fitTextScale(
+      label,
+      width - 40,
+      Math.floor(height * 0.34),
+      7,
+      expiredFont,
+    );
 
     drawCenteredText(
       canvas,
@@ -78,16 +94,23 @@ export function renderEmailTimerPng(
       Math.floor(height * 0.38),
       scale,
       colors.text,
+      expiredFont,
     );
-    if (timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO) {
+    if (
+      timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO &&
+      showLabels
+    ) {
       drawCenteredText(
         canvas,
         "HRS MIN SEC",
         Math.floor(height * 0.7),
         Math.max(2, Math.floor(scale * 0.36)),
-        colors.accent,
+        colors.label,
+        "BLOCK",
       );
     }
+
+    applyRoundedCorners(canvas, cornerRadius);
 
     return {
       body: encodePng(width, height, canvas.pixels),
@@ -105,31 +128,42 @@ export function renderEmailTimerPng(
     width - 40,
     Math.floor(height * 0.38),
     7,
+    fontFamily,
   );
   const labelScale = Math.max(2, Math.floor(timeScale * 0.34));
   const headingScale = Math.max(2, Math.min(4, Math.floor(timeScale * 0.45)));
+  const timeY = showHeading
+    ? Math.floor(height * 0.39)
+    : Math.floor(showLabels ? height * 0.32 : height * 0.38);
+  const labelY = showHeading
+    ? Math.floor(height * 0.74)
+    : Math.floor(height * 0.66);
 
-  drawCenteredText(
-    canvas,
-    "ENDS IN",
-    Math.floor(height * 0.18),
-    headingScale,
-    colors.accent,
-  );
-  drawCenteredText(
-    canvas,
-    timeText,
-    Math.floor(height * 0.39),
-    timeScale,
-    colors.text,
-  );
-  drawCenteredText(
-    canvas,
-    labelText,
-    Math.floor(height * 0.74),
-    labelScale,
-    colors.accent,
-  );
+  if (showHeading) {
+    drawCenteredText(
+      canvas,
+      headingText,
+      Math.floor(height * 0.18),
+      headingScale,
+      colors.accent,
+      "BLOCK",
+    );
+  }
+
+  drawCenteredText(canvas, timeText, timeY, timeScale, colors.text, fontFamily);
+
+  if (showLabels) {
+    drawCenteredText(
+      canvas,
+      labelText,
+      labelY,
+      labelScale,
+      colors.label,
+      "BLOCK",
+    );
+  }
+
+  applyRoundedCorners(canvas, cornerRadius);
 
   return {
     body: encodePng(width, height, canvas.pixels),
@@ -155,6 +189,14 @@ function createCanvas(width: number, height: number, color: RgbaColor) {
 }
 
 type Canvas = ReturnType<typeof createCanvas>;
+
+type EmailTimerFontFamily = "BLOCK" | "DIGITAL" | "WIDE" | "COMPACT";
+
+type FontConfig = {
+  glyphs: Record<string, string[]>;
+  letterSpacing: number;
+  pixelWidthRatio: number;
+};
 
 function fillRect(
   canvas: Canvas,
@@ -182,11 +224,12 @@ function drawCenteredText(
   y: number,
   scale: number,
   color: RgbaColor,
+  fontFamily: EmailTimerFontFamily,
 ) {
-  const width = measureText(text, scale);
+  const width = measureText(text, scale, fontFamily);
   const x = Math.max(0, Math.floor((canvas.width - width) / 2));
 
-  drawText(canvas, text, x, y, scale, color);
+  drawText(canvas, text, x, y, scale, color, fontFamily);
 }
 
 function drawText(
@@ -196,11 +239,14 @@ function drawText(
   y: number,
   scale: number,
   color: RgbaColor,
+  fontFamily: EmailTimerFontFamily,
 ) {
   let cursorX = x;
+  const config = fontConfigs[fontFamily];
+  const pixelWidth = Math.max(1, Math.round(scale * config.pixelWidthRatio));
 
   for (const character of text.toUpperCase()) {
-    const glyph = font[character] ?? font[" "];
+    const glyph = config.glyphs[character] ?? font[character] ?? font[" "];
 
     for (let row = 0; row < glyph.length; row += 1) {
       const line = glyph[row];
@@ -211,7 +257,7 @@ function drawText(
             canvas,
             cursorX + column * scale,
             y + row * scale,
-            scale,
+            pixelWidth,
             scale,
             color,
           );
@@ -219,18 +265,32 @@ function drawText(
       }
     }
 
-    cursorX += (glyph[0].length + 1) * scale;
+    cursorX += glyph[0].length * scale + config.letterSpacing * scale;
   }
 }
 
-function measureText(text: string, scale: number) {
+function measureText(
+  text: string,
+  scale: number,
+  fontFamily: EmailTimerFontFamily,
+) {
+  const config = fontConfigs[fontFamily];
+  const pixelWidth = Math.max(1, Math.round(scale * config.pixelWidthRatio));
+
   return text
     .toUpperCase()
     .split("")
     .reduce((width, character, index) => {
-      const glyph = font[character] ?? font[" "];
-      const glyphWidth = glyph[0].length * scale;
-      return width + glyphWidth + (index === text.length - 1 ? 0 : scale);
+      const glyph = config.glyphs[character] ?? font[character] ?? font[" "];
+      const glyphWidth = Math.max(
+        pixelWidth,
+        (glyph[0].length - 1) * scale + pixelWidth,
+      );
+      return (
+        width +
+        glyphWidth +
+        (index === text.length - 1 ? 0 : config.letterSpacing * scale)
+      );
     }, 0);
 }
 
@@ -239,9 +299,13 @@ function fitTextScale(
   maxWidth: number,
   maxHeight: number,
   baseHeight: number,
+  fontFamily: EmailTimerFontFamily,
 ) {
   for (let scale = 12; scale >= 2; scale -= 1) {
-    if (measureText(text, scale) <= maxWidth && baseHeight * scale <= maxHeight) {
+    if (
+      measureText(text, scale, fontFamily) <= maxWidth &&
+      baseHeight * scale <= maxHeight
+    ) {
       return scale;
     }
   }
@@ -257,6 +321,36 @@ function setPixel(canvas: Canvas, x: number, y: number, color: RgbaColor) {
   canvas.pixels[offset + 1] = color.g;
   canvas.pixels[offset + 2] = color.b;
   canvas.pixels[offset + 3] = color.a;
+}
+
+function applyRoundedCorners(canvas: Canvas, radius: number) {
+  const effectiveRadius = Math.min(
+    radius,
+    Math.floor(canvas.width / 2),
+    Math.floor(canvas.height / 2),
+  );
+
+  if (effectiveRadius <= 0) return;
+
+  for (let row = 0; row < effectiveRadius; row += 1) {
+    for (let column = 0; column < effectiveRadius; column += 1) {
+      const dx = effectiveRadius - column - 0.5;
+      const dy = effectiveRadius - row - 0.5;
+
+      if (Math.sqrt(dx * dx + dy * dy) <= effectiveRadius) continue;
+
+      setAlpha(canvas, column, row, 0);
+      setAlpha(canvas, canvas.width - column - 1, row, 0);
+      setAlpha(canvas, column, canvas.height - row - 1, 0);
+      setAlpha(canvas, canvas.width - column - 1, canvas.height - row - 1, 0);
+    }
+  }
+}
+
+function setAlpha(canvas: Canvas, x: number, y: number, alpha: number) {
+  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+
+  canvas.pixels[(y * canvas.width + x) * 4 + 3] = alpha;
 }
 
 function encodePng(width: number, height: number, rgba: Uint8Array) {
@@ -381,6 +475,49 @@ function readHexColor(
   };
 }
 
+function readFontFamily(value: unknown): EmailTimerFontFamily {
+  if (
+    value === "BLOCK" ||
+    value === "DIGITAL" ||
+    value === "WIDE" ||
+    value === "COMPACT"
+  ) {
+    return value;
+  }
+
+  return "BLOCK";
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+
+  return fallback;
+}
+
+function readBitmapText(value: unknown, fallback: string, maxLength: number) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+  const text = candidate || fallback;
+
+  return text.replace(/[^\w\s:.-]/g, "").slice(0, maxLength) || fallback;
+}
+
+const digitalFont: Record<string, string[]> = {
+  " ": ["000", "000", "000", "000", "000", "000", "000"],
+  ":": ["0", "1", "0", "0", "0", "1", "0"],
+  "0": ["111", "101", "101", "101", "101", "101", "111"],
+  "1": ["010", "110", "010", "010", "010", "010", "111"],
+  "2": ["111", "001", "001", "111", "100", "100", "111"],
+  "3": ["111", "001", "001", "111", "001", "001", "111"],
+  "4": ["101", "101", "101", "111", "001", "001", "001"],
+  "5": ["111", "100", "100", "111", "001", "001", "111"],
+  "6": ["111", "100", "100", "111", "101", "101", "111"],
+  "7": ["111", "001", "001", "010", "010", "100", "100"],
+  "8": ["111", "101", "101", "111", "101", "101", "111"],
+  "9": ["111", "101", "101", "111", "001", "001", "111"],
+};
+
 const font: Record<string, string[]> = {
   " ": ["000", "000", "000", "000", "000", "000", "000"],
   ":": ["0", "1", "1", "0", "1", "1", "0"],
@@ -395,16 +532,36 @@ const font: Record<string, string[]> = {
   "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
   "9": ["01110", "10001", "10001", "01111", "00001", "00001", "01110"],
   A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
   C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
   D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
   E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  G: ["01111", "10000", "10000", "10111", "10001", "10001", "01111"],
   H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
   I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  J: ["00111", "00010", "00010", "00010", "10010", "10010", "01100"],
+  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
   M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
   N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
   P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
   R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
   S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+  W: ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
   X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
   Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+  Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+};
+
+const fontConfigs: Record<EmailTimerFontFamily, FontConfig> = {
+  BLOCK: { glyphs: font, letterSpacing: 1, pixelWidthRatio: 1 },
+  DIGITAL: { glyphs: digitalFont, letterSpacing: 1, pixelWidthRatio: 1.1 },
+  WIDE: { glyphs: font, letterSpacing: 2, pixelWidthRatio: 1.2 },
+  COMPACT: { glyphs: font, letterSpacing: 0, pixelWidthRatio: 0.85 },
 };

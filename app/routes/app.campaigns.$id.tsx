@@ -150,6 +150,8 @@ import {
   buildEmailTimerSnippet,
   createEmailTimerForCampaign,
   listEmailTimersForCampaign,
+  type EmailTimerDesignInput,
+  type EmailTimerFontFamily,
 } from "../services/email-timers/emailTimers.server";
 import {
   deleteMarketRule,
@@ -528,7 +530,7 @@ export const loader = async ({
         ? campaign.publishedAt.toISOString()
         : null,
     },
-    isProPlan: effectivePlan === "PRO",
+    isProPlan: canUseFeature({ plan: effectivePlan }, "custom_css").allowed,
     lockedFeatures,
     advancedBadgeRules: advancedBadgeRules.map(toAdvancedBadgeRuleRow),
     advancedDiscountRules: advancedDiscountRules.map(toAdvancedDiscountRuleRow),
@@ -984,7 +986,7 @@ export const action = async ({
 
     const parsed = parseEmailTimerFormData(formData);
 
-    if (parsed.errors.form || parsed.errors.width || parsed.errors.height) {
+    if (Object.keys(parsed.errors).length > 0) {
       return {
         emailTimerErrors: parsed.errors,
       };
@@ -994,8 +996,7 @@ export const action = async ({
       await createEmailTimerForCampaign({
         shopId: shop.id,
         campaignId: id,
-        width: parsed.width,
-        height: parsed.height,
+        design: parsed.design,
         expiredBehavior: parsed.expiredBehavior,
       });
 
@@ -1752,7 +1753,6 @@ export default function EditCampaignPage() {
                   discountMode={
                     (actionData?.discountValues ?? discountValues).mode
                   }
-                  uniquePoolsCount={uniqueCodePools.length}
                   sections={[
                     {
                       key: "basic-discount",
@@ -2390,13 +2390,46 @@ function readBehaviorInteger(
 
 function parseEmailTimerFormData(formData: FormData): {
   errors: EmailTimerErrors;
-  width: number;
-  height: number;
+  design: EmailTimerDesignInput;
   expiredBehavior: EmailTimerExpiredBehavior;
 } {
   const errors: EmailTimerErrors = {};
   const width = Number(formData.get("emailTimerWidth"));
   const height = Number(formData.get("emailTimerHeight"));
+  const cornerRadius = Number(formData.get("emailTimerCornerRadius"));
+  const presetKey = readEmailTimerPresetKey(
+    String(formData.get("emailTimerPresetKey") ?? ""),
+  );
+  const fontFamily = readEmailTimerFontFamily(
+    String(formData.get("emailTimerFontFamily") ?? ""),
+  );
+  const backgroundColor = readEmailTimerHexColor(
+    formData.get("emailTimerBackgroundColor"),
+    "#111827",
+    "backgroundColor",
+    errors,
+  );
+  const textColor = readEmailTimerHexColor(
+    formData.get("emailTimerTextColor"),
+    "#FFFFFF",
+    "textColor",
+    errors,
+  );
+  const accentColor = readEmailTimerHexColor(
+    formData.get("emailTimerAccentColor"),
+    "#F97316",
+    "accentColor",
+    errors,
+  );
+  const labelColor = readEmailTimerHexColor(
+    formData.get("emailTimerLabelColor"),
+    "#FDBA74",
+    "labelColor",
+    errors,
+  );
+  const headingText = String(
+    formData.get("emailTimerHeadingText") ?? "ENDS IN",
+  ).trim();
   const expiredBehavior = readEmailTimerExpiredBehavior(
     String(formData.get("emailTimerExpiredBehavior") ?? ""),
   );
@@ -2409,16 +2442,77 @@ function parseEmailTimerFormData(formData: FormData): {
     errors.height = "Enter a height from 80 to 400 pixels.";
   }
 
+  if (
+    !Number.isInteger(cornerRadius) ||
+    cornerRadius < 0 ||
+    cornerRadius > 40
+  ) {
+    errors.cornerRadius = "Enter a corner radius from 0 to 40 pixels.";
+  }
+
+  if (!fontFamily) {
+    errors.form = "Email timer font is invalid.";
+  }
+
+  if (headingText.length > 24) {
+    errors.headingText = "Heading text can be up to 24 characters.";
+  }
+
   if (!expiredBehavior) {
     errors.form = "Expired behavior is invalid.";
   }
 
   return {
     errors,
-    width: Number.isInteger(width) ? width : 600,
-    height: Number.isInteger(height) ? height : 180,
+    design: {
+      presetKey,
+      width: Number.isInteger(width) ? width : 600,
+      height: Number.isInteger(height) ? height : 180,
+      backgroundColor,
+      textColor,
+      accentColor,
+      labelColor,
+      fontFamily: fontFamily ?? "BLOCK",
+      cornerRadius: Number.isInteger(cornerRadius) ? cornerRadius : 0,
+      showHeading: formData.getAll("emailTimerShowHeading").includes("true"),
+      headingText: headingText || "ENDS IN",
+      showLabels: formData.getAll("emailTimerShowLabels").includes("true"),
+    },
     expiredBehavior: expiredBehavior ?? EmailTimerExpiredBehavior.SHOW_EXPIRED,
   };
+}
+
+function readEmailTimerPresetKey(value: string) {
+  return /^[a-z0-9-]{1,40}$/.test(value) ? value : "custom";
+}
+
+function readEmailTimerFontFamily(value: string): EmailTimerFontFamily | null {
+  if (
+    value === "BLOCK" ||
+    value === "DIGITAL" ||
+    value === "WIDE" ||
+    value === "COMPACT"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function readEmailTimerHexColor(
+  value: FormDataEntryValue | null,
+  fallback: string,
+  field: "backgroundColor" | "textColor" | "accentColor" | "labelColor",
+  errors: EmailTimerErrors,
+) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+
+  if (/^#[0-9a-f]{6}$/i.test(candidate)) {
+    return candidate.toUpperCase();
+  }
+
+  errors[field] = "Enter a valid hex color.";
+  return fallback;
 }
 
 function readEmailTimerExpiredBehavior(value: string) {
@@ -3252,6 +3346,8 @@ function toEmailTimerRow(
     snippet: buildEmailTimerSnippet(imageUrl, width),
     width,
     height,
+    preset: formatEmailTimerPreset(readStringValue(design.presetKey, "custom")),
+    fontFamily: formatEnum(readStringValue(design.fontFamily, "BLOCK")),
     mode: formatEnum(timer.mode),
     expiredBehavior: formatEnum(timer.expiredBehavior),
     endsAt: toShortDateTime(timer.endsAt),
@@ -3379,6 +3475,10 @@ function readJsonObject(value: unknown) {
     : {};
 }
 
+function readStringValue(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
 function clampIntegerValue(
   value: unknown,
   min: number,
@@ -3405,6 +3505,15 @@ function formatEnum(value: string) {
   return value
     .toLowerCase()
     .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatEmailTimerPreset(value: string) {
+  if (value === "custom") return "Custom";
+
+  return value
+    .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }

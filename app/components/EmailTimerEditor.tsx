@@ -10,6 +10,8 @@ export type EmailTimerRow = {
   snippet: string;
   width: number;
   height: number;
+  preset: string;
+  fontFamily: string;
   mode: string;
   expiredBehavior: string;
   endsAt: string;
@@ -20,6 +22,12 @@ export type EmailTimerErrors = {
   form?: string;
   width?: string;
   height?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  accentColor?: string;
+  labelColor?: string;
+  cornerRadius?: string;
+  headingText?: string;
 };
 
 type EmailTimerEditorProps = {
@@ -52,6 +60,99 @@ const sizePresets = [
   { height: 220, label: "Hero", width: 760 },
 ];
 
+type EmailTimerConfig = {
+  presetKey: string;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  labelColor: string;
+  fontFamily: string;
+  cornerRadius: number;
+  showHeading: boolean;
+  headingText: string;
+  showLabels: boolean;
+};
+
+const emailTimerFontOptions = [
+  { value: "BLOCK", label: "Block mono" },
+  { value: "DIGITAL", label: "Digital segments" },
+  { value: "WIDE", label: "Wide block" },
+  { value: "COMPACT", label: "Compact mono" },
+];
+
+const emailTimerStylePresets: Array<
+  EmailTimerConfig & { label: string; description: string }
+> = [
+  {
+    presetKey: "midnight",
+    label: "Midnight",
+    description: "Dark urgency with orange accents.",
+    width: 600,
+    height: 180,
+    backgroundColor: "#111827",
+    textColor: "#FFFFFF",
+    accentColor: "#F97316",
+    labelColor: "#FDBA74",
+    fontFamily: "BLOCK",
+    cornerRadius: 0,
+    showHeading: true,
+    headingText: "ENDS IN",
+    showLabels: true,
+  },
+  {
+    presetKey: "clean-light",
+    label: "Clean light",
+    description: "White campaign block for editorial emails.",
+    width: 600,
+    height: 180,
+    backgroundColor: "#FFFFFF",
+    textColor: "#111827",
+    accentColor: "#2563EB",
+    labelColor: "#4B5563",
+    fontFamily: "COMPACT",
+    cornerRadius: 12,
+    showHeading: true,
+    headingText: "SALE ENDS IN",
+    showLabels: true,
+  },
+  {
+    presetKey: "neon-sale",
+    label: "Neon sale",
+    description: "Bright digital timer for flash emails.",
+    width: 760,
+    height: 220,
+    backgroundColor: "#0F172A",
+    textColor: "#67E8F9",
+    accentColor: "#EC4899",
+    labelColor: "#BAE6FD",
+    fontFamily: "DIGITAL",
+    cornerRadius: 18,
+    showHeading: true,
+    headingText: "FLASH SALE",
+    showLabels: true,
+  },
+  {
+    presetKey: "soft-countdown",
+    label: "Soft countdown",
+    description: "Low contrast blue for lifecycle emails.",
+    width: 480,
+    height: 140,
+    backgroundColor: "#EEF6FF",
+    textColor: "#1E3A8A",
+    accentColor: "#0EA5E9",
+    labelColor: "#2563EB",
+    fontFamily: "WIDE",
+    cornerRadius: 16,
+    showHeading: false,
+    headingText: "ENDS IN",
+    showLabels: true,
+  },
+];
+
+const defaultEmailTimerConfig = emailTimerStylePresets[0];
+
 export function EmailTimerEditor({
   errors,
   lockedReason,
@@ -59,7 +160,9 @@ export function EmailTimerEditor({
 }: EmailTimerEditorProps) {
   const navigation = useNavigation();
   const [copiedValue, setCopiedValue] = useState("");
-  const [size, setSize] = useState({ height: 180, width: 600 });
+  const [timerConfig, setTimerConfig] = useState<EmailTimerConfig>(
+    defaultEmailTimerConfig,
+  );
   const [expiredBehavior, setExpiredBehavior] = useState("SHOW_EXPIRED");
   const isSubmitting = navigation.state === "submitting";
   const confirmSubmit = useConfirmSubmit({
@@ -80,9 +183,15 @@ export function EmailTimerEditor({
     setCopiedValue(key);
   };
   const updateSize = (field: "height" | "width", value: string) => {
-    setSize((current) => ({
-      ...current,
+    updateTimerConfig({
       [field]: Number(value),
+    });
+  };
+  const updateTimerConfig = (updates: Partial<EmailTimerConfig>) => {
+    setTimerConfig((current) => ({
+      ...current,
+      ...updates,
+      presetKey: "custom",
     }));
   };
 
@@ -113,8 +222,48 @@ export function EmailTimerEditor({
           onSubmit={confirmSubmit.onSubmit}
         >
           <input name="_action" type="hidden" value="createEmailTimer" />
+          <input
+            name="emailTimerPresetKey"
+            type="hidden"
+            value={timerConfig.presetKey}
+          />
 
           <div className="counterpulse-panel-grid">
+            <div className="counterpulse-config-card counterpulse-config-card--wide">
+              <PanelHeader
+                eyebrow="Preset"
+                title="Visual starting point"
+                description="Apply a complete visual preset, then edit size, font, colors, labels, and expiration behavior manually."
+              />
+              <div className="counterpulse-email-style-presets">
+                {emailTimerStylePresets.map((preset) => (
+                  <button
+                    aria-pressed={timerConfig.presetKey === preset.presetKey}
+                    className="counterpulse-email-style-preset"
+                    key={preset.presetKey}
+                    type="button"
+                    onClick={() => setTimerConfig(preset)}
+                  >
+                    <span
+                      className="counterpulse-email-style-preset__swatch"
+                      style={{
+                        background: preset.backgroundColor,
+                        borderColor: preset.accentColor,
+                        color: preset.textColor,
+                      }}
+                    >
+                      <span style={{ background: preset.accentColor }} />
+                      <strong>01:59:24</strong>
+                    </span>
+                    <span>
+                      <strong>{preset.label}</strong>
+                      <small>{preset.description}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="counterpulse-config-card">
               <PanelHeader
                 eyebrow="Image"
@@ -125,14 +274,17 @@ export function EmailTimerEditor({
                 {sizePresets.map((preset) => (
                   <button
                     aria-pressed={
-                      size.width === preset.width &&
-                      size.height === preset.height
+                      timerConfig.width === preset.width &&
+                      timerConfig.height === preset.height
                     }
                     className="counterpulse-preset-button"
                     key={preset.label}
                     type="button"
                     onClick={() =>
-                      setSize({ height: preset.height, width: preset.width })
+                      updateTimerConfig({
+                        height: preset.height,
+                        width: preset.width,
+                      })
                     }
                   >
                     <strong>{preset.label}</strong>
@@ -177,7 +329,7 @@ export function EmailTimerEditor({
                     min="240"
                     max="1200"
                     step="1"
-                    value={size.width}
+                    value={timerConfig.width}
                     onChange={(event) =>
                       updateSize("width", event.currentTarget.value)
                     }
@@ -191,9 +343,24 @@ export function EmailTimerEditor({
                     min="80"
                     max="400"
                     step="1"
-                    value={size.height}
+                    value={timerConfig.height}
                     onChange={(event) =>
                       updateSize("height", event.currentTarget.value)
+                    }
+                  />
+                </FormField>
+                <FormField label="Corner radius" error={errors?.cornerRadius}>
+                  <input
+                    name="emailTimerCornerRadius"
+                    type="number"
+                    min="0"
+                    max="40"
+                    step="1"
+                    value={timerConfig.cornerRadius}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        cornerRadius: Number(event.currentTarget.value),
+                      })
                     }
                   />
                 </FormField>
@@ -202,9 +369,149 @@ export function EmailTimerEditor({
 
             <div className="counterpulse-config-card">
               <PanelHeader
+                eyebrow="Style"
+                title="Fonts and colors"
+                description="These values are stored with the timer and used by the generated PNG image."
+              />
+              <EmailTimerLivePreview config={timerConfig} />
+              <div className="counterpulse-form-grid">
+                <FormField label="Timer font">
+                  <select
+                    name="emailTimerFontFamily"
+                    value={timerConfig.fontFamily}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        fontFamily: event.currentTarget.value,
+                      })
+                    }
+                  >
+                    {emailTimerFontOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Heading text" error={errors?.headingText}>
+                  <input
+                    name="emailTimerHeadingText"
+                    maxLength={24}
+                    value={timerConfig.headingText}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        headingText: event.currentTarget.value,
+                      })
+                    }
+                  />
+                </FormField>
+                <EmailTimerColorField
+                  error={errors?.backgroundColor}
+                  label="Background"
+                  name="emailTimerBackgroundColor"
+                  value={timerConfig.backgroundColor}
+                  onChange={(value) =>
+                    updateTimerConfig({ backgroundColor: value })
+                  }
+                />
+                <EmailTimerColorField
+                  error={errors?.textColor}
+                  label="Timer text"
+                  name="emailTimerTextColor"
+                  value={timerConfig.textColor}
+                  onChange={(value) => updateTimerConfig({ textColor: value })}
+                />
+                <EmailTimerColorField
+                  error={errors?.accentColor}
+                  label="Accent"
+                  name="emailTimerAccentColor"
+                  value={timerConfig.accentColor}
+                  onChange={(value) =>
+                    updateTimerConfig({ accentColor: value })
+                  }
+                />
+                <EmailTimerColorField
+                  error={errors?.labelColor}
+                  label="Labels"
+                  name="emailTimerLabelColor"
+                  value={timerConfig.labelColor}
+                  onChange={(value) => updateTimerConfig({ labelColor: value })}
+                />
+              </div>
+              <div className="counterpulse-toggle-grid">
+                <div className="counterpulse-toggle">
+                  <label className="counterpulse-toggle-label">
+                    <input
+                      name="emailTimerShowHeading"
+                      type="hidden"
+                      value="false"
+                    />
+                    <input
+                      checked={timerConfig.showHeading}
+                      name="emailTimerShowHeading"
+                      type="checkbox"
+                      value="true"
+                      onChange={(event) =>
+                        updateTimerConfig({
+                          showHeading: event.currentTarget.checked,
+                        })
+                      }
+                    />
+                    <span>Show heading</span>
+                  </label>
+                </div>
+                <div className="counterpulse-toggle">
+                  <label className="counterpulse-toggle-label">
+                    <input
+                      name="emailTimerShowLabels"
+                      type="hidden"
+                      value="false"
+                    />
+                    <input
+                      checked={timerConfig.showLabels}
+                      name="emailTimerShowLabels"
+                      type="checkbox"
+                      value="true"
+                      onChange={(event) =>
+                        updateTimerConfig({
+                          showLabels: event.currentTarget.checked,
+                        })
+                      }
+                    />
+                    <span>Show time labels</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="counterpulse-config-card">
+              <PanelHeader
                 eyebrow="Fallback"
                 title="After expiration"
                 description="Email clients cannot run JavaScript, so the image URL decides what expired subscribers see."
+                action={
+                  <FieldInfoButton
+                    label="Email timer expired behavior"
+                    title="Expired email timer behavior"
+                  >
+                    <EmailTimerInfoContent
+                      intro="Expired behavior decides what the public image URL returns after the campaign deadline."
+                      items={[
+                        [
+                          "Show expired image",
+                          "Keeps a branded fallback visible and makes the expired state explicit.",
+                        ],
+                        [
+                          "Show zero timer",
+                          "Preserves the timer module while showing that the offer has ended.",
+                        ],
+                        [
+                          "Transparent pixel",
+                          "Minimizes the expired visual, but email clients cannot truly remove the original image block.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
               />
               <div className="counterpulse-choice-list">
                 {expiredBehaviorOptions.map((option) => {
@@ -224,33 +531,7 @@ export function EmailTimerEditor({
                         onChange={() => setExpiredBehavior(option.value)}
                       />
                       <label htmlFor={inputId}>
-                        <strong className="counterpulse-field-label-row">
-                          <span>{option.label}</span>
-                          {option.value === "SHOW_EXPIRED" && (
-                            <FieldInfoButton
-                              label="Email timer expired behavior"
-                              title="Expired email timer behavior"
-                            >
-                              <EmailTimerInfoContent
-                                intro="Expired behavior decides what the public image URL returns after the campaign deadline."
-                                items={[
-                                  [
-                                    "Show expired image",
-                                    "Keeps a branded fallback visible and makes the expired state explicit.",
-                                  ],
-                                  [
-                                    "Show zero timer",
-                                    "Preserves the timer module while showing that the offer has ended.",
-                                  ],
-                                  [
-                                    "Transparent pixel",
-                                    "Minimizes the expired visual, but email clients cannot truly remove the original image block.",
-                                  ],
-                                ]}
-                              />
-                            </FieldInfoButton>
-                          )}
-                        </strong>
+                        <strong>{option.label}</strong>
                         <small>{option.description}</small>
                       </label>
                     </div>
@@ -285,6 +566,8 @@ export function EmailTimerEditor({
                       <span>
                         {timer.width} x {timer.height}
                       </span>
+                      <span>{timer.preset}</span>
+                      <span>{timer.fontFamily}</span>
                       <span>{formatEnum(timer.expiredBehavior)}</span>
                       <span>{timer.endsAt || "No fixed end"}</span>
                     </div>
@@ -383,10 +666,12 @@ export function EmailTimerEditor({
 }
 
 function PanelHeader({
+  action,
   description,
   eyebrow,
   title,
 }: {
+  action?: ReactNode;
   description: string;
   eyebrow: string;
   title: string;
@@ -398,6 +683,7 @@ function PanelHeader({
         <h3>{title}</h3>
         <p className="counterpulse-panel-description">{description}</p>
       </div>
+      {action}
     </div>
   );
 }
@@ -448,6 +734,86 @@ function FormField({
       {error && <small className="counterpulse-field-error">{error}</small>}
     </div>
   );
+}
+
+function EmailTimerColorField({
+  error,
+  label,
+  name,
+  onChange,
+  value,
+}: {
+  error?: string;
+  label: string;
+  name: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <FormField label={label} error={error}>
+      <span className="counterpulse-color-input">
+        <input
+          aria-label={`${label} swatch`}
+          type="color"
+          value={isHexColor(value) ? value : "#000000"}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        <input
+          name={name}
+          pattern="^#[0-9A-Fa-f]{6}$"
+          value={value}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      </span>
+    </FormField>
+  );
+}
+
+function EmailTimerLivePreview({ config }: { config: EmailTimerConfig }) {
+  const fontClass = `counterpulse-email-timer-live-preview__time--${config.fontFamily.toLowerCase()}`;
+
+  return (
+    <div className="counterpulse-email-timer-live-preview">
+      <div
+        className="counterpulse-email-timer-live-preview__bar"
+        style={{
+          backgroundColor: config.backgroundColor,
+          borderRadius: `${Math.min(config.cornerRadius, 24)}px`,
+          color: config.textColor,
+        }}
+      >
+        <span
+          className="counterpulse-email-timer-live-preview__accent"
+          style={{ backgroundColor: config.accentColor }}
+        />
+        {config.showHeading && (
+          <span
+            className="counterpulse-email-timer-live-preview__heading"
+            style={{ color: config.accentColor }}
+          >
+            {config.headingText || "ENDS IN"}
+          </span>
+        )}
+        <strong
+          className={`counterpulse-email-timer-live-preview__time ${fontClass}`}
+        >
+          01:59:24
+        </strong>
+        {config.showLabels && (
+          <span
+            className="counterpulse-email-timer-live-preview__labels"
+            style={{ color: config.labelColor }}
+          >
+            Hrs&nbsp;&nbsp;&nbsp;Min&nbsp;&nbsp;&nbsp;Sec
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function isHexColor(value: string) {
+  return /^#[0-9a-f]{6}$/i.test(value);
 }
 
 function formatEnum(value: string) {

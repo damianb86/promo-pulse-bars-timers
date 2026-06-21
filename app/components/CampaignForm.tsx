@@ -57,6 +57,7 @@ type CampaignFormProps = {
   hiddenBuilderTabs?: BuilderTabKey[];
   idPrefix?: string;
   initialTab?: BuilderTabKey;
+  topbarActions?: ReactNode;
   lockedTargetingFeatures?: {
     advanced: string;
     basic: string;
@@ -465,6 +466,7 @@ export function CampaignForm({
   showTopbar = true,
   syncExternalValues = false,
   targetingOptions = emptyCampaignTargetingOptions,
+  topbarActions,
   onDesignChange,
   onValuesChange,
 }: CampaignFormProps) {
@@ -1115,6 +1117,7 @@ export function CampaignForm({
               <span>{activePlacementLabel}</span>
             </div>
             <div className="counterpulse-create-actions">
+              {topbarActions}
               {canReview && (
                 <button
                   className="counterpulse-button-secondary"

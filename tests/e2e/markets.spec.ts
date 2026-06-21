@@ -7,7 +7,7 @@ import {
   test,
 } from "./fixtures";
 
-test("advanced market rules override storefront free shipping by market", async ({
+test("advanced market rules override storefront free shipping thresholds by market", async ({
   loginAsDemoShop,
   page,
   resetDb,
@@ -28,12 +28,6 @@ test("advanced market rules override storefront free shipping by market", async 
   await marketForm.getByLabel("Locale").fill("es");
   await marketForm.getByLabel("Currency").fill("EUR");
   await marketForm.getByLabel("Free shipping threshold").fill("95");
-  await marketForm
-    .getByLabel("Headline override", { exact: true })
-    .fill("Envio gratis Espana");
-  await marketForm
-    .getByLabel("Free shipping progress text")
-    .fill("Te faltan {{amount}}");
 
   await marketForm.getByRole("button", { name: "Save market rule" }).click();
   await Promise.all([
@@ -63,10 +57,7 @@ test("advanced market rules override storefront free shipping by market", async 
 
   expect(esResponse.ok()).toBe(true);
   expect(esPayload.campaigns).toHaveLength(1);
-  expect(esPayload.campaigns[0].texts.headline).toBe("Envio gratis Espana");
-  expect(esPayload.campaigns[0].texts.freeShippingProgressText).toBe(
-    "Te faltan {{amount}}",
-  );
+  expect(esPayload.campaigns[0].texts.headline).toBe("Free shipping");
   expect(esPayload.campaigns[0].freeShipping.thresholdAmount).toBe("95.00");
   expect(esPayload.campaigns[0].freeShipping.currencyCode).toBe("EUR");
 
@@ -107,10 +98,7 @@ test("advanced market rules override storefront free shipping by market", async 
     "/__test/storefront-cart?subtotal=20&market=ES&country=ES&locale=es&currency=EUR",
   );
   await expect(page.locator(".pp-cart-card").first()).toContainText(
-    "Envio gratis Espana",
-  );
-  await expect(page.locator(".pp-cart-card").first()).toContainText(
-    "Te faltan",
+    "Free shipping",
   );
 
   await page.goto(

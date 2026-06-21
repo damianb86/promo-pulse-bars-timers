@@ -16,7 +16,7 @@ test("free shipping settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Free Shipping Goal" }).click();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveFreeShippingSettings"])',
   );
@@ -44,7 +44,7 @@ test("free shipping settings persist from the campaign editor", async ({
     confirmAction(page, "Save free shipping settings"),
   ]);
   await page.reload();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(form.getByLabel("Threshold amount")).toHaveValue("150");
   await expect(form.getByLabel("Currency code")).toHaveValue("EUR");
@@ -76,7 +76,7 @@ test("delivery cutoff settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Delivery Cutoff" }).click();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
   const form = page.locator(
     'form:has(input[name="_action"][value="saveDeliveryCutoffSettings"])',
   );
@@ -106,7 +106,7 @@ test("delivery cutoff settings persist from the campaign editor", async ({
     confirmAction(page, "Save delivery cutoff settings"),
   ]);
   await page.reload();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(form.getByLabel("Cutoff hour")).toHaveValue("16");
   await expect(form.getByLabel("Cutoff minute")).toHaveValue("30");
@@ -143,7 +143,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "LOW_STOCK",
   });
 
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
   const lowStockForm = page.locator(
     'form:has(input[name="_action"][value="saveLowStockSettings"])',
   );
@@ -163,7 +163,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     confirmAction(page, "Save low stock settings"),
   ]);
   await page.reload();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(lowStockForm.getByLabel("Inventory threshold")).toHaveValue("7");
   await expect(lowStockForm.getByLabel("Show exact quantity")).toBeChecked();
@@ -199,7 +199,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "PRODUCT_BADGE",
   });
 
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
   const badgeForm = page.locator(
     'form:has(input[name="_action"][value="saveBadgeSettings"])',
   );
@@ -216,7 +216,7 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     confirmAction(page, "Save badge settings"),
   ]);
   await page.reload();
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(badgeForm.getByLabel("Badge text")).toHaveValue("New drop");
   await expect(badgeForm.getByLabel("Badge shape")).toHaveValue("SQUARE");

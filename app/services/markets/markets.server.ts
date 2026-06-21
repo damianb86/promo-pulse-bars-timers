@@ -29,7 +29,6 @@ export type MarketRuleInput = {
   currencyCode: string | null;
   thresholdAmount: string | null;
   deliverySettings: Prisma.InputJsonObject;
-  textOverrides: Prisma.InputJsonObject;
 };
 
 type MarketNode = {
@@ -167,7 +166,7 @@ export async function saveMarketRule({
       ? new Prisma.Decimal(input.thresholdAmount)
       : null,
     deliverySettings: input.deliverySettings,
-    textOverrides: input.textOverrides,
+    textOverrides: Prisma.JsonNull,
   };
 
   if (ruleId) {

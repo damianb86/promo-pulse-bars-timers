@@ -55,9 +55,10 @@ export function OffersEditor({
       {merchandisingOnlyTypes.has(campaignType) && (
         <AppAlert tone="warning" title="Some offer settings are optional">
           <p>
-            {campaignTypeLabel} campaigns usually rely on the Merchandising tab.
-            Discount configuration remains available, but unrelated discount
-            fields are hidden inside each offer strategy.
+            {campaignTypeLabel} campaigns usually rely on Conversion modules
+            for the storefront presentation. Discount configuration remains
+            available here, but unrelated discount fields are hidden inside each
+            offer strategy.
           </p>
         </AppAlert>
       )}

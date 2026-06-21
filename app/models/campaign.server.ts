@@ -1051,7 +1051,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 currencyCode: rule.currencyCode,
                 thresholdAmount: rule.thresholdAmount,
                 deliverySettings: rule.deliverySettings ?? Prisma.JsonNull,
-                textOverrides: rule.textOverrides ?? Prisma.JsonNull,
+                textOverrides: Prisma.JsonNull,
               })),
             },
           }

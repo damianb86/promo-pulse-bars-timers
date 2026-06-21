@@ -512,7 +512,7 @@ function buildCrossShopCampaignDraft(
               currencyCode: rule.currencyCode,
               thresholdAmount: rule.thresholdAmount,
               deliverySettings: toInputJsonOrNull(rule.deliverySettings),
-              textOverrides: toInputJsonOrNull(rule.textOverrides),
+              textOverrides: Prisma.JsonNull,
             })),
           },
         }

@@ -212,12 +212,16 @@ describe("storefront campaign serialization", () => {
     ).toBe("100.00");
   });
 
-  it("applies campaign market rules for US vs ES contexts", () => {
+  it("keeps market rules separate from localized campaign messages", () => {
     const campaign = buildCampaign({
       translations: [
         {
           locale: "en",
           headline: "Global offer",
+        },
+        {
+          locale: "es",
+          headline: "Oferta global",
         },
       ],
       marketCampaignRules: [
@@ -241,14 +245,14 @@ describe("storefront campaign serialization", () => {
         country: "US",
         locale: "en",
       })?.texts.headline,
-    ).toBe("US offer");
+    ).toBe("Global offer");
     expect(
       serializeStorefrontCampaign(campaign, {
         ...baseContext(),
         country: "ES",
         locale: "es-ES",
       })?.texts.headline,
-    ).toBe("Oferta ES");
+    ).toBe("Oferta global");
   });
 
   it("lets market rules override free shipping threshold and currency", () => {
@@ -279,7 +283,7 @@ describe("storefront campaign serialization", () => {
     });
   });
 
-  it("uses locale market overrides before global translations", () => {
+  it("uses language translations instead of legacy market text overrides", () => {
     const campaign = buildCampaign({
       translations: [
         { locale: "en", headline: "Global offer" },
@@ -298,7 +302,7 @@ describe("storefront campaign serialization", () => {
         ...baseContext(),
         locale: "es-MX",
       })?.texts.headline,
-    ).toBe("Oferta mercado");
+    ).toBe("Oferta global");
   });
 
   it("falls back to global campaign settings when market is not detected", () => {
@@ -342,9 +346,6 @@ describe("storefront campaign serialization", () => {
             minDeliveryDays: 3,
             maxDeliveryDays: 6,
           },
-          textOverrides: {
-            deliveryBeforeCutoffText: "Pedidos ES hasta las 16:00",
-          },
         }),
       ],
     });
@@ -358,9 +359,6 @@ describe("storefront campaign serialization", () => {
       minDeliveryDays: 3,
       maxDeliveryDays: 6,
     });
-    expect(serialized?.texts.deliveryBeforeCutoffText).toBe(
-      "Pedidos ES hasta las 16:00",
-    );
   });
 
   it("can disable a campaign for a matched market rule", () => {

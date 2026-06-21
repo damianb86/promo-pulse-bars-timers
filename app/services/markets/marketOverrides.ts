@@ -36,15 +36,10 @@ export function applyMarketCampaignRule(
   if (!rule) return campaign;
   if (!rule.enabled) return null;
 
-  const textOverrides = readObject(rule.textOverrides);
   const deliverySettings = readObject(rule.deliverySettings);
 
   return {
     ...campaign,
-    texts: {
-      ...campaign.texts,
-      ...readTextOverrides(textOverrides),
-    },
     freeShipping: campaign.freeShipping
       ? {
           ...campaign.freeShipping,
@@ -121,33 +116,6 @@ function localeMatches(ruleLocale: string, contextLocale: string) {
     normalizedRuleLocale === normalizedContextLocale ||
     normalizedRuleLocale === normalizedContextLocale.split("-")[0]
   );
-}
-
-function readTextOverrides(value: Record<string, unknown>) {
-  const allowedKeys = [
-    "headline",
-    "subheadline",
-    "ctaText",
-    "ctaUrl",
-    "expiredText",
-    "freeShippingEmptyText",
-    "freeShippingProgressText",
-    "freeShippingSuccessText",
-    "deliveryBeforeCutoffText",
-    "deliveryAfterCutoffText",
-    "lowStockText",
-    "badgeText",
-  ];
-
-  return allowedKeys.reduce<Record<string, string>>((overrides, key) => {
-    const valueForKey = value[key];
-
-    if (typeof valueForKey === "string") {
-      overrides[key] = valueForKey;
-    }
-
-    return overrides;
-  }, {});
 }
 
 function formatAmount(value: string | null | undefined) {

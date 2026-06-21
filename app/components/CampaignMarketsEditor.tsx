@@ -24,7 +24,6 @@ export type MarketRuleRow = {
   currencyCode: string;
   thresholdAmount: string;
   deliverySettingsJson: string;
-  textOverridesJson: string;
   scopeSummary: string;
 };
 
@@ -35,7 +34,6 @@ export type MarketRuleErrors = {
   locale?: string;
   thresholdAmount?: string;
   deliverySettingsJson?: string;
-  textOverridesJson?: string;
 };
 
 type CampaignMarketsEditorProps = {
@@ -57,21 +55,11 @@ export function CampaignMarketsEditor({
 }: CampaignMarketsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
-  const [textOverrides, setTextOverrides] = useState({
-    ctaText: "",
-    freeShippingProgressText: "",
-    headline: "",
-    subheadline: "",
-  });
   const [deliverySettings, setDeliverySettings] = useState({
     cutoffHour: "",
     maxDeliveryDays: "",
     minDeliveryDays: "",
   });
-  const textOverridesJson = useMemo(
-    () => stringifyNonEmptyObject(textOverrides),
-    [textOverrides],
-  );
   const deliverySettingsJson = useMemo(
     () => stringifyDeliverySettings(deliverySettings),
     [deliverySettings],
@@ -81,20 +69,12 @@ export function CampaignMarketsEditor({
     title: "Save market override?",
     children: (
       <p>
-        This can override campaign copy, free-shipping thresholds, and delivery
-        settings for matching storefront market requests.
+        This can override market-specific thresholds and delivery settings for
+        matching storefront requests. Campaign text stays managed in Campaign
+        &gt; Message.
       </p>
     ),
   });
-  const updateTextOverride = (
-    field: keyof typeof textOverrides,
-    value: string,
-  ) => {
-    setTextOverrides((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  };
   const updateDeliverySetting = (
     field: keyof typeof deliverySettings,
     value: string,
@@ -108,8 +88,10 @@ export function CampaignMarketsEditor({
   return (
     <s-section heading="Markets">
       <p className="counterpulse-section-description">
-        Configure country, locale, currency, threshold, and delivery overrides
-        for Shopify Markets without changing the global campaign defaults.
+        Configure market-specific business rules for Shopify Markets, such as
+        free-shipping thresholds, currency matching, delivery cutoffs, and
+        whether the campaign is active for a market. Text and translations are
+        managed in Campaign > Message.
       </p>
 
       {lockedReason && (
@@ -145,11 +127,6 @@ export function CampaignMarketsEditor({
         >
           <input name="_action" type="hidden" value="saveMarketRule" />
           <input
-            name="marketRuleTextOverridesJson"
-            type="hidden"
-            value={textOverridesJson}
-          />
-          <input
             name="marketRuleDeliverySettingsJson"
             type="hidden"
             value={deliverySettingsJson}
@@ -160,7 +137,7 @@ export function CampaignMarketsEditor({
               <PanelHeader
                 eyebrow="Scope"
                 title="Where this override applies"
-                description="Use the broadest selector that is accurate. Market overrides win over global campaign settings."
+                description="Use the broadest selector that is accurate. Matching market rules can override thresholds, currency, delivery settings, and active state."
               />
               <div className="counterpulse-form-grid counterpulse-form-grid--wide">
                 <FormField
@@ -234,15 +211,15 @@ export function CampaignMarketsEditor({
                   info={
                     <FieldInfoButton label="Locale" title="Locale matching">
                       <MarketInfoContent
-                        intro="Locale controls language-specific copy overrides."
+                        intro="Locale is an optional matching condition for market rules. It does not manage translations."
                         items={[
                           [
                             "Format",
                             "Use values such as en, es, es-ES, pt-BR, fr, or de.",
                           ],
                           [
-                            "Priority",
-                            "When a locale override matches, localized text wins over global campaign text.",
+                            "Translations",
+                            "Localized copy is edited in Campaign > Message. Use this field only when a threshold or delivery rule should apply to a specific storefront language.",
                           ],
                         ]}
                       />
@@ -331,7 +308,7 @@ export function CampaignMarketsEditor({
                       items={[
                         [
                           "Enabled",
-                          "The override can apply copy, threshold, and delivery settings.",
+                          "The override can apply threshold, currency, and delivery settings.",
                         ],
                         [
                           "Disabled",
@@ -341,82 +318,6 @@ export function CampaignMarketsEditor({
                     />
                   </FieldInfoButton>
                 </div>
-              </div>
-            </div>
-
-            <div className="counterpulse-config-card">
-              <PanelHeader
-                eyebrow="Copy"
-                title="Localized message"
-                description="Only fill the fields that should differ from the campaign default."
-              />
-              <div className="counterpulse-stack">
-                <FormField
-                  label="Headline override"
-                  error={errors?.textOverridesJson}
-                  info={
-                    <FieldInfoButton
-                      label="Headline override"
-                      title="Localized copy"
-                    >
-                      <MarketInfoContent
-                        intro="Localized copy fields replace only the campaign text entered here."
-                        items={[
-                          [
-                            "Partial overrides",
-                            "Fill only the fields that differ for this market or locale.",
-                          ],
-                          [
-                            "Fallback",
-                            "Blank fields continue using the global campaign message.",
-                          ],
-                        ]}
-                      />
-                    </FieldInfoButton>
-                  }
-                >
-                  <input
-                    value={textOverrides.headline}
-                    placeholder="Free shipping in Spain"
-                    onChange={(event) =>
-                      updateTextOverride("headline", event.currentTarget.value)
-                    }
-                  />
-                </FormField>
-                <FormField label="Supporting text override">
-                  <textarea
-                    rows={3}
-                    value={textOverrides.subheadline}
-                    placeholder="Localized supporting copy"
-                    onChange={(event) =>
-                      updateTextOverride(
-                        "subheadline",
-                        event.currentTarget.value,
-                      )
-                    }
-                  />
-                </FormField>
-                <FormField label="CTA override">
-                  <input
-                    value={textOverrides.ctaText}
-                    placeholder="Shop now"
-                    onChange={(event) =>
-                      updateTextOverride("ctaText", event.currentTarget.value)
-                    }
-                  />
-                </FormField>
-                <FormField label="Free shipping progress text">
-                  <input
-                    value={textOverrides.freeShippingProgressText}
-                    placeholder="You are {{amount}} away"
-                    onChange={(event) =>
-                      updateTextOverride(
-                        "freeShippingProgressText",
-                        event.currentTarget.value,
-                      )
-                    }
-                  />
-                </FormField>
               </div>
             </div>
 
@@ -507,68 +408,6 @@ export function CampaignMarketsEditor({
       {confirmSubmit.modal}
 
       <s-box paddingBlockStart="base">
-        <div className="counterpulse-config-card">
-          <PanelHeader
-            eyebrow="Preview"
-            title="Market context"
-            description="Simulate a Shopify Market, locale, and currency to preview which override would be used. This does not change who can see the campaign."
-          />
-          <AppAlert tone="info" title="Preview only">
-            <p>
-              These fields do not geolocate you and do not filter the live
-              storefront. Country and audience visibility are configured in the
-              Targeting tab; this panel only helps check market-specific copy,
-              thresholds, currency, and delivery settings.
-            </p>
-          </AppAlert>
-          <div className="counterpulse-form-grid">
-            <FormField
-              label="Preview market"
-              info={
-                <FieldInfoButton label="Preview market" title="Market preview">
-                  <MarketInfoContent
-                    intro="Preview market simulates the market context sent to Promo Pulse so you can inspect market overrides without changing live eligibility."
-                    items={[
-                      [
-                        "What it affects",
-                        "It helps you verify localized copy, free-shipping thresholds, currency assumptions, and delivery settings for this editor preview.",
-                      ],
-                      [
-                        "What it does not affect",
-                        "It does not save a rule, publish targeting, geolocate the admin user, or decide whether the campaign should render for Argentina, United States, or any other country.",
-                      ],
-                      [
-                        "Where visibility lives",
-                        "Use the Targeting tab for country, market, product, customer, device, and URL eligibility rules.",
-                      ],
-                    ]}
-                  />
-                </FieldInfoButton>
-              }
-            >
-              <select defaultValue={markets[0]?.id ?? ""}>
-                {markets.length > 0 ? (
-                  markets.map((market) => (
-                    <option key={market.id || market.handle} value={market.id}>
-                      {market.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">Fallback market</option>
-                )}
-              </select>
-            </FormField>
-            <FormField label="Preview locale">
-              <input defaultValue={markets[0]?.locale || "en"} />
-            </FormField>
-            <FormField label="Preview currency">
-              <input defaultValue={markets[0]?.currencyCode || "USD"} />
-            </FormField>
-          </div>
-        </div>
-      </s-box>
-
-      <s-box paddingBlockStart="base">
         <table className="counterpulse-table">
           <thead>
             <tr>
@@ -610,7 +449,6 @@ export function CampaignMarketsEditor({
               <th>Active</th>
               <th>Threshold</th>
               <th>Currency</th>
-              <th>Text overrides</th>
               <th>Delivery</th>
               <th>Actions</th>
             </tr>
@@ -623,7 +461,6 @@ export function CampaignMarketsEditor({
                   <td>{rule.enabled ? "Active" : "Inactive"}</td>
                   <td>{rule.thresholdAmount || "-"}</td>
                   <td>{rule.currencyCode || "-"}</td>
-                  <td>{summarizeJson(rule.textOverridesJson)}</td>
                   <td>{summarizeJson(rule.deliverySettingsJson)}</td>
                   <td>
                     {!lockedReason && <DeleteMarketRuleForm ruleId={rule.id} />}
@@ -632,7 +469,7 @@ export function CampaignMarketsEditor({
               ))
             ) : (
               <tr>
-                <td colSpan={7}>No market overrides configured yet.</td>
+                <td colSpan={6}>No market overrides configured yet.</td>
               </tr>
             )}
           </tbody>
@@ -649,8 +486,8 @@ function DeleteMarketRuleForm({ ruleId }: { ruleId: string }) {
     tone: "critical",
     children: (
       <p>
-        This removes the localized market rule. Matching storefront requests
-        will fall back to the global campaign settings.
+        This removes the market rule. Matching storefront requests will fall
+        back to the global campaign settings.
       </p>
     ),
   });
@@ -735,21 +572,6 @@ function FormField({
       {error && <small className="counterpulse-field-error">{error}</small>}
     </div>
   );
-}
-
-function stringifyNonEmptyObject(value: Record<string, string>) {
-  const normalized = Object.entries(value).reduce<Record<string, string>>(
-    (result, [key, item]) => {
-      const trimmed = item.trim();
-
-      if (trimmed) result[key] = trimmed;
-
-      return result;
-    },
-    {},
-  );
-
-  return JSON.stringify(normalized);
 }
 
 function stringifyDeliverySettings(value: Record<string, string>) {

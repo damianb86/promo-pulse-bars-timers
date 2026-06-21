@@ -51,7 +51,7 @@ export function AdvancedBadgeRulesEditor({
     title: "Save advanced badge rule?",
     children: (
       <p>
-        This can change which products show merchandising badges based on tags,
+        This can change which products show campaign badges based on tags,
         markets, inventory, metafields, or schedule.
       </p>
     ),
@@ -60,8 +60,8 @@ export function AdvancedBadgeRulesEditor({
   return (
     <s-section heading="Badge Rules">
       <p className="counterpulse-section-description">
-        Build prioritized merchandising rules for product badges using product,
-        inventory, market, locale, metafield, and scheduling conditions.
+        Build prioritized badge rules using product, inventory, market, locale,
+        metafield, and scheduling conditions.
       </p>
 
       {lockedReason && (
@@ -278,7 +278,7 @@ export function AdvancedBadgeRulesEditor({
                     title="Metafield condition"
                   >
                     <AdvancedBadgeInfoContent
-                      intro="Metafield conditions let merchandising teams target badges from structured product data."
+                      intro="Metafield conditions let teams target badges from structured product data."
                       items={[
                         [
                           "Namespace and key",

@@ -19,7 +19,7 @@ test("advanced badge rules can be created and evaluated for storefront products"
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
-  await page.getByRole("tab", { name: "Merchandising" }).click();
+  await page.getByRole("tab", { name: "Conversion modules" }).click();
   const simpleBadgeForm = page.locator(
     'form:has(input[name="_action"][value="saveBadgeSettings"])',
   );

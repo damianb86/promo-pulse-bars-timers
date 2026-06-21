@@ -2017,7 +2017,7 @@ export default function EditCampaignPage() {
               key: "markets",
               label: "Markets",
               description:
-                "Override campaign copy, currency, thresholds, and delivery promises by Shopify market, country, locale, or currency so one campaign can adapt across storefront contexts.",
+                "Configure Shopify Market rules that affect campaign eligibility, currency matching, free-shipping thresholds, and delivery promises. Campaign copy stays language-based in Campaign > Message.",
               content: (
                 <CampaignMarketsEditor
                   apiError={marketApiError}
@@ -2031,9 +2031,9 @@ export default function EditCampaignPage() {
             },
             {
               key: "merchandising",
-              label: "Merchandising",
+              label: "Conversion modules",
               description:
-                "Configure merchandising modules tied to the current draft type or goal: product badges, real stock messaging, delivery promises, and cart free-shipping progress. The tab stays visible while you edit; individual panels appear only when that module can be used.",
+                "Configure storefront modules that support the selected campaign type: product badges, low-stock messaging, delivery cutoff presentation, and cart free-shipping progress. Discount codes and offer mechanics stay in Offers.",
               content: (
                 <>
                   <MerchandisingOverview
@@ -2186,11 +2186,12 @@ function MerchandisingOverview({
     getDraftPlacementTypes(values).map(formatCampaignOption);
 
   return (
-    <s-section heading="Merchandising modules">
+    <s-section heading="Conversion modules">
       <p className="counterpulse-section-description">
-        These settings follow the current draft type and goal, so they update as
-        soon as you change Campaign Setup. Current placements:{" "}
-        {placementLabels.join(", ")}.
+        These settings control what shoppers see for campaign behaviors that
+        are not only a discount code: badges, stock urgency, delivery cutoff
+        presentation, and free-shipping progress. Offer mechanics and discount
+        sync stay in Offers. Current placements: {placementLabels.join(", ")}.
       </p>
 
       {activeLabels.length > 0 ? (
@@ -2206,9 +2207,9 @@ function MerchandisingOverview({
         </>
       ) : (
         <p className="counterpulse-section-description">
-          No merchandising module is active yet. Choose a merchandising campaign
-          type or matching goal, such as Product badge, Low stock, Delivery
-          cutoff, or Free shipping goal, to show the related settings here.
+          No conversion module is active yet. Choose a campaign type such as
+          Product badge, Low stock, Delivery cutoff, or Free shipping progress
+          to show the related settings here.
         </p>
       )}
 
@@ -2247,8 +2248,8 @@ function getActiveMerchandisingLabels(capabilities: MerchandisingCapabilities) {
   return [
     capabilities.hasBadge ? "Product badge" : "",
     capabilities.hasLowStock ? "Low stock message" : "",
-    capabilities.hasDeliveryCutoff ? "Delivery cutoff" : "",
-    capabilities.hasFreeShippingGoal ? "Free shipping goal" : "",
+    capabilities.hasDeliveryCutoff ? "Delivery cutoff module" : "",
+    capabilities.hasFreeShippingGoal ? "Free shipping progress" : "",
   ].filter(Boolean);
 }
 
@@ -2268,11 +2269,11 @@ function getCompatibleMerchandisingLabels(
   if (hasProductSurface) {
     if (!capabilities.hasBadge) labels.add("Product badge");
     if (!capabilities.hasLowStock) labels.add("Low stock message");
-    if (!capabilities.hasDeliveryCutoff) labels.add("Delivery cutoff");
+    if (!capabilities.hasDeliveryCutoff) labels.add("Delivery cutoff module");
   }
 
   if (hasCartSurface && !capabilities.hasFreeShippingGoal) {
-    labels.add("Free shipping goal");
+    labels.add("Free shipping progress");
   }
 
   return Array.from(labels);
@@ -2681,15 +2682,8 @@ function parseMarketRuleFormData(formData: FormData): {
     readFormString(formData, "marketRuleThresholdAmount"),
     errors,
   );
-  const textOverrides = parseMarketJsonObject(
-    readFormString(formData, "marketRuleTextOverridesJson"),
-    "textOverridesJson",
-    "Text overrides JSON must be a JSON object.",
-    errors,
-  );
   const deliverySettings = parseMarketJsonObject(
     readFormString(formData, "marketRuleDeliverySettingsJson"),
-    "deliverySettingsJson",
     "Delivery cutoff JSON must be a JSON object.",
     errors,
   );
@@ -2723,7 +2717,6 @@ function parseMarketRuleFormData(formData: FormData): {
       currencyCode: currencyCode || null,
       thresholdAmount,
       deliverySettings,
-      textOverrides,
     },
   };
 }
@@ -2744,7 +2737,6 @@ function parseMarketThreshold(value: string, errors: MarketRuleErrors) {
 
 function parseMarketJsonObject(
   value: string,
-  key: "deliverySettingsJson" | "textOverridesJson",
   message: string,
   errors: MarketRuleErrors,
 ): Prisma.InputJsonObject {
@@ -2754,15 +2746,15 @@ function parseMarketJsonObject(
     const parsed = JSON.parse(value) as unknown;
 
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      errors[key] = message;
+      errors.deliverySettingsJson = message;
       errors.form = message;
       return {};
     }
 
     return parsed as Prisma.InputJsonObject;
   } catch {
-    errors[key] = `${message.replace(/\.$/, "")} and valid JSON.`;
-    errors.form = errors[key];
+    errors.deliverySettingsJson = `${message.replace(/\.$/, "")} and valid JSON.`;
+    errors.form = errors.deliverySettingsJson;
     return {};
   }
 }
@@ -3978,7 +3970,6 @@ function toMarketRuleRow(rule: {
   currencyCode: string | null;
   thresholdAmount: { toString(): string } | null;
   deliverySettings: unknown;
-  textOverrides: unknown;
 }): MarketRuleRow {
   return {
     id: rule.id,
@@ -3989,7 +3980,6 @@ function toMarketRuleRow(rule: {
     currencyCode: rule.currencyCode ?? "",
     thresholdAmount: rule.thresholdAmount?.toString() ?? "",
     deliverySettingsJson: jsonTextareaValue(rule.deliverySettings),
-    textOverridesJson: jsonTextareaValue(rule.textOverrides),
     scopeSummary: summarizeMarketRuleScope(rule),
   };
 }

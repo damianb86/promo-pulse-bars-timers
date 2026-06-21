@@ -3,6 +3,10 @@ node_modules
 # macOS
 .DS_Store
 
+# Local private keys
+ssh.pem
+ssh.pen
+
 /.cache
 /build
 /app/build

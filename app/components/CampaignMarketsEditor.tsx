@@ -91,7 +91,7 @@ export function CampaignMarketsEditor({
         Configure market-specific business rules for Shopify Markets, such as
         free-shipping thresholds, currency matching, delivery cutoffs, and
         whether the campaign is active for a market. Text and translations are
-        managed in Campaign > Message.
+        managed in Campaign &gt; Message.
       </p>
 
       {lockedReason && (

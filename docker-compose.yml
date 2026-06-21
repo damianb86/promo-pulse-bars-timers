@@ -35,7 +35,7 @@ services:
       PROMO_PULSE_APP_NAME: "${PROMO_PULSE_APP_NAME:-Promo Pulse: Bars & Timers}"
       SHOPIFY_API_KEY: ${SHOPIFY_API_KEY:?Set SHOPIFY_API_KEY in the app .env}
       SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET:?Set SHOPIFY_API_SECRET in the app .env}
-      SHOPIFY_API_VERSION: ${SHOPIFY_API_VERSION:-2025-10}
+      SHOPIFY_API_VERSION: ${SHOPIFY_API_VERSION:-2026-04}
       SCOPES: ${SCOPES:?Set SCOPES in the app .env}
       DATABASE_URL: "postgresql://${APP_DB_USER:?Set APP_DB_USER in the app .env}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in the app .env}@postgres:5432/${APP_DB_NAME:?Set APP_DB_NAME in the app .env}?schema=public&connection_limit=3"
       SHOPIFY_APP_URL: ${PROD_SHOPIFY_APP_URL:-${SHOPIFY_APP_URL}}

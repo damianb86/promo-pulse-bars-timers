@@ -13,6 +13,16 @@ const redirectUrls = readTomlStringArray(config, "redirect_urls");
 const appProxyUrl = readTomlSectionString(config, "app_proxy", "url");
 const appProxySubpath = readTomlSectionString(config, "app_proxy", "subpath");
 const appProxyPrefix = readTomlSectionString(config, "app_proxy", "prefix");
+const webhooksApiVersion = readTomlSectionString(config, "webhooks", "api_version");
+const supportedRuntimeApiVersions = new Set([
+  "2024-10",
+  "2025-01",
+  "2025-04",
+  "2025-07",
+  "2025-10",
+  "2026-01",
+  "2026-04",
+]);
 const expectedRedirectUrl = applicationUrl
   ? `${applicationUrl.replace(/\/+$/, "")}/auth/callback`
   : "";
@@ -77,6 +87,26 @@ if (
 if (appProxySubpath && appProxySubpath !== "promo-pulse") {
   warnings.push(
     `app_proxy.subpath is ${appProxySubpath}; storefront assets currently request /apps/promo-pulse.`,
+  );
+}
+
+if (appProxyUrl?.includes("counterpulse")) {
+  errors.push(
+    "app_proxy.url still references CounterPulse. It must point to /apps/promo-pulse.",
+  );
+}
+
+if (appProxySubpath?.includes("counterpulse")) {
+  errors.push(
+    "app_proxy.subpath still references CounterPulse. It must be promo-pulse.",
+  );
+}
+
+if (!webhooksApiVersion) {
+  errors.push("shopify.app.toml is missing [webhooks].api_version.");
+} else if (!supportedRuntimeApiVersions.has(webhooksApiVersion)) {
+  errors.push(
+    `[webhooks].api_version ${webhooksApiVersion} is not supported by the installed Shopify runtime. Use 2026-04 until dependencies are upgraded.`,
   );
 }
 

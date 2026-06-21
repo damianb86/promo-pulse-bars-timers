@@ -7,7 +7,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
-const DEFAULT_SHOPIFY_API_VERSION = ApiVersion.October25;
+const DEFAULT_SHOPIFY_API_VERSION = ApiVersion.April26;
 const shopifyApiVersion = resolveShopifyApiVersion(
   process.env.SHOPIFY_API_VERSION,
 );

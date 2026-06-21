@@ -1,9 +1,9 @@
 export const storefrontLocales = [
-  { locale: "en", label: "English", shortLabel: "EN" },
-  { locale: "es", label: "Spanish", shortLabel: "ES" },
-  { locale: "pt-BR", label: "Portuguese BR", shortLabel: "PT" },
-  { locale: "fr", label: "French", shortLabel: "FR" },
-  { locale: "de", label: "German", shortLabel: "DE" },
+  { locale: "en", label: "English", shortLabel: "EN", flag: "🇺🇸" },
+  { locale: "es", label: "Spanish", shortLabel: "ES", flag: "🇪🇸" },
+  { locale: "pt-BR", label: "Portuguese BR", shortLabel: "PT", flag: "🇧🇷" },
+  { locale: "fr", label: "French", shortLabel: "FR", flag: "🇫🇷" },
+  { locale: "de", label: "German", shortLabel: "DE", flag: "🇩🇪" },
 ] as const;
 
 export type StorefrontLocale = (typeof storefrontLocales)[number]["locale"];

@@ -1831,6 +1831,22 @@ export default function EditCampaignPage() {
                     recurringTimers: lockedFeatures.recurringTimers,
                     scheduling: lockedFeatures.scheduling,
                   }}
+                  messageAddon={
+                    lockedFeatures.multiLanguage ? (
+                      <PlanUpgradeCallout
+                        message={lockedFeatures.multiLanguage}
+                        title="Translations are locked"
+                      />
+                    ) : (
+                      <CampaignTranslationsEditor
+                        embedded
+                        errors={actionData?.translationErrors}
+                        initialValues={translationValues}
+                        key={`${id}:${JSON.stringify(translationValues)}`}
+                        resolvedValues={translationsViewModel.resolvedValues}
+                      />
+                    )
+                  }
                   mode="edit"
                   showTopbar={false}
                   syncExternalValues
@@ -2075,25 +2091,6 @@ export default function EditCampaignPage() {
                   lockedCustomCssReason={lockedFeatures.customCss}
                   onChange={setDraftDesignValues}
                   viewModel={draftPreviewViewModel}
-                />
-              ),
-            },
-            {
-              key: "translations",
-              label: "Translations",
-              description:
-                "Edit localized customer-facing copy for supported storefront languages. Storefront rendering resolves these translations by locale before falling back to the default copy.",
-              content: lockedFeatures.multiLanguage ? (
-                <PlanUpgradeCallout
-                  message={lockedFeatures.multiLanguage}
-                  title="Translations are locked"
-                />
-              ) : (
-                <CampaignTranslationsEditor
-                  errors={actionData?.translationErrors}
-                  initialValues={translationValues}
-                  key={`${id}:${JSON.stringify(translationValues)}`}
-                  resolvedValues={translationsViewModel.resolvedValues}
                 />
               ),
             },

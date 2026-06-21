@@ -76,6 +76,7 @@ type CampaignFormProps = {
     scheduling?: string;
   };
   listenForSaveEvents?: boolean;
+  messageAddon?: ReactNode;
   mode: "create" | "edit";
   showBuilderTabs?: boolean;
   showPreview?: boolean;
@@ -592,6 +593,7 @@ export function CampaignForm({
   initialTab = "setup",
   listenForSaveEvents = true,
   lockedTargetingFeatures,
+  messageAddon,
   mode,
   showBuilderTabs = true,
   showPreview = true,
@@ -2098,6 +2100,11 @@ export function CampaignForm({
                   />
                 </FormField>
               </div>
+              {messageAddon && (
+                <div className="counterpulse-message-addon">
+                  {messageAddon}
+                </div>
+              )}
             </BuilderPanel>
 
             <BuilderPanel activeTab={activeTab} tabKey="placement">

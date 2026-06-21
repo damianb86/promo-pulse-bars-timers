@@ -2595,7 +2595,15 @@ s-page::part(page) {
 
 .counterpulse-offers-workspace {
   display: grid;
-  gap: 18px;
+  gap: 0;
+}
+
+.counterpulse-offers-tabs {
+  margin-bottom: 0;
+}
+
+.counterpulse-offers-workspace #offer-panel-advanced-rules {
+  padding-top: 0;
 }
 
 .counterpulse-offer-overview {
@@ -3311,46 +3319,77 @@ s-page::part(page) {
   top: 16px;
 }
 
+.counterpulse-message-addon {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #dfe3e8;
+}
+
+.counterpulse-translations-section {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-translations-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.counterpulse-translations-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
 .counterpulse-translations {
   display: grid;
   gap: 14px;
 }
 
 .counterpulse-locale-tabs {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dfe3e8;
+  padding-inline: 2px;
 }
 
 .counterpulse-locale-tabs button {
-  min-height: 56px;
-  border: 1px solid #c9cccf;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: #ffffff;
-  color: #202223;
+  min-height: 34px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 6px 8px;
+  background: transparent;
+  color: #5c5f62;
   cursor: pointer;
-  display: grid;
-  gap: 2px;
-  justify-items: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font: inherit;
-  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .counterpulse-locale-tabs button.is-active {
-  border-color: #008060;
-  box-shadow: 0 0 0 1px #008060;
+  border-bottom-color: #008060;
+  color: #006f4e;
+}
+
+.counterpulse-locale-tabs .counterpulse-locale-tabs__flag {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .counterpulse-locale-tabs span {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 16px;
 }
 
 .counterpulse-locale-tabs small {
   color: #616161;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 16px;
 }
 
@@ -5469,7 +5508,6 @@ s-page::part(page) {
   .counterpulse-validation-strip,
   .counterpulse-plan-grid,
   .counterpulse-template-picker,
-  .counterpulse-locale-tabs,
   .counterpulse-editor-tabs,
   .counterpulse-offer-summary,
   .counterpulse-subtabs,
@@ -5521,7 +5559,6 @@ s-page::part(page) {
   .counterpulse-placement-grid,
   .counterpulse-plan-grid,
   .counterpulse-template-picker,
-  .counterpulse-locale-tabs,
   .counterpulse-editor-tabs,
   .counterpulse-offer-summary,
   .counterpulse-subtabs,

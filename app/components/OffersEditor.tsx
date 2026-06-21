@@ -64,7 +64,7 @@ export function OffersEditor({
 
       <div
         aria-label="Offer strategy"
-        className="counterpulse-subtabs"
+        className="counterpulse-builder-tabs counterpulse-offers-tabs"
         role="tablist"
       >
         {sections.map((section) => (
@@ -78,8 +78,7 @@ export function OffersEditor({
             type="button"
             onClick={() => setActiveSectionKey(section.key)}
           >
-            <span>{section.label}</span>
-            <small>{section.description}</small>
+            {section.label}
           </button>
         ))}
       </div>

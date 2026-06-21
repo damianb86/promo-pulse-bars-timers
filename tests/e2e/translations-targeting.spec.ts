@@ -16,16 +16,20 @@ test("Spanish translations and locale/country targeting affect storefront API", 
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
-  await page.getByRole("tab", { name: "Translations" }).click();
-  await page.getByRole("tab", { name: /ES Spanish/ }).click();
-  await page
+  const campaignForm = page.locator("#campaign-basics-form");
+
+  await campaignForm.getByRole("tab", { name: "Message" }).click();
+  await campaignForm.getByRole("tab", { name: /ES Spanish/ }).click();
+  await campaignForm
     .locator('input[name="translation.es.headline"]')
     .fill("Oferta solo para Argentina");
-  await page
+  await campaignForm
     .locator('textarea[name="translation.es.subheadline"]')
     .fill("Disponible por tiempo limitado.");
-  await page.locator('input[name="translation.es.ctaText"]').fill("Comprar");
-  await page.getByRole("button", { name: "Save translations" }).click();
+  await campaignForm
+    .locator('input[name="translation.es.ctaText"]')
+    .fill("Comprar");
+  await campaignForm.getByRole("button", { name: "Save translations" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -34,9 +38,10 @@ test("Spanish translations and locale/country targeting affect storefront API", 
     ),
     confirmAction(page, "Save translations"),
   ]);
-  await page.getByRole("tab", { name: /ES Spanish/ }).click();
+  await campaignForm.getByRole("tab", { name: "Message" }).click();
+  await campaignForm.getByRole("tab", { name: /ES Spanish/ }).click();
   await expect(
-    page.locator('input[name="translation.es.headline"]'),
+    campaignForm.locator('input[name="translation.es.headline"]'),
   ).toHaveValue("Oferta solo para Argentina");
   await publishCurrentCampaign(page);
 

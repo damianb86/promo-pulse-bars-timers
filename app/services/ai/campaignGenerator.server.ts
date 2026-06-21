@@ -909,7 +909,7 @@ function createTranslation(
       "Order in {{time_left}} if same-day shipping is configured.",
     deliveryAfterCutoffText:
       "Delivery timing follows the store's configured shipping rules.",
-    ctaUrl: values.ctaUrl,
+    ctaUrl: values.ctaUrl ?? "",
   };
 }
 

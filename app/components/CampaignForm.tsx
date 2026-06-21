@@ -17,6 +17,7 @@ import {
 } from "./CampaignPreviewPanel";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import { TimezoneCombobox } from "./TimezoneCombobox";
+import { CampaignTranslationsEditor } from "./CampaignTranslationsEditor";
 import {
   campaignGoalOptions,
   campaignEditableStatusOptions,
@@ -54,6 +55,11 @@ import {
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
 import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
+import type {
+  CampaignTranslationFormErrors,
+  CampaignTranslationsByLocale,
+  StorefrontLocale,
+} from "../types/localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
@@ -76,6 +82,10 @@ type CampaignFormProps = {
   };
   listenForSaveEvents?: boolean;
   messageAddon?: ReactNode;
+  messageInitialLocale?: StorefrontLocale;
+  messageResolvedTranslations?: CampaignTranslationsByLocale;
+  messageTranslationErrors?: CampaignTranslationFormErrors;
+  messageTranslations?: CampaignTranslationsByLocale;
   mode: "create" | "edit";
   showBuilderTabs?: boolean;
   showPreview?: boolean;
@@ -598,6 +608,10 @@ export function CampaignForm({
   listenForSaveEvents = true,
   lockedTargetingFeatures,
   messageAddon,
+  messageInitialLocale = "en",
+  messageResolvedTranslations,
+  messageTranslationErrors,
+  messageTranslations,
   mode,
   showBuilderTabs = true,
   showPreview = true,
@@ -691,11 +705,9 @@ export function CampaignForm({
     formValues.type === "FREE_SHIPPING_GOAL" ||
     formValues.goal === "FREE_SHIPPING";
   const isLowStockCampaign =
-    formValues.type === "LOW_STOCK" ||
-    formValues.goal === "LOW_STOCK_URGENCY";
+    formValues.type === "LOW_STOCK" || formValues.goal === "LOW_STOCK_URGENCY";
   const isBadgeCampaign =
-    formValues.type === "PRODUCT_BADGE" ||
-    formValues.goal === "PRODUCT_BADGE";
+    formValues.type === "PRODUCT_BADGE" || formValues.goal === "PRODUCT_BADGE";
   const activeCampaignTypeChoiceKey = getCampaignTypeChoiceKey(formValues);
   const activeCampaignTypeChoice =
     campaignTypeChoiceOptions.find(
@@ -709,6 +721,24 @@ export function CampaignForm({
   const activeTabMeta =
     visibleBuilderTabs.find((tab) => tab.key === activeTab) ??
     visibleBuilderTabs[0];
+  const syncMessageFieldsFromTranslations = useCallback(
+    (
+      nextTranslations: CampaignTranslationsByLocale,
+      locale: StorefrontLocale,
+    ) => {
+      const nextMessage = nextTranslations[locale] ?? nextTranslations.en;
+
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        headline: nextMessage.headline,
+        subheadline: nextMessage.subheadline,
+        ctaText: nextMessage.ctaText,
+        ctaUrl: nextMessage.ctaUrl,
+        expiredText: nextMessage.expiredText,
+      }));
+    },
+    [],
+  );
   const selectedProductTags = splitCampaignList(formValues.productTags);
   const selectedCountries = splitCampaignList(formValues.countries).map(
     (country) => country.toUpperCase(),
@@ -1181,9 +1211,7 @@ export function CampaignForm({
         days.add(day);
       }
 
-      const nextDays = Array.from(days).sort(
-        (first, second) => first - second,
-      );
+      const nextDays = Array.from(days).sort((first, second) => first - second);
 
       return {
         ...currentValues,
@@ -1195,14 +1223,17 @@ export function CampaignForm({
     });
   };
 
-  const updateDesignValues = useCallback((nextDesign: CampaignDesignValues) => {
-    if (onDesignChange) {
-      onDesignChange(nextDesign);
-      return;
-    }
+  const updateDesignValues = useCallback(
+    (nextDesign: CampaignDesignValues) => {
+      if (onDesignChange) {
+        onDesignChange(nextDesign);
+        return;
+      }
 
-    setLocalDesignValues(nextDesign);
-  }, [onDesignChange]);
+      setLocalDesignValues(nextDesign);
+    },
+    [onDesignChange],
+  );
 
   useEffect(() => {
     if (!onDesignChange) {
@@ -1329,18 +1360,12 @@ export function CampaignForm({
       }
     };
 
-    window.addEventListener(
-      "promo-pulse:campaign-review",
-      handleReviewRequest,
-    );
+    window.addEventListener("promo-pulse:campaign-review", handleReviewRequest);
     window.addEventListener(
       "promo-pulse:ai-suggestion-json",
       handleAiSuggestionJson,
     );
-    window.addEventListener(
-      "promo-pulse:ai-apply-values",
-      handleAiApplyValues,
-    );
+    window.addEventListener("promo-pulse:ai-apply-values", handleAiApplyValues);
 
     return () => {
       window.removeEventListener(
@@ -1653,9 +1678,7 @@ export function CampaignForm({
                           step="0.01"
                           type="number"
                           value={formValues.freeShippingThresholdAmount}
-                          onChange={updateField(
-                            "freeShippingThresholdAmount",
-                          )}
+                          onChange={updateField("freeShippingThresholdAmount")}
                         />
                       </FormField>
 
@@ -1713,9 +1736,7 @@ export function CampaignForm({
                           name="freeShippingEmptyCartMessage"
                           rows={2}
                           value={formValues.freeShippingEmptyCartMessage}
-                          onChange={updateField(
-                            "freeShippingEmptyCartMessage",
-                          )}
+                          onChange={updateField("freeShippingEmptyCartMessage")}
                         />
                       </FormField>
 
@@ -1728,9 +1749,7 @@ export function CampaignForm({
                           name="freeShippingSuccessMessage"
                           rows={2}
                           value={formValues.freeShippingSuccessMessage}
-                          onChange={updateField(
-                            "freeShippingSuccessMessage",
-                          )}
+                          onChange={updateField("freeShippingSuccessMessage")}
                         />
                       </FormField>
                     </div>
@@ -1743,7 +1762,9 @@ export function CampaignForm({
                           type="checkbox"
                           onChange={toggleFreeShippingAutoDiscount}
                         />
-                        <span>Create or link the real Shopify discount code</span>
+                        <span>
+                          Create or link the real Shopify discount code
+                        </span>
                       </label>
                       <p>
                         When enabled, saving creates or links a Shopify free
@@ -1760,9 +1781,7 @@ export function CampaignForm({
                             <input
                               name="freeShippingDiscountCode"
                               value={formValues.freeShippingDiscountCode}
-                              onChange={updateField(
-                                "freeShippingDiscountCode",
-                              )}
+                              onChange={updateField("freeShippingDiscountCode")}
                             />
                           </FormField>
 
@@ -1798,7 +1817,9 @@ export function CampaignForm({
                           <div className="counterpulse-toggle">
                             <label className="counterpulse-toggle-label">
                               <input
-                                checked={formValues.freeShippingShowDiscountCode}
+                                checked={
+                                  formValues.freeShippingShowDiscountCode
+                                }
                                 name="freeShippingShowDiscountCode"
                                 type="checkbox"
                                 onChange={updateCheckboxField(
@@ -1970,9 +1991,7 @@ export function CampaignForm({
                         <select
                           name="deliveryAfterCutoffBehavior"
                           value={formValues.deliveryAfterCutoffBehavior}
-                          onChange={updateField(
-                            "deliveryAfterCutoffBehavior",
-                          )}
+                          onChange={updateField("deliveryAfterCutoffBehavior")}
                         >
                           {afterCutoffBehaviorOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -2060,7 +2079,9 @@ export function CampaignForm({
                               "lowStockShowExactQuantity",
                             )}
                           />
-                          <span>Show exact quantity when Shopify provides it</span>
+                          <span>
+                            Show exact quantity when Shopify provides it
+                          </span>
                         </label>
                       </div>
 
@@ -2145,52 +2166,66 @@ export function CampaignForm({
               tabId={builderTabId("message")}
               tabKey="message"
             >
-              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-                <FormField label="Headline" error={errors.headline} fullWidth>
-                  <input
-                    name="headline"
-                    value={formValues.headline}
-                    placeholder="Free shipping on orders over $75"
-                    onChange={updateField("headline")}
+              {messageTranslations && messageResolvedTranslations ? (
+                <>
+                  <CampaignMessageHiddenInputs values={formValues} />
+                  <CampaignTranslationsEditor
+                    embedded
+                    errors={messageTranslationErrors}
+                    initialLocale={messageInitialLocale}
+                    initialValues={messageTranslations}
+                    resolvedValues={messageResolvedTranslations}
+                    showActions={false}
+                    onActiveLocaleChange={syncMessageFieldsFromTranslations}
+                    onValuesChange={syncMessageFieldsFromTranslations}
                   />
-                </FormField>
+                </>
+              ) : (
+                <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                  <FormField label="Headline" error={errors.headline} fullWidth>
+                    <input
+                      name="headline"
+                      value={formValues.headline}
+                      placeholder="Free shipping on orders over $75"
+                      onChange={updateField("headline")}
+                    />
+                  </FormField>
 
-                <FormField
-                  label="Subheadline"
-                  error={errors.subheadline}
-                  fullWidth
-                >
-                  <textarea
-                    name="subheadline"
-                    value={formValues.subheadline}
-                    rows={4}
-                    placeholder="Limited time only. Do not miss out."
-                    onChange={updateField("subheadline")}
-                  />
-                </FormField>
+                  <FormField
+                    label="Subheadline"
+                    error={errors.subheadline}
+                    fullWidth
+                  >
+                    <textarea
+                      name="subheadline"
+                      value={formValues.subheadline}
+                      rows={4}
+                      placeholder="Limited time only. Do not miss out."
+                      onChange={updateField("subheadline")}
+                    />
+                  </FormField>
 
-                <FormField label="CTA text" error={errors.ctaText}>
-                  <input
-                    name="ctaText"
-                    value={formValues.ctaText}
-                    placeholder="Shop now"
-                    onChange={updateField("ctaText")}
-                  />
-                </FormField>
+                  <FormField label="CTA text" error={errors.ctaText}>
+                    <input
+                      name="ctaText"
+                      value={formValues.ctaText}
+                      placeholder="Shop now"
+                      onChange={updateField("ctaText")}
+                    />
+                  </FormField>
 
-                <FormField label="CTA URL" error={errors.ctaUrl}>
-                  <input
-                    name="ctaUrl"
-                    value={formValues.ctaUrl}
-                    placeholder="/collections/sale"
-                    onChange={updateField("ctaUrl")}
-                  />
-                </FormField>
-              </div>
-              {messageAddon && (
-                <div className="counterpulse-message-addon">
-                  {messageAddon}
+                  <FormField label="CTA URL" error={errors.ctaUrl}>
+                    <input
+                      name="ctaUrl"
+                      value={formValues.ctaUrl}
+                      placeholder="/collections/sale"
+                      onChange={updateField("ctaUrl")}
+                    />
+                  </FormField>
                 </div>
+              )}
+              {messageAddon && (
+                <div className="counterpulse-message-addon">{messageAddon}</div>
               )}
             </BuilderPanel>
 
@@ -3642,6 +3677,22 @@ function getShopifyBridge() {
       };
     }
   ).shopify;
+}
+
+function CampaignMessageHiddenInputs({
+  values,
+}: {
+  values: CampaignFormValues;
+}) {
+  return (
+    <>
+      <input name="headline" type="hidden" value={values.headline} />
+      <input name="subheadline" type="hidden" value={values.subheadline} />
+      <input name="ctaText" type="hidden" value={values.ctaText} />
+      <input name="ctaUrl" type="hidden" value={values.ctaUrl} />
+      <input name="expiredText" type="hidden" value={values.expiredText} />
+    </>
+  );
 }
 
 function FormField({

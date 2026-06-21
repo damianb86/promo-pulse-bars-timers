@@ -22,7 +22,7 @@ import {
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
-  hasTimerEndDate?: boolean;
+  hasTimer?: boolean;
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
   onChange: (values: CampaignDesignValues) => void;
@@ -31,7 +31,7 @@ type DesignControlsProps = {
 export function DesignControls({
   values,
   errors = {},
-  hasTimerEndDate = true,
+  hasTimer = true,
   isProPlan,
   onChange,
 }: DesignControlsProps) {
@@ -538,7 +538,7 @@ export function DesignControls({
       </DesignPanel>
 
       <DesignPanel title="Timer Style">
-        {hasTimerEndDate ? (
+        {hasTimer ? (
           <>
             <DesignGroup error={errors.timerFormat} label="Format">
               <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
@@ -761,7 +761,8 @@ export function DesignControls({
         ) : (
           <>
             <div className="counterpulse-design-note">
-              Set an End date in Campaign Schedule to edit timer design
+              This campaign is not currently showing a timer. Choose a timer
+              mode or end date in Campaign Schedule to edit timer design
               controls.
             </div>
             <TimerStyleHiddenInputs values={values} />
@@ -1074,8 +1075,7 @@ function CustomCssInfoContent() {
             <code>--pp-button-text</code>, <code>--pp-close</code>,{" "}
             <code>--pp-icon-size</code>, <code>--pp-radius</code>,{" "}
             <code>--pp-padding-block</code>, <code>--pp-padding-inline</code>,
-            and{" "}
-            <code>--pp-content-max-width</code>.
+            and <code>--pp-content-max-width</code>.
           </span>
         </li>
         <li>

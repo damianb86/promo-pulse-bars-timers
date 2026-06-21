@@ -1383,6 +1383,24 @@ s-page::part(page) {
   box-shadow: 0 10px 24px rgba(14, 165, 233, 0.2);
 }
 
+.counterpulse-ai-suggestion-preview {
+  border-color: #7c3aed;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #7c3aed, #0ea5e9) border-box;
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.2),
+    0 18px 42px rgba(14, 165, 233, 0.16);
+}
+
+.counterpulse-ai-suggestion-preview:focus {
+  outline: none;
+}
+
+.counterpulse-ai-suggestion-preview .counterpulse-section-heading {
+  color: #3b0764;
+}
+
 .counterpulse-create-topbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

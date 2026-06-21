@@ -30,7 +30,6 @@ import {
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
 import { CampaignForm } from "../components/CampaignForm";
-import { CampaignTranslationsEditor } from "../components/CampaignTranslationsEditor";
 import { DeliveryCutoffSettingsEditor } from "../components/DeliveryCutoffSettingsEditor";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
 import {
@@ -89,6 +88,7 @@ import {
   parseCampaignFormData,
 } from "../services/campaign-form.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
+import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
 import {
   hasCampaignTranslationErrors,
   parseCampaignTranslationsFormData,
@@ -258,9 +258,11 @@ import {
 import type {
   CampaignTranslationFormErrors,
   CampaignTranslationsByLocale,
+  StorefrontLocale,
 } from "../types/localization";
 import {
   getCampaignTranslationsViewModel,
+  normalizeStorefrontLocale,
   type CampaignTranslationsViewModel,
 } from "../utils/campaign-localization";
 import {
@@ -286,6 +288,7 @@ type LoaderData = {
   freeShippingValues: FreeShippingSettingsValues;
   lowStockValues: LowStockSettingsValues;
   translationsViewModel: CampaignTranslationsViewModel;
+  defaultLocale: StorefrontLocale;
   publication: {
     hasPublishedVersion: boolean;
     hasUnpublishedChanges: boolean;
@@ -375,8 +378,16 @@ export const loader = async ({
     throw new Response("Campaign not found.", { status: 404 });
   }
 
+  const shopSettings = await getShopSettingsOrDefaults(shop.id);
+  const defaultLocale =
+    normalizeStorefrontLocale(shopSettings.defaultLocale) ?? "en";
   const translation =
-    campaign.translations.find((item) => item.locale === "en") ??
+    campaign.translations.find(
+      (item) => normalizeStorefrontLocale(item.locale) === defaultLocale,
+    ) ??
+    campaign.translations.find(
+      (item) => normalizeStorefrontLocale(item.locale) === "en",
+    ) ??
     campaign.translations[0];
   const enabledPlacements = campaign.placements.filter(
     (placement) => placement.enabled,
@@ -538,6 +549,7 @@ export const loader = async ({
       goal: campaign.goal,
       translations: campaign.translations,
     }),
+    defaultLocale,
     publication: {
       hasPublishedVersion: Boolean(campaign.publishedAt),
       hasUnpublishedChanges: Boolean(
@@ -1483,17 +1495,25 @@ export const action = async ({
     allowInactiveStatuses: true,
   });
   const parsedDesign = parseCampaignDesignFormData(formData, effectivePlan);
+  const shouldSaveTranslationsWithBasics = hasTranslationInputs(formData);
+  const parsedTranslations = shouldSaveTranslationsWithBasics
+    ? parseCampaignTranslationsFormData(formData)
+    : null;
   const isPublishRequest = intent === "publishCampaign";
 
   if (
     hasCampaignFormErrors(parsed.errors) ||
-    hasCampaignDesignErrors(parsedDesign.errors)
+    hasCampaignDesignErrors(parsedDesign.errors) ||
+    (parsedTranslations &&
+      hasCampaignTranslationErrors(parsedTranslations.errors))
   ) {
     return {
       errors: parsed.errors,
       values: parsed.values,
       designErrors: parsedDesign.errors,
       designValues: parsedDesign.values,
+      translationErrors: parsedTranslations?.errors,
+      translationValues: parsedTranslations?.values,
     };
   }
 
@@ -1511,6 +1531,7 @@ export const action = async ({
   const isBadgeCampaign =
     parsed.values.type === "PRODUCT_BADGE" ||
     parsed.values.goal === "PRODUCT_BADGE";
+  const baseTranslationValues = parsedTranslations?.values.en;
 
   try {
     const planErrors = await validateCampaignPlanAccess(
@@ -1549,6 +1570,21 @@ export const action = async ({
       }
     }
 
+    if (parsedTranslations) {
+      const translationGate = canUseFeature(shop, "multi_language");
+
+      if (!translationGate.allowed) {
+        return {
+          values: parsed.values,
+          designValues: parsedDesign.values,
+          translationValues: parsedTranslations.values,
+          translationErrors: {
+            form: translationGate.reason,
+          },
+        };
+      }
+    }
+
     await updateCampaignBasicsForShop(id, shop.id, {
       name: parsed.values.name,
       status: parsed.values.status,
@@ -1561,23 +1597,33 @@ export const action = async ({
       placementTypes: parsed.values.placementTypes,
       customSelector: parsed.values.customSelector,
       targeting,
-      headline: parsed.values.headline,
-      subheadline: parsed.values.subheadline,
-      ctaText: parsed.values.ctaText,
-      ctaUrl: parsed.values.ctaUrl,
-      expiredText: parsed.values.expiredText,
+      headline: baseTranslationValues?.headline ?? parsed.values.headline,
+      subheadline:
+        baseTranslationValues?.subheadline ?? parsed.values.subheadline,
+      ctaText: baseTranslationValues?.ctaText ?? parsed.values.ctaText,
+      ctaUrl: baseTranslationValues?.ctaUrl ?? parsed.values.ctaUrl,
+      expiredText:
+        baseTranslationValues?.expiredText ?? parsed.values.expiredText,
       timerSettings,
     });
+    if (parsedTranslations) {
+      await updateCampaignTranslationsForShop(
+        id,
+        shop.id,
+        parsedTranslations.translations,
+      );
+    }
     await updateCampaignDesignForShop(id, shop.id, parsedDesign.values);
 
     if (isFreeShippingCampaign) {
-      const freeShippingSettings =
-        buildCampaignFreeShippingSettingsValues(parsed.values);
+      const freeShippingSettings = buildCampaignFreeShippingSettingsValues(
+        parsed.values,
+      );
 
       await updateFreeShippingSettingsForShop(id, shop.id, {
-        thresholdAmount: Number(
-          freeShippingSettings.thresholdAmount,
-        ).toFixed(2),
+        thresholdAmount: Number(freeShippingSettings.thresholdAmount).toFixed(
+          2,
+        ),
         currencyCode: freeShippingSettings.currencyCode,
         includeDiscountedSubtotal:
           freeShippingSettings.includeDiscountedSubtotal,
@@ -1600,8 +1646,9 @@ export const action = async ({
     }
 
     if (isDeliveryCutoffCampaign) {
-      const deliveryCutoffSettings =
-        buildCampaignDeliveryCutoffSettingsValues(parsed.values);
+      const deliveryCutoffSettings = buildCampaignDeliveryCutoffSettingsValues(
+        parsed.values,
+      );
 
       await updateDeliveryCutoffSettingsForShop(id, shop.id, {
         afterCutoffBehavior: deliveryCutoffSettings.afterCutoffBehavior,
@@ -1683,6 +1730,7 @@ export default function EditCampaignPage() {
     uniqueCodeStats,
     uniqueCodes,
     translationsViewModel,
+    defaultLocale,
     publication,
     isProPlan,
     lockedFeatures,
@@ -1842,15 +1890,15 @@ export default function EditCampaignPage() {
                         message={lockedFeatures.multiLanguage}
                         title="Translations are locked"
                       />
-                    ) : (
-                      <CampaignTranslationsEditor
-                        embedded
-                        errors={actionData?.translationErrors}
-                        initialValues={translationValues}
-                        key={`${id}:${JSON.stringify(translationValues)}`}
-                        resolvedValues={translationsViewModel.resolvedValues}
-                      />
-                    )
+                    ) : null
+                  }
+                  messageInitialLocale={defaultLocale}
+                  messageResolvedTranslations={
+                    translationsViewModel.resolvedValues
+                  }
+                  messageTranslationErrors={actionData?.translationErrors}
+                  messageTranslations={
+                    lockedFeatures.multiLanguage ? undefined : translationValues
                   }
                   mode="edit"
                   showTopbar={false}
@@ -2193,8 +2241,8 @@ function MerchandisingOverview({
   return (
     <s-section heading="Conversion modules">
       <p className="counterpulse-section-description">
-        These settings control what shoppers see for campaign behaviors that
-        are not only a discount code: badges, stock urgency, delivery cutoff
+        These settings control what shoppers see for campaign behaviors that are
+        not only a discount code: badges, stock urgency, delivery cutoff
         presentation, and free-shipping progress. Offer mechanics and discount
         sync stay in Offers. Current placements: {placementLabels.join(", ")}.
       </p>
@@ -2790,6 +2838,12 @@ function parseMarketJsonObject(
 
 function readFormString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+function hasTranslationInputs(formData: FormData) {
+  return Array.from(formData.keys()).some((key) =>
+    key.startsWith("translation."),
+  );
 }
 
 function normalizeMarketLocale(value: string) {
@@ -3811,10 +3865,10 @@ function toCampaignFreeShippingFormValues(
   | "freeShippingEmptyCartMessage"
   | "freeShippingSuccessMessage"
   | "freeShippingAutoDiscount"
-    | "freeShippingDiscountCode"
-    | "freeShippingDiscountTitle"
-    | "freeShippingDiscountAppliesOncePerCustomer"
-    | "freeShippingShowDiscountCode"
+  | "freeShippingDiscountCode"
+  | "freeShippingDiscountTitle"
+  | "freeShippingDiscountAppliesOncePerCustomer"
+  | "freeShippingShowDiscountCode"
 > {
   const freeShippingValues = toFreeShippingSettingsValues(settings);
   const hasFreeShippingDiscount = discountSync?.valueType === "FREE_SHIPPING";
@@ -3845,9 +3899,16 @@ function toCampaignFreeShippingFormValues(
   };
 }
 
-function readStringLike(value: {
-  toString(): string;
-} | string | number | null | undefined) {
+function readStringLike(
+  value:
+    | {
+        toString(): string;
+      }
+    | string
+    | number
+    | null
+    | undefined,
+) {
   if (value === null || value === undefined) return "";
 
   return String(value);
@@ -3897,9 +3958,7 @@ function toCampaignLowStockFormValues(
   } | null,
 ): Pick<
   CampaignFormValues,
-  | "lowStockThreshold"
-  | "lowStockShowExactQuantity"
-  | "lowStockFallbackMessage"
+  "lowStockThreshold" | "lowStockShowExactQuantity" | "lowStockFallbackMessage"
 > {
   const values = toLowStockSettingsValues(settings);
 
@@ -4125,8 +4184,7 @@ async function createOrLinkFreeShippingDiscountForCampaign({
       startsAt,
       endsAt,
       minimumSubtotal: thresholdAmount,
-      appliesOncePerCustomer:
-        values.freeShippingDiscountAppliesOncePerCustomer,
+      appliesOncePerCustomer: values.freeShippingDiscountAppliesOncePerCustomer,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -4154,8 +4212,7 @@ async function createOrLinkFreeShippingDiscountForCampaign({
     valueType: "FREE_SHIPPING",
     value: null,
     minimumSubtotal: thresholdAmount.toFixed(2),
-    appliesOncePerCustomer:
-      values.freeShippingDiscountAppliesOncePerCustomer,
+    appliesOncePerCustomer: values.freeShippingDiscountAppliesOncePerCustomer,
     showCodeOnStorefront: values.freeShippingShowDiscountCode,
   });
 }

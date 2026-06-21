@@ -87,7 +87,7 @@ export function CampaignDesignEditor({
           <DesignControls
             mediaOptions={designMediaOptions}
             errors={errors}
-            hasTimerEndDate={Boolean(previewViewModel.timer?.endsAt)}
+            hasTimer={isTimerShown(previewViewModel.timer)}
             isProPlan={isProPlan}
             values={design}
             onChange={onChange}
@@ -107,6 +107,13 @@ export function CampaignDesignEditor({
       </div>
     </s-section>
   );
+}
+
+function isTimerShown(timer: CampaignViewModel["timer"]) {
+  if (!timer) return false;
+  if (timer.mode === "FIXED_DATE") return Boolean(timer.endsAt);
+
+  return true;
 }
 
 function toPreviewPlacementFromCampaign(value: string): PreviewPlacement {

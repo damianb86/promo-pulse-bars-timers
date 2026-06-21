@@ -105,3 +105,24 @@ test("storefront embed fails closed when campaign API fails", async ({
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("app proxy aliases return storefront campaigns", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("countdown");
+
+  for (const proxyPath of [
+    "/apps/counter-pulse",
+    "/apps/default-app-home/apps/counter-pulse",
+  ]) {
+    const response = await page.request.get(
+      `${proxyPath}?shop=demo-shop.myshopify.com&placement=TOP_BAR&locale=en&country=US`,
+    );
+
+    expect(response.ok()).toBe(true);
+    const payload = await response.json();
+    expect(payload.campaigns).toHaveLength(1);
+    expect(payload.campaigns[0].texts.headline).toBe("Sale ends soon");
+  }
+});

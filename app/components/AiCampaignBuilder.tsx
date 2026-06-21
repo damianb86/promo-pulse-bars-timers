@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppAlert, AppToast } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
@@ -70,6 +70,7 @@ export function AiCampaignBuilder({
   values,
 }: AiCampaignBuilderProps) {
   const navigation = useNavigation();
+  const suggestionPreviewRef = useRef<HTMLDivElement | null>(null);
   const [applied, setApplied] = useState(false);
   const [formValues, setFormValues] = useState(values);
   const [campaignNameHint, setCampaignNameHint] = useState("");
@@ -96,6 +97,19 @@ export function AiCampaignBuilder({
   useEffect(() => {
     setFormValues(values);
   }, [values]);
+
+  useEffect(() => {
+    if (!suggestion) return undefined;
+
+    const scrollToSuggestion = window.setTimeout(() => {
+      suggestionPreviewRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+
+    return () => window.clearTimeout(scrollToSuggestion);
+  }, [suggestion]);
 
   return (
     <div className="counterpulse-ai-builder">
@@ -485,7 +499,11 @@ export function AiCampaignBuilder({
 
           {suggestion && (
             <s-box paddingBlockStart="base">
-              <div className="counterpulse-card">
+              <div
+                className="counterpulse-card counterpulse-ai-suggestion-preview"
+                ref={suggestionPreviewRef}
+                tabIndex={-1}
+              >
                 <h3 className="counterpulse-section-heading">
                   AI suggestion preview
                 </h3>

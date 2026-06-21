@@ -14,6 +14,7 @@ export const campaignTranslationFields = [
   { key: "headline", label: "Headline", multiline: false },
   { key: "subheadline", label: "Subheadline", multiline: true },
   { key: "ctaText", label: "CTA text", multiline: false },
+  { key: "ctaUrl", label: "CTA URL", multiline: false },
   { key: "expiredText", label: "Expired text", multiline: true },
   {
     key: "freeShippingEmptyText",
@@ -65,6 +66,7 @@ export const emptyCampaignTranslationValues: CampaignTranslationValues = {
   headline: "",
   subheadline: "",
   ctaText: "",
+  ctaUrl: "",
   expiredText: "",
   freeShippingEmptyText: "",
   freeShippingProgressText: "",

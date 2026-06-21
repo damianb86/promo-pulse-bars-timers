@@ -15,20 +15,35 @@ import {
 
 type CampaignTranslationsEditorProps = {
   embedded?: boolean;
+  initialLocale?: StorefrontLocale;
   initialValues: CampaignTranslationsByLocale;
+  showActions?: boolean;
   resolvedValues: CampaignTranslationsByLocale;
   errors?: CampaignTranslationFormErrors;
+  onActiveLocaleChange?: (
+    values: CampaignTranslationsByLocale,
+    activeLocale: StorefrontLocale,
+  ) => void;
+  onValuesChange?: (
+    values: CampaignTranslationsByLocale,
+    activeLocale: StorefrontLocale,
+  ) => void;
 };
 
 export function CampaignTranslationsEditor({
   embedded = false,
+  initialLocale = "en",
   initialValues,
+  showActions = true,
   resolvedValues,
   errors,
+  onActiveLocaleChange,
+  onValuesChange,
 }: CampaignTranslationsEditorProps) {
   const navigation = useNavigation();
   const submit = useSubmit();
-  const [activeLocale, setActiveLocale] = useState<StorefrontLocale>("en");
+  const [activeLocale, setActiveLocale] =
+    useState<StorefrontLocale>(initialLocale);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [values, setValues] = useState(initialValues);
   const isSubmitting = navigation.state === "submitting";
@@ -42,6 +57,18 @@ export function CampaignTranslationsEditor({
       </p>
     ),
   });
+  const selectLocale = (locale: StorefrontLocale) => {
+    setActiveLocale(locale);
+    onActiveLocaleChange?.(values, locale);
+  };
+  const replaceValues = (
+    nextValues: CampaignTranslationsByLocale,
+    locale = activeLocale,
+  ) => {
+    setValues(nextValues);
+    onValuesChange?.(nextValues, locale);
+  };
+
   const content = (
     <>
       <div
@@ -60,7 +87,7 @@ export function CampaignTranslationsEditor({
             key={localeOption.locale}
             role="tab"
             type="button"
-            onClick={() => setActiveLocale(localeOption.locale)}
+            onClick={() => selectLocale(localeOption.locale)}
           >
             <span className="counterpulse-locale-tabs__flag" aria-hidden="true">
               {localeOption.flag}
@@ -76,7 +103,9 @@ export function CampaignTranslationsEditor({
           <button
             className="counterpulse-button-secondary"
             type="button"
-            onClick={() => copyEnglishToLocale(activeLocale, values, setValues)}
+            onClick={() =>
+              replaceValues(copyEnglishToLocale(activeLocale, values))
+            }
           >
             Copy English
           </button>
@@ -84,7 +113,7 @@ export function CampaignTranslationsEditor({
         <button
           className="counterpulse-button-secondary"
           type="button"
-          onClick={() => copyEnglishToAll(values, setValues)}
+          onClick={() => replaceValues(copyEnglishToAll(values))}
         >
           Copy English to all
         </button>
@@ -102,19 +131,23 @@ export function CampaignTranslationsEditor({
           <div className="counterpulse-form-grid">
             {campaignTranslationFields.map((field) => (
               <TranslationField
-                error={errors?.locales?.[localeOption.locale]?.[field.key] ?? ""}
+                error={
+                  errors?.locales?.[localeOption.locale]?.[field.key] ?? ""
+                }
                 field={field}
                 key={field.key}
                 locale={localeOption.locale}
                 placeholder={resolvedValues[localeOption.locale][field.key]}
                 value={values[localeOption.locale][field.key]}
                 onChange={(nextValue) =>
-                  updateTranslationValue(
-                    values,
-                    setValues,
+                  replaceValues(
+                    updateTranslationValue(
+                      values,
+                      localeOption.locale,
+                      field.key,
+                      nextValue,
+                    ),
                     localeOption.locale,
-                    field.key,
-                    nextValue,
                   )
                 }
               />
@@ -123,15 +156,17 @@ export function CampaignTranslationsEditor({
         </div>
       ))}
 
-      <div className="counterpulse-actions">
-        <button
-          className="counterpulse-button"
-          type={embedded ? "button" : "submit"}
-          onClick={embedded ? () => setConfirmOpen(true) : undefined}
-        >
-          {isSubmitting ? "Saving..." : "Save translations"}
-        </button>
-      </div>
+      {showActions && (
+        <div className="counterpulse-actions">
+          <button
+            className="counterpulse-button"
+            type={embedded ? "button" : "submit"}
+            onClick={embedded ? () => setConfirmOpen(true) : undefined}
+          >
+            {isSubmitting ? "Saving..." : "Save translations"}
+          </button>
+        </div>
+      )}
     </>
   );
 
@@ -238,44 +273,37 @@ function TranslationField({
 
 function updateTranslationValue(
   values: CampaignTranslationsByLocale,
-  setValues: (values: CampaignTranslationsByLocale) => void,
   locale: StorefrontLocale,
   field: CampaignTextField,
   value: string,
 ) {
-  setValues({
+  return {
     ...values,
     [locale]: {
       ...values[locale],
       [field]: value,
     },
-  });
+  };
 }
 
 function copyEnglishToLocale(
   locale: StorefrontLocale,
   values: CampaignTranslationsByLocale,
-  setValues: (values: CampaignTranslationsByLocale) => void,
 ) {
-  setValues({
+  return {
     ...values,
     [locale]: { ...values.en },
-  });
+  };
 }
 
-function copyEnglishToAll(
-  values: CampaignTranslationsByLocale,
-  setValues: (values: CampaignTranslationsByLocale) => void,
-) {
-  setValues(
-    storefrontLocales.reduce((nextValues, localeOption) => {
-      nextValues[localeOption.locale] =
-        localeOption.locale === "en"
-          ? values.en
-          : ({ ...values.en } as CampaignTranslationValues);
-      return nextValues;
-    }, {} as CampaignTranslationsByLocale),
-  );
+function copyEnglishToAll(values: CampaignTranslationsByLocale) {
+  return storefrontLocales.reduce((nextValues, localeOption) => {
+    nextValues[localeOption.locale] =
+      localeOption.locale === "en"
+        ? values.en
+        : ({ ...values.en } as CampaignTranslationValues);
+    return nextValues;
+  }, {} as CampaignTranslationsByLocale);
 }
 
 function buildTranslationsFormData(values: CampaignTranslationsByLocale) {

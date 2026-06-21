@@ -1,5 +1,9 @@
 import { type ReactNode, useState } from "react";
-import { CampaignControlStatusBadge } from "./CampaignControlStatusBadge";
+import {
+  CampaignControlStatusBadge,
+  CampaignPublicationStatusBadge,
+  type CampaignPublicationState,
+} from "./CampaignControlStatusBadge";
 import type { EditableCampaignStatusValue } from "../types/campaign-options";
 
 export type CampaignEditorSection = {
@@ -16,7 +20,8 @@ type CampaignEditorLayoutProps = {
     formId: string;
     isPublishing?: boolean;
     placementLabel: string;
-    publicationLabel?: string;
+    publicationState: CampaignPublicationState;
+    publicationStatusLabel: string;
     publishLabel?: string;
     statusLabel: string;
     statusValue: EditableCampaignStatusValue;
@@ -47,12 +52,13 @@ export function CampaignEditorLayout({
             <div className="counterpulse-create-status">
               <span>{actionBar.campaignTypeLabel}</span>
               <span>{actionBar.placementLabel}</span>
-              {actionBar.publicationLabel && (
-                <span>{actionBar.publicationLabel}</span>
-              )}
             </div>
           </div>
           <div className="counterpulse-create-actions">
+            <CampaignPublicationStatusBadge
+              label={actionBar.publicationStatusLabel}
+              state={actionBar.publicationState}
+            />
             <CampaignControlStatusBadge
               label={actionBar.statusLabel}
               status={actionBar.statusValue}

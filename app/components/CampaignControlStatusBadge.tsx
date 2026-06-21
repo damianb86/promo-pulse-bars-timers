@@ -5,10 +5,23 @@ type CampaignControlStatusBadgeProps = {
   status: EditableCampaignStatusValue;
 };
 
+export type CampaignPublicationState =
+  | "live"
+  | "not-published"
+  | "saved-unpublished"
+  | "unsaved";
+
+type CampaignPublicationStatusBadgeProps = {
+  label: string;
+  state: CampaignPublicationState;
+};
+
 export function CampaignControlStatusBadge({
   label,
   status,
 }: CampaignControlStatusBadgeProps) {
+  const displayLabel = status === "ACTIVE" ? "LIVE" : label.toUpperCase();
+
   return (
     <span
       className={[
@@ -16,7 +29,25 @@ export function CampaignControlStatusBadge({
         `counterpulse-control-status-badge--${status.toLowerCase()}`,
       ].join(" ")}
     >
-      {status === "ACTIVE" ? "Live" : label}
+      {displayLabel}
+    </span>
+  );
+}
+
+export function CampaignPublicationStatusBadge({
+  label,
+  state,
+}: CampaignPublicationStatusBadgeProps) {
+  if (state === "live") return null;
+
+  return (
+    <span
+      className={[
+        "counterpulse-publication-status-badge",
+        `counterpulse-publication-status-badge--${state}`,
+      ].join(" ")}
+    >
+      {label.toUpperCase()}
     </span>
   );
 }

@@ -1772,6 +1772,10 @@ export default function EditCampaignPage() {
   const campaignPlacementLabel = formatPlacementSelectionLabel(
     activeCampaignValues.placementTypes,
   );
+  const publicationStatus = buildPublicationStatus(
+    publication,
+    hasUnsavedChanges,
+  );
 
   return (
     <>
@@ -1797,7 +1801,8 @@ export default function EditCampaignPage() {
               );
             },
             placementLabel: campaignPlacementLabel,
-            publicationLabel: buildPublicationLabel(publication),
+            publicationState: publicationStatus.state,
+            publicationStatusLabel: publicationStatus.label,
             publishLabel: publication.hasPublishedVersion
               ? "Publish changes"
               : "Publish",
@@ -2310,11 +2315,35 @@ function readNavigationAction(formData: FormData | undefined) {
   return typeof action === "string" ? action : "";
 }
 
-function buildPublicationLabel(publication: LoaderData["publication"]) {
-  if (!publication.hasPublishedVersion) return "Not published";
-  if (publication.hasUnpublishedChanges) return "Unpublished changes";
+function buildPublicationStatus(
+  publication: LoaderData["publication"],
+  hasUnsavedChanges: boolean,
+) {
+  if (hasUnsavedChanges) {
+    return {
+      label: "Unsaved changes",
+      state: "unsaved" as const,
+    };
+  }
 
-  return "Published";
+  if (!publication.hasPublishedVersion) {
+    return {
+      label: "Not published",
+      state: "not-published" as const,
+    };
+  }
+
+  if (publication.hasUnpublishedChanges) {
+    return {
+      label: "Saved changes not live",
+      state: "saved-unpublished" as const,
+    };
+  }
+
+  return {
+    label: "Live",
+    state: "live" as const,
+  };
 }
 
 function formatUnifiedCampaignTypeLabel(values: CampaignFormValues) {

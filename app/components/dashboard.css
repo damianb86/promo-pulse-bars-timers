@@ -1431,43 +1431,88 @@ s-page::part(page) {
 }
 
 .counterpulse-control-status-badge {
-  min-height: 28px;
-  border-radius: 999px;
-  padding: 5px 10px;
   display: inline-flex;
   align-items: center;
-  border: 1px solid #c9d1d8;
-  background: #f6f8fa;
+  gap: 6px;
+  padding: 2px 4px;
   color: #4a5568;
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
+.counterpulse-control-status-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(74, 85, 104, 0.12);
+}
+
 .counterpulse-control-status-badge--active {
-  border-color: #008060;
-  background: #008060;
-  color: #ffffff;
-  box-shadow: 0 0 0 1px rgba(0, 128, 96, 0.12);
+  color: #008060;
+}
+
+.counterpulse-control-status-badge--active::before {
+  box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.14);
 }
 
 .counterpulse-control-status-badge--draft {
-  border-color: #bfccd9;
-  background: #eef2f6;
   color: #364152;
 }
 
 .counterpulse-control-status-badge--paused {
-  border-color: #e1b878;
-  background: #fff7e6;
   color: #7a4f01;
 }
 
+.counterpulse-control-status-badge--paused::before {
+  box-shadow: 0 0 0 3px rgba(122, 79, 1, 0.14);
+}
+
 .counterpulse-control-status-badge--expired {
-  border-color: #f0b8b8;
-  background: #fff1f1;
   color: #a83434;
+}
+
+.counterpulse-control-status-badge--expired::before {
+  box-shadow: 0 0 0 3px rgba(168, 52, 52, 0.14);
+}
+
+.counterpulse-publication-status-badge {
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #dfe3e8;
+  background: #f6f8fa;
+  color: #4a5568;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.counterpulse-publication-status-badge--saved-unpublished {
+  border-color: #f1c47b;
+  background: #fff8e8;
+  color: #7a4f01;
+}
+
+.counterpulse-publication-status-badge--not-published,
+.counterpulse-publication-status-badge--unsaved {
+  border-color: #ccd6e3;
+  background: #f3f6fa;
+  color: #364152;
+}
+
+.counterpulse-publication-status-badge--unsaved {
+  border-color: #d8c3f6;
+  background: #f7f2ff;
+  color: #5b3a91;
 }
 
 .counterpulse-builder-tabs {

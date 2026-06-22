@@ -179,6 +179,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         productTags: [],
         customerTags: [],
         urlContains: [],
+        excludedUrlContains: [],
         utmSources: [],
         devices: [],
         excludeProductIds: [],

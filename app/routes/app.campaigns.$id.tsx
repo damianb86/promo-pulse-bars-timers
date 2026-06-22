@@ -500,6 +500,10 @@ export const loader = async ({
       collectionIds: targetingListText(campaign.targeting?.collectionIds),
       productTags: targetingListText(campaign.targeting?.productTags),
       customSelector: placement?.customSelector ?? "",
+      urlContains: targetingListText(campaign.targeting?.urlContains),
+      excludedUrlContains: targetingListText(
+        campaign.targeting?.excludedUrlContains,
+      ),
       countrySelection,
       countries: targetingListText(campaign.targeting?.countries),
       ...toCampaignFreeShippingFormValues(

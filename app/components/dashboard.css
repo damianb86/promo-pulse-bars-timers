@@ -1835,6 +1835,10 @@ s-page::part(page) {
   background: #ffffff;
 }
 
+.counterpulse-targeting-card--wide {
+  grid-column: 1 / -1;
+}
+
 .counterpulse-targeting-card__header {
   padding: 10px 15px;
 }
@@ -1852,6 +1856,14 @@ s-page::part(page) {
   font-size: 14px;
   font-weight: 750;
   line-height: 20px;
+}
+
+.counterpulse-url-targeting-grid {
+  border-top: 1px solid #edf0f2;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .counterpulse-schedule-stack {
@@ -2682,6 +2694,10 @@ s-page::part(page) {
 
 .counterpulse-config-card--wide {
   grid-column: 1 / -1;
+}
+
+.counterpulse-config-card--units .counterpulse-email-unit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .counterpulse-panel-description {
@@ -5748,6 +5764,7 @@ s-page::part(page) {
   .counterpulse-subtabs,
   .counterpulse-toggle-grid,
   .counterpulse-panel-grid,
+  .counterpulse-url-targeting-grid,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,
@@ -5814,6 +5831,7 @@ s-page::part(page) {
 
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
+  .counterpulse-url-targeting-grid,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,

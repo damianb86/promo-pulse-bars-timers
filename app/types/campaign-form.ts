@@ -93,6 +93,8 @@ export type CampaignFormValues = {
   collectionIds: string;
   productTags: string;
   customSelector: string;
+  urlContains?: string;
+  excludedUrlContains?: string;
   countrySelection: CountrySelectionValue;
   countries: string;
   freeShippingThresholdAmount: string;
@@ -156,6 +158,8 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   collectionIds: "",
   productTags: "",
   customSelector: "",
+  urlContains: "",
+  excludedUrlContains: "",
   countrySelection: "ALL_WORLD",
   countries: "",
   freeShippingThresholdAmount:
@@ -274,6 +278,11 @@ export function buildCampaignTargetingValues(
       country.toUpperCase(),
     );
   }
+
+  targeting.urlContains = splitCampaignList(values.urlContains ?? "");
+  targeting.excludedUrlContains = splitCampaignList(
+    values.excludedUrlContains ?? "",
+  );
 
   return targeting;
 }

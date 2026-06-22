@@ -198,6 +198,8 @@ export function toTargetingWriteData(
     productTags: targeting.productTags as Prisma.InputJsonValue,
     customerTags: targeting.customerTags as Prisma.InputJsonValue,
     urlContains: targeting.urlContains as Prisma.InputJsonValue,
+    excludedUrlContains:
+      targeting.excludedUrlContains as Prisma.InputJsonValue,
     utmSources: targeting.utmSources as Prisma.InputJsonValue,
     devices: targeting.devices as Prisma.InputJsonValue,
     excludeProductIds: targeting.excludeProductIds as Prisma.InputJsonValue,
@@ -870,6 +872,9 @@ export async function duplicateCampaign(id: string, shopId: string) {
                   .customerTags as Prisma.InputJsonValue,
                 urlContains: campaign.targeting
                   .urlContains as Prisma.InputJsonValue,
+                excludedUrlContains:
+                  (campaign.targeting.excludedUrlContains as Prisma.InputJsonValue) ??
+                  [],
                 utmSources: campaign.targeting
                   .utmSources as Prisma.InputJsonValue,
                 devices: campaign.targeting.devices as Prisma.InputJsonValue,
@@ -1121,6 +1126,7 @@ export async function updateCampaignBehaviorTargetingForShop(
       productTags: [],
       customerTags: [],
       urlContains: [],
+      excludedUrlContains: [],
       utmSources: [],
       devices: [],
       excludeProductIds: [],

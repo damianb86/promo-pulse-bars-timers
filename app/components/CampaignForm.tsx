@@ -100,6 +100,12 @@ type CampaignFormProps = {
 };
 
 type ResourceFieldName = "productIds" | "excludeProductIds" | "collectionIds";
+type TextListFieldName =
+  | ResourceFieldName
+  | "productTags"
+  | "countries"
+  | "urlContains"
+  | "excludedUrlContains";
 type AiApplyValuesEventDetail = {
   design?: CampaignDesignValues;
   values?: Partial<CampaignFormValues>;
@@ -1043,10 +1049,7 @@ export function CampaignForm({
       .catch(() => setEmbedHtmlCopied(false));
   };
 
-  const setListField = (
-    field: ResourceFieldName | "productTags" | "countries",
-    items: string[],
-  ) => {
+  const setListField = (field: TextListFieldName, items: string[]) => {
     setFormValues((currentValues) => ({
       ...currentValues,
       [field]: items.join("\n"),
@@ -1054,7 +1057,7 @@ export function CampaignForm({
   };
 
   const setManualListField =
-    (field: ResourceFieldName | "productTags" | "countries") =>
+    (field: TextListFieldName) =>
     (event: ChangeEvent<HTMLTextAreaElement>) => {
       setFormValues((currentValues) => ({
         ...currentValues,
@@ -2546,6 +2549,48 @@ export function CampaignForm({
                       value={formValues.productTags}
                     />
                   </TargetingRadioOption>
+                </section>
+
+                <section
+                  className="counterpulse-targeting-card counterpulse-targeting-card--wide"
+                  aria-labelledby={scopedId("url-targeting-heading")}
+                >
+                  <div className="counterpulse-targeting-card__header">
+                    <h3 id={scopedId("url-targeting-heading")}>
+                      URL eligibility
+                    </h3>
+                    <p>
+                      Limit this campaign to storefront paths or exclude paths
+                      where it should never render. Add one path or full URL per
+                      line.
+                    </p>
+                  </div>
+                  <div className="counterpulse-url-targeting-grid">
+                    <FormField
+                      label="Show only on URLs containing"
+                      error={errors.urlContains}
+                    >
+                      <textarea
+                        name="urlContains"
+                        rows={4}
+                        placeholder={"/products/summer-hat\n/collections/sale"}
+                        value={formValues.urlContains ?? ""}
+                        onChange={setManualListField("urlContains")}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Exclude URLs containing"
+                      error={errors.excludedUrlContains}
+                    >
+                      <textarea
+                        name="excludedUrlContains"
+                        rows={4}
+                        placeholder={"/pages/wholesale\n?preview_theme_id="}
+                        value={formValues.excludedUrlContains ?? ""}
+                        onChange={setManualListField("excludedUrlContains")}
+                      />
+                    </FormField>
+                  </div>
                 </section>
 
                 <section

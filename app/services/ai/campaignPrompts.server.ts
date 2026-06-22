@@ -67,6 +67,8 @@ strings, empty arrays, false, or safe defaults, not null:
     "collectionIds": [],
     "productTags": [],
     "customSelector": "",
+    "urlContains": [],
+    "excludedUrlContains": [],
     "countrySelection": "ALL_WORLD|SPECIFIC_COUNTRIES",
     "countries": []
   },

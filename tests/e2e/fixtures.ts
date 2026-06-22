@@ -197,6 +197,17 @@ export async function publishCurrentCampaign(page: Page) {
   ]);
 }
 
+export async function saveCurrentCampaignDraft(page: Page) {
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    page.locator("ui-save-bar").getByRole("button", { name: "Save" }).click(),
+  ]);
+}
+
 function placementLabel(value: string) {
   const labels: Record<string, string> = {
     BOTTOM_BAR: "Bottom bar",

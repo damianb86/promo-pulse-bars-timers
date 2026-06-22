@@ -249,6 +249,7 @@ function createTargeting(
     productTags: [],
     customerTags: [],
     urlContains: [],
+    excludedUrlContains: [],
     utmSources: [],
     devices: [],
     excludeProductIds: [],

@@ -163,6 +163,8 @@ export function parseCampaignFormData(
     collectionIds: readString(formData, "collectionIds"),
     productTags: readString(formData, "productTags"),
     customSelector: readString(formData, "customSelector"),
+    urlContains: readString(formData, "urlContains"),
+    excludedUrlContains: readString(formData, "excludedUrlContains"),
     countrySelection: readOption(
       formData,
       "countrySelection",

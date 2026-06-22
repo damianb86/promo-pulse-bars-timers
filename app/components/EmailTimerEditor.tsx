@@ -217,6 +217,62 @@ const emailTimerStylePresets: Array<
     minutesLabel: "Min",
     secondsLabel: "Sec",
   },
+  {
+    presetKey: "luxury-gold",
+    label: "Luxury gold",
+    description: "Premium dark block with restrained gold type.",
+    width: 640,
+    height: 190,
+    backgroundColor: "#1F1A14",
+    textColor: "#FDE68A",
+    accentColor: "#B45309",
+    labelColor: "#FBBF24",
+    borderColor: "#92400E",
+    fontFamily: "WIDE",
+    cornerRadius: 6,
+    borderWidth: 2,
+    paddingX: 44,
+    paddingY: 26,
+    showHeading: true,
+    headingText: "PRIVATE OFFER",
+    showLabels: true,
+    showDays: true,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: true,
+    daysLabel: "Days",
+    hoursLabel: "Hours",
+    minutesLabel: "Min",
+    secondsLabel: "Sec",
+  },
+  {
+    presetKey: "coupon-punch",
+    label: "Coupon punch",
+    description: "High-contrast coupon style for bold promos.",
+    width: 720,
+    height: 160,
+    backgroundColor: "#FFF7ED",
+    textColor: "#7C2D12",
+    accentColor: "#EA580C",
+    labelColor: "#9A3412",
+    borderColor: "#FB923C",
+    fontFamily: "BLOCK",
+    cornerRadius: 28,
+    borderWidth: 4,
+    paddingX: 36,
+    paddingY: 22,
+    showHeading: true,
+    headingText: "COUPON EXPIRES",
+    showLabels: false,
+    showDays: false,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: true,
+    daysLabel: "Days",
+    hoursLabel: "Hrs",
+    minutesLabel: "Mins",
+    secondsLabel: "Secs",
+  },
 ];
 
 const defaultEmailTimerConfig = emailTimerStylePresets[0];
@@ -660,7 +716,7 @@ export function EmailTimerEditor({
               </div>
             </div>
 
-            <div className="counterpulse-config-card counterpulse-config-card--wide">
+            <div className="counterpulse-config-card counterpulse-config-card--units">
               <PanelHeader
                 eyebrow="Timer"
                 title="Units and labels"

@@ -590,6 +590,7 @@ export function getCampaignPlanViolations(
       productTags?: unknown;
       customerTags?: unknown;
       urlContains?: unknown;
+      excludedUrlContains?: unknown;
       utmSources?: unknown;
       devices?: unknown;
       excludeProductIds?: unknown;
@@ -770,6 +771,7 @@ function usesAdvancedTargeting(
     [
       targeting?.customerTags,
       targeting?.utmSources,
+      targeting?.excludedUrlContains,
       targeting?.excludeProductIds,
       targeting?.excludeCollectionIds,
     ].some(jsonHasValues) || hasBehaviorTargetingRules(targeting?.behaviorRules)

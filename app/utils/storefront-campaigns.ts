@@ -282,6 +282,18 @@ function isTargetingEligible(
     return false;
   }
 
+  if (
+    matchesPathContains(
+      jsonStringList(
+        (targeting as CampaignTargeting & { excludedUrlContains?: unknown })
+          .excludedUrlContains,
+      ),
+      context.path,
+    )
+  ) {
+    return false;
+  }
+
   return (
     matchesOptionalExactList(
       jsonStringList(targeting.countries),
@@ -758,13 +770,31 @@ function matchesOptionalIntersection(
 
 function matchesOptionalPathContains(allowedValues: string[], path: string) {
   if (allowedValues.length === 0) return true;
-  if (!path) return false;
 
-  const normalizedPath = path.toLowerCase();
+  return matchesPathContains(allowedValues, path);
+}
+
+function matchesPathContains(allowedValues: string[], path: string) {
+  if (allowedValues.length === 0 || !path) return false;
+
+  const normalizedPath = normalizePathTarget(path);
 
   return allowedValues.some((allowedValue) =>
-    normalizedPath.includes(allowedValue.toLowerCase()),
+    normalizedPath.includes(normalizePathTarget(allowedValue)),
   );
+}
+
+function normalizePathTarget(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) return "";
+
+  try {
+    const url = new URL(trimmedValue);
+    return `${url.pathname}${url.search}`.toLowerCase();
+  } catch {
+    return trimmedValue.toLowerCase();
+  }
 }
 
 function matchesAny(allowedValues: string[], actualValues: string[]) {

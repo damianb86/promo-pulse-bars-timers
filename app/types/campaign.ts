@@ -59,6 +59,7 @@ export type CampaignTargetingRules = {
   productTags: string[];
   customerTags: string[];
   urlContains: string[];
+  excludedUrlContains: string[];
   utmSources: string[];
   devices: TargetDevice[];
   excludeProductIds: string[];
@@ -86,6 +87,7 @@ export function createEmptyTargetingRules(): CampaignTargetingRules {
     productTags: [],
     customerTags: [],
     urlContains: [],
+    excludedUrlContains: [],
     utmSources: [],
     devices: [],
     excludeProductIds: [],

@@ -166,6 +166,7 @@ model CampaignTargeting {
   productTags          Json
   customerTags         Json
   urlContains          Json
+  excludedUrlContains  Json                     @default("[]")
   utmSources           Json
   devices              Json
   excludeProductIds    Json

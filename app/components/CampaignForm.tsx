@@ -1090,8 +1090,11 @@ export function CampaignForm({
 
     const selected = await shopify.resourcePicker({
       action: "select",
+      filter: type === "product" ? { variants: false } : undefined,
       multiple: true,
-      selectionIds: splitCampaignList(formValues[field]).map((id) => ({ id })),
+      selectionIds: splitCampaignList(formValues[field])
+        .filter((id) => isSelectableResourceId(type, id))
+        .map((id) => ({ id })),
       type,
     });
 
@@ -1099,7 +1102,7 @@ export function CampaignForm({
 
     const chips = selected
       .map((resource) => ({
-        id: resource.id ?? "",
+        id: normalizeSelectableResourceId(type, resource.id),
         label:
           resource.title ?? resource.handle ?? shortResourceId(resource.id),
       }))
@@ -2439,6 +2442,7 @@ export function CampaignForm({
                       <ResourcePickerField
                         chips={resourceChipsFor("excludeProductIds")}
                         disabled={Boolean(advancedTargetingLocked)}
+                        error={errors.excludeProductIds}
                         label="Excluded products"
                         name="excludeProductIds"
                         pickerLabel="Select products to exclude"
@@ -3686,12 +3690,30 @@ function shortResourceId(value: string | undefined) {
   return parts[parts.length - 1] ?? value;
 }
 
+function isSelectableResourceId(type: ShopifyResourcePickerType, id: string) {
+  const resourceType = type === "product" ? "Product" : "Collection";
+
+  return id.includes(`/shopify/${resourceType}/`);
+}
+
+function normalizeSelectableResourceId(
+  type: ShopifyResourcePickerType,
+  id: string | undefined,
+) {
+  if (!id || !isSelectableResourceId(type, id)) return "";
+
+  return id;
+}
+
 function getShopifyBridge() {
   return (
     window as Window & {
       shopify?: {
         resourcePicker?: (options: {
           action?: "add" | "select";
+          filter?: {
+            variants?: boolean;
+          };
           multiple?: boolean | number;
           selectionIds?: Array<{ id: string }>;
           type: ShopifyResourcePickerType;

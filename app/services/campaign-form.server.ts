@@ -319,6 +319,16 @@ export function parseCampaignFormData(
     errors.productIds = "Add at least one product ID.";
   }
 
+  if (hasProductVariantIds(values.productIds)) {
+    errors.productIds =
+      "Variant-level targeting is not supported. Select products only.";
+  }
+
+  if (hasProductVariantIds(values.excludeProductIds)) {
+    errors.excludeProductIds =
+      "Variant-level exclusions are not supported. Select products only.";
+  }
+
   if (
     values.productSelection === "COLLECTIONS" &&
     splitCampaignList(values.collectionIds).length === 0
@@ -563,4 +573,10 @@ function isIntegerInRange(value: string, min: number, max: number) {
   const number = Number(value);
 
   return Number.isInteger(number) && number >= min && number <= max;
+}
+
+function hasProductVariantIds(value: string) {
+  return splitCampaignList(value).some((id) =>
+    id.includes("/shopify/ProductVariant/"),
+  );
 }

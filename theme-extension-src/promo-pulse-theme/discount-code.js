@@ -9,6 +9,7 @@
   var lastSeenVariantIdStorageKey = "promo_pulse_last_seen_variant_id";
   var lastPromoTouchStorageKey = "promo_pulse_last_promo_touch";
   var uniqueCodeRequestCache = {};
+  var trackedOnceEvents = {};
   var uniqueCodeRequestTtlMs = 30000;
   var memoryVisitorId = "";
   var memorySessionId = "";
@@ -28,6 +29,7 @@
       if (!shop || !campaignId) return;
       if (!analyticsAllowed()) return;
       if (isPaused("PromoPulseProxyPausedUntil")) return;
+      if (wasTrackedOnce(eventType, campaign)) return;
 
       tracking = getVisitorSessionTracking(campaign);
       rememberCampaign(campaign, tracking);
@@ -789,6 +791,32 @@
     ) {
       window.console.log("[PromoPulse analytics]", error);
     }
+  }
+
+  function wasTrackedOnce(eventType, campaign) {
+    var type = String(eventType || "").toUpperCase();
+    var campaignId = campaign && (campaign.id || campaign.campaignId);
+    var key;
+
+    if (
+      type !== "IMPRESSION" &&
+      type !== "BADGE_IMPRESSION" &&
+      type !== "UNIQUE_CODE_ASSIGNED"
+    ) {
+      return false;
+    }
+
+    key = [
+      type,
+      campaignId || "",
+      campaign && (campaign.placement || campaign.placementType || ""),
+      campaign && (campaign.variantId || ""),
+    ].join(":");
+
+    if (trackedOnceEvents[key]) return true;
+
+    trackedOnceEvents[key] = true;
+    return false;
   }
 
   function installFetchGuard() {

@@ -24,6 +24,7 @@
   var pendingFetches = {};
   var renderedCampaigns = {};
   var cacheTtlMs = 30000;
+  var globalPlacements = "TOP_BAR,BOTTOM_BAR,CUSTOM_SELECTOR";
 
   if (!config.shop) {
     updateDebug(root, "Embed detenido: falta el shop domain.");
@@ -32,18 +33,18 @@
 
   updateDebug(
     root,
-    "Embed JS cargado. Consultando TOP_BAR, BOTTOM_BAR y CUSTOM_SELECTOR; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
+    "Embed JS cargado. Consultando placements globales; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
   );
 
-  Promise.all(["TOP_BAR", "BOTTOM_BAR", "CUSTOM_SELECTOR"].map(fetchCampaigns))
-    .then(function (responses) {
+  fetchCampaigns(globalPlacements)
+    .then(function (campaigns) {
       updateDebug(
         root,
         "API global OK: " +
-          responses.flat().length +
+          campaigns.length +
           " campana(s) recibidas para placements globales.",
       );
-      responses.flat().forEach(renderCampaign);
+      campaigns.forEach(renderCampaign);
     })
     .catch(function (error) {
       updateDebug(root, "Error global del embed: " + error.message);
@@ -129,7 +130,6 @@
       device: config.device,
       placement: placement,
     });
-    var cartSubtotal = detectCartSubtotal();
 
     if (config.country) params.set("country", config.country);
     if (config.market) params.set("market", config.market);
@@ -144,10 +144,6 @@
     if (config.utmSource) params.set("utmSource", config.utmSource);
     if (campaignId) params.set("campaignId", campaignId);
     appendBehaviorTargetingParams(params);
-
-    if (cartSubtotal !== null) {
-      params.set("cartSubtotal", String(cartSubtotal));
-    }
 
     return config.apiPath + "?" + params.toString();
   }

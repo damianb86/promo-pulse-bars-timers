@@ -50,6 +50,7 @@ export type StorefrontCampaignContext = {
   cartSubtotal: number | null;
   currency: string;
   placement: string;
+  placements?: string[];
   campaignId: string;
   visitorId: string;
   sessionId: string;
@@ -103,6 +104,7 @@ export function parseStorefrontCampaignContext(
   url: URL,
 ): StorefrontCampaignContext {
   const searchParams = url.searchParams;
+  const placement = readString(searchParams, "placement").toUpperCase();
 
   return {
     shop: normalizeShopDomain(searchParams.get("shop")),
@@ -118,7 +120,8 @@ export function parseStorefrontCampaignContext(
     utmSource: readString(searchParams, "utmSource"),
     cartSubtotal: readNumber(searchParams, "cartSubtotal"),
     currency: readString(searchParams, "currency").toUpperCase(),
-    placement: readString(searchParams, "placement").toUpperCase(),
+    placement,
+    placements: readPlacementList(placement),
     campaignId: readString(searchParams, "campaignId"),
     visitorId: readString(searchParams, "visitorId"),
     sessionId: readString(searchParams, "sessionId"),
@@ -141,7 +144,7 @@ export function isCampaignEligibleForStorefront(
   context: StorefrontCampaignContext,
 ) {
   return Boolean(
-    getMatchingPlacement(campaign, context) &&
+    getMatchingPlacements(campaign, context).length > 0 &&
     isTargetingEligible(campaign.targeting, context),
   );
 }
@@ -150,12 +153,20 @@ export function serializeStorefrontCampaign(
   campaign: StorefrontCampaignSource,
   context: StorefrontCampaignContext,
 ): StorefrontCampaignResponseItem | null {
-  const placement = getMatchingPlacement(campaign, context);
+  const placement = getMatchingPlacements(campaign, context)[0] ?? null;
 
   if (!placement || !isTargetingEligible(campaign.targeting, context)) {
     return null;
   }
 
+  return serializeStorefrontCampaignForPlacement(campaign, context, placement);
+}
+
+function serializeStorefrontCampaignForPlacement(
+  campaign: StorefrontCampaignSource,
+  context: StorefrontCampaignContext,
+  placement: CampaignPlacement,
+) {
   const serializedCampaign = {
     id: campaign.id,
     type: campaign.type,
@@ -194,7 +205,13 @@ export function serializeStorefrontCampaigns(
     .filter(
       (campaign) => !context.campaignId || campaign.id === context.campaignId,
     )
-    .map((campaign) => serializeStorefrontCampaign(campaign, context))
+    .flatMap((campaign) => {
+      if (!isTargetingEligible(campaign.targeting, context)) return [];
+
+      return getMatchingPlacements(campaign, context).map((placement) =>
+        serializeStorefrontCampaignForPlacement(campaign, context, placement),
+      );
+    })
     .filter(
       (campaign): campaign is StorefrontCampaignResponseItem =>
         campaign !== null,
@@ -207,26 +224,41 @@ export function shouldBypassStorefrontCache(
   return context.cartSubtotal !== null || context.utmSource.length > 0;
 }
 
-function getMatchingPlacement(
+function getMatchingPlacements(
   campaign: StorefrontCampaignSource,
   context: StorefrontCampaignContext,
 ) {
   const enabledPlacements = campaign.placements.filter(
     (placement) => placement.enabled,
   );
+  const requestedPlacements =
+    (context.placements ?? []).length > 0
+      ? (context.placements ?? [])
+      : context.placement
+        ? [context.placement]
+        : [];
 
-  if (!context.placement) return enabledPlacements[0] ?? null;
-
-  const matchingPlacement = enabledPlacements.find(
-    (placement) => placement.placementType === context.placement,
-  );
-
-  if (matchingPlacement) return matchingPlacement;
-  if (context.campaignId && context.placement === "CUSTOM_SELECTOR") {
-    return null;
+  if (requestedPlacements.length === 0) {
+    return enabledPlacements[0] ? [enabledPlacements[0]] : [];
   }
 
-  return context.campaignId ? (enabledPlacements[0] ?? null) : null;
+  const matchingPlacements = enabledPlacements.filter((placement) =>
+    requestedPlacements.includes(placement.placementType),
+  );
+
+  if (matchingPlacements.length > 0) {
+    return matchingPlacements;
+  }
+
+  if (context.campaignId && requestedPlacements.includes("CUSTOM_SELECTOR")) {
+    return [];
+  }
+
+  return context.campaignId && requestedPlacements.length === 1
+    ? enabledPlacements[0]
+      ? [enabledPlacements[0]]
+      : []
+    : [];
 }
 
 function isTargetingEligible(
@@ -588,6 +620,17 @@ function readList(searchParams: URLSearchParams, key: string) {
     .flatMap((value) => value.split(","))
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function readPlacementList(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => item.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function readNumber(searchParams: URLSearchParams, key: string) {

@@ -37,19 +37,15 @@
       updateDebug(root, "Delivery cutoff detenido: falta el shop domain.");
       return;
     }
-    ["TOP_BAR", "BOTTOM_BAR"].forEach(function (placement) {
-      fetchCampaigns(config, placement, root).then(function (campaigns) {
-        if (!campaigns.length) {
-          updateDebug(
-            root,
-            "API OK: 0 campanas DELIVERY_CUTOFF elegibles para " +
-              placement +
-              ".",
-          );
-        }
-        campaigns.forEach(function (campaign) {
-          renderGlobal(campaign, config);
-        });
+    fetchCampaigns(config, "TOP_BAR,BOTTOM_BAR", root).then(function (campaigns) {
+      if (!campaigns.length) {
+        updateDebug(
+          root,
+          "API OK: 0 campanas DELIVERY_CUTOFF elegibles para placements globales.",
+        );
+      }
+      campaigns.forEach(function (campaign) {
+        renderGlobal(campaign, config);
       });
     });
   }

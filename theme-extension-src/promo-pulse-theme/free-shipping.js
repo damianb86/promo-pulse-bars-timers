@@ -26,8 +26,12 @@
   };
   var refreshTimer = 0;
   var refreshInFlight = false;
+  var refreshQueued = false;
   var lastRefreshAt = 0;
   var minimumRefreshGapMs = 2000;
+  var freeShippingCampaigns = [];
+  var campaignsLoaded = false;
+  var trackedImpressions = {};
   var proxyPauseMs = 60000;
   var cartPauseMs = 30000;
 
@@ -36,32 +40,44 @@
     return;
   }
 
-  scheduleRefresh(true);
-  document.addEventListener("cart:updated", function () {
-    scheduleRefresh(true);
+  installCartChangeWatcher();
+  scheduleRefresh(true, true);
+  [
+    "promo-pulse:cart-changed",
+    "cart:updated",
+    "cart:change",
+    "cart:refresh",
+    "ajaxCart:updated",
+    "theme:cart:change",
+  ].forEach(function (eventName) {
+    document.addEventListener(eventName, function () {
+      scheduleRefresh(true, false);
+    });
   });
   document.addEventListener("shopify:section:load", function () {
-    scheduleRefresh(false);
+    scheduleRefresh(false, !campaignsLoaded);
   });
 
-  function scheduleRefresh(force) {
-    if (refreshInFlight) return;
+  function scheduleRefresh(force, shouldFetchCampaigns) {
+    if (refreshInFlight) {
+      refreshQueued = true;
+      return;
+    }
 
     window.clearTimeout(refreshTimer);
     refreshTimer = window.setTimeout(
       function () {
-        refresh(!!force);
+        refresh(!!force, shouldFetchCampaigns !== false);
       },
       force ? 80 : 300,
     );
   }
 
-  function refresh(force) {
+  function refresh(force, shouldFetchCampaigns) {
     var now = Date.now();
 
     if (refreshInFlight) return;
     if (!force && now - lastRefreshAt < minimumRefreshGapMs) return;
-    if (force && now - lastRefreshAt < 500) return;
     if (isPaused("PromoPulseProxyPausedUntil")) {
       updateDebug(
         root,
@@ -80,16 +96,24 @@
             ? config.cartSubtotal
             : cartState.subtotal;
         config.currency = cartState.currency || config.currency;
-        return Promise.all(["TOP_BAR", "BOTTOM_BAR"].map(fetchCampaigns));
+        if (!shouldFetchCampaigns && campaignsLoaded) {
+          return freeShippingCampaigns;
+        }
+
+        return fetchCampaigns().then(function (campaigns) {
+          freeShippingCampaigns = campaigns;
+          campaignsLoaded = true;
+          return campaigns;
+        });
       })
-      .then(function (responses) {
+      .then(function (campaigns) {
         updateDebug(
           root,
           "Free shipping API OK: " +
-            responses.flat().length +
-            " campana(s) globales recibidas.",
+            campaigns.length +
+            " campana(s) globales disponibles.",
         );
-        responses.flat().forEach(renderCampaign);
+        campaigns.forEach(renderCampaign);
       })
       .catch(function (error) {
         updateDebug(root, "Error global FREE_SHIPPING_GOAL: " + error.message);
@@ -97,16 +121,20 @@
       })
       .finally(function () {
         refreshInFlight = false;
+        if (refreshQueued) {
+          refreshQueued = false;
+          scheduleRefresh(true, false);
+        }
       });
   }
 
-  function fetchCampaigns(placement) {
+  function fetchCampaigns() {
     var params = new URLSearchParams({
       shop: config.shop,
       path: config.path,
       locale: config.locale,
       device: config.device,
-      placement: placement,
+      placement: "TOP_BAR,BOTTOM_BAR",
     });
 
     if (config.country) params.set("country", config.country);
@@ -127,7 +155,7 @@
       return Promise.resolve([]);
     }
 
-    updateDebug(root, "Consultando FREE_SHIPPING_GOAL " + placement + ".", url);
+    updateDebug(root, "Consultando FREE_SHIPPING_GOAL global.", url);
 
     return window
       .fetch(url, {
@@ -152,9 +180,7 @@
           root,
           "API OK: " +
             campaigns.length +
-            " FREE_SHIPPING_GOAL para " +
-            placement +
-            ".",
+            " FREE_SHIPPING_GOAL globales.",
           url,
         );
         return campaigns;
@@ -162,10 +188,10 @@
       .catch(function (error) {
         updateDebug(
           root,
-          "Error FREE_SHIPPING_GOAL " + placement + ": " + error.message,
+          "Error FREE_SHIPPING_GOAL global: " + error.message,
           url,
         );
-        debug(placement, error);
+        debug(error);
         return [];
       });
   }
@@ -256,7 +282,7 @@
       container.appendChild(bar);
     }
 
-    emitImpression(campaign);
+    emitImpressionOnce(campaign);
   }
   function updateDebug(element, message, url) {
     var status;
@@ -453,6 +479,82 @@
     return container;
   }
 
+  function installCartChangeWatcher() {
+    if (window.PromoPulseCartWatcherReady) return;
+
+    window.PromoPulseCartWatcherReady = true;
+
+    if (window.fetch) {
+      var nativeFetch = window.fetch;
+
+      window.fetch = function (input, init) {
+        var shouldNotify = isCartMutationRequest(input, init);
+
+        return nativeFetch.apply(this, arguments).then(function (response) {
+          if (shouldNotify && response && response.ok) {
+            notifyCartChanged();
+          }
+
+          return response;
+        });
+      };
+    }
+
+    if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {
+      var nativeOpen = window.XMLHttpRequest.prototype.open;
+      var nativeSend = window.XMLHttpRequest.prototype.send;
+
+      window.XMLHttpRequest.prototype.open = function (method, url) {
+        this.__promoPulseCartMutation = isCartMutation(method, url);
+        return nativeOpen.apply(this, arguments);
+      };
+
+      window.XMLHttpRequest.prototype.send = function () {
+        if (this.__promoPulseCartMutation) {
+          this.addEventListener("loadend", function () {
+            if (this.status >= 200 && this.status < 400) {
+              notifyCartChanged();
+            }
+          });
+        }
+
+        return nativeSend.apply(this, arguments);
+      };
+    }
+  }
+
+  function notifyCartChanged() {
+    if (typeof window.PromoPulseClearRequestCache === "function") {
+      window.PromoPulseClearRequestCache();
+    }
+
+    window.clearTimeout(window.PromoPulseCartChangedTimer);
+    window.PromoPulseCartChangedTimer = window.setTimeout(function () {
+      document.dispatchEvent(new CustomEvent("promo-pulse:cart-changed"));
+    }, 120);
+  }
+
+  function isCartMutationRequest(input, init) {
+    var method = (init && init.method) || (input && input.method) || "GET";
+    var url = typeof input === "string" ? input : input && input.url;
+
+    return isCartMutation(method, url);
+  }
+
+  function isCartMutation(method, url) {
+    var pathname;
+
+    if (String(method || "GET").toUpperCase() === "GET") return false;
+
+    try {
+      pathname = new URL(url || "", window.location.href).pathname;
+    } catch (error) {
+      return false;
+    }
+
+    return /^\/cart\/(add|change|update|clear)(\.js)?$/.test(pathname);
+  }
+
   function readAjaxCartState() {
     if (isPaused("PromoPulseCartPausedUntil")) {
       return Promise.resolve({ subtotal: null, currency: "" });
@@ -638,6 +740,15 @@
         },
       }),
     );
+  }
+
+  function emitImpressionOnce(campaign) {
+    var key = campaign.placement + ":" + campaign.id;
+
+    if (trackedImpressions[key]) return;
+
+    trackedImpressions[key] = true;
+    emitImpression(campaign);
   }
 
   function renderDesignIcon(design) {

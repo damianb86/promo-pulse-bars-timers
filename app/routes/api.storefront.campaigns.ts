@@ -71,9 +71,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const publicSettings = serializePublicShopSettings(shopSettings);
   context = applySettingsToStorefrontContext(context, shopSettings);
 
-  const placementType = getPlacementType(context.placement);
+  const placementTypes = getPlacementTypes(context.placements ?? []);
+  const placementType =
+    placementTypes.length === 1 ? placementTypes[0] : undefined;
 
-  if (context.placement && !placementType) {
+  if (
+    context.placement &&
+    placementTypes.length !== (context.placements ?? []).length
+  ) {
     return jsonResponse(
       { campaigns: [], settings: publicSettings },
       {
@@ -267,4 +272,16 @@ function getPlacementType(value: string) {
   return Object.values(PlacementType).includes(value as PlacementType)
     ? (value as PlacementType)
     : undefined;
+}
+
+function getPlacementTypes(values: string[]) {
+  return values.reduce<PlacementType[]>((placements, value) => {
+    const placement = getPlacementType(value);
+
+    if (placement && !placements.includes(placement)) {
+      placements.push(placement);
+    }
+
+    return placements;
+  }, []);
 }

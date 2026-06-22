@@ -43,13 +43,7 @@ export type StorefrontBadge = {
   text: string;
   priority: number;
   placement: string;
-  design: {
-    backgroundColor: string;
-    textColor: string;
-    accentColor: string;
-    fontSize: number;
-    borderRadius: number;
-  };
+  design: ReturnType<typeof serializeDesign>;
   badge: {
     badgeText: string;
     badgeShape: string;
@@ -304,18 +298,7 @@ function toAdvancedStorefrontBadge(
     text: badge.text,
     priority: badge.priority,
     placement: getCampaignPlacement(rule.campaign, context),
-    design: {
-      backgroundColor:
-        ruleDesign.backgroundColor ??
-        campaignDesign.backgroundColor ??
-        "#111827",
-      textColor: ruleDesign.textColor ?? campaignDesign.textColor ?? "#FFFFFF",
-      accentColor:
-        ruleDesign.accentColor ?? campaignDesign.accentColor ?? "#22C55E",
-      fontSize: ruleDesign.fontSize ?? campaignDesign.fontSize ?? 13,
-      borderRadius:
-        ruleDesign.borderRadius ?? campaignDesign.borderRadius ?? 999,
-    },
+    design: mergeBadgeDesign(campaignDesign, ruleDesign),
     badge: {
       badgeText: badge.text,
       badgeShape: readBadgeShape(ruleDesign.shape),
@@ -338,13 +321,7 @@ function toSimpleStorefrontBadge(
     text: campaign.badge?.badgeText || campaign.texts.badgeText,
     priority: 0,
     placement: campaign.placement,
-    design: {
-      backgroundColor: campaign.design.backgroundColor,
-      textColor: campaign.design.textColor,
-      accentColor: campaign.design.accentColor,
-      fontSize: campaign.design.fontSize,
-      borderRadius: campaign.design.borderRadius,
-    },
+    design: campaign.design,
     badge: {
       badgeText: campaign.badge?.badgeText || campaign.texts.badgeText,
       badgeShape: campaign.badge?.badgeShape ?? "PILL",
@@ -354,6 +331,27 @@ function toSimpleStorefrontBadge(
     startsAt: campaign.startsAt,
     endsAt: campaign.endsAt,
     timezone: campaign.timezone,
+  };
+}
+
+function mergeBadgeDesign(
+  campaignDesign: ReturnType<typeof serializeDesign>,
+  ruleDesign: ReturnType<typeof readDesign>,
+) {
+  return {
+    ...campaignDesign,
+    ...(ruleDesign.backgroundColor
+      ? {
+          backgroundType: "SOLID" as const,
+          backgroundColor: ruleDesign.backgroundColor,
+        }
+      : {}),
+    ...(ruleDesign.textColor ? { textColor: ruleDesign.textColor } : {}),
+    ...(ruleDesign.accentColor ? { accentColor: ruleDesign.accentColor } : {}),
+    ...(ruleDesign.fontSize ? { fontSize: ruleDesign.fontSize } : {}),
+    ...(ruleDesign.borderRadius !== undefined
+      ? { borderRadius: ruleDesign.borderRadius }
+      : {}),
   };
 }
 

@@ -7,6 +7,10 @@
   initAutomaticBadges();
 
   function init(root) {
+    if (root.dataset.promoPulseBadgeStarted === "true") return;
+
+    root.dataset.promoPulseBadgeStarted = "true";
+
     var config = {
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       locale: root.dataset.locale || document.documentElement.lang || "en",
@@ -237,20 +241,21 @@
     target = findProductPageTarget();
     if (!target) return;
 
-    target.insertBefore(
-      createAutoSlot(embed, target, "PRODUCT_PAGE"),
-      target.firstChild,
-    );
+    ensureBadgeMountTarget(target);
+    target.appendChild(createAutoSlot(embed, target, "PRODUCT_PAGE"));
   }
 
   function initAutomaticCollectionBadges(embed) {
     findProductCardTargets().forEach(function (card) {
+      var target;
+
       if (card.querySelector(".pp-product-badge")) return;
 
-      card.insertBefore(
-        createAutoSlot(embed, card, "COLLECTION_CARD"),
-        card.firstChild,
-      );
+      target = findBadgeMountTarget(card);
+      if (!target) return;
+
+      ensureBadgeMountTarget(target);
+      target.appendChild(createAutoSlot(embed, card, "COLLECTION_CARD"));
     });
   }
 
@@ -295,8 +300,13 @@
   }
 
   function findProductPageTarget() {
-    return document.querySelector(
-      "product-info, .product__info-container, .product-form, [data-product-information]",
+    return (
+      document.querySelector(
+        "[data-product-media], media-gallery, product-gallery, .product__media-wrapper, .product__media, .product-media-container, .product-gallery, .product__media-list",
+      ) ||
+      document.querySelector(
+        "product-info, .product__info-container, .product-form, [data-product-information]",
+      )
     );
   }
 
@@ -318,6 +328,41 @@
       });
 
     return cards.slice(0, 48);
+  }
+
+  function findBadgeMountTarget(card) {
+    var image = card.querySelector("img");
+    var target;
+
+    if (!image) return card;
+
+    target = image.closest(
+      "[data-product-card-media], .card__media, .product-card__media, .product-card__image-wrapper, .media, .card__inner, a[href*='/products/']",
+    );
+
+    if (!target || target === document.body || target === document.documentElement) {
+      target = image.parentElement || card;
+    }
+
+    if (target.tagName === "PICTURE") {
+      target = target.parentElement || card;
+    }
+
+    return target;
+  }
+
+  function ensureBadgeMountTarget(target) {
+    var style;
+
+    if (!target || !window.getComputedStyle) return;
+
+    style = window.getComputedStyle(target);
+    if (style.position === "static") {
+      target.style.position = "relative";
+    }
+    if (style.display === "inline") {
+      target.style.display = "inline-block";
+    }
   }
 
   function readProductId(source, embed) {
@@ -372,11 +417,33 @@
   }
 
   function renderBadges(root, badges) {
+    var renderableBadges = selectRenderableBadges(
+      badges,
+      root.classList.contains("pp-product-badge--auto") ? 1 : 3,
+    );
+
     root.replaceChildren();
-    badges.forEach(function (badge) {
+    renderableBadges.forEach(function (badge) {
       root.appendChild(renderBadge(badge));
       emitBadgeImpression(badge);
     });
+  }
+
+  function selectRenderableBadges(badges, maxBadges) {
+    var seenCampaigns = {};
+    var output = [];
+
+    badges.forEach(function (badge) {
+      var campaignId = badge.campaignId || badge.id || "";
+
+      if (!campaignId || seenCampaigns[campaignId]) return;
+      if (output.length >= maxBadges) return;
+
+      seenCampaigns[campaignId] = true;
+      output.push(badge);
+    });
+
+    return output;
   }
 
   function renderBadge(badgePayload) {
@@ -430,9 +497,18 @@
       color(design.accentColor, "#22c55e"),
     );
     element.style.setProperty(
+      "--pp-border-size",
+      clamp(design.borderSize, 0, 8, 1) + "px",
+    );
+    element.style.setProperty(
+      "--pp-border-color",
+      color(design.borderColor, color(design.accentColor, "#22c55e")),
+    );
+    element.style.setProperty(
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 13) + "px",
     );
+    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 999, 999) + "px",
@@ -445,6 +521,23 @@
       "--pp-padding-inline",
       clamp(design.paddingInline, 8, 64, 9) + "px",
     );
+  }
+
+  function fontFamily(value) {
+    if (value === "SERIF") return "Georgia, Times New Roman, serif";
+    if (value === "MONO") return "ui-monospace, SFMono-Regular, Menlo, monospace";
+    if (value === "ROUNDED") {
+      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
+    }
+    if (value === "GEOMETRIC") return "Avenir Next, Montserrat, system-ui, sans-serif";
+    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
+    if (value === "CONDENSED") return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
+    if (value === "CASUAL") return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
+    if (value === "SYSTEM") {
+      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    }
+
+    return "inherit";
   }
 
   function shape(value) {

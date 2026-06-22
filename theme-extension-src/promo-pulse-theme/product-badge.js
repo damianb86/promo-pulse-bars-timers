@@ -11,6 +11,7 @@
       market: root.dataset.market || detectMarket(),
       currency: root.dataset.cartCurrency || detectCurrency(),
       productId: root.dataset.productId || "",
+      device: detectDevice(),
       productTags: split(root.dataset.productTags),
       collectionIds: split(root.dataset.collectionIds),
       vendor: root.dataset.productVendor || "",
@@ -88,6 +89,7 @@
       shop: config.shop,
       path: window.location.pathname,
       locale: config.locale,
+      device: config.device,
       placement: config.placement,
       productId: config.productId,
     });
@@ -436,6 +438,12 @@
         window.Shopify.currency.active) ||
       ""
     );
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+    return "desktop";
   }
 
   function applyStorefrontSettings(config, settings) {

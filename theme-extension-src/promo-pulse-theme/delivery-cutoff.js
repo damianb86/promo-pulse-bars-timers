@@ -2,9 +2,7 @@
   "use strict";
 
   var embed = document.getElementById("promo-pulse-app-embed");
-  var device = window.matchMedia("(max-width: 767px)").matches
-    ? "mobile"
-    : "desktop";
+  var device = detectDevice();
 
   if (embed) initEmbed(embed);
   [].slice
@@ -26,6 +24,7 @@
         document.documentElement.lang ||
         "en",
       path: window.location.pathname,
+      device: device,
       shop:
         root.dataset.shop ||
         (window.Shopify && window.Shopify.shop) ||
@@ -65,6 +64,7 @@
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       locale: root.dataset.locale || document.documentElement.lang || "en",
       path: window.location.pathname,
+      device: device,
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
@@ -107,6 +107,7 @@
     var params = new URLSearchParams({
       locale: config.locale,
       path: config.path,
+      device: config.device || device,
       placement: placement,
       shop: config.shop,
     });
@@ -886,6 +887,12 @@
         window.Shopify.currency.active) ||
       ""
     );
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+    return "desktop";
   }
 
   function applyStorefrontSettings(config, settings) {

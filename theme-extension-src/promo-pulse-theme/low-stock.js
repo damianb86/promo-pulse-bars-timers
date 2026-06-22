@@ -14,6 +14,7 @@
       currency: root.dataset.cartCurrency || detectCurrency(),
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
+      device: detectDevice(),
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
@@ -79,6 +80,7 @@
       shop: config.shop,
       path: window.location.pathname,
       locale: config.locale,
+      device: config.device,
       placement: "PRODUCT_PAGE",
       productId: config.productId,
     });
@@ -520,6 +522,12 @@
         window.Shopify.currency.active) ||
       ""
     );
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+    return "desktop";
   }
 
   function applyStorefrontSettings(config, settings) {

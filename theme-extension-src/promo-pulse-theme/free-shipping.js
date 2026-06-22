@@ -20,9 +20,7 @@
     market: detectMarket(root),
     currency: detectCurrency(root) || "USD",
     cartSubtotal: readCartSubtotal(root),
-    device: window.matchMedia("(max-width: 767px)").matches
-      ? "mobile"
-      : "desktop",
+    device: detectDevice(),
     debugMode: root.dataset.debug === "true",
     apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
   };
@@ -509,6 +507,12 @@
         window.Shopify.currency.active) ||
       ""
     );
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+    return "desktop";
   }
 
   function setDesign(element, design) {

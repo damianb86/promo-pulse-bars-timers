@@ -13,6 +13,7 @@
       market: root.dataset.market || detectMarket(),
       productId: root.dataset.productId || "",
       productTags: splitList(root.dataset.productTags),
+      device: detectDevice(),
       cartSubtotal:
         typeof window.PromoPulseCartSubtotal === "number"
           ? window.PromoPulseCartSubtotal
@@ -104,6 +105,7 @@
       shop: config.shop,
       path: window.location.pathname,
       locale: config.locale,
+      device: config.device,
       placement: "PRODUCT_PAGE",
       productId: config.productId,
     });
@@ -848,6 +850,12 @@
         window.Shopify.currency.active) ||
       ""
     );
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+    return "desktop";
   }
 
   function renderDesignIcon(design) {

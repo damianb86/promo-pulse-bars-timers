@@ -185,6 +185,7 @@
       country: root.dataset.country || "",
       market: root.dataset.market || detectMarket(),
       placement: placement,
+      device: detectDevice(),
       cartSubtotal: subtotal,
       currency: root.dataset.cartCurrency || detectCurrency(),
       cartToken: root.dataset.cartToken || "",
@@ -209,6 +210,7 @@
       country: root.dataset.country || "",
       market: root.dataset.market || detectMarket(),
       placement: placement,
+      device: detectDevice(),
       cartSubtotal: detectWindowCartSubtotal(),
       currency: detectCurrency(),
       cartToken: "",
@@ -315,6 +317,7 @@
       shop: config.shop,
       path: config.path,
       locale: config.locale,
+      device: config.device || detectDevice(),
       placement: config.placement,
     });
 

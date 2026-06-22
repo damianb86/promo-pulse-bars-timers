@@ -201,6 +201,53 @@ describe("storefront campaign serialization", () => {
     ).toBe("#CartDrawer .drawer__contents");
   });
 
+  it("serializes responsive campaign design by storefront device", () => {
+    const campaign = buildCampaign({
+      design: {
+        backgroundColor: "#111827",
+        textColor: "#F9FAFB",
+        customCss: ".pp-bar { letter-spacing: 0; }",
+        mobileDesign: {
+          backgroundColor: "#F97316",
+          textColor: "#111827",
+          customCss: ".pp-bar { font-weight: 700; }",
+        },
+      },
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        device: "desktop",
+      })?.design,
+    ).toMatchObject({
+      backgroundColor: "#111827",
+      textColor: "#F9FAFB",
+      customCss: ".pp-bar { letter-spacing: 0; }",
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        device: "mobile",
+      })?.design,
+    ).toMatchObject({
+      backgroundColor: "#F97316",
+      textColor: "#111827",
+      customCss: ".pp-bar { font-weight: 700; }",
+    });
+
+    expect(
+      serializeStorefrontCampaign(campaign, {
+        ...baseContext(),
+        device: "tablet",
+      })?.design,
+    ).toMatchObject({
+      backgroundColor: "#F97316",
+      textColor: "#111827",
+    });
+  });
+
   it("resolves free shipping thresholds by market and country rules", () => {
     const campaign = buildCampaign({
       type: "FREE_SHIPPING_GOAL",
@@ -689,6 +736,7 @@ function buildCampaign(
       badgeShape: string;
       badgeText: string;
     };
+    design?: Partial<NonNullable<StorefrontCampaignSource["design"]>>;
     marketCampaignRules?: StorefrontCampaignSource["marketCampaignRules"];
     experiments?: StorefrontCampaignSource["experiments"];
   } = {},
@@ -729,7 +777,12 @@ function buildCampaign(
           ...overrides.targeting,
         } as StorefrontCampaignSource["targeting"])
       : null,
-    design: null,
+    design: overrides.design
+      ? ({
+          campaignId: overrides.id ?? "campaign-1",
+          ...overrides.design,
+        } as StorefrontCampaignSource["design"])
+      : null,
     timerSettings: null,
     freeShippingSettings: overrides.freeShippingSettings
       ? ({

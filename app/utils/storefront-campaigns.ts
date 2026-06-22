@@ -299,7 +299,7 @@ export function serializeDesign(
 ) {
   const desktopDesign = serializeDesktopDesign(design);
   const mobileDesign =
-    device === "mobile"
+    isMobileDesignDevice(device)
       ? readCampaignDesignJsonObject(design?.mobileDesign)
       : null;
 
@@ -311,6 +311,10 @@ export function serializeDesign(
         ? mobileDesign.customCss
         : desktopDesign.customCss,
   };
+}
+
+function isMobileDesignDevice(device: string) {
+  return device === "mobile" || device === "tablet";
 }
 
 function serializeDesktopDesign(design: CampaignDesign | null) {

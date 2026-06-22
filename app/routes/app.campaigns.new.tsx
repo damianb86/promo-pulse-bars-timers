@@ -36,6 +36,10 @@ import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
+import {
+  buildCampaignPersistenceError,
+  buildMissingDiscountScopesError,
+} from "../services/campaign-save-errors.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import { createExperiment } from "../services/experiments";
 import {
@@ -294,6 +298,17 @@ export const action = async ({
           },
         };
       }
+
+      const discountScopeErrors = buildMissingDiscountScopesError(
+        session.scope,
+      );
+
+      if (discountScopeErrors) {
+        return {
+          values: parsed.values,
+          errors: discountScopeErrors,
+        };
+      }
     }
 
     const campaign = await createCampaign({
@@ -426,9 +441,10 @@ export const action = async ({
 
     return {
       values: parsed.values,
-      errors: {
-        form: "Campaign could not be created. Check the fields and try again.",
-      },
+      errors: buildCampaignPersistenceError(error, {
+        action: "create",
+        values: parsed.values,
+      }),
     };
   }
 };

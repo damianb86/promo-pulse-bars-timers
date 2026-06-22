@@ -465,10 +465,21 @@ async function executeGraphql<T>(
     throw new Error(formatGraphqlTransportError(error));
   }
 
-  const payload = (await response.json()) as {
+  let payload: {
     data?: T;
     errors?: Array<{ message?: string }>;
   };
+
+  try {
+    payload = (await response.json()) as {
+      data?: T;
+      errors?: Array<{ message?: string }>;
+    };
+  } catch {
+    throw new Error(
+      `Shopify Admin API returned a non-JSON response while configuring discounts. HTTP status: ${response.status}.`,
+    );
+  }
 
   if (payload.errors?.length) {
     throw new Error(formatGraphqlErrors(payload.errors));
@@ -482,10 +493,7 @@ function parseMutationPayload(payload: DiscountMutationPayload | undefined) {
 
   if (userErrors.length > 0) {
     throw new Error(
-      userErrors
-        .map((error) => error.message)
-        .filter(Boolean)
-        .join(" "),
+      userErrors.map(formatDiscountUserError).filter(Boolean).join(" "),
     );
   }
 
@@ -519,6 +527,20 @@ function normalizeDiscountNode(
     endsAt: discount.endsAt ?? null,
     type: discount.__typename ?? "DiscountCode",
   };
+}
+
+function formatDiscountUserError(error: {
+  field?: string[] | string | null;
+  message?: string | null;
+}) {
+  const message = error.message?.trim();
+  if (!message) return "";
+
+  const field = Array.isArray(error.field)
+    ? error.field.filter(Boolean).join(".")
+    : error.field;
+
+  return field ? `${field}: ${message}` : message;
 }
 
 function normalizePercentage(value: number) {

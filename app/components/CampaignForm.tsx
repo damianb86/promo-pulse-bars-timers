@@ -1748,6 +1748,15 @@ export function CampaignForm({
                         threshold. Checkout applies it without requiring a code.
                       </p>
 
+                      {errors.freeShippingAutoDiscount && (
+                        <AppAlert
+                          tone="critical"
+                          title="Automatic free shipping could not be configured"
+                        >
+                          {errors.freeShippingAutoDiscount}
+                        </AppAlert>
+                      )}
+
                       {formValues.freeShippingAutoDiscount && (
                         <div className="counterpulse-form-grid counterpulse-form-grid--wide">
                           <FormField
@@ -3794,6 +3803,7 @@ const campaignErrorFieldLabels: Partial<
   excludeProductIds: "Excluded products",
   excludedUrlContains: "Excluded URLs",
   expiredText: "Expired text",
+  freeShippingAutoDiscount: "Automatic free shipping",
   freeShippingCurrencyCode: "Free shipping currency",
   freeShippingDiscountCode: "Free shipping discount code",
   freeShippingExistingDiscount: "Existing free shipping discount",

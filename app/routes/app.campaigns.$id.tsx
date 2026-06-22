@@ -84,6 +84,10 @@ import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
+import {
+  buildCampaignPersistenceError,
+  buildMissingDiscountScopesError,
+} from "../services/campaign-save-errors.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
 import {
@@ -1337,6 +1341,19 @@ export const action = async ({
           },
         };
       }
+
+      const discountScopeErrors = buildMissingDiscountScopesError(
+        session.scope,
+      );
+
+      if (discountScopeErrors) {
+        return {
+          values: parsed.values,
+          designValues: parsedDesign.values,
+          mobileDesignValues: parsedDesign.mobileValues,
+          errors: discountScopeErrors,
+        };
+      }
     }
 
     if (parsedTranslations) {
@@ -1474,11 +1491,10 @@ export const action = async ({
       values: parsed.values,
       designValues: parsedDesign.values,
       mobileDesignValues: parsedDesign.mobileValues,
-      errors: {
-        form: isPublishRequest
-          ? "Campaign could not be published. Check the fields and try again."
-          : "Campaign draft could not be saved. Check the fields and try again.",
-      },
+      errors: buildCampaignPersistenceError(error, {
+        action: isPublishRequest ? "publish" : "save",
+        values: parsed.values,
+      }),
     };
   }
 };

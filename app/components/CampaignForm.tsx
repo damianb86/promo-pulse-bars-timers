@@ -2282,12 +2282,21 @@ export function CampaignForm({
                         type="button"
                         onClick={() => togglePlacement(option.value)}
                       >
-                        <span aria-hidden="true">
+                        <span
+                          aria-hidden="true"
+                          className="counterpulse-placement-tile__initial"
+                        >
                           {placementInitial(option.label)}
                         </span>
-                        <strong>{option.label}</strong>
-                        <small>{option.description}</small>
-                        {isSelected && <small>Selected</small>}
+                        <span className="counterpulse-placement-tile__body">
+                          <strong>{option.label}</strong>
+                          <small>{option.description}</small>
+                        </span>
+                        {isSelected && (
+                          <small className="counterpulse-placement-tile__status">
+                            Selected
+                          </small>
+                        )}
                       </button>
                     );
                   })}

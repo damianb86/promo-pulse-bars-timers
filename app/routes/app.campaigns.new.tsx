@@ -36,10 +36,7 @@ import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
-import {
-  buildCampaignPersistenceError,
-  buildMissingDiscountScopesError,
-} from "../services/campaign-save-errors.server";
+import { buildCampaignPersistenceError } from "../services/campaign-save-errors.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import { createExperiment } from "../services/experiments";
 import {
@@ -296,17 +293,6 @@ export const action = async ({
           errors: {
             form: discountGate.reason,
           },
-        };
-      }
-
-      const discountScopeErrors = buildMissingDiscountScopesError(
-        session.scope,
-      );
-
-      if (discountScopeErrors) {
-        return {
-          values: parsed.values,
-          errors: discountScopeErrors,
         };
       }
     }

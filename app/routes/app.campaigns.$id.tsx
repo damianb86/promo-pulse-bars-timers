@@ -84,10 +84,7 @@ import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
-import {
-  buildCampaignPersistenceError,
-  buildMissingDiscountScopesError,
-} from "../services/campaign-save-errors.server";
+import { buildCampaignPersistenceError } from "../services/campaign-save-errors.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
 import {
@@ -1339,19 +1336,6 @@ export const action = async ({
           errors: {
             form: discountGate.reason,
           },
-        };
-      }
-
-      const discountScopeErrors = buildMissingDiscountScopesError(
-        session.scope,
-      );
-
-      if (discountScopeErrors) {
-        return {
-          values: parsed.values,
-          designValues: parsedDesign.values,
-          mobileDesignValues: parsedDesign.mobileValues,
-          errors: discountScopeErrors,
         };
       }
     }

@@ -3,31 +3,6 @@ import type {
   CampaignFormValues,
 } from "../types/campaign-form";
 
-const REQUIRED_DISCOUNT_SCOPES = ["read_discounts", "write_discounts"] as const;
-
-export function buildMissingDiscountScopesError(
-  scope: string | null | undefined,
-): CampaignFormErrors | null {
-  const grantedScopes = parseScopes(scope);
-
-  if (grantedScopes.size === 0) return null;
-
-  const missingScopes = REQUIRED_DISCOUNT_SCOPES.filter(
-    (requiredScope) => !grantedScopes.has(requiredScope),
-  );
-
-  if (missingScopes.length === 0) return null;
-
-  const detail = `Shopify has not granted ${missingScopes.join(
-    ", ",
-  )} to this app installation. Reauthorize Promo Pulse so Shopify grants the discount permissions, then save again.`;
-
-  return {
-    form: `Free shipping automatic discount could not be configured. ${detail}`,
-    freeShippingAutoDiscount: detail,
-  };
-}
-
 export function buildCampaignPersistenceError(
   error: unknown,
   options: {
@@ -70,15 +45,6 @@ export function buildCampaignPersistenceError(
   return {
     form: `${prefix}. ${detail || "The server returned an unknown error."}`,
   };
-}
-
-function parseScopes(scope: string | null | undefined) {
-  return new Set(
-    String(scope ?? "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean),
-  );
 }
 
 function sanitizeErrorMessage(message: string) {

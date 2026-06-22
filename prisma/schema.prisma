@@ -171,6 +171,7 @@ model CampaignTargeting {
   devices              Json
   excludeProductIds    Json
   excludeCollectionIds Json
+  productPropertyRules Json?
   behaviorRules        Json?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

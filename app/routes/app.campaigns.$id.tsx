@@ -436,6 +436,7 @@ export const loader = async ({
       ),
       collectionIds: targetingListText(campaign.targeting?.collectionIds),
       productTags: targetingListText(campaign.targeting?.productTags),
+      ...toCampaignProductPropertyFormValues(campaign.targeting),
       customSelector: placement?.customSelector ?? "",
       urlContains: targetingListText(campaign.targeting?.urlContains),
       excludedUrlContains: targetingListText(
@@ -3273,6 +3274,7 @@ type CampaignTargetingRecord = {
   collectionIds?: unknown;
   productTags?: unknown;
   excludeProductIds?: unknown;
+  productPropertyRules?: unknown;
 } | null;
 
 function inferProductSelection(
@@ -3295,6 +3297,56 @@ function inferCountrySelection(
   return targetingStringList(targeting?.countries).length > 0
     ? "SPECIFIC_COUNTRIES"
     : "ALL_WORLD";
+}
+
+function toCampaignProductPropertyFormValues(
+  targeting: CampaignTargetingRecord,
+): Pick<
+  CampaignFormValues,
+  "productInventoryTargetMode" | "productInventoryThreshold"
+> {
+  const inventoryRule = readProductInventoryTargetRule(
+    targeting?.productPropertyRules,
+  );
+
+  if (!inventoryRule) {
+    return {
+      productInventoryTargetMode:
+        defaultCampaignFormValues.productInventoryTargetMode,
+      productInventoryThreshold:
+        defaultCampaignFormValues.productInventoryThreshold,
+    };
+  }
+
+  return {
+    productInventoryTargetMode: inventoryRule.mode,
+    productInventoryThreshold: String(inventoryRule.threshold),
+  };
+}
+
+function readProductInventoryTargetRule(
+  value: unknown,
+): { mode: "AT_OR_BELOW" | "AT_OR_ABOVE"; threshold: number } | null {
+  const rules = readRecord(value);
+  const inventory = readRecord(rules.inventory);
+  const mode =
+    inventory.mode === "AT_OR_BELOW" || inventory.mode === "AT_OR_ABOVE"
+      ? inventory.mode
+      : null;
+  const threshold = Number(inventory.threshold);
+
+  if (!mode || !Number.isInteger(threshold) || threshold < 0) return null;
+
+  return {
+    mode,
+    threshold,
+  };
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function targetingListText(value: unknown) {

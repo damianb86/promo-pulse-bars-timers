@@ -22,6 +22,7 @@
       productTags: split(root.dataset.productTags),
       collectionIds: split(root.dataset.collectionIds),
       vendor: root.dataset.productVendor || "",
+      selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
       inventoryQuantity: root.dataset.inventoryQuantity || "",
       price: root.dataset.price || "",
       compareAtPrice: root.dataset.compareAtPrice || "",
@@ -108,6 +109,9 @@
     if (config.collectionIds.length)
       params.set("collectionIds", config.collectionIds.join(","));
     if (config.vendor) params.set("vendor", config.vendor);
+    if (config.selectedVariantId) {
+      params.set("selectedVariantId", config.selectedVariantId);
+    }
     if (config.inventoryQuantity)
       params.set("inventoryQuantity", config.inventoryQuantity);
     if (config.price) params.set("price", config.price);
@@ -281,6 +285,10 @@
       embed.dataset.collectionIds ||
       "";
     slot.dataset.productVendor = readDatasetValue(source, "productVendor");
+    slot.dataset.selectedVariantId =
+      readDatasetValue(source, "selectedVariantId") ||
+      embed.dataset.selectedVariantId ||
+      "";
     slot.dataset.inventoryQuantity = readDatasetValue(
       source,
       "inventoryQuantity",
@@ -600,6 +608,14 @@
         return item.trim();
       })
       .filter(Boolean);
+  }
+
+  function normalizeVariantId(value) {
+    if (!value) return "";
+    value = String(value);
+    return value.indexOf("gid://") === 0
+      ? value
+      : "gid://shopify/ProductVariant/" + value;
   }
 
   function color(value, fallback) {

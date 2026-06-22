@@ -193,6 +193,7 @@ export async function createDraftCampaignFromTemplate(
           devices: [],
           excludeProductIds: [],
           excludeCollectionIds: [],
+          productPropertyRules: Prisma.JsonNull,
           behaviorRules: Prisma.JsonNull,
         },
       },

@@ -11,6 +11,8 @@
     data-cart-token="{{ cart.token | default: '' | escape }}"
     data-product-id="{% if product %}gid://shopify/Product/{{ product.id }}{% endif %}"
     data-product-tags="{% if product %}{{ product.tags | join: ',' | escape }}{% endif %}"
+    data-selected-variant-id="{% if product %}gid://shopify/ProductVariant/{{ product.selected_or_first_available_variant.id }}{% endif %}"
+    data-inventory-quantity="{% if product %}{{ product.selected_or_first_available_variant.inventory_quantity | default: '' }}{% endif %}"
     data-collection-ids="{% if product %}{% for collection in product.collections %}gid://shopify/Collection/{{ collection.id }}{% unless forloop.last %},{% endunless %}{% endfor %}{% endif %}"
     data-cart-timer-src="{{ 'cart-timer.js' | asset_url }}"
     data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"

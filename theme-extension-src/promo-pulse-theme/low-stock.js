@@ -88,6 +88,13 @@
     if (config.currency) params.set("currency", config.currency);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
+    if (config.selectedVariantId) {
+      params.set("selectedVariantId", config.selectedVariantId);
+    }
+    var inventoryQuantity = currentInventory(config);
+    if (inventoryQuantity !== null) {
+      params.set("inventoryQuantity", String(inventoryQuantity));
+    }
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
     }

@@ -23,6 +23,8 @@ import {
   type CampaignFormErrors,
   type CampaignFormValues,
   type CountrySelectionValue,
+  productInventoryTargetModeOptions,
+  type ProductInventoryTargetModeValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
@@ -53,6 +55,9 @@ const placementTypes = new Set(
 );
 const productSelections = new Set<string>(productSelectionOptions);
 const countrySelections = new Set<string>(countrySelectionOptions);
+const productInventoryTargetModes = new Set<string>(
+  productInventoryTargetModeOptions,
+);
 const timerModes = new Set<string>([
   "FIXED_DATE",
   "EVERGREEN_SESSION",
@@ -162,6 +167,15 @@ export function parseCampaignFormData(
     excludeProductIds: readString(formData, "excludeProductIds"),
     collectionIds: readString(formData, "collectionIds"),
     productTags: readString(formData, "productTags"),
+    productInventoryTargetMode: readOption(
+      formData,
+      "productInventoryTargetMode",
+      productInventoryTargetModes,
+      defaultCampaignFormValues.productInventoryTargetMode,
+    ) as ProductInventoryTargetModeValue,
+    productInventoryThreshold:
+      readString(formData, "productInventoryThreshold") ||
+      defaultCampaignFormValues.productInventoryThreshold,
     customSelector: readString(formData, "customSelector"),
     urlContains: readString(formData, "urlContains"),
     excludedUrlContains: readString(formData, "excludedUrlContains"),
@@ -194,10 +208,7 @@ export function parseCampaignFormData(
     freeShippingSuccessMessage:
       readString(formData, "freeShippingSuccessMessage") ||
       defaultCampaignFormValues.freeShippingSuccessMessage,
-    freeShippingAutoDiscount: readBoolean(
-      formData,
-      "freeShippingAutoDiscount",
-    ),
+    freeShippingAutoDiscount: readBoolean(formData, "freeShippingAutoDiscount"),
     freeShippingDiscountCode:
       readString(formData, "freeShippingDiscountCode").toUpperCase() ||
       defaultCampaignFormValues.freeShippingDiscountCode,
@@ -256,8 +267,7 @@ export function parseCampaignFormData(
       readString(formData, "lowStockFallbackMessage") ||
       defaultCampaignFormValues.lowStockFallbackMessage,
     badgeText:
-      readString(formData, "badgeText") ||
-      defaultCampaignFormValues.badgeText,
+      readString(formData, "badgeText") || defaultCampaignFormValues.badgeText,
     badgeShape: readOption(
       formData,
       "badgeShape",
@@ -346,6 +356,14 @@ export function parseCampaignFormData(
   }
 
   if (
+    values.productInventoryTargetMode !== "ANY" &&
+    !isIntegerInRange(values.productInventoryThreshold, 0, 999999)
+  ) {
+    errors.productInventoryThreshold =
+      "Enter an inventory threshold from 0 to 999999.";
+  }
+
+  if (
     values.countrySelection === "SPECIFIC_COUNTRIES" &&
     splitCampaignList(values.countries).length === 0
   ) {
@@ -362,10 +380,7 @@ export function parseCampaignFormData(
   if (values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING") {
     const freeShippingThreshold = Number(values.freeShippingThresholdAmount);
 
-    if (
-      !Number.isFinite(freeShippingThreshold) ||
-      freeShippingThreshold <= 0
-    ) {
+    if (!Number.isFinite(freeShippingThreshold) || freeShippingThreshold <= 0) {
       errors.freeShippingThresholdAmount =
         "Enter a free shipping threshold greater than 0.";
     }
@@ -392,8 +407,7 @@ export function parseCampaignFormData(
       }
 
       if (!values.freeShippingDiscountTitle.trim()) {
-        errors.freeShippingDiscountTitle =
-          "Add a Shopify discount title.";
+        errors.freeShippingDiscountTitle = "Add a Shopify discount title.";
       }
     }
   }
@@ -415,8 +429,7 @@ export function parseCampaignFormData(
     }
 
     if (!isIntegerInRange(values.deliveryProcessingDays, 0, 60)) {
-      errors.deliveryProcessingDays =
-        "Enter processing days from 0 to 60.";
+      errors.deliveryProcessingDays = "Enter processing days from 0 to 60.";
     }
 
     if (!isIntegerInRange(values.deliveryMinDays, 0, 60)) {
@@ -439,8 +452,7 @@ export function parseCampaignFormData(
 
   if (values.type === "LOW_STOCK" || values.goal === "LOW_STOCK_URGENCY") {
     if (!isIntegerInRange(values.lowStockThreshold, 1, 9999)) {
-      errors.lowStockThreshold =
-        "Enter a low-stock threshold from 1 to 9999.";
+      errors.lowStockThreshold = "Enter a low-stock threshold from 1 to 9999.";
     }
 
     if (values.lowStockFallbackMessage.length > 180) {

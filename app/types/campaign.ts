@@ -50,6 +50,15 @@ export type UpdateCampaignInput = Prisma.CampaignUpdateInput;
 
 export type TargetDevice = "desktop" | "mobile" | "tablet";
 
+export type ProductInventoryTargetMode = "ANY" | "AT_OR_BELOW" | "AT_OR_ABOVE";
+
+export type ProductPropertyTargetingRules = {
+  inventory?: {
+    mode: ProductInventoryTargetMode;
+    threshold: number;
+  };
+};
+
 export type CampaignTargetingRules = {
   countries: string[];
   markets: string[];
@@ -64,6 +73,7 @@ export type CampaignTargetingRules = {
   devices: TargetDevice[];
   excludeProductIds: string[];
   excludeCollectionIds: string[];
+  productPropertyRules: ProductPropertyTargetingRules;
   behaviorRules: BehaviorTargetingRules;
 };
 
@@ -92,6 +102,7 @@ export function createEmptyTargetingRules(): CampaignTargetingRules {
     devices: [],
     excludeProductIds: [],
     excludeCollectionIds: [],
+    productPropertyRules: {},
     behaviorRules: {
       enabled: false,
       segments: [],

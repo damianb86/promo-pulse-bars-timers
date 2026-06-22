@@ -42,6 +42,8 @@ export type StorefrontCampaignContext = {
   country: string;
   market: string;
   productId: string;
+  selectedVariantId: string;
+  inventoryQuantity: number | null;
   collectionIds: string[];
   productTags: string[];
   customerTags: string[];
@@ -113,6 +115,8 @@ export function parseStorefrontCampaignContext(
     country: readString(searchParams, "country").toUpperCase(),
     market: readString(searchParams, "market").toUpperCase(),
     productId: readString(searchParams, "productId"),
+    selectedVariantId: readString(searchParams, "selectedVariantId"),
+    inventoryQuantity: readNumber(searchParams, "inventoryQuantity"),
     collectionIds: readList(searchParams, "collectionIds"),
     productTags: readList(searchParams, "productTags"),
     customerTags: readList(searchParams, "customerTags"),
@@ -335,6 +339,11 @@ function isTargetingEligible(
       jsonStringList(targeting.devices),
       context.device,
     ) &&
+    matchesProductPropertyTargeting(
+      (targeting as CampaignTargeting & { productPropertyRules?: unknown })
+        .productPropertyRules,
+      context,
+    ) &&
     campaignMatchesBehaviorTargeting(
       targeting.behaviorRules,
       context.behaviorProfile,
@@ -347,10 +356,9 @@ export function serializeDesign(
   device: string = "desktop",
 ) {
   const desktopDesign = serializeDesktopDesign(design);
-  const mobileDesign =
-    isMobileDesignDevice(device)
-      ? readCampaignDesignJsonObject(design?.mobileDesign)
-      : null;
+  const mobileDesign = isMobileDesignDevice(device)
+    ? readCampaignDesignJsonObject(design?.mobileDesign)
+    : null;
   const resolvedDesign = {
     ...desktopDesign,
     ...mobileDesign,
@@ -698,6 +706,31 @@ function readThresholdRule(value: unknown, key: string) {
   }
 
   return readNumericThreshold((value as Record<string, unknown>)[key]);
+}
+
+function matchesProductPropertyTargeting(
+  value: unknown,
+  context: StorefrontCampaignContext,
+) {
+  const inventory = readRuleObject(jsonObject(value).inventory);
+
+  if (!inventory) return true;
+
+  const mode = inventory.mode;
+  const threshold = readIntegerOverride(inventory.threshold);
+
+  if (
+    (mode !== "AT_OR_BELOW" && mode !== "AT_OR_ABOVE") ||
+    threshold === null
+  ) {
+    return true;
+  }
+
+  if (context.inventoryQuantity === null) return false;
+
+  return mode === "AT_OR_BELOW"
+    ? context.inventoryQuantity <= threshold
+    : context.inventoryQuantity >= threshold;
 }
 
 function readNumericThreshold(value: unknown) {

@@ -770,6 +770,10 @@ export function CampaignForm({
       statusLabel,
     ],
   );
+  const errorSummaryMessages = useMemo(
+    () => buildCampaignErrorSummary(errors, messageTranslationErrors),
+    [errors, messageTranslationErrors],
+  );
 
   const updateField =
     <Key extends keyof CampaignFormValues>(field: Key) =>
@@ -1330,9 +1334,13 @@ export function CampaignForm({
         />
         {designHiddenInputs}
 
-        {errors.form && (
+        {errorSummaryMessages.length > 0 && (
           <AppAlert tone="critical" title="Campaign could not be saved">
-            <s-paragraph>{errors.form}</s-paragraph>
+            <ul className="counterpulse-error-summary">
+              {errorSummaryMessages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
           </AppAlert>
         )}
 
@@ -3811,6 +3819,124 @@ function normalizeSelectableResourceId(
   if (!id || !isSelectableResourceId(type, id)) return "";
 
   return id;
+}
+
+const campaignErrorFieldLabels: Partial<
+  Record<keyof CampaignFormValues, string>
+> = {
+  badgePosition: "Badge position",
+  badgeShape: "Badge shape",
+  badgeText: "Badge text",
+  cartTimerDurationMinutes: "Cart timer minutes",
+  collectionIds: "Collections",
+  countries: "Countries",
+  ctaText: "CTA text",
+  ctaUrl: "CTA URL",
+  customSelector: "Custom selector",
+  deliveryAfterCutoffBehavior: "After cutoff behavior",
+  deliveryCutoffHour: "Cutoff hour",
+  deliveryCutoffMinute: "Cutoff minute",
+  deliveryMaxDays: "Maximum delivery days",
+  deliveryMinDays: "Minimum delivery days",
+  deliveryProcessingDays: "Processing days",
+  deliveryWorkingDays: "Fulfillment days",
+  endsAt: "End date",
+  excludeProductIds: "Excluded products",
+  excludedUrlContains: "Excluded URLs",
+  expiredText: "Expired text",
+  freeShippingCurrencyCode: "Free shipping currency",
+  freeShippingDiscountCode: "Free shipping discount code",
+  freeShippingDiscountTitle: "Free shipping discount title",
+  freeShippingEmptyCartMessage: "Empty cart message",
+  freeShippingSuccessMessage: "Success message",
+  freeShippingThresholdAmount: "Free shipping threshold",
+  headline: "Headline",
+  lowStockFallbackMessage: "Low stock fallback message",
+  lowStockThreshold: "Low stock threshold",
+  name: "Campaign name",
+  placementType: "Campaign placement",
+  placementTypes: "Campaign placements",
+  productIds: "Products",
+  productInventoryThreshold: "Inventory threshold",
+  productInventoryTargetMode: "Inventory filter",
+  productTags: "Product tags",
+  startsAt: "Start date",
+  status: "Campaign status",
+  subheadline: "Subheadline",
+  timerDurationMinutes: "Timer minutes",
+  timerExpiredBehavior: "After expiration",
+  timerRecurringHour: "Recurring time",
+  timezone: "Timezone",
+  urlContains: "Included URLs",
+};
+
+function buildCampaignErrorSummary(
+  errors: CampaignFormErrors,
+  translationErrors?: CampaignTranslationFormErrors,
+) {
+  const messages: string[] = [];
+  const seenMessages = new Set<string>();
+  const pushMessage = (message: unknown, label?: string) => {
+    if (typeof message !== "string") return;
+
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) return;
+
+    const summaryMessage = label
+      ? `${label}: ${trimmedMessage}`
+      : trimmedMessage;
+
+    if (seenMessages.has(summaryMessage)) return;
+
+    seenMessages.add(summaryMessage);
+    messages.push(summaryMessage);
+  };
+
+  pushMessage(errors.form);
+  Object.entries(errors).forEach(([field, message]) => {
+    if (field === "form") return;
+
+    pushMessage(message, getCampaignErrorFieldLabel(field));
+  });
+
+  pushMessage(translationErrors?.form, "Messages");
+  Object.entries(translationErrors?.locales ?? {}).forEach(
+    ([locale, localeErrors]) => {
+      const localeLabel =
+        storefrontLocales.find((option) => option.locale === locale)?.label ??
+        locale.toUpperCase();
+
+      Object.entries(localeErrors ?? {}).forEach(([field, message]) => {
+        pushMessage(
+          message,
+          `${localeLabel} ${getCampaignTranslationErrorFieldLabel(field)}`,
+        );
+      });
+    },
+  );
+
+  return messages;
+}
+
+function getCampaignErrorFieldLabel(field: string) {
+  return (
+    campaignErrorFieldLabels[field as keyof CampaignFormValues] ??
+    humanizeFieldName(field)
+  );
+}
+
+function getCampaignTranslationErrorFieldLabel(field: string) {
+  return (
+    campaignTranslationFields.find((option) => option.key === field)?.label ??
+    humanizeFieldName(field)
+  );
+}
+
+function humanizeFieldName(field: string) {
+  return field
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (firstCharacter) => firstCharacter.toUpperCase());
 }
 
 function getShopifyBridge() {

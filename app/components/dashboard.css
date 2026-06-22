@@ -1580,7 +1580,25 @@ s-page::part(page) {
   color: #7a4f01;
 }
 
+.counterpulse-publication-status-badge--live {
+  border-color: transparent;
+  background: transparent;
+  color: #008060;
+  padding-inline: 2px;
+}
+
+.counterpulse-publication-status-badge--live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.14);
+}
+
 .counterpulse-publication-status-badge--not-published,
+.counterpulse-publication-status-badge--published-inactive,
 .counterpulse-publication-status-badge--unsaved {
   border-color: #ccd6e3;
   background: #f3f6fa;
@@ -1591,6 +1609,17 @@ s-page::part(page) {
   border-color: #d8c3f6;
   background: #f7f2ff;
   color: #5b3a91;
+}
+
+.counterpulse-error-summary {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.counterpulse-error-summary li {
+  margin: 0;
 }
 
 .counterpulse-builder-tabs {

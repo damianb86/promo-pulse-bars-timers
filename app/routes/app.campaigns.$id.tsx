@@ -1601,6 +1601,7 @@ export default function EditCampaignPage() {
   const publicationStatus = buildPublicationStatus(
     publication,
     hasUnsavedChanges,
+    activeCampaignValues.status,
   );
   const errorAttentionSectionKey = getActionErrorSectionKey(actionData);
 
@@ -2049,6 +2050,7 @@ function hasErrorValues(errors: unknown) {
 function buildPublicationStatus(
   publication: LoaderData["publication"],
   hasUnsavedChanges: boolean,
+  status: CampaignFormValues["status"],
 ) {
   if (hasUnsavedChanges) {
     return {
@@ -2066,13 +2068,20 @@ function buildPublicationStatus(
 
   if (publication.hasUnpublishedChanges) {
     return {
-      label: "Saved changes not live",
+      label: "Saved changes not published",
       state: "saved-unpublished" as const,
     };
   }
 
+  if (status !== "ACTIVE") {
+    return {
+      label: "Published, inactive",
+      state: "published-inactive" as const,
+    };
+  }
+
   return {
-    label: "Live",
+    label: "LIVE",
     state: "live" as const,
   };
 }

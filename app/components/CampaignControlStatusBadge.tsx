@@ -8,6 +8,7 @@ type CampaignControlStatusBadgeProps = {
 export type CampaignPublicationState =
   | "live"
   | "not-published"
+  | "published-inactive"
   | "saved-unpublished"
   | "unsaved";
 
@@ -20,8 +21,6 @@ export function CampaignControlStatusBadge({
   label,
   status,
 }: CampaignControlStatusBadgeProps) {
-  const displayLabel = status === "ACTIVE" ? "LIVE" : label.toUpperCase();
-
   return (
     <span
       className={[
@@ -29,7 +28,7 @@ export function CampaignControlStatusBadge({
         `counterpulse-control-status-badge--${status.toLowerCase()}`,
       ].join(" ")}
     >
-      {displayLabel}
+      {label.toUpperCase()}
     </span>
   );
 }
@@ -38,8 +37,6 @@ export function CampaignPublicationStatusBadge({
   label,
   state,
 }: CampaignPublicationStatusBadgeProps) {
-  if (state === "live") return null;
-
   return (
     <span
       className={[

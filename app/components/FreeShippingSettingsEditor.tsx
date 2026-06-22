@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
-import {
-  freeShippingProgressStyleOptions,
-  type FreeShippingSettingsErrors,
-  type FreeShippingSettingsValues,
+import type {
+  FreeShippingSettingsErrors,
+  FreeShippingSettingsValues,
 } from "../types/free-shipping";
 
 type FreeShippingSettingsEditorProps = {
@@ -37,8 +36,9 @@ export function FreeShippingSettingsEditor({
   return (
     <s-section heading="Free Shipping Goal">
       <p className="counterpulse-section-description">
-        Configure the real free-shipping threshold, currency, progress style,
-        and fallback messages used by cart placements.
+        Configure the real free-shipping threshold, currency, and fallback
+        messages used by cart placements. Progress presentation is controlled in
+        Campaign Setup and Design.
       </p>
 
       {errors?.form && (
@@ -98,39 +98,11 @@ export function FreeShippingSettingsEditor({
               maxLength={3}
             />
           </FormField>
-
-          <FormField
-            label="Progress style"
-            error={errors?.progressStyle}
-            info={
-              <FieldInfoButton
-                label="Free shipping progress style"
-                title="Progress style"
-              >
-                <FreeShippingInfoContent
-                  intro="Progress style changes how much visual feedback the cart goal shows."
-                  items={[
-                    [
-                      "Compact",
-                      "Best for tight cart drawers or secondary placements.",
-                    ],
-                    [
-                      "Detailed",
-                      "Best when the campaign is a primary cart message and needs clearer progress.",
-                    ],
-                  ]}
-                />
-              </FieldInfoButton>
-            }
-          >
-            <select name="progressStyle" defaultValue={values.progressStyle}>
-              {freeShippingProgressStyleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
+          <input
+            name="progressStyle"
+            type="hidden"
+            defaultValue={values.progressStyle}
+          />
 
           <div className="counterpulse-toggle">
             <label className="counterpulse-toggle-label">

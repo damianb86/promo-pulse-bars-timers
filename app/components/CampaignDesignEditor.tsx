@@ -17,6 +17,7 @@ import type {
   CampaignDesignValues,
 } from "../types/campaign-design";
 import { emptyCampaignDesignMediaOptions } from "../types/campaign-design";
+import type { FreeShippingProgressStyleValue } from "../types/free-shipping";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignDesignEditorProps = {
@@ -26,8 +27,10 @@ type CampaignDesignEditorProps = {
   isProPlan: boolean;
   lockedCustomCssReason?: string;
   mobileDesign: CampaignDesignValues;
+  progressStyle?: FreeShippingProgressStyleValue;
   onChange: (design: CampaignDesignValues) => void;
   onMobileChange: (design: CampaignDesignValues) => void;
+  onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
   viewModel: CampaignViewModel;
 };
 
@@ -38,8 +41,10 @@ export function CampaignDesignEditor({
   isProPlan,
   lockedCustomCssReason,
   mobileDesign,
+  progressStyle,
   onChange,
   onMobileChange,
+  onProgressStyleChange,
   viewModel,
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
@@ -111,8 +116,10 @@ export function CampaignDesignEditor({
             errors={errors}
             hasTimer={isTimerShown(previewViewModel.timer)}
             isProPlan={isProPlan}
+            progressStyle={progressStyle}
             values={activeDesign}
             onChange={updateActiveDesign}
+            onProgressStyleChange={onProgressStyleChange}
           />
         </div>
 

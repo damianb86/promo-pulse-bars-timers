@@ -292,7 +292,9 @@
     var track = document.createElement("span");
     var fill = document.createElement("span");
 
-    wrapper.className = "pp-progress";
+    wrapper.className = progressClassName("pp-progress", campaign);
+    if (progress.unlocked) wrapper.classList.add("is-unlocked");
+    wrapper.style.setProperty("--pp-progress", progress.percentage + "%");
     track.className = "pp-progress__track";
     track.setAttribute("role", "progressbar");
     track.setAttribute("aria-label", buildFreeShippingText(campaign, config));
@@ -308,6 +310,22 @@
     wrapper.appendChild(track);
 
     return wrapper;
+  }
+
+  function progressClassName(baseClass, campaign) {
+    var style = readProgressStyle(campaign);
+
+    return style === "BAR"
+      ? baseClass
+      : baseClass + " " + baseClass + "--" + style.toLowerCase();
+  }
+
+  function readProgressStyle(campaign) {
+    var style = String(
+      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+    ).toUpperCase();
+
+    return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";
   }
 
   function renderCountdown(ms, design) {

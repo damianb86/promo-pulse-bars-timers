@@ -512,14 +512,19 @@
   function renderFreeShippingProgress(campaign, config) {
     var threshold = Number((campaign.freeShipping || {}).thresholdAmount || 0);
     var subtotal = Number(config.cartSubtotal || 0);
+    var unlocked = threshold <= 0 || subtotal >= threshold;
     var progress =
-      threshold > 0 ? Math.min(100, (subtotal / threshold) * 100) : 0;
+      threshold > 0
+        ? Math.min(100, Math.max(0, (subtotal / threshold) * 100))
+        : 100;
     var wrapper = document.createElement("div");
     var label = document.createElement("span");
     var track = document.createElement("span");
     var fill = document.createElement("span");
 
-    wrapper.className = "pp-cart-progress";
+    wrapper.className = progressClassName("pp-cart-progress", campaign);
+    if (unlocked) wrapper.classList.add("is-unlocked");
+    wrapper.style.setProperty("--pp-progress", progress + "%");
     label.className = "pp-cart-progress__label";
     label.textContent = buildFreeShippingText(campaign, config) || "";
     track.className = "pp-progress__track";
@@ -540,6 +545,22 @@
     wrapper.appendChild(track);
 
     return wrapper;
+  }
+
+  function progressClassName(baseClass, campaign) {
+    var style = readProgressStyle(campaign);
+
+    return style === "BAR"
+      ? baseClass
+      : baseClass + " " + baseClass + "--" + style.toLowerCase();
+  }
+
+  function readProgressStyle(campaign) {
+    var style = String(
+      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+    ).toUpperCase();
+
+    return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";
   }
 
   function renderCta(campaign) {

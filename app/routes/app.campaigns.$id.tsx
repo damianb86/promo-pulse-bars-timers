@@ -1805,6 +1805,14 @@ export default function EditCampaignPage() {
     () => getMerchandisingCapabilities(draftCampaignValues),
     [draftCampaignValues],
   );
+  const updateDraftProgressStyle = (
+    progressStyle: CampaignFormValues["freeShippingProgressStyle"],
+  ) => {
+    setDraftCampaignValues((currentValues) => ({
+      ...currentValues,
+      freeShippingProgressStyle: progressStyle,
+    }));
+  };
   const draftPreviewViewModel = useMemo(
     () => ({
       ...designViewModel,
@@ -1824,8 +1832,11 @@ export default function EditCampaignPage() {
         ...buildCampaignTimerSettingsValues(draftCampaignValues),
         endsAt: draftCampaignValues.endsAt || null,
       },
+      freeShipping: merchandisingCapabilities.hasFreeShippingGoal
+        ? buildDraftFreeShippingPreview(draftCampaignValues)
+        : null,
     }),
-    [designViewModel, draftCampaignValues],
+    [designViewModel, draftCampaignValues, merchandisingCapabilities],
   );
   const submittingAction = readNavigationAction(navigation.formData);
   const isSavingDraft = submittingAction === "saveDraft";
@@ -2194,8 +2205,14 @@ export default function EditCampaignPage() {
                   mobileDesign={draftMobileDesignValues}
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
+                  progressStyle={
+                    merchandisingCapabilities.hasFreeShippingGoal
+                      ? draftCampaignValues.freeShippingProgressStyle
+                      : undefined
+                  }
                   onChange={setDraftDesignValues}
                   onMobileChange={setDraftMobileDesignValues}
+                  onProgressStyleChange={updateDraftProgressStyle}
                   viewModel={draftPreviewViewModel}
                 />
               ),
@@ -2347,6 +2364,22 @@ function getMerchandisingCapabilities(
       values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING",
     hasLowStock:
       values.type === "LOW_STOCK" || values.goal === "LOW_STOCK_URGENCY",
+  };
+}
+
+function buildDraftFreeShippingPreview(
+  values: CampaignFormValues,
+): CampaignViewModel["freeShipping"] {
+  const settings = buildCampaignFreeShippingSettingsValues(values);
+  const thresholdAmount = Number(settings.thresholdAmount);
+
+  return {
+    thresholdAmount: Number.isFinite(thresholdAmount) ? thresholdAmount : 0,
+    currencyCode: settings.currencyCode,
+    includeDiscountedSubtotal: settings.includeDiscountedSubtotal,
+    emptyCartMessage: settings.emptyCartMessage,
+    successMessage: settings.successMessage,
+    progressStyle: settings.progressStyle,
   };
 }
 

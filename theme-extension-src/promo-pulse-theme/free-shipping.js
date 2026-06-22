@@ -311,7 +311,7 @@
     message.appendChild(headline);
     message.appendChild(detail);
     bar.appendChild(message);
-    bar.appendChild(renderProgress(progress.percentage, detail.textContent));
+    bar.appendChild(renderProgress(campaign, progress, detail.textContent));
 
     if (
       campaign.discount &&
@@ -392,12 +392,15 @@
     };
   }
 
-  function renderProgress(percentage, label) {
+  function renderProgress(campaign, progress, label) {
     var wrapper = document.createElement("div");
     var track = document.createElement("span");
     var fill = document.createElement("span");
+    var percentage = Math.max(0, Math.min(100, progress.percentage));
 
-    wrapper.className = "pp-progress";
+    wrapper.className = progressClassName("pp-progress", campaign);
+    if (progress.unlocked) wrapper.classList.add("is-unlocked");
+    wrapper.style.setProperty("--pp-progress", percentage + "%");
     wrapper.dataset.testid = "free-shipping-progress";
     track.className = "pp-progress__track";
     track.setAttribute("role", "progressbar");
@@ -411,6 +414,22 @@
     wrapper.appendChild(track);
 
     return wrapper;
+  }
+
+  function progressClassName(baseClass, campaign) {
+    var style = readProgressStyle(campaign);
+
+    return style === "BAR"
+      ? baseClass
+      : baseClass + " " + baseClass + "--" + style.toLowerCase();
+  }
+
+  function readProgressStyle(campaign) {
+    var style = String(
+      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+    ).toUpperCase();
+
+    return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";
   }
 
   function getPlacementContainer(placement) {

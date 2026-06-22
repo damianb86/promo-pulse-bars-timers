@@ -18,6 +18,10 @@ import {
   type CampaignDesignTemplate,
   type CampaignDesignValues,
 } from "../types/campaign-design";
+import {
+  freeShippingProgressStyleOptions,
+  type FreeShippingProgressStyleValue,
+} from "../types/free-shipping";
 
 type DesignControlsProps = {
   values: CampaignDesignValues;
@@ -25,7 +29,9 @@ type DesignControlsProps = {
   hasTimer?: boolean;
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
+  progressStyle?: FreeShippingProgressStyleValue;
   onChange: (values: CampaignDesignValues) => void;
+  onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
 };
 
 export function DesignControls({
@@ -33,7 +39,9 @@ export function DesignControls({
   errors = {},
   hasTimer = true,
   isProPlan,
+  progressStyle,
   onChange,
+  onProgressStyleChange,
 }: DesignControlsProps) {
   const [customIconError, setCustomIconError] = useState<string | null>(null);
   const [backgroundImageError, setBackgroundImageError] = useState<
@@ -769,6 +777,28 @@ export function DesignControls({
           </>
         )}
       </DesignPanel>
+
+      {progressStyle && onProgressStyleChange ? (
+        <DesignPanel title="Progress">
+          <DesignGroup label="Progress style">
+            <select
+              aria-label="Progress style"
+              value={progressStyle}
+              onChange={(event) =>
+                onProgressStyleChange(
+                  event.currentTarget.value as FreeShippingProgressStyleValue,
+                )
+              }
+            >
+              {freeShippingProgressStyleOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignGroup>
+        </DesignPanel>
+      ) : null}
 
       <DesignPanel title="Elements">
         <div className="counterpulse-form-grid counterpulse-form-grid--wide">

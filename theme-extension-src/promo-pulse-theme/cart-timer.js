@@ -193,7 +193,6 @@
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
       compactMode: root.dataset.compact === "true",
-      showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
       apiBaseUrl:
@@ -218,7 +217,6 @@
       fallbackMode: "AUTO_ELIGIBLE",
       alignment: "CENTER",
       compactMode: false,
-      showIcon: true,
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
       apiBaseUrl:
@@ -367,6 +365,8 @@
   function renderCartCampaign(root, campaign, config, isDrawer) {
     var timerState = calculateTimerState(campaign, new Date(), config);
     var texts = campaign.texts || {};
+    var design = campaign.design || {};
+    var isFullWidth = !isDrawer && design.fullWidth === true;
     var card;
 
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) {
@@ -392,8 +392,9 @@
     card.className =
       "pp-cart-card" +
       (config.compactMode ? " pp-cart-card--compact" : "") +
-      (isDrawer ? " pp-cart-card--drawer" : "");
-    applyMotionClasses(card, campaign.design || {});
+      (isDrawer ? " pp-cart-card--drawer" : "") +
+      (isFullWidth ? " pp-cart-card--full-width" : "");
+    applyMotionClasses(card, design);
     card.dataset.campaignId = campaign.id;
     if (isDrawer) {
       card.dataset.testid = "cart-drawer-widget";
@@ -403,12 +404,11 @@
       "aria-label",
       (texts.headline || defaultHeadline(campaign)).trim(),
     );
-    setDesign(card, campaign.design || {}, config.alignment);
+    setDesign(card, design, config.alignment);
+    applyCartBlockWidth(root, isFullWidth);
 
-    if (config.showIcon) {
-      var icon = renderCampaignIcon(campaign);
-      if (icon) card.appendChild(icon);
-    }
+    var icon = renderCampaignIcon(campaign);
+    if (icon) card.appendChild(icon);
 
     card.appendChild(renderMessage(campaign, timerState, config));
 
@@ -434,6 +434,33 @@
     root.replaceChildren(card);
     tick(card, campaign, config);
     emitImpression(campaign);
+  }
+
+  function applyCartBlockWidth(root, isFullWidth) {
+    var block = root && root.closest ? root.closest(".shopify-block") : null;
+
+    if (root && root.classList) {
+      root.classList.toggle("pp-cart-timer--full-width", isFullWidth);
+    }
+
+    if (!block) return;
+
+    if (isFullWidth) {
+      block.dataset.ppCartTimerFullWidth = "true";
+      block.style.setProperty("width", "100vw");
+      block.style.setProperty("max-width", "100vw");
+      block.style.setProperty("margin-left", "calc(50% - 50vw)");
+      block.style.setProperty("margin-right", "calc(50% - 50vw)");
+      return;
+    }
+
+    if (block.dataset.ppCartTimerFullWidth !== "true") return;
+
+    delete block.dataset.ppCartTimerFullWidth;
+    block.style.removeProperty("width");
+    block.style.removeProperty("max-width");
+    block.style.removeProperty("margin-left");
+    block.style.removeProperty("margin-right");
   }
 
   function updateDebug(root, message, url) {
@@ -971,7 +998,7 @@
     var fallbackIcon =
       campaign.type === "FREE_SHIPPING_GOAL" ? "TRUCK" : "CLOCK";
 
-    if (design.showIcon === false) return null;
+    if (design.icon === "NONE") return null;
 
     icon.className = "pp-icon";
 

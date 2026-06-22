@@ -137,6 +137,7 @@ export function buildCampaignViewModel(
     ...baseDesign,
     customCss: campaign.design?.customCss ?? "",
   };
+  design.showIcon = design.icon !== "NONE";
 
   return {
     name: campaign.name,

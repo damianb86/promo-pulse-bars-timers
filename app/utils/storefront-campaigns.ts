@@ -351,14 +351,18 @@ export function serializeDesign(
     isMobileDesignDevice(device)
       ? readCampaignDesignJsonObject(design?.mobileDesign)
       : null;
-
-  return {
+  const resolvedDesign = {
     ...desktopDesign,
     ...mobileDesign,
     customCss:
       typeof mobileDesign?.customCss === "string"
         ? mobileDesign.customCss
         : desktopDesign.customCss,
+  };
+
+  return {
+    ...resolvedDesign,
+    showIcon: resolvedDesign.icon !== "NONE",
   };
 }
 

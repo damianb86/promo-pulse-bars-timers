@@ -118,7 +118,7 @@ export function DesignControls({
     onChange({
       ...values,
       icon,
-      showIcon: icon === "NONE" ? values.showIcon : true,
+      showIcon: icon !== "NONE",
       customIconUrl: icon === "CUSTOM" ? values.customIconUrl : "",
     });
   };
@@ -851,6 +851,11 @@ export function DesignControls({
             type="hidden"
             value={values.icon === "CUSTOM" ? values.customIconUrl : ""}
           />
+          <input
+            name="showIcon"
+            type="hidden"
+            value={values.icon === "NONE" ? "false" : "true"}
+          />
           <NumberField
             error={errors.iconSize}
             label="Icon size"
@@ -939,12 +944,6 @@ export function DesignControls({
             label="Show button"
             name="showButton"
             onChange={(checked) => updateValue("showButton", checked)}
-          />
-          <ToggleField
-            checked={values.showIcon}
-            label="Show icon"
-            name="showIcon"
-            onChange={(checked) => updateValue("showIcon", checked)}
           />
         </div>
       </DesignPanel>

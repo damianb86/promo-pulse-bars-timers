@@ -489,10 +489,13 @@ function PromoSurface({
   }
 
   const lowStockPreview = buildLowStockPreview(viewModel);
+  const headlineText = lowStockPreview
+    ? lowStockPreview.headline
+    : viewModel.headline;
   const bodyText = deliveryPreview
     ? deliveryPreview.message
     : lowStockPreview
-      ? lowStockPreview.message
+      ? lowStockPreview.detail
       : freeShippingPreview
         ? freeShippingPreview.message
         : timerState?.isExpired && viewModel.expiredText
@@ -522,7 +525,7 @@ function PromoSurface({
       <div className="counterpulse-preview-message">
         <PreviewIcon design={design} />
         <div className="counterpulse-preview-message-copy">
-          <strong>{viewModel.headline}</strong>
+          <strong>{headlineText}</strong>
           {isInline && hasTimer ? (
             <TimerDisplay
               compact
@@ -675,7 +678,7 @@ function TimerDisplay({
 }
 
 function PreviewIcon({ design }: { design: CampaignDesignValues }) {
-  if (!design.showIcon) return null;
+  if (design.icon === "NONE") return null;
 
   const iconStyle = {
     "--cp-icon-size": `${clampNumber(design.iconSize, 12, 64, 20)}px`,
@@ -692,9 +695,6 @@ function PreviewIcon({ design }: { design: CampaignDesignValues }) {
       </span>
     );
   }
-
-  if (design.icon === "NONE") return null;
-
   return (
     <span
       className="counterpulse-preview-icon"
@@ -879,7 +879,12 @@ function buildLowStockPreview(viewModel: CampaignViewModel) {
     viewModel.lowStockText,
   );
 
-  return message ? { message } : null;
+  if (!message) return null;
+
+  return {
+    headline: message,
+    detail: "",
+  };
 }
 
 function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {

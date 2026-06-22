@@ -23,7 +23,6 @@
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
       compactMode: root.dataset.compact === "true",
-      showIcon: root.dataset.showIcon !== "false",
       debugMode: root.dataset.debug === "true",
       apiBaseUrl:
         root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
@@ -190,10 +189,8 @@
     );
     setDesign(card, design, config.alignment);
 
-    if (config.showIcon) {
-      var icon = renderDesignIcon(design);
-      if (icon) card.appendChild(icon);
-    }
+    var icon = renderDesignIcon(design);
+    if (icon) card.appendChild(icon);
 
     card.appendChild(renderMessage(campaign, timerState, config));
 
@@ -881,7 +878,7 @@
     var image;
     var svg;
 
-    if (!design || design.showIcon === false) return null;
+    if (!design || design.icon === "NONE") return null;
 
     icon.className = "pp-icon";
 

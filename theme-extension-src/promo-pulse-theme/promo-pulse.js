@@ -544,7 +544,7 @@
     var svg;
     var image;
 
-    if (design.showIcon === false) return null;
+    if (design.icon === "NONE") return null;
 
     icon.className = "pp-icon";
 

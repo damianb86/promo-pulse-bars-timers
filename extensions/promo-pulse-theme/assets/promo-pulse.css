@@ -626,6 +626,13 @@
   display: block;
 }
 
+.pp-cart-timer--full-width {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
 .pp-cart-card {
   width: 100%;
   box-sizing: border-box;
@@ -652,6 +659,17 @@
 
 .pp-cart-card--drawer {
   margin: 0 0 12px;
+}
+
+.pp-cart-card--full-width {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.pp-cart-card--full-width > :not(.pp-close) {
+  max-width: min(100%, var(--pp-content-max-width, 960px));
 }
 
 .pp-cart-drawer-slot {

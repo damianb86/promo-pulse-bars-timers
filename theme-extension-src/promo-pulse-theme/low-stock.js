@@ -19,7 +19,6 @@
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
       compactMode: root.dataset.compact === "true",
-      showIcon: root.dataset.showIcon !== "false",
       debug: root.dataset.debug === "true",
       selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
       inventoryQuantity: numberOrNull(root.dataset.inventoryQuantity),
@@ -180,16 +179,11 @@
       (config.compactMode ? " pp-product-card--compact" : "");
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "status");
-    card.setAttribute(
-      "aria-label",
-      ((campaign.texts || {}).headline || "Low stock").trim(),
-    );
+    card.setAttribute("aria-label", message);
     setDesign(card, design, config.alignment);
 
-    if (config.showIcon) {
-      var icon = renderDesignIcon(design);
-      if (icon) card.appendChild(icon);
-    }
+    var icon = renderDesignIcon(design);
+    if (icon) card.appendChild(icon);
 
     card.appendChild(renderMessage(campaign, message));
     root.replaceChildren(card);
@@ -210,11 +204,9 @@
   }
 
   function renderMessage(campaign, detail) {
-    var texts = campaign.texts || {};
     var wrapper = document.createElement("div");
     wrapper.className = "pp-message";
-    wrapper.appendChild(node("strong", "", texts.headline || "Low stock"));
-    wrapper.appendChild(node("span", "", detail));
+    wrapper.appendChild(node("strong", "", detail));
     return wrapper;
   }
 
@@ -398,7 +390,7 @@
     var image;
     var svg;
 
-    if (!design || design.showIcon === false) return null;
+    if (!design || design.icon === "NONE") return null;
 
     icon.className = "pp-icon";
 

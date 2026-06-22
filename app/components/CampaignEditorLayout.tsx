@@ -22,6 +22,7 @@ type CampaignEditorLayoutProps = {
     placementLabel: string;
     publicationState: CampaignPublicationState;
     publicationStatusLabel: string;
+    publishDisabled?: boolean;
     publishLabel?: string;
     statusLabel: string;
     statusValue: EditableCampaignStatusValue;
@@ -92,7 +93,7 @@ export function CampaignEditorLayout({
             <button
               className="counterpulse-button"
               data-testid="campaign-publish-button"
-              disabled={actionBar.isSubmitting}
+              disabled={actionBar.isSubmitting || actionBar.publishDisabled}
               type="button"
               onClick={actionBar.onPublish}
             >

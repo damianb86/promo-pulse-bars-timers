@@ -1623,6 +1623,10 @@ export default function EditCampaignPage() {
     hasUnsavedChanges,
     activeCampaignValues.status,
   );
+  const hasPublishableChanges =
+    hasUnsavedChanges ||
+    !publication.hasPublishedVersion ||
+    publication.hasUnpublishedChanges;
   const errorAttentionSectionKey = getActionErrorSectionKey(actionData);
 
   return (
@@ -1652,6 +1656,7 @@ export default function EditCampaignPage() {
             placementLabel: campaignPlacementLabel,
             publicationState: publicationStatus.state,
             publicationStatusLabel: publicationStatus.label,
+            publishDisabled: !hasPublishableChanges,
             publishLabel: publication.hasPublishedVersion
               ? "Publish changes"
               : "Publish",

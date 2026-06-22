@@ -2292,11 +2292,6 @@ export function CampaignForm({
                           <strong>{option.label}</strong>
                           <small>{option.description}</small>
                         </span>
-                        {isSelected && (
-                          <small className="counterpulse-placement-tile__status">
-                            Selected
-                          </small>
-                        )}
                       </button>
                     );
                   })}

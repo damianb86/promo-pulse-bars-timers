@@ -2293,17 +2293,6 @@ s-page::part(page) {
   line-height: 14px;
 }
 
-.counterpulse-placement-tile__status {
-  grid-column: 2;
-  width: max-content;
-  margin-top: 2px;
-  border-radius: 999px;
-  padding: 2px 6px;
-  background: #e3f1eb;
-  color: #006f4e;
-  font-weight: 700;
-}
-
 .counterpulse-placement-tile.is-selected {
   border-color: #008060;
   background: #f7fcf9;

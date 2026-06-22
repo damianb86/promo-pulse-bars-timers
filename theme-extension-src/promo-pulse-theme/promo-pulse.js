@@ -241,7 +241,10 @@
     if (!container) return;
 
     bar.className =
-      "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace("_", "-");
+      "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace(/_/g, "-");
+    bar.classList.add(
+      "pp-bar--layout-" + String(design.layout || "STANDARD").toLowerCase(),
+    );
     if (design.fullWidth) bar.classList.add("pp-bar--full-width");
     if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
     if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
@@ -272,8 +275,14 @@
     }
 
     icon = renderIcon(design);
-    if (icon) bar.appendChild(icon);
-    bar.appendChild(renderMessage(campaign, timerState));
+    bar.appendChild(renderMessage(campaign, timerState, icon));
+
+    if (
+      timerState.isActive &&
+      String(design.layout || "").toUpperCase() !== "INLINE"
+    ) {
+      bar.appendChild(renderCountdown(timerState, design));
+    }
 
     if (
       !timerState.isExpired &&
@@ -282,10 +291,7 @@
       typeof window.PromoPulseCouponButton === "function"
     ) {
       bar.appendChild(
-        window.PromoPulseCouponButton(
-          campaign.discount.discountCode,
-          campaign,
-        ),
+        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
       );
     }
 
@@ -356,9 +362,66 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
+    bar.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
     bar.style.setProperty(
       "--pp-radius",
-      clamp(design.borderRadius, 0, 24, 0) + "px",
+      clamp(design.borderRadius, 0, 999, 0) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-border-size",
+      clamp(design.borderSize, 0, 8, 0) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-border-color",
+      safeColor(design.borderColor, "transparent"),
+    );
+    bar.style.setProperty(
+      "--pp-title-size",
+      clamp(design.titleFontSize, 12, 48, 18) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-title-color",
+      safeColor(design.titleColor, safeColor(design.textColor, "#ffffff")),
+    );
+    bar.style.setProperty(
+      "--pp-subheading-size",
+      clamp(design.subheadingFontSize, 10, 32, 14) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-subheading-color",
+      safeColor(design.subheadingColor, safeColor(design.textColor, "#ffffff")),
+    );
+    bar.style.setProperty(
+      "--pp-timer-size",
+      clamp(design.timerFontSize, 12, 72, 24) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-timer-color",
+      safeColor(design.timerColor, safeColor(design.textColor, "#ffffff")),
+    );
+    bar.style.setProperty(
+      "--pp-legend-size",
+      clamp(design.legendFontSize, 10, 24, 12) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-legend-color",
+      safeColor(design.legendColor, safeColor(design.textColor, "#ffffff")),
+    );
+    bar.style.setProperty(
+      "--pp-timer-surface",
+      safeColor(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
+    );
+    bar.style.setProperty(
+      "--pp-timer-border",
+      safeColor(design.timerSurfaceBorderColor, "transparent"),
+    );
+    bar.style.setProperty(
+      "--pp-timer-border-size",
+      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-timer-radius",
+      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
     );
     bar.style.setProperty(
       "--pp-content-max-width",
@@ -374,6 +437,14 @@
     );
     bar.style.setProperty("--pp-justify", getJustifyContent(design.alignment));
     bar.style.setProperty("--pp-align", getTextAlign(design.alignment));
+    bar.style.setProperty(
+      "--pp-gap",
+      clamp(design.contentGap, 4, 48, 10) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-icon-size",
+      clamp(design.iconSize, 12, 64, 20) + "px",
+    );
     bar.style.setProperty(
       "--pp-motion-duration",
       clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
@@ -499,46 +570,146 @@
     return icon;
   }
 
-  function renderMessage(campaign, timerState) {
+  function fontFamily(value) {
+    if (value === "SERIF") return "Georgia, Times New Roman, serif";
+    if (value === "MONO")
+      return "ui-monospace, SFMono-Regular, Menlo, monospace";
+    if (value === "ROUNDED")
+      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
+    if (value === "GEOMETRIC")
+      return "Avenir Next, Montserrat, system-ui, sans-serif";
+    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
+    if (value === "CONDENSED")
+      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
+    if (value === "CASUAL")
+      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
+    if (value === "SYSTEM")
+      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+
+    return "inherit";
+  }
+
+  function renderMessage(campaign, timerState, icon) {
     var texts = campaign.texts || {};
     var message = document.createElement("div");
+    var copy = document.createElement("div");
     var headline = document.createElement("strong");
     var subheadline = document.createElement("span");
+    var design = campaign.design || {};
+    var isInline = String(design.layout || "").toUpperCase() === "INLINE";
 
     message.className = "pp-message";
+    copy.className = "pp-message-copy";
+    if (icon) message.appendChild(icon);
+
     headline.textContent = texts.headline || campaign.name || "Ad";
-    message.appendChild(headline);
+    copy.appendChild(headline);
 
     if (timerState.isExpired && texts.expiredText) {
       subheadline.textContent = texts.expiredText;
-      message.appendChild(subheadline);
+      copy.appendChild(subheadline);
     } else if (texts.subheadline) {
       subheadline.textContent = texts.subheadline;
-      message.appendChild(subheadline);
+      copy.appendChild(subheadline);
     }
 
-    if (timerState.isActive) {
-      message.appendChild(renderCountdown(timerState, campaign.design || {}));
+    if (timerState.isActive && isInline) {
+      copy.appendChild(renderCountdown(timerState, design, true));
     }
+
+    message.appendChild(copy);
 
     return message;
   }
 
-  function renderCountdown(timerState, design) {
-    var countdown = document.createElement("span");
+  function renderCountdown(timerState, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var countdown = document.createElement(
+      compact && timerStyle === "PLAIN" ? "span" : "div",
+    );
     var tickClass =
       design.timerTickAnimation && design.timerTickAnimation !== "NONE"
         ? " pp-countdown--tick-" +
           String(design.timerTickAnimation).toLowerCase()
         : "";
 
-    countdown.className = "pp-countdown" + tickClass;
+    countdown.className =
+      "pp-countdown pp-countdown--" +
+      timerStyle.toLowerCase() +
+      " pp-countdown--" +
+      timerFormat.toLowerCase() +
+      (compact ? " pp-countdown--compact" : "") +
+      tickClass;
     countdown.dataset.testid = "promo-timer";
-    countdown.textContent = formatTimeRemaining(timerState.remainingMs, design);
+    updateCountdownElement(countdown, timerState.remainingMs, design, compact);
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
 
     return countdown;
+  }
+
+  function updateCountdownElement(countdown, ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var parts = buildTimerParts(ms, design);
+    var visibleParts =
+      design.timerShowSeconds === false
+        ? parts.filter(function (part) {
+            return part.key !== "seconds";
+          })
+        : parts;
+    var nextText;
+
+    if (!visibleParts.length) {
+      visibleParts = [parts[parts.length - 1]];
+    }
+
+    if (timerFormat === "COLON") {
+      nextText = formatTimerPartsAsColon(visibleParts);
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    nextText = visibleParts
+      .map(function (part) {
+        return design.timerShowLabels === false
+          ? part.value
+          : part.value + " " + part.shortLabel;
+      })
+      .join(" ");
+
+    if (timerStyle === "PLAIN" && compact) {
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    if (countdown.dataset.value === nextText) return;
+
+    countdown.dataset.value = nextText;
+    countdown.replaceChildren();
+    visibleParts.forEach(function (part) {
+      var unit = document.createElement("span");
+      var value = document.createElement("strong");
+      var label = document.createElement("small");
+
+      unit.className = "pp-countdown-unit";
+      value.textContent = part.value;
+      unit.appendChild(value);
+
+      if (design.timerShowLabels !== false) {
+        label.textContent = part.label;
+        unit.appendChild(label);
+      }
+
+      countdown.appendChild(unit);
+    });
   }
 
   function renderCta(text, url, campaign) {
@@ -631,7 +802,7 @@
       var timerState = calculateTimerState(campaign, new Date());
       var countdown = bar.querySelector(".pp-countdown");
       var subheadline = bar.querySelector(
-        ".pp-message span:not(.pp-countdown)",
+        ".pp-message-copy > span:not(.pp-countdown)",
       );
       var expiredText = (campaign.texts || {}).expiredText || "";
       var expiredBehavior = getExpiredBehavior(campaign);
@@ -645,7 +816,7 @@
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
           if (!subheadline) {
             subheadline = document.createElement("span");
-            bar.querySelector(".pp-message")?.appendChild(subheadline);
+            bar.querySelector(".pp-message-copy")?.appendChild(subheadline);
           }
           subheadline.textContent = expiredText;
         } else if (
@@ -658,12 +829,14 @@
         return;
       }
 
-      var nextText = formatTimeRemaining(
+      var previousValue = countdown.dataset.value || "";
+      updateCountdownElement(
+        countdown,
         timerState.remainingMs,
         campaign.design || {},
+        countdown.classList.contains("pp-countdown--compact"),
       );
-      if (countdown.textContent !== nextText) {
-        countdown.textContent = nextText;
+      if (countdown.dataset.value !== previousValue) {
         replayCountdownTick(countdown);
       }
     }, 1000);
@@ -1024,58 +1197,62 @@
     );
   }
 
-  function formatTimeRemaining(ms, design) {
+  function buildTimerParts(ms, design) {
     var totalSeconds = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(totalSeconds / 86400);
     var showDays = !design || design.timerHideZeroDays === false || days > 0;
     var hours = Math.floor((totalSeconds % 86400) / 3600);
     var minutes = Math.floor((totalSeconds % 3600) / 60);
     var seconds = totalSeconds % 60;
-    var units;
-
-    if (design && design.timerFormat === "UNITS") {
-      units = [];
-      if (showDays) {
-        units.push(
-          formatTimerUnit(days, timerUnitLabel(design, "days"), design),
-        );
-      }
-      units.push(
-        formatTimerUnit(
-          showDays ? hours : Math.floor(totalSeconds / 3600),
-          timerUnitLabel(design, "hours"),
-          design,
-        ),
-      );
-      units.push(
-        formatTimerUnit(minutes, timerUnitLabel(design, "minutes"), design),
-      );
-      if (!design || design.timerShowSeconds !== false) {
-        units.push(
-          formatTimerUnit(seconds, timerUnitLabel(design, "seconds"), design),
-        );
-      }
-      return units.join(" ");
-    }
-
-    if (design && design.timerShowSeconds === false) {
-      if (showDays) {
-        return [pad(days), pad(hours), pad(minutes)].join(":");
-      }
-
-      return pad(hours) + ":" + pad(minutes);
-    }
+    var parts = [];
 
     if (showDays) {
-      return [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":");
+      parts.push(
+        timerPart("days", days, timerUnitLabel(design, "days"), "Days"),
+      );
     }
 
-    return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+    parts.push(
+      timerPart(
+        "hours",
+        showDays ? hours : Math.floor(totalSeconds / 3600),
+        timerUnitLabel(design, "hours"),
+        "Hrs",
+      ),
+    );
+    parts.push(
+      timerPart("minutes", minutes, timerUnitLabel(design, "minutes"), "Mins"),
+    );
+    parts.push(
+      timerPart("seconds", seconds, timerUnitLabel(design, "seconds"), "Secs"),
+    );
+
+    return parts;
   }
 
-  function formatTimerUnit(value, label, design) {
-    if (design && design.timerShowLabels === false) return pad(value);
-    return pad(value) + " " + label;
+  function timerPart(key, value, label, shortLabel) {
+    return {
+      key: key,
+      value: pad(value),
+      label: label,
+      shortLabel: shortLabel,
+    };
+  }
+
+  function formatTimerPartsAsColon(parts) {
+    return parts
+      .map(function (part) {
+        return part.value;
+      })
+      .join(":");
+  }
+
+  function safeTimerStyle(value) {
+    return value === "GROUPED" || value === "BOXES" ? value : "PLAIN";
+  }
+
+  function safeTimerFormat(value) {
+    return value === "COLON" ? "COLON" : "UNITS";
   }
 
   function timerUnitLabel(design, unit) {

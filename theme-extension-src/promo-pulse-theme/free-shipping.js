@@ -275,11 +275,15 @@
     bar.id = slotId;
 
     if (existing) {
+      if (existing.__promoPulseTimerInterval) {
+        window.clearInterval(existing.__promoPulseTimerInterval);
+      }
       existing.replaceWith(bar);
     } else {
       container.appendChild(bar);
     }
 
+    startCountdown(bar, campaign);
     emitImpressionOnce(campaign);
   }
   function updateDebug(element, message, url) {
@@ -298,8 +302,11 @@
   function buildBar(campaign) {
     var design = campaign.design || {};
     var progress = calculateProgress(campaign);
+    var timerState = calculateTimerState(campaign, new Date());
+    var isInline = String(design.layout || "").toUpperCase() === "INLINE";
     var bar = document.createElement("section");
     var message = document.createElement("div");
+    var copy = document.createElement("div");
     var headline = document.createElement("strong");
     var detail = document.createElement("span");
 
@@ -307,8 +314,21 @@
       "pp-bar pp-bar--" +
       campaign.placement.toLowerCase().replace("_", "-") +
       " pp-bar--free-shipping";
+    bar.classList.add(
+      "pp-bar--layout-" + String(design.layout || "STANDARD").toLowerCase(),
+    );
     if (design.fullWidth) bar.classList.add("pp-bar--full-width");
     if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
+    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
+      bar.classList.add(
+        "pp-bar--enter-" + String(design.entranceAnimation).toLowerCase(),
+      );
+    }
+    if (design.exitAnimation && design.exitAnimation !== "NONE") {
+      bar.classList.add(
+        "pp-bar--exit-" + String(design.exitAnimation).toLowerCase(),
+      );
+    }
     bar.dataset.campaignId = campaign.id;
     bar.dataset.testid = "promo-bar";
     bar.setAttribute("role", "region");
@@ -327,14 +347,22 @@
     }
 
     var icon = renderDesignIcon(design);
-    if (icon) bar.appendChild(icon);
 
     message.className = "pp-message";
+    copy.className = "pp-message-copy";
+    if (icon) message.appendChild(icon);
     headline.textContent = (campaign.texts || {}).headline || "Free shipping";
     detail.textContent = buildMessage(campaign, progress);
-    message.appendChild(headline);
-    message.appendChild(detail);
+    copy.appendChild(headline);
+    copy.appendChild(detail);
+    if (timerState.isActive && isInline) {
+      copy.appendChild(renderCountdown(timerState.remainingMs, design, true));
+    }
+    message.appendChild(copy);
     bar.appendChild(message);
+    if (timerState.isActive && !isInline) {
+      bar.appendChild(renderCountdown(timerState.remainingMs, design));
+    }
     if (design.showProgressBar !== false) {
       bar.appendChild(renderProgress(campaign, progress, detail.textContent));
     }
@@ -360,7 +388,7 @@
     }
 
     if (design.showCloseButton) {
-      bar.appendChild(renderCloseButton(bar));
+      bar.appendChild(renderCloseButton(bar, design));
     }
 
     return bar;
@@ -445,6 +473,308 @@
     return style === "BAR"
       ? baseClass
       : baseClass + " " + baseClass + "--" + style.toLowerCase();
+  }
+
+  function renderCountdown(ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var countdown = document.createElement(
+      compact && timerStyle === "PLAIN" ? "span" : "div",
+    );
+    var tickClass =
+      design.timerTickAnimation && design.timerTickAnimation !== "NONE"
+        ? " pp-countdown--tick-" +
+          String(design.timerTickAnimation).toLowerCase()
+        : "";
+
+    countdown.className =
+      "pp-countdown pp-countdown--" +
+      timerStyle.toLowerCase() +
+      " pp-countdown--" +
+      timerFormat.toLowerCase() +
+      (compact ? " pp-countdown--compact" : "") +
+      tickClass;
+    countdown.dataset.testid = "promo-timer";
+    updateCountdownElement(countdown, ms, design, compact);
+    countdown.setAttribute("aria-live", "polite");
+    countdown.setAttribute("aria-label", "Time remaining");
+
+    return countdown;
+  }
+
+  function updateCountdownElement(countdown, ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var parts = buildTimerParts(ms, design);
+    var visibleParts =
+      design.timerShowSeconds === false
+        ? parts.filter(function (part) {
+            return part.key !== "seconds";
+          })
+        : parts;
+    var nextText;
+
+    if (!visibleParts.length) visibleParts = [parts[parts.length - 1]];
+
+    if (timerFormat === "COLON") {
+      nextText = visibleParts
+        .map(function (part) {
+          return part.value;
+        })
+        .join(":");
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    nextText = visibleParts
+      .map(function (part) {
+        return design.timerShowLabels === false
+          ? part.value
+          : part.value + " " + part.shortLabel;
+      })
+      .join(" ");
+
+    if (timerStyle === "PLAIN" && compact) {
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    if (countdown.dataset.value === nextText) return;
+
+    var previousUnitValues = readCountdownUnitValues(countdown);
+    var tickAnimation = getCountdownTickAnimation(countdown);
+    countdown.dataset.value = nextText;
+    countdown.dataset.unitValues = JSON.stringify(
+      visibleParts.reduce(function (values, part) {
+        values[part.key] = part.value;
+        return values;
+      }, {}),
+    );
+    countdown.replaceChildren();
+    visibleParts.forEach(function (part) {
+      var unit = document.createElement("span");
+      var value = document.createElement("strong");
+      var label = document.createElement("small");
+
+      unit.className = "pp-countdown-unit";
+      value.textContent = part.value;
+      if (
+        tickAnimation &&
+        previousUnitValues[part.key] &&
+        previousUnitValues[part.key] !== part.value
+      ) {
+        value.classList.add(
+          "pp-countdown-tick-value",
+          "pp-countdown-tick-value--" + tickAnimation,
+        );
+      }
+      unit.appendChild(value);
+
+      if (design.timerShowLabels !== false) {
+        label.textContent = part.label;
+        unit.appendChild(label);
+      }
+
+      countdown.appendChild(unit);
+    });
+  }
+
+  function startCountdown(bar, campaign) {
+    if (!bar.querySelector(".pp-countdown")) return;
+
+    bar.__promoPulseTimerInterval = window.setInterval(function () {
+      var state = calculateTimerState(campaign, new Date());
+      var countdown = bar.querySelector(".pp-countdown");
+      var design = campaign.design || {};
+
+      if (!countdown) return;
+
+      if (state.isExpired) {
+        countdown.remove();
+        bar.classList.add("pp-bar--expired");
+
+        if (shouldHideExpiredCampaign(campaign)) {
+          removeBar(bar, design);
+        }
+        return;
+      }
+
+      updateCountdownElement(
+        countdown,
+        state.remainingMs,
+        design,
+        countdown.classList.contains("pp-countdown--compact"),
+      );
+      replayCountdownTick(countdown);
+    }, 1000);
+  }
+
+  function calculateTimerState(campaign, now) {
+    var timer = campaign.timer || {};
+    var mode = timer.mode || "FIXED_DATE";
+
+    if (mode === "EVERGREEN_SESSION") return calculateEvergreenTimer(campaign, now);
+    if (mode === "RECURRING_DAILY") return calculateDailyTimer(timer, now);
+
+    return remainingUntil(now, parseDate(campaign.endsAt));
+  }
+
+  function calculateEvergreenTimer(campaign, now) {
+    var timer = campaign.timer || {};
+    var duration = Number(timer.durationMinutes);
+    var storage = timer.resetBehavior === "NEVER" ? localStorage : sessionStorage;
+    var key = "promo_pulse_deadline_" + campaign.id;
+    var saved = readStoredTimer(storage, key);
+    var endsAt = parseDate(saved && saved.endsAt);
+
+    if (endsAt && endsAt.getTime() > now.getTime()) {
+      return remainingUntil(now, endsAt);
+    }
+
+    if (!Number.isFinite(duration) || duration <= 0) return emptyTimerState();
+
+    endsAt = new Date(now.getTime() + Math.round(duration) * 60000);
+    writeStoredTimer(storage, key, { endsAt: endsAt.toISOString() });
+
+    return remainingUntil(now, endsAt);
+  }
+
+  function calculateDailyTimer(timer, now) {
+    var hour = clamp(timer.cutoffHour, 0, 23, 23);
+    var minute = clamp(timer.cutoffMinute, 0, 59, 59);
+    var endsAt = new Date(now);
+
+    endsAt.setHours(hour, minute, 0, 0);
+    if (endsAt.getTime() <= now.getTime()) {
+      endsAt.setDate(endsAt.getDate() + 1);
+    }
+
+    return remainingUntil(now, endsAt);
+  }
+
+  function remainingUntil(now, endsAt) {
+    if (!endsAt) return emptyTimerState();
+
+    var remainingMs = Math.max(0, endsAt.getTime() - now.getTime());
+    var expired = remainingMs <= 0;
+
+    return {
+      isActive: !expired,
+      isExpired: expired,
+      remainingMs: remainingMs,
+      endsAt: endsAt,
+    };
+  }
+
+  function emptyTimerState() {
+    return { isActive: false, isExpired: false, remainingMs: 0, endsAt: null };
+  }
+
+  function readStoredTimer(storage, key) {
+    try {
+      return JSON.parse(storage.getItem(key) || "null");
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeStoredTimer(storage, key, value) {
+    try {
+      storage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function parseDate(value) {
+    var date = value ? new Date(value) : null;
+
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+
+  function shouldHideExpiredCampaign(campaign) {
+    var behavior = ((campaign.timer || {}).expiredBehavior || "").toUpperCase();
+
+    return behavior === "HIDE_TIMER" || behavior === "UNPUBLISH_TIMER";
+  }
+
+  function buildTimerParts(ms, design) {
+    var totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    var days = Math.floor(totalSeconds / 86400);
+    var showDays = design.timerHideZeroDays === false || days > 0;
+    var hours = Math.floor((totalSeconds % 86400) / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+    var parts = [];
+
+    if (showDays) {
+      parts.push(timerPart("days", days, design.timerDaysLabel, "Days"));
+    }
+    parts.push(
+      timerPart(
+        "hours",
+        showDays ? hours : Math.floor(totalSeconds / 3600),
+        design.timerHoursLabel,
+        "Hrs",
+      ),
+    );
+    parts.push(timerPart("minutes", minutes, design.timerMinutesLabel, "Mins"));
+    parts.push(timerPart("seconds", seconds, design.timerSecondsLabel, "Secs"));
+
+    return parts;
+  }
+
+  function timerPart(key, value, label, fallbackLabel) {
+    return {
+      key: key,
+      value: pad(value),
+      label: label || fallbackLabel,
+      shortLabel: fallbackLabel,
+    };
+  }
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  function safeTimerStyle(value) {
+    return value === "GROUPED" || value === "BOXES" ? value : "PLAIN";
+  }
+
+  function safeTimerFormat(value) {
+    return value === "COLON" ? "COLON" : "UNITS";
+  }
+
+  function getCountdownTickAnimation(countdown) {
+    var match = String(countdown.className || "").match(
+      /\bpp-countdown--tick-(fade|flip|pulse)\b/,
+    );
+
+    return match ? match[1] : "";
+  }
+
+  function readCountdownUnitValues(countdown) {
+    try {
+      return JSON.parse(countdown.dataset.unitValues || "{}");
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function replayCountdownTick(countdown) {
+    [].slice
+      .call(countdown.querySelectorAll(".pp-countdown-tick-value"))
+      .forEach(function (value) {
+        value.classList.remove("pp-countdown-tick-value");
+        void value.offsetWidth;
+        value.classList.add("pp-countdown-tick-value");
+      });
   }
 
   function readProgressStyle(campaign) {
@@ -656,9 +986,66 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
+    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
     element.style.setProperty(
       "--pp-radius",
-      clamp(design.borderRadius, 0, 24, 0) + "px",
+      clamp(design.borderRadius, 0, 999, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-border-size",
+      clamp(design.borderSize, 0, 8, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-border-color",
+      color(design.borderColor, "transparent"),
+    );
+    element.style.setProperty(
+      "--pp-title-size",
+      clamp(design.titleFontSize, 12, 48, 18) + "px",
+    );
+    element.style.setProperty(
+      "--pp-title-color",
+      color(design.titleColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-subheading-size",
+      clamp(design.subheadingFontSize, 10, 32, 14) + "px",
+    );
+    element.style.setProperty(
+      "--pp-subheading-color",
+      color(design.subheadingColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-timer-size",
+      clamp(design.timerFontSize, 12, 72, 24) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-color",
+      color(design.timerColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-legend-size",
+      clamp(design.legendFontSize, 10, 24, 12) + "px",
+    );
+    element.style.setProperty(
+      "--pp-legend-color",
+      color(design.legendColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-timer-surface",
+      color(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border",
+      color(design.timerSurfaceBorderColor, "transparent"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border-size",
+      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-radius",
+      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
     );
     element.style.setProperty(
       "--pp-content-max-width",
@@ -674,6 +1061,37 @@
     );
     element.style.setProperty("--pp-justify", justify(design.alignment));
     element.style.setProperty("--pp-align", align(design.alignment));
+    element.style.setProperty(
+      "--pp-gap",
+      clamp(design.contentGap, 4, 48, 10) + "px",
+    );
+    element.style.setProperty(
+      "--pp-icon-size",
+      clamp(design.iconSize, 12, 64, 20) + "px",
+    );
+    element.style.setProperty(
+      "--pp-motion-duration",
+      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
+    );
+  }
+
+  function fontFamily(value) {
+    if (value === "SERIF") return "Georgia, Times New Roman, serif";
+    if (value === "MONO")
+      return "ui-monospace, SFMono-Regular, Menlo, monospace";
+    if (value === "ROUNDED")
+      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
+    if (value === "GEOMETRIC")
+      return "Avenir Next, Montserrat, system-ui, sans-serif";
+    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
+    if (value === "CONDENSED")
+      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
+    if (value === "CASUAL")
+      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
+    if (value === "SYSTEM")
+      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+
+    return "inherit";
   }
 
   function interpolate(template, amount) {
@@ -708,16 +1126,34 @@
     return anchor;
   }
 
-  function renderCloseButton(bar) {
+  function renderCloseButton(bar, design) {
     var button = document.createElement("button");
     button.className = "pp-close";
     button.type = "button";
     button.setAttribute("aria-label", "Close");
     button.innerHTML = "&times;";
     button.addEventListener("click", function () {
-      bar.remove();
+      removeBar(bar, design || {});
     });
     return button;
+  }
+
+  function removeBar(bar, design) {
+    var duration = clamp((design || {}).animationDurationMs, 0, 1500, 220);
+
+    if (
+      !(design || {}).exitAnimation ||
+      (design || {}).exitAnimation === "NONE" ||
+      duration === 0
+    ) {
+      bar.remove();
+      return;
+    }
+
+    bar.classList.add("pp-bar--closing");
+    window.setTimeout(function () {
+      bar.remove();
+    }, duration);
   }
 
   function emitImpression(campaign) {

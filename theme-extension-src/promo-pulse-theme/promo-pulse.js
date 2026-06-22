@@ -688,7 +688,15 @@
 
     if (countdown.dataset.value === nextText) return;
 
+    var previousUnitValues = readCountdownUnitValues(countdown);
+    var tickAnimation = getCountdownTickAnimation(countdown);
     countdown.dataset.value = nextText;
+    countdown.dataset.unitValues = JSON.stringify(
+      visibleParts.reduce(function (values, part) {
+        values[part.key] = part.value;
+        return values;
+      }, {}),
+    );
     countdown.replaceChildren();
     visibleParts.forEach(function (part) {
       var unit = document.createElement("span");
@@ -697,6 +705,16 @@
 
       unit.className = "pp-countdown-unit";
       value.textContent = part.value;
+      if (
+        tickAnimation &&
+        previousUnitValues[part.key] &&
+        previousUnitValues[part.key] !== part.value
+      ) {
+        value.classList.add(
+          "pp-countdown-tick-value",
+          "pp-countdown-tick-value--" + tickAnimation,
+        );
+      }
       unit.appendChild(value);
 
       if (design.timerShowLabels !== false) {
@@ -770,16 +788,31 @@
   }
 
   function replayCountdownTick(countdown) {
-    if (
-      !countdown ||
-      !/\bpp-countdown--tick-(fade|flip|pulse)\b/.test(countdown.className)
-    ) {
-      return;
-    }
+    if (!countdown) return;
 
-    countdown.classList.remove("pp-countdown--ticking");
-    void countdown.offsetWidth;
-    countdown.classList.add("pp-countdown--ticking");
+    [].slice
+      .call(countdown.querySelectorAll(".pp-countdown-tick-value"))
+      .forEach(function (value) {
+        value.classList.remove("pp-countdown-tick-value");
+        void value.offsetWidth;
+        value.classList.add("pp-countdown-tick-value");
+      });
+  }
+
+  function getCountdownTickAnimation(countdown) {
+    var match = String(countdown.className || "").match(
+      /\bpp-countdown--tick-(fade|flip|pulse)\b/,
+    );
+
+    return match ? match[1] : "";
+  }
+
+  function readCountdownUnitValues(countdown) {
+    try {
+      return JSON.parse(countdown.dataset.unitValues || "{}");
+    } catch (error) {
+      return {};
+    }
   }
 
   function getExpiredBehavior(campaign) {

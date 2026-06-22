@@ -82,12 +82,6 @@
   top: 0;
 }
 
-.pp-container .pp-bar--full-width {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: var(--pp-justify, center);
-}
-
 .pp-container .pp-bar--layout-balanced {
   width: min(100%, 470px);
   grid-template-columns: minmax(0, 1fr) auto;
@@ -492,15 +486,15 @@
   animation: pp-surface-pop-out var(--pp-motion-duration, 220ms) ease-in both;
 }
 
-.pp-countdown--ticking.pp-countdown--tick-fade {
+.pp-countdown-tick-value.pp-countdown-tick-value--fade {
   animation: pp-countdown-fade var(--pp-motion-duration, 220ms) ease-out both;
 }
 
-.pp-countdown--ticking.pp-countdown--tick-flip {
+.pp-countdown-tick-value.pp-countdown-tick-value--flip {
   animation: pp-countdown-flip var(--pp-motion-duration, 220ms) ease-out both;
 }
 
-.pp-countdown--ticking.pp-countdown--tick-pulse {
+.pp-countdown-tick-value.pp-countdown-tick-value--pulse {
   animation: pp-countdown-pulse var(--pp-motion-duration, 220ms) ease-out both;
 }
 
@@ -904,7 +898,7 @@
   .pp-surface--enter-fade,
   .pp-surface--enter-slide,
   .pp-surface--enter-pop,
-  .pp-countdown--ticking {
+  .pp-countdown-tick-value {
     animation: none !important;
   }
 }

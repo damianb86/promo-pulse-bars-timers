@@ -1574,17 +1574,9 @@ export function CampaignForm({
 
                     {isCampaignTypePickerOpen && (
                       <div className="counterpulse-campaign-type-options">
-                        <AppAlert
-                          tone="warning"
-                          title="Changing type reconfigures setup"
-                        >
-                          <p>
-                            Promo Pulse will reset placement, schedule, timer,
-                            message copy, and type-specific settings for the
-                            selected campaign type. Design, Markets, and
-                            Targeting stay intact.
-                          </p>
-                        </AppAlert>
+                        <p className="counterpulse-muted">
+                          Changing type updates setup defaults.
+                        </p>
                         <div
                           className="counterpulse-goal-list"
                           role="radiogroup"

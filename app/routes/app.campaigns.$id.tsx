@@ -1,5 +1,11 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData, useNavigation } from "react-router";
+import {
+  isRouteErrorResponse,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+  useRouteError,
+} from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   AdvancedDiscountRuleStatus,
@@ -41,6 +47,7 @@ import {
   type ExperimentRow,
 } from "../components/ExperimentsEditor";
 import { OffersEditor } from "../components/OffersEditor";
+import { NotFoundPage } from "../components/NotFoundPage";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import {
   UniqueCodesEditor,
@@ -519,6 +526,16 @@ export const loader = async ({
     uniqueCodes: uniqueCodes.map(toUniqueCodeRow),
   };
 };
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return <NotFoundPage variant="campaign" />;
+  }
+
+  throw error;
+}
 
 export const action = async ({
   params,

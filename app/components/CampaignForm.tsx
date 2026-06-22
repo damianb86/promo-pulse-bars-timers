@@ -48,6 +48,7 @@ import {
   buildCampaignFreeShippingSettingsValues,
   buildCampaignLowStockSettingsValues,
   buildCampaignTimerSettingsValues,
+  defaultCampaignFormValues,
   emptyCampaignTargetingOptions,
   parseDeliveryWorkingDays,
   splitCampaignList,
@@ -60,6 +61,11 @@ import type {
   CampaignTranslationsByLocale,
   StorefrontLocale,
 } from "../types/localization";
+import {
+  campaignTranslationFields,
+  storefrontLocales,
+} from "../types/localization";
+import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 
 type CampaignFormProps = {
@@ -255,11 +261,9 @@ const goalIconLabels: Record<CampaignFormValues["goal"], string> = {
 };
 
 type CampaignSetupPreset = {
-  design?: Partial<CampaignDesignValues>;
   form?: Partial<CampaignFormValues>;
   goal?: CampaignGoalValue;
   placementType: PlacementTypeValue;
-  productSelection?: ProductSelectionValue;
   type?: CampaignTypeValue;
 };
 
@@ -272,59 +276,16 @@ type CampaignTypeChoice = {
   value: string;
 };
 
-const countdownBarDesignPreset: Partial<CampaignDesignValues> = {
-  alignment: "CENTER",
-  backgroundType: "GRADIENT",
-  borderRadius: 0,
-  borderSize: 0,
-  contentGap: 8,
-  contentMaxWidth: 980,
-  fullWidth: true,
-  gradientAngle: 90,
-  gradientEndColor: "#B975F4",
-  gradientStartColor: "#45E4D9",
-  icon: "FIRE",
-  layout: "INLINE",
-  paddingBlock: 10,
-  paddingInline: 18,
-  positionMode: "FLOW",
-  positionSticky: true,
-  showButton: true,
-  showIcon: true,
-  timerFormat: "COLON",
-  timerShowLabels: false,
-  timerStyle: "PLAIN",
-};
-
 const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
   {
     COUNTDOWN_BAR: {
-      design: countdownBarDesignPreset,
       form: {
         timerExpiredBehavior: "UNPUBLISH_TIMER",
         timerMode: "FIXED_DATE",
       },
       placementType: "TOP_BAR",
-      productSelection: "ALL_PRODUCTS",
     },
     PRODUCT_TIMER: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 8,
-        contentMaxWidth: 560,
-        fullWidth: false,
-        icon: "CLOCK",
-        layout: "BALANCED",
-        paddingBlock: 16,
-        paddingInline: 18,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: true,
-        timerFormat: "UNITS",
-        timerShowLabels: true,
-        timerStyle: "BOXES",
-      },
       form: {
         timerExpiredBehavior: "UNPUBLISH_TIMER",
         timerMode: "FIXED_DATE",
@@ -332,23 +293,6 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       placementType: "PRODUCT_PAGE",
     },
     CART_TIMER: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 8,
-        contentMaxWidth: 420,
-        fullWidth: false,
-        icon: "CLOCK",
-        layout: "STANDARD",
-        paddingBlock: 12,
-        paddingInline: 14,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: true,
-        timerFormat: "UNITS",
-        timerShowLabels: true,
-        timerStyle: "GROUPED",
-      },
       form: {
         cartTimerDurationMinutes: "120",
         cartTimerResetBehavior: "ON_SESSION_END",
@@ -359,28 +303,8 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       },
       goal: "CART_RESCUE",
       placementType: "CART_DRAWER",
-      productSelection: "ALL_PRODUCTS",
     },
     FREE_SHIPPING_GOAL: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 8,
-        contentMaxWidth: 520,
-        fullWidth: false,
-        icon: "TRUCK",
-        layout: "BALANCED",
-        paddingBlock: 12,
-        paddingInline: 14,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: true,
-        templateKey: "free-shipping",
-        timerFormat: "COLON",
-        timerShowLabels: false,
-        timerShowSeconds: false,
-        timerStyle: "PLAIN",
-      },
       form: {
         freeShippingAutoDiscount: false,
         freeShippingDiscountCode: "FREESHIP",
@@ -390,26 +314,8 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       },
       goal: "FREE_SHIPPING",
       placementType: "CART_DRAWER",
-      productSelection: "ALL_PRODUCTS",
     },
     DELIVERY_CUTOFF: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 8,
-        contentMaxWidth: 560,
-        fullWidth: false,
-        icon: "CLOCK",
-        layout: "BALANCED",
-        paddingBlock: 14,
-        paddingInline: 18,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: true,
-        timerFormat: "UNITS",
-        timerShowLabels: true,
-        timerStyle: "GROUPED",
-      },
       form: {
         deliveryAfterCutoffBehavior: "SHOW_NEXT_WINDOW",
         deliveryCutoffHour: "14",
@@ -425,23 +331,6 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       placementType: "PRODUCT_PAGE",
     },
     LOW_STOCK: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 6,
-        contentMaxWidth: 520,
-        fullWidth: false,
-        icon: "TAG",
-        layout: "INLINE",
-        paddingBlock: 10,
-        paddingInline: 14,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: true,
-        timerFormat: "UNITS",
-        timerShowLabels: false,
-        timerStyle: "PLAIN",
-      },
       form: {
         lowStockFallbackMessage: "Only a few left",
         lowStockShowExactQuantity: false,
@@ -453,24 +342,6 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       placementType: "PRODUCT_PAGE",
     },
     PRODUCT_BADGE: {
-      design: {
-        alignment: "CENTER",
-        borderRadius: 999,
-        contentMaxWidth: 320,
-        fullWidth: false,
-        icon: "NONE",
-        layout: "INLINE",
-        paddingBlock: 6,
-        paddingInline: 12,
-        positionMode: "FLOW",
-        positionSticky: false,
-        showButton: false,
-        showIcon: false,
-        timerFormat: "COLON",
-        timerShowLabels: false,
-        timerShowSeconds: false,
-        timerStyle: "PLAIN",
-      },
       form: {
         badgePosition: "TOP_RIGHT",
         badgeShape: "PILL",
@@ -480,7 +351,6 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
       },
       goal: "PRODUCT_BADGE",
       placementType: "COLLECTION_CARD",
-      productSelection: "ALL_PRODUCTS",
     },
   };
 
@@ -511,18 +381,11 @@ const campaignGoalSetupPresets: Record<CampaignGoalValue, CampaignSetupPreset> =
       type: "PRODUCT_BADGE",
     },
     ANNOUNCEMENT: {
-      design: {
-        ...countdownBarDesignPreset,
-        icon: "NONE",
-        showIcon: false,
-        timerShowSeconds: false,
-      },
       form: {
         timerExpiredBehavior: "DO_NOTHING",
         timerMode: "FIXED_DATE",
       },
       placementType: "TOP_BAR",
-      productSelection: "ALL_PRODUCTS",
       type: "COUNTDOWN_BAR",
     },
   };
@@ -661,6 +524,9 @@ export function CampaignForm({
     placement: PreviewPlacement;
   } | null>(null);
   const [formValues, setFormValues] = useState(() => values);
+  const [localMessageTranslations, setLocalMessageTranslations] = useState(
+    () => messageTranslations,
+  );
   const [localDesignValues, setLocalDesignValues] = useState(() => design);
   const [localMobileDesignValues, setLocalMobileDesignValues] = useState(
     () => mobileDesign,
@@ -670,6 +536,7 @@ export function CampaignForm({
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
   );
+  const [isCampaignTypePickerOpen, setCampaignTypePickerOpen] = useState(false);
   const [timerIdCopied, setTimerIdCopied] = useState(false);
   const [embedHtmlCopied, setEmbedHtmlCopied] = useState(false);
   const [pickerError, setPickerError] = useState("");
@@ -737,6 +604,18 @@ export function CampaignForm({
   const activeTabMeta =
     visibleBuilderTabs.find((tab) => tab.key === activeTab) ??
     visibleBuilderTabs[0];
+  const effectiveMessageTranslations =
+    localMessageTranslations ?? messageTranslations;
+  const effectiveMessageResolvedTranslations = useMemo(
+    () =>
+      effectiveMessageTranslations
+        ? resolveCampaignTranslationValues(
+            effectiveMessageTranslations,
+            messageResolvedTranslations,
+          )
+        : messageResolvedTranslations,
+    [effectiveMessageTranslations, messageResolvedTranslations],
+  );
   const syncMessageFieldsFromTranslations = useCallback(
     (
       nextTranslations: CampaignTranslationsByLocale,
@@ -744,6 +623,7 @@ export function CampaignForm({
     ) => {
       const nextMessage = nextTranslations[locale] ?? nextTranslations.en;
 
+      setLocalMessageTranslations(nextTranslations);
       setFormValues((currentValues) => ({
         ...currentValues,
         headline: nextMessage.headline,
@@ -1196,22 +1076,33 @@ export function CampaignForm({
   };
 
   const selectCampaignTypeChoice = (choice: CampaignTypeChoice) => {
+    if (choice.value === activeCampaignTypeChoiceKey) {
+      setCampaignTypePickerOpen(false);
+      return;
+    }
+
     const preset =
       choice.value === "PRODUCT_TIMER"
         ? campaignTypeSetupPresets.PRODUCT_TIMER
         : campaignGoalSetupPresets[choice.goal];
 
-    setFormValues((currentValues) =>
-      applySetupPreset(
-        {
-          ...currentValues,
-          goal: choice.goal,
-          type: choice.type,
-        },
-        preset,
-      ),
+    const nextValues = applySetupPreset(
+      {
+        ...formValues,
+        goal: choice.goal,
+        type: choice.type,
+      },
+      preset,
     );
-    updateDesignValues(applyDesignSetupPreset(effectiveDesign, preset.design));
+    const nextTranslations = buildCampaignTypeDefaultTranslations(nextValues);
+
+    setFormValues({
+      ...nextValues,
+      ...getCampaignMessageValues(nextTranslations.en),
+    });
+    setLocalMessageTranslations(nextTranslations);
+    setCampaignPreviewPlacementOverride(null);
+    setCampaignTypePickerOpen(false);
   };
 
   const toggleDeliveryWorkingDay = (day: number) => {
@@ -1266,6 +1157,10 @@ export function CampaignForm({
   }, [design, mobileDesign, onDesignChange]);
 
   useEffect(() => {
+    setLocalMessageTranslations(messageTranslations);
+  }, [messageTranslations]);
+
+  useEffect(() => {
     onValuesChange?.(formValues);
   }, [formValues, onValuesChange]);
 
@@ -1274,10 +1169,11 @@ export function CampaignForm({
 
     const syncFormValues = window.setTimeout(() => {
       setFormValues(values);
+      setLocalMessageTranslations(messageTranslations);
     }, 0);
 
     return () => window.clearTimeout(syncFormValues);
-  }, [syncExternalValues, values]);
+  }, [messageTranslations, syncExternalValues, values]);
 
   useEffect(() => {
     if (!listenForSaveEvents) return undefined;
@@ -1290,6 +1186,7 @@ export function CampaignForm({
     const handlePublishRequest = () => submitWithAction("publishCampaign");
     const handleDiscardRequest = () => {
       setFormValues(values);
+      setLocalMessageTranslations(messageTranslations);
       setSubmitAction("saveDraft");
     };
 
@@ -1629,41 +1526,97 @@ export function CampaignForm({
                 >
                   <input name="goal" type="hidden" value={formValues.goal} />
                   <input name="type" type="hidden" value={formValues.type} />
-                  <div className="counterpulse-goal-list" role="radiogroup">
-                    {campaignTypeChoiceOptions.map((option) => (
-                      <button
-                        aria-checked={
-                          activeCampaignTypeChoiceKey === option.value
-                        }
-                        className="counterpulse-goal-card"
-                        key={option.value}
-                        role="radio"
-                        type="button"
-                        onClick={() => selectCampaignTypeChoice(option)}
+                  <div className="counterpulse-campaign-type-picker">
+                    <button
+                      aria-expanded={isCampaignTypePickerOpen}
+                      className="counterpulse-campaign-type-current"
+                      type="button"
+                      onClick={() =>
+                        setCampaignTypePickerOpen((current) => !current)
+                      }
+                    >
+                      <span
+                        className="counterpulse-goal-card__icon"
+                        aria-hidden="true"
                       >
-                        <input
-                          checked={activeCampaignTypeChoiceKey === option.value}
-                          type="radio"
-                          name="campaignTypeChoice"
-                          value={option.value}
-                          onChange={() => selectCampaignTypeChoice(option)}
-                        />
-                        <span
-                          className="counterpulse-goal-card__icon"
-                          aria-hidden="true"
+                        {activeCampaignTypeChoice.icon === "type" ? (
+                          <CampaignTypeIcon
+                            type={activeCampaignTypeChoice.type}
+                          />
+                        ) : (
+                          <GoalIcon goal={activeCampaignTypeChoice.goal} />
+                        )}
+                      </span>
+                      <span>
+                        <strong>{activeCampaignTypeChoice.label}</strong>
+                        <small>{activeCampaignTypeChoice.description}</small>
+                      </span>
+                      <span className="counterpulse-campaign-type-current__action">
+                        {isCampaignTypePickerOpen
+                          ? "Hide options"
+                          : "Change type"}
+                      </span>
+                    </button>
+
+                    {isCampaignTypePickerOpen && (
+                      <div className="counterpulse-campaign-type-options">
+                        <AppAlert
+                          tone="warning"
+                          title="Changing type reconfigures setup"
                         >
-                          {option.icon === "type" ? (
-                            <CampaignTypeIcon type={option.type} />
-                          ) : (
-                            <GoalIcon goal={option.goal} />
-                          )}
-                        </span>
-                        <span>
-                          <strong>{option.label}</strong>
-                          <small>{option.description}</small>
-                        </span>
-                      </button>
-                    ))}
+                          <p>
+                            Promo Pulse will reset placement, schedule, timer,
+                            message copy, and type-specific settings for the
+                            selected campaign type. Design, Markets, and
+                            Targeting stay intact.
+                          </p>
+                        </AppAlert>
+                        <div
+                          className="counterpulse-goal-list"
+                          role="radiogroup"
+                        >
+                          {campaignTypeChoiceOptions
+                            .filter(
+                              (option) =>
+                                option.value !== activeCampaignTypeChoiceKey,
+                            )
+                            .map((option) => (
+                              <button
+                                aria-checked={false}
+                                className="counterpulse-goal-card"
+                                key={option.value}
+                                role="radio"
+                                type="button"
+                                onClick={() => selectCampaignTypeChoice(option)}
+                              >
+                                <input
+                                  checked={false}
+                                  type="radio"
+                                  name="campaignTypeChoice"
+                                  value={option.value}
+                                  onChange={() =>
+                                    selectCampaignTypeChoice(option)
+                                  }
+                                />
+                                <span
+                                  className="counterpulse-goal-card__icon"
+                                  aria-hidden="true"
+                                >
+                                  {option.icon === "type" ? (
+                                    <CampaignTypeIcon type={option.type} />
+                                  ) : (
+                                    <GoalIcon goal={option.goal} />
+                                  )}
+                                </span>
+                                <span>
+                                  <strong>{option.label}</strong>
+                                  <small>{option.description}</small>
+                                </span>
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </FormGroup>
 
@@ -2184,15 +2137,16 @@ export function CampaignForm({
               tabId={builderTabId("message")}
               tabKey="message"
             >
-              {messageTranslations && messageResolvedTranslations ? (
+              {effectiveMessageTranslations &&
+              effectiveMessageResolvedTranslations ? (
                 <>
                   <CampaignMessageHiddenInputs values={formValues} />
                   <CampaignTranslationsEditor
                     embedded
                     errors={messageTranslationErrors}
                     initialLocale={messageInitialLocale}
-                    initialValues={messageTranslations}
-                    resolvedValues={messageResolvedTranslations}
+                    initialValues={effectiveMessageTranslations}
+                    resolvedValues={effectiveMessageResolvedTranslations}
                     showActions={false}
                     onActiveLocaleChange={syncMessageFieldsFromTranslations}
                     onValuesChange={syncMessageFieldsFromTranslations}
@@ -3049,43 +3003,91 @@ function applySetupPreset(
   values: CampaignFormValues,
   preset: CampaignSetupPreset,
 ): CampaignFormValues {
-  const productSelection = preset.productSelection ?? values.productSelection;
+  const timerMode =
+    preset.form?.timerMode ?? defaultCampaignFormValues.timerMode;
 
   return {
-    ...values,
+    ...defaultCampaignFormValues,
+    name: values.name,
+    status: values.status,
+    timezone: values.timezone,
+    productSelection: values.productSelection,
+    productIds: values.productIds,
+    excludeProductIds: values.excludeProductIds,
+    collectionIds: values.collectionIds,
+    productTags: values.productTags,
+    countrySelection: values.countrySelection,
+    countries: values.countries,
+    urlContains: values.urlContains,
+    excludedUrlContains: values.excludedUrlContains,
     ...preset.form,
     ...(preset.goal ? { goal: preset.goal } : {}),
     ...(preset.type ? { type: preset.type } : {}),
     startsAt:
-      preset.form?.timerMode && preset.form.timerMode !== "FIXED_DATE"
+      timerMode !== "FIXED_DATE"
         ? ""
         : (preset.form?.startsAt ?? values.startsAt),
     endsAt:
-      preset.form?.timerMode && preset.form.timerMode !== "FIXED_DATE"
-        ? ""
-        : (preset.form?.endsAt ?? values.endsAt),
+      timerMode !== "FIXED_DATE" ? "" : (preset.form?.endsAt ?? values.endsAt),
     placementType: preset.placementType,
     placementTypes: [preset.placementType],
-    productSelection,
   };
 }
 
-function applyDesignSetupPreset(
-  values: CampaignDesignValues,
-  preset: CampaignSetupPreset["design"],
-): CampaignDesignValues {
-  if (!preset) return values;
+function buildCampaignTypeDefaultTranslations(values: CampaignFormValues) {
+  return storefrontLocales.reduce((translations, localeOption) => {
+    translations[localeOption.locale] = {
+      ...getDefaultCampaignTranslationValues(
+        values.goal,
+        values.type,
+        localeOption.locale,
+      ),
+    };
+    return translations;
+  }, {} as CampaignTranslationsByLocale);
+}
 
-  const nextValues = {
-    ...values,
-    ...preset,
+function getCampaignMessageValues(
+  values: CampaignTranslationsByLocale["en"],
+): Pick<
+  CampaignFormValues,
+  "headline" | "subheadline" | "ctaText" | "ctaUrl" | "expiredText"
+> {
+  return {
+    headline: values.headline,
+    subheadline: values.subheadline,
+    ctaText: values.ctaText,
+    ctaUrl: values.ctaUrl,
+    expiredText: values.expiredText,
   };
+}
 
-  if (preset.icon && preset.icon !== "CUSTOM") {
-    nextValues.customIconUrl = "";
-  }
+function resolveCampaignTranslationValues(
+  values: CampaignTranslationsByLocale,
+  fallbackValues?: CampaignTranslationsByLocale,
+) {
+  return storefrontLocales.reduce((resolvedValues, localeOption) => {
+    const locale = localeOption.locale;
 
-  return nextValues;
+    campaignTranslationFields.forEach((field) => {
+      resolvedValues[locale][field.key] =
+        values[locale][field.key] ||
+        values.en[field.key] ||
+        fallbackValues?.[locale]?.[field.key] ||
+        fallbackValues?.en?.[field.key] ||
+        "";
+    });
+
+    return resolvedValues;
+  }, buildEmptyResolvedTranslations());
+}
+
+function buildEmptyResolvedTranslations() {
+  return storefrontLocales.reduce((translations, localeOption) => {
+    translations[localeOption.locale] =
+      {} as CampaignTranslationsByLocale["en"];
+    return translations;
+  }, {} as CampaignTranslationsByLocale);
 }
 
 function getCampaignTypeChoiceKey(values: CampaignFormValues) {

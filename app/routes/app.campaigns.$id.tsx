@@ -1394,7 +1394,11 @@ export const action = async ({
           startsAt: parsed.startsAt,
           endsAt: parsed.endsAt,
         });
+      } else {
+        await clearDiscountSyncForShop(id, shop.id);
       }
+    } else if (shouldClearDiscountSyncForCampaignType(parsed.values)) {
+      await clearDiscountSyncForShop(id, shop.id);
     }
 
     if (isDeliveryCutoffCampaign) {
@@ -2079,6 +2083,18 @@ function formatUnifiedCampaignTypeLabel(values: CampaignFormValues) {
   return (
     campaignGoalOptions.find((option) => option.value === values.goal)?.label ??
     formatCampaignOption(values.type)
+  );
+}
+
+function shouldClearDiscountSyncForCampaignType(values: CampaignFormValues) {
+  return (
+    values.goal === "ANNOUNCEMENT" ||
+    values.goal === "DELIVERY_CUTOFF" ||
+    values.goal === "LOW_STOCK_URGENCY" ||
+    values.goal === "PRODUCT_BADGE" ||
+    values.type === "DELIVERY_CUTOFF" ||
+    values.type === "LOW_STOCK" ||
+    values.type === "PRODUCT_BADGE"
   );
 }
 

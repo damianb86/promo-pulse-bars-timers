@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppAlert, ConfirmModal, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation, useSubmit } from "react-router";
 
@@ -68,6 +68,10 @@ export function CampaignTranslationsEditor({
     setValues(nextValues);
     onValuesChange?.(nextValues, locale);
   };
+
+  useEffect(() => {
+    setValues(initialValues);
+  }, [initialValues]);
 
   const content = (
     <>

@@ -1,6 +1,11 @@
-import { confirmAction, expect, test } from "./fixtures";
+import {
+  expect,
+  publishCurrentCampaign,
+  saveCurrentCampaignDraft,
+  test,
+} from "./fixtures";
 
-test("advanced badge rules can be created and evaluated for storefront products", async ({
+test("product badges are configured from campaign setup and evaluated for storefront products", async ({
   createCampaignViaUI,
   loginAsDemoShop,
   page,
@@ -19,38 +24,30 @@ test("advanced badge rules can be created and evaluated for storefront products"
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
-  const simpleBadgeForm = page.locator(
-    'form:has(input[name="_action"][value="saveBadgeSettings"])',
-  );
-  const advancedBadgeForm = page.locator(
-    'form:has(input[name="_action"][value="saveAdvancedBadgeRule"])',
-  );
+  await expect(
+    page.getByRole("tab", { name: "Conversion modules" }),
+  ).toHaveCount(0);
+  const form = page.locator("#campaign-basics-form");
+  const badgeRegion = form.getByRole("region", { name: "Product badge" });
 
-  await simpleBadgeForm.getByLabel("Badge text").fill("Simple badge");
-  await simpleBadgeForm
-    .getByRole("button", { name: "Save badge settings" })
-    .click();
-  await confirmAction(page, "Save badge settings");
+  await badgeRegion.getByLabel("Badge text").fill("Simple badge");
+  await badgeRegion.getByLabel("Shape").selectOption("SQUARE");
+  await badgeRegion.getByLabel("Position").selectOption("BOTTOM_LEFT");
+  await saveCurrentCampaignDraft(page);
   await page.waitForURL(`/app/campaigns/${campaignId}`);
+  await publishCurrentCampaign(page);
 
-  await advancedBadgeForm.getByLabel("Badge text").fill("VIP drop");
-  await advancedBadgeForm.getByLabel("Priority").fill("25");
-  await advancedBadgeForm.getByLabel("Product tags").fill("vip");
-  await advancedBadgeForm.getByLabel("Inventory below").fill("5");
-  await advancedBadgeForm
-    .getByRole("button", { name: "Save badge rule" })
-    .click();
-  await confirmAction(page, "Save badge rule");
-  await page.waitForURL(`/app/campaigns/${campaignId}`);
-
-  await expect(page.getByText("VIP drop")).toBeVisible();
+  await expect(badgeRegion.getByLabel("Badge text")).toHaveValue(
+    "Simple badge",
+  );
+  await expect(badgeRegion.getByLabel("Shape")).toHaveValue("SQUARE");
+  await expect(badgeRegion.getByLabel("Position")).toHaveValue("BOTTOM_LEFT");
 
   const response = await page.request.get("/api/storefront/badges", {
     params: {
       shop: "demo-shop.myshopify.com",
       placement: "COLLECTION_CARD",
-      productId: "gid://shopify/Product/e2e-advanced-badge",
+      productId: "gid://shopify/Product/e2e-simple-badge",
       productTags: "vip,summer",
       inventoryQuantity: "3",
       locale: "en",
@@ -63,8 +60,13 @@ test("advanced badge rules can be created and evaluated for storefront products"
     expect.arrayContaining([
       expect.objectContaining({
         campaignId,
-        ruleId: expect.any(String),
-        text: "VIP drop",
+        ruleId: null,
+        text: "Simple badge",
+        badge: expect.objectContaining({
+          badgePosition: "BOTTOM_LEFT",
+          badgeShape: "SQUARE",
+          badgeText: "Simple badge",
+        }),
       }),
     ]),
   );

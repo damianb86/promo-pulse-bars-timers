@@ -9,7 +9,6 @@ import {
   ExperimentStatus,
   ExperimentVariantStatus,
   Prisma,
-  Stage2RuleStatus,
 } from "@prisma/client";
 
 import {
@@ -18,19 +17,12 @@ import {
   type AdvancedDiscountRuleRow,
 } from "../components/AdvancedDiscountRulesEditor";
 import {
-  AdvancedBadgeRulesEditor,
-  type AdvancedBadgeRuleErrors,
-  type AdvancedBadgeRuleRow,
-} from "../components/AdvancedBadgeRulesEditor";
-import { BadgeSettingsEditor } from "../components/BadgeSettingsEditor";
-import {
   BehaviorTargetingEditor,
   type BehaviorTargetingErrors,
 } from "../components/BehaviorTargetingEditor";
 import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
 import { CampaignForm } from "../components/CampaignForm";
-import { DeliveryCutoffSettingsEditor } from "../components/DeliveryCutoffSettingsEditor";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
 import {
   EmailTimerEditor,
@@ -48,8 +40,6 @@ import {
   type ExperimentErrors,
   type ExperimentRow,
 } from "../components/ExperimentsEditor";
-import { FreeShippingSettingsEditor } from "../components/FreeShippingSettingsEditor";
-import { LowStockSettingsEditor } from "../components/LowStockSettingsEditor";
 import { OffersEditor } from "../components/OffersEditor";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import {
@@ -93,24 +83,6 @@ import {
   hasCampaignTranslationErrors,
   parseCampaignTranslationsFormData,
 } from "../services/campaign-translations-form.server";
-import {
-  hasBadgeSettingsErrors,
-  parseBadgeSettingsFormData,
-} from "../services/badge-settings-form.server";
-import {
-  deleteAdvancedBadgeRule,
-  listAdvancedBadgeRulesForCampaign,
-  saveAdvancedBadgeRule,
-  type AdvancedBadgeRuleInput,
-} from "../services/badges/advancedBadgeRules.server";
-import {
-  readConditions as readAdvancedBadgeConditions,
-  readDesign as readAdvancedBadgeDesign,
-} from "../services/badges/badgeRuleEngine";
-import {
-  hasDeliveryCutoffSettingsErrors,
-  parseDeliveryCutoffSettingsFormData,
-} from "../services/delivery-cutoff-settings-form.server";
 import {
   hasDiscountSettingsErrors,
   parseDiscountSettingsFormData,
@@ -162,14 +134,6 @@ import {
   type ShopifyMarket,
 } from "../services/markets/markets.server";
 import {
-  hasFreeShippingSettingsErrors,
-  parseFreeShippingSettingsFormData,
-} from "../services/free-shipping-settings-form.server";
-import {
-  hasLowStockSettingsErrors,
-  parseLowStockSettingsFormData,
-} from "../services/low-stock-settings-form.server";
-import {
   createBasicCodeDiscount,
   createFreeShippingCodeDiscount,
   getDiscountByCodeOrId,
@@ -190,7 +154,6 @@ import {
   defaultBadgeSettingsValues,
   toBadgePosition,
   toBadgeShape,
-  type BadgeSettingsErrors,
   type BadgeSettingsValues,
 } from "../types/badge";
 import {
@@ -236,7 +199,6 @@ import {
 import {
   defaultDeliveryCutoffSettingsValues,
   toAfterCutoffBehavior,
-  type DeliveryCutoffSettingsErrors,
   type DeliveryCutoffSettingsValues,
 } from "../types/delivery-cutoff";
 import {
@@ -247,12 +209,10 @@ import {
 } from "../types/discount";
 import {
   defaultFreeShippingSettingsValues,
-  type FreeShippingSettingsErrors,
   type FreeShippingSettingsValues,
 } from "../types/free-shipping";
 import {
   defaultLowStockSettingsValues,
-  type LowStockSettingsErrors,
   type LowStockSettingsValues,
 } from "../types/low-stock";
 import type {
@@ -274,20 +234,16 @@ type LoaderData = {
   id: string;
   values: CampaignFormValues;
   targetingOptions: CampaignTargetingOptions;
-  badgeValues: BadgeSettingsValues;
   designValues: CampaignDesignValues;
   mobileDesignValues: CampaignDesignValues;
   designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
-  deliveryCutoffValues: DeliveryCutoffSettingsValues;
   discountApiError: string;
   discountOptions: DiscountOption[];
   discountValues: DiscountSettingsValues;
   marketApiError: string;
   marketOptions: MarketOptionRow[];
   marketRules: MarketRuleRow[];
-  freeShippingValues: FreeShippingSettingsValues;
-  lowStockValues: LowStockSettingsValues;
   translationsViewModel: CampaignTranslationsViewModel;
   defaultLocale: StorefrontLocale;
   publication: {
@@ -298,11 +254,8 @@ type LoaderData = {
   };
   isProPlan: boolean;
   lockedFeatures: {
-    badge: string;
     customCss: string;
-    deliveryCutoff: string;
     discountSync: string;
-    advancedBadges: string;
     advancedDiscounts: string;
     markets: string;
     experiments: string;
@@ -317,7 +270,6 @@ type LoaderData = {
     advancedTargeting: string;
   };
   behaviorTargetingValues: BehaviorTargetingRules;
-  advancedBadgeRules: AdvancedBadgeRuleRow[];
   advancedDiscountRules: AdvancedDiscountRuleRow[];
   emailTimers: EmailTimerRow[];
   experiments: ExperimentRow[];
@@ -327,22 +279,16 @@ type LoaderData = {
 };
 
 type ActionData = {
-  badgeErrors?: BadgeSettingsErrors;
-  badgeValues?: BadgeSettingsValues;
   errors?: CampaignFormErrors;
   values?: CampaignFormValues;
   designErrors?: CampaignDesignErrors;
   designValues?: CampaignDesignValues;
   mobileDesignValues?: CampaignDesignValues;
-  deliveryCutoffErrors?: DeliveryCutoffSettingsErrors;
-  deliveryCutoffValues?: DeliveryCutoffSettingsValues;
   discountErrors?: DiscountSettingsErrors;
   discountNotice?: string;
   discountValues?: DiscountSettingsValues;
   marketErrors?: MarketRuleErrors;
   marketNotice?: string;
-  advancedBadgeErrors?: AdvancedBadgeRuleErrors;
-  advancedBadgeNotice?: string;
   advancedDiscountErrors?: AdvancedDiscountRuleErrors;
   advancedDiscountNotice?: string;
   emailTimerErrors?: EmailTimerErrors;
@@ -354,10 +300,6 @@ type ActionData = {
   behaviorTargetingErrors?: BehaviorTargetingErrors;
   behaviorTargetingNotice?: string;
   behaviorTargetingValues?: BehaviorTargetingRules;
-  freeShippingErrors?: FreeShippingSettingsErrors;
-  freeShippingValues?: FreeShippingSettingsValues;
-  lowStockErrors?: LowStockSettingsErrors;
-  lowStockValues?: LowStockSettingsValues;
   translationErrors?: CampaignTranslationFormErrors;
   translationValues?: CampaignTranslationsByLocale;
 };
@@ -402,11 +344,8 @@ export const loader = async ({
   );
   const effectivePlan = getEffectiveShopPlan(shop);
   const lockedFeatures = {
-    badge: getLockedFeatureReason(shop, "product_badges"),
     customCss: getLockedFeatureReason(shop, "custom_css"),
-    deliveryCutoff: getLockedFeatureReason(shop, "delivery_cutoff"),
     discountSync: getLockedFeatureReason(shop, "discount_sync"),
-    advancedBadges: canUsePremiumFeature(shop, "ADVANCED_BADGES").reason,
     advancedDiscounts: canUsePremiumFeature(shop, "ADVANCED_DISCOUNTS").reason,
     markets: canUsePremiumFeature(shop, "MARKETS_ADVANCED").reason,
     experiments: canUsePremiumFeature(shop, "AB_TESTING").reason,
@@ -436,7 +375,6 @@ export const loader = async ({
     experiments,
     advancedDiscountRules,
     emailTimers,
-    advancedBadgeRules,
     marketRules,
   ] = await Promise.all([
     listDiscountCodePoolsForCampaign(shop.id, campaign.id),
@@ -445,7 +383,6 @@ export const loader = async ({
     listExperimentsForCampaign(shop.id, campaign.id),
     listAdvancedDiscountRulesForCampaign(shop.id, campaign.id),
     listEmailTimersForCampaign(shop.id, campaign.id),
-    listAdvancedBadgeRulesForCampaign(shop.id, campaign.id),
     listMarketRulesForCampaign(shop.id, campaign.id),
   ]);
   const experimentResults = await Promise.all(
@@ -536,11 +473,6 @@ export const loader = async ({
       badgeSettings: campaign.badgeSettings,
       discountSync: campaign.discountSync,
     }),
-    badgeValues: toBadgeSettingsValues(campaign.badgeSettings),
-    deliveryCutoffValues: toDeliveryCutoffSettingsValues(
-      campaign.deliveryCutoffSettings,
-      campaign.timezone,
-    ),
     discountApiError: discountListResult.error,
     discountOptions: discountListResult.discounts,
     discountValues: toDiscountSettingsValues(campaign.discountSync),
@@ -550,10 +482,6 @@ export const loader = async ({
     marketApiError: marketListResult.error,
     marketOptions: marketListResult.markets.map(toMarketOptionRow),
     marketRules: marketRules.map(toMarketRuleRow),
-    freeShippingValues: toFreeShippingSettingsValues(
-      campaign.freeShippingSettings,
-    ),
-    lowStockValues: toLowStockSettingsValues(campaign.lowStockSettings),
     translationsViewModel: getCampaignTranslationsViewModel({
       name: campaign.name,
       type: campaign.type,
@@ -573,7 +501,6 @@ export const loader = async ({
     },
     isProPlan: canUseFeature({ plan: effectivePlan }, "custom_css").allowed,
     lockedFeatures,
-    advancedBadgeRules: advancedBadgeRules.map(toAdvancedBadgeRuleRow),
     advancedDiscountRules: advancedDiscountRules.map(toAdvancedDiscountRuleRow),
     emailTimers: emailTimers.map((timer) => toEmailTimerRow(timer, request)),
     experiments: experiments.map((experiment) =>
@@ -701,39 +628,6 @@ export const action = async ({
         translationValues: parsed.values,
         translationErrors: {
           form: "Campaign translations could not be saved. Check the fields and try again.",
-        },
-      };
-    }
-  }
-
-  if (intent === "saveFreeShippingSettings") {
-    const parsed = parseFreeShippingSettingsFormData(formData);
-
-    if (hasFreeShippingSettingsErrors(parsed.errors)) {
-      return {
-        freeShippingErrors: parsed.errors,
-        freeShippingValues: parsed.values,
-      };
-    }
-
-    try {
-      await updateFreeShippingSettingsForShop(id, shop.id, {
-        thresholdAmount: parsed.thresholdAmount,
-        currencyCode: parsed.values.currencyCode,
-        includeDiscountedSubtotal: parsed.values.includeDiscountedSubtotal,
-        emptyCartMessage: parsed.values.emptyCartMessage,
-        successMessage: parsed.values.successMessage,
-        progressStyle: parsed.values.progressStyle,
-        thresholdRules: parsed.thresholdRules,
-      });
-      return redirect(`/app/campaigns/${id}`);
-    } catch (error) {
-      console.error("Failed to update free shipping settings", error);
-
-      return {
-        freeShippingValues: parsed.values,
-        freeShippingErrors: {
-          form: "Free shipping settings could not be saved. Check the fields and try again.",
         },
       };
     }
@@ -1129,71 +1023,6 @@ export const action = async ({
   }
 
   if (
-    intent === "saveAdvancedBadgeRule" ||
-    intent === "deleteAdvancedBadgeRule"
-  ) {
-    const advancedBadgeGate = canUsePremiumFeature(shop, "ADVANCED_BADGES");
-
-    if (!advancedBadgeGate.allowed) {
-      return {
-        advancedBadgeErrors: {
-          form: advancedBadgeGate.reason,
-        },
-      };
-    }
-
-    try {
-      if (intent === "deleteAdvancedBadgeRule") {
-        const ruleId = String(formData.get("badgeRuleId") ?? "").trim();
-
-        if (!ruleId) {
-          return {
-            advancedBadgeErrors: {
-              form: "Badge rule id is required.",
-            },
-          };
-        }
-
-        await deleteAdvancedBadgeRule({
-          campaignId: id,
-          ruleId,
-          shopId: shop.id,
-        });
-
-        return redirect(`/app/campaigns/${id}`);
-      }
-
-      const parsed = parseAdvancedBadgeRuleFormData(formData);
-
-      if (parsed.errors.form) {
-        return {
-          advancedBadgeErrors: parsed.errors,
-        };
-      }
-
-      await saveAdvancedBadgeRule({
-        campaignId: id,
-        input: parsed.input,
-        ruleId: String(formData.get("badgeRuleId") ?? "").trim() || undefined,
-        shopId: shop.id,
-      });
-
-      return redirect(`/app/campaigns/${id}`);
-    } catch (error) {
-      console.error("Failed to save advanced badge rule", error);
-
-      return {
-        advancedBadgeErrors: {
-          form:
-            error instanceof Error
-              ? error.message
-              : "Badge rule could not be saved.",
-        },
-      };
-    }
-  }
-
-  if (
     intent === "saveAdvancedDiscountRule" ||
     intent === "deleteAdvancedDiscountRule"
   ) {
@@ -1397,116 +1226,6 @@ export const action = async ({
             error instanceof Error
               ? error.message
               : "Experiment could not be updated.",
-        },
-      };
-    }
-  }
-
-  if (intent === "saveLowStockSettings") {
-    const parsed = parseLowStockSettingsFormData(formData);
-
-    if (hasLowStockSettingsErrors(parsed.errors)) {
-      return {
-        lowStockErrors: parsed.errors,
-        lowStockValues: parsed.values,
-      };
-    }
-
-    try {
-      await updateLowStockSettingsForShop(id, shop.id, {
-        fallbackMessage: parsed.values.fallbackMessage,
-        showExactQuantity: parsed.values.showExactQuantity,
-        threshold: parsed.threshold,
-      });
-      return redirect(`/app/campaigns/${id}`);
-    } catch (error) {
-      console.error("Failed to update low stock settings", error);
-
-      return {
-        lowStockValues: parsed.values,
-        lowStockErrors: {
-          form: "Low stock settings could not be saved. Check the fields and try again.",
-        },
-      };
-    }
-  }
-
-  if (intent === "saveBadgeSettings") {
-    const badgeGate = canUseFeature(shop, "product_badges");
-
-    if (!badgeGate.allowed) {
-      return {
-        badgeErrors: {
-          form: badgeGate.reason,
-        },
-      };
-    }
-
-    const parsed = parseBadgeSettingsFormData(formData);
-
-    if (hasBadgeSettingsErrors(parsed.errors)) {
-      return {
-        badgeErrors: parsed.errors,
-        badgeValues: parsed.values,
-      };
-    }
-
-    try {
-      await updateBadgeSettingsForShop(id, shop.id, parsed.values);
-      return redirect(`/app/campaigns/${id}`);
-    } catch (error) {
-      console.error("Failed to update badge settings", error);
-
-      return {
-        badgeValues: parsed.values,
-        badgeErrors: {
-          form: "Badge settings could not be saved. Check the fields and try again.",
-        },
-      };
-    }
-  }
-
-  if (intent === "saveDeliveryCutoffSettings") {
-    const deliveryCutoffGate = canUseFeature(shop, "delivery_cutoff");
-
-    if (!deliveryCutoffGate.allowed) {
-      return {
-        deliveryCutoffErrors: {
-          form: deliveryCutoffGate.reason,
-        },
-      };
-    }
-
-    const parsed = parseDeliveryCutoffSettingsFormData(formData);
-
-    if (hasDeliveryCutoffSettingsErrors(parsed.errors)) {
-      return {
-        deliveryCutoffErrors: parsed.errors,
-        deliveryCutoffValues: parsed.values,
-      };
-    }
-
-    try {
-      await updateDeliveryCutoffSettingsForShop(id, shop.id, {
-        afterCutoffBehavior: parsed.values.afterCutoffBehavior,
-        countryRules: parsed.countryRules,
-        cutoffHour: parsed.cutoffHour,
-        cutoffMinute: parsed.cutoffMinute,
-        holidays: parsed.holidays,
-        maxDeliveryDays: parsed.maxDeliveryDays,
-        minDeliveryDays: parsed.minDeliveryDays,
-        processingDays: parsed.processingDays,
-        timezone: parsed.values.timezone,
-        workingDays: parsed.workingDays,
-      });
-      return redirect(`/app/campaigns/${id}`);
-    } catch (error) {
-      console.error("Failed to update delivery cutoff settings", error);
-
-      return {
-        deliveryCutoffValues: parsed.values,
-        deliveryCutoffErrors: {
-          form: "Delivery cutoff settings could not be saved. Check the fields and try again.",
         },
       };
     }
@@ -1746,8 +1465,6 @@ export default function EditCampaignPage() {
     mobileDesignValues,
     designMediaOptions,
     designViewModel,
-    badgeValues,
-    deliveryCutoffValues,
     discountApiError,
     discountOptions,
     discountValues,
@@ -1755,12 +1472,9 @@ export default function EditCampaignPage() {
     marketApiError,
     marketOptions,
     marketRules,
-    advancedBadgeRules,
     advancedDiscountRules,
     emailTimers,
     experiments,
-    freeShippingValues,
-    lowStockValues,
     uniqueCodePools,
     uniqueCodeStats,
     uniqueCodes,
@@ -1805,10 +1519,9 @@ export default function EditCampaignPage() {
     [draftCampaignValues, draftDesignValues, draftMobileDesignValues],
   );
   const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
-  const merchandisingCapabilities = useMemo(
-    () => getMerchandisingCapabilities(draftCampaignValues),
-    [draftCampaignValues],
-  );
+  const hasFreeShippingGoal =
+    draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
+    draftCampaignValues.goal === "FREE_SHIPPING";
   const updateDraftProgressStyle = (
     progressStyle: CampaignFormValues["freeShippingProgressStyle"],
   ) => {
@@ -1836,11 +1549,11 @@ export default function EditCampaignPage() {
         ...buildCampaignTimerSettingsValues(draftCampaignValues),
         endsAt: draftCampaignValues.endsAt || null,
       },
-      freeShipping: merchandisingCapabilities.hasFreeShippingGoal
+      freeShipping: hasFreeShippingGoal
         ? buildDraftFreeShippingPreview(draftCampaignValues)
         : null,
     }),
-    [designViewModel, draftCampaignValues, merchandisingCapabilities],
+    [designViewModel, draftCampaignValues, hasFreeShippingGoal],
   );
   const submittingAction = readNavigationAction(navigation.formData);
   const isSavingDraft = submittingAction === "saveDraft";
@@ -2151,54 +1864,6 @@ export default function EditCampaignPage() {
               ),
             },
             {
-              key: "merchandising",
-              label: "Conversion modules",
-              description:
-                "Configure storefront modules that support the selected campaign type: product badges, low-stock messaging, delivery cutoff presentation, and cart free-shipping progress. Discount codes and offer mechanics stay in Offers.",
-              content: (
-                <>
-                  <MerchandisingOverview
-                    capabilities={merchandisingCapabilities}
-                    values={draftCampaignValues}
-                  />
-                  <LowStockSettingsEditor
-                    enabled={merchandisingCapabilities.hasLowStock}
-                    errors={actionData?.lowStockErrors}
-                    values={actionData?.lowStockValues ?? lowStockValues}
-                  />
-                  <BadgeSettingsEditor
-                    enabled={merchandisingCapabilities.hasBadge}
-                    errors={actionData?.badgeErrors}
-                    lockedReason={lockedFeatures.badge}
-                    values={actionData?.badgeValues ?? badgeValues}
-                  />
-                  {merchandisingCapabilities.hasBadge && (
-                    <AdvancedBadgeRulesEditor
-                      errors={actionData?.advancedBadgeErrors}
-                      lockedReason={lockedFeatures.advancedBadges}
-                      notice={actionData?.advancedBadgeNotice}
-                      rules={advancedBadgeRules}
-                    />
-                  )}
-                  <DeliveryCutoffSettingsEditor
-                    enabled={merchandisingCapabilities.hasDeliveryCutoff}
-                    errors={actionData?.deliveryCutoffErrors}
-                    lockedReason={lockedFeatures.deliveryCutoff}
-                    values={
-                      actionData?.deliveryCutoffValues ?? deliveryCutoffValues
-                    }
-                  />
-                  <FreeShippingSettingsEditor
-                    enabled={merchandisingCapabilities.hasFreeShippingGoal}
-                    errors={actionData?.freeShippingErrors}
-                    values={
-                      actionData?.freeShippingValues ?? freeShippingValues
-                    }
-                  />
-                </>
-              ),
-            },
-            {
               key: "design",
               label: "Design",
               description:
@@ -2212,7 +1877,7 @@ export default function EditCampaignPage() {
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
                   progressStyle={
-                    merchandisingCapabilities.hasFreeShippingGoal
+                    hasFreeShippingGoal
                       ? draftCampaignValues.freeShippingProgressStyle
                       : undefined
                   }
@@ -2292,87 +1957,6 @@ function useShopifySaveBar({
   );
 }
 
-type MerchandisingCapabilities = {
-  hasBadge: boolean;
-  hasDeliveryCutoff: boolean;
-  hasFreeShippingGoal: boolean;
-  hasLowStock: boolean;
-};
-
-function MerchandisingOverview({
-  capabilities,
-  values,
-}: {
-  capabilities: MerchandisingCapabilities;
-  values: CampaignFormValues;
-}) {
-  const activeLabels = getActiveMerchandisingLabels(capabilities);
-  const compatibleLabels = getCompatibleMerchandisingLabels(
-    values,
-    capabilities,
-  );
-  const placementLabels =
-    getDraftPlacementTypes(values).map(formatCampaignOption);
-
-  return (
-    <s-section heading="Conversion modules">
-      <p className="counterpulse-section-description">
-        These settings control what shoppers see for campaign behaviors that are
-        not only a discount code: badges, stock urgency, delivery cutoff
-        presentation, and free-shipping progress. Offer mechanics and discount
-        sync stay in Offers. Current placements: {placementLabels.join(", ")}.
-      </p>
-
-      {activeLabels.length > 0 ? (
-        <>
-          <p className="counterpulse-section-description">
-            Active modules for this campaign:
-          </p>
-          <div className="counterpulse-detail-list">
-            {activeLabels.map((label) => (
-              <span key={label}>{label}</span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="counterpulse-section-description">
-          No conversion module is active yet. Choose a campaign type such as
-          Product badge, Low stock, Delivery cutoff, or Free shipping progress
-          to show the related settings here.
-        </p>
-      )}
-
-      {compatibleLabels.length > 0 && (
-        <>
-          <p className="counterpulse-section-description">
-            Based on the selected placement, this campaign can also support:
-          </p>
-          <div className="counterpulse-detail-list">
-            {compatibleLabels.map((label) => (
-              <span key={label}>{label}</span>
-            ))}
-          </div>
-        </>
-      )}
-    </s-section>
-  );
-}
-
-function getMerchandisingCapabilities(
-  values: CampaignFormValues,
-): MerchandisingCapabilities {
-  return {
-    hasBadge:
-      values.type === "PRODUCT_BADGE" || values.goal === "PRODUCT_BADGE",
-    hasDeliveryCutoff:
-      values.type === "DELIVERY_CUTOFF" || values.goal === "DELIVERY_CUTOFF",
-    hasFreeShippingGoal:
-      values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING",
-    hasLowStock:
-      values.type === "LOW_STOCK" || values.goal === "LOW_STOCK_URGENCY",
-  };
-}
-
 function buildDraftFreeShippingPreview(
   values: CampaignFormValues,
 ): CampaignViewModel["freeShipping"] {
@@ -2387,48 +1971,6 @@ function buildDraftFreeShippingPreview(
     successMessage: settings.successMessage,
     progressStyle: settings.progressStyle,
   };
-}
-
-function getActiveMerchandisingLabels(capabilities: MerchandisingCapabilities) {
-  return [
-    capabilities.hasBadge ? "Product badge" : "",
-    capabilities.hasLowStock ? "Low stock message" : "",
-    capabilities.hasDeliveryCutoff ? "Delivery cutoff module" : "",
-    capabilities.hasFreeShippingGoal ? "Free shipping progress" : "",
-  ].filter(Boolean);
-}
-
-function getCompatibleMerchandisingLabels(
-  values: CampaignFormValues,
-  capabilities: MerchandisingCapabilities,
-) {
-  const placements = new Set(getDraftPlacementTypes(values));
-  const labels = new Set<string>();
-  const hasProductSurface =
-    placements.has("PRODUCT_PAGE") ||
-    placements.has("PRODUCT_PAGE_BADGE") ||
-    placements.has("COLLECTION_CARD") ||
-    placements.has("CUSTOM_SELECTOR");
-  const hasCartSurface =
-    placements.has("CART_PAGE") || placements.has("CART_DRAWER");
-
-  if (hasProductSurface) {
-    if (!capabilities.hasBadge) labels.add("Product badge");
-    if (!capabilities.hasLowStock) labels.add("Low stock message");
-    if (!capabilities.hasDeliveryCutoff) labels.add("Delivery cutoff module");
-  }
-
-  if (hasCartSurface && !capabilities.hasFreeShippingGoal) {
-    labels.add("Free shipping progress");
-  }
-
-  return Array.from(labels);
-}
-
-function getDraftPlacementTypes(values: CampaignFormValues) {
-  return values.placementTypes.length > 0
-    ? values.placementTypes
-    : [values.placementType];
 }
 
 function CampaignDesignDraftHiddenInputs({
@@ -2480,15 +2022,6 @@ function getActionErrorSectionKey(actionData: ActionData | undefined) {
     hasErrorValues(actionData.marketErrors)
   ) {
     return "targeting";
-  }
-  if (
-    hasErrorValues(actionData.badgeErrors) ||
-    hasErrorValues(actionData.advancedBadgeErrors) ||
-    hasErrorValues(actionData.deliveryCutoffErrors) ||
-    hasErrorValues(actionData.freeShippingErrors) ||
-    hasErrorValues(actionData.lowStockErrors)
-  ) {
-    return "merchandising";
   }
   if (
     hasErrorValues(actionData.errors) ||
@@ -3082,188 +2615,6 @@ function normalizeMarketLocale(value: string) {
   return value.replace("_", "-").toLowerCase();
 }
 
-function parseAdvancedBadgeRuleFormData(formData: FormData): {
-  errors: AdvancedBadgeRuleErrors;
-  input: AdvancedBadgeRuleInput;
-} {
-  const errors: AdvancedBadgeRuleErrors = {};
-  const priority = Number(formData.get("badgeRulePriority"));
-  const status = readStage2RuleStatus(
-    String(formData.get("badgeRuleStatus") ?? ""),
-  );
-  const badgeText = String(formData.get("badgeRuleText") ?? "").trim();
-  const textByLocale = parseTextByLocaleJson(
-    String(formData.get("badgeRuleTextByLocaleJson") ?? ""),
-    errors,
-  );
-  const metafield = readMetafieldRule(formData, errors);
-
-  if (!badgeText) {
-    errors.badgeText = "Badge text is required.";
-    errors.form = errors.badgeText;
-  }
-
-  if (!Number.isInteger(priority) || priority < 0 || priority > 1000) {
-    errors.priority = "Priority must be an integer from 0 to 1000.";
-    errors.form = errors.priority;
-  }
-
-  if (!status) {
-    errors.form = "Badge rule status is invalid.";
-  }
-
-  const conditions = removeEmptyJsonValues({
-    productTags: parseMultilineIds(formData.get("badgeRuleProductTags")),
-    collectionIds: parseMultilineIds(formData.get("badgeRuleCollectionIds")),
-    vendors: parseMultilineIds(formData.get("badgeRuleVendor")),
-    inventoryBelow: parseOptionalInteger(
-      formData.get("badgeRuleInventoryBelow"),
-    ),
-    discountActive: isFormCheckboxChecked(formData, "badgeRuleDiscountActive")
-      ? true
-      : null,
-    compareAtPriceRequired: isFormCheckboxChecked(
-      formData,
-      "badgeRuleCompareAtPrice",
-    ),
-    metafields: metafield ? [metafield] : [],
-    markets: parseMultilineIds(formData.get("badgeRuleMarkets")),
-    locales: parseMultilineIds(formData.get("badgeRuleLocales")),
-    startsAt: toIsoDateString(formData.get("badgeRuleStartsAt")),
-    endsAt: toIsoDateString(formData.get("badgeRuleEndsAt")),
-  });
-  const design = removeEmptyJsonValues({
-    text: badgeText,
-    textByLocale,
-    shape: String(formData.get("badgeRuleShape") ?? "PILL"),
-    position: String(formData.get("badgeRulePosition") ?? "TOP_RIGHT"),
-    backgroundColor: String(
-      formData.get("badgeRuleBackgroundColor") ?? "#111827",
-    ),
-    textColor: String(formData.get("badgeRuleTextColor") ?? "#ffffff"),
-    accentColor: String(formData.get("badgeRuleAccentColor") ?? "#22c55e"),
-    fontSize: parseOptionalInteger(formData.get("badgeRuleFontSize")) ?? 13,
-    url: String(formData.get("badgeRuleUrl") ?? "").trim(),
-  });
-
-  return {
-    errors,
-    input: {
-      priority: Number.isInteger(priority) ? priority : 0,
-      status: status ?? Stage2RuleStatus.DRAFT,
-      conditions,
-      design,
-    },
-  };
-}
-
-function readStage2RuleStatus(value: string) {
-  if (
-    value === Stage2RuleStatus.DRAFT ||
-    value === Stage2RuleStatus.ACTIVE ||
-    value === Stage2RuleStatus.PAUSED ||
-    value === Stage2RuleStatus.ARCHIVED
-  ) {
-    return value;
-  }
-
-  return null;
-}
-
-function parseTextByLocaleJson(value: string, errors: AdvancedBadgeRuleErrors) {
-  const rawValue = value.trim();
-
-  if (!rawValue) return {};
-
-  try {
-    const parsed = JSON.parse(rawValue) as unknown;
-
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      errors.textByLocaleJson = "Translations JSON must be an object.";
-      errors.form = errors.textByLocaleJson;
-      return {};
-    }
-
-    return Object.entries(parsed).reduce<Record<string, string>>(
-      (translations, [locale, text]) => {
-        if (typeof text === "string" && text.trim()) {
-          translations[locale.trim()] = text.trim();
-        }
-
-        return translations;
-      },
-      {},
-    );
-  } catch {
-    errors.textByLocaleJson = "Translations JSON is invalid.";
-    errors.form = errors.textByLocaleJson;
-    return {};
-  }
-}
-
-function readMetafieldRule(
-  formData: FormData,
-  errors: AdvancedBadgeRuleErrors,
-) {
-  const namespace = String(
-    formData.get("badgeRuleMetafieldNamespace") ?? "",
-  ).trim();
-  const key = String(formData.get("badgeRuleMetafieldKey") ?? "").trim();
-  const value = String(formData.get("badgeRuleMetafieldValue") ?? "").trim();
-
-  if (!namespace && !key && !value) return null;
-
-  if (!namespace || !key) {
-    errors.metafield =
-      "Metafield namespace and key are required when using metafield matching.";
-    errors.form = errors.metafield;
-    return null;
-  }
-
-  return removeEmptyJsonValues({ namespace, key, value });
-}
-
-function parseOptionalInteger(value: FormDataEntryValue | null) {
-  const rawValue = String(value ?? "").trim();
-  if (!rawValue) return null;
-
-  const number = Number(rawValue);
-
-  return Number.isInteger(number) ? number : null;
-}
-
-function toIsoDateString(value: FormDataEntryValue | null) {
-  const rawValue = String(value ?? "").trim();
-  if (!rawValue) return null;
-
-  const date = new Date(rawValue);
-
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function removeEmptyJsonValues(
-  value: Record<string, unknown>,
-): Prisma.InputJsonObject {
-  const result = Object.entries(value).reduce<
-    Record<string, Prisma.InputJsonValue>
-  >((result, [key, item]) => {
-    if (item == null || item === "") return result;
-    if (Array.isArray(item) && item.length === 0) return result;
-    if (
-      typeof item === "object" &&
-      !Array.isArray(item) &&
-      Object.keys(item).length === 0
-    ) {
-      return result;
-    }
-
-    result[key] = item as Prisma.InputJsonValue;
-    return result;
-  }, {});
-
-  return result as Prisma.InputJsonObject;
-}
-
 function isFormCheckboxChecked(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
@@ -3773,43 +3124,6 @@ function toEmailTimerRow(
   };
 }
 
-function toAdvancedBadgeRuleRow(rule: {
-  id: string;
-  priority: number;
-  status: string;
-  conditions: unknown;
-  design: unknown;
-}): AdvancedBadgeRuleRow {
-  const conditions = readAdvancedBadgeConditions(rule.conditions);
-  const design = readAdvancedBadgeDesign(rule.design);
-  const backgroundColor = design.backgroundColor ?? "#111827";
-  const textColor = design.textColor ?? "#FFFFFF";
-  const accentColor = design.accentColor ?? "#22C55E";
-
-  return {
-    id: rule.id,
-    priority: rule.priority,
-    status: formatEnum(rule.status),
-    text: design.text || design.textByLocale?.en || "Limited offer",
-    shape: formatEnum(design.shape ?? "PILL"),
-    position: formatEnum(design.position ?? "TOP_RIGHT"),
-    conditionsSummary: summarizeAdvancedBadgeConditions(conditions),
-    scheduleSummary: summarizeAdvancedBadgeSchedule(conditions),
-    previewStyle: {
-      backgroundColor,
-      borderColor: accentColor,
-      borderRadius:
-        design.shape === "SQUARE"
-          ? "0"
-          : design.shape === "ROUNDED"
-            ? "8px"
-            : "999px",
-      color: textColor,
-      fontSize: `${design.fontSize ?? 13}px`,
-    },
-  };
-}
-
 function toAdvancedDiscountRuleRow(rule: {
   id: string;
   title: string;
@@ -3838,49 +3152,6 @@ function toAdvancedDiscountRuleRow(rule: {
     endsAt: toShortDateTime(rule.endsAt),
     shopifyDiscountId: rule.shopifyDiscountId ?? "",
   };
-}
-
-function summarizeAdvancedBadgeConditions(
-  conditions: ReturnType<typeof readAdvancedBadgeConditions>,
-) {
-  const parts = [
-    conditions.productTags?.length
-      ? `tags: ${conditions.productTags.join(", ")}`
-      : "",
-    conditions.collectionIds?.length
-      ? `collections: ${conditions.collectionIds.length}`
-      : "",
-    conditions.vendors?.length
-      ? `vendor: ${conditions.vendors.join(", ")}`
-      : "",
-    conditions.inventoryBelow != null
-      ? `inventory < ${conditions.inventoryBelow}`
-      : "",
-    conditions.discountActive === true ? "active discount" : "",
-    conditions.compareAtPriceRequired ? "compare-at price" : "",
-    conditions.metafields?.length ? "metafield" : "",
-    conditions.markets?.length
-      ? `markets: ${conditions.markets.join(", ")}`
-      : "",
-    conditions.locales?.length
-      ? `locales: ${conditions.locales.join(", ")}`
-      : "",
-  ].filter(Boolean);
-
-  return parts.join(" | ");
-}
-
-function summarizeAdvancedBadgeSchedule(
-  conditions: ReturnType<typeof readAdvancedBadgeConditions>,
-) {
-  const startsAt = toShortDateTime(conditions.startsAt ?? null);
-  const endsAt = toShortDateTime(conditions.endsAt ?? null);
-
-  if (startsAt && endsAt) return `${startsAt} to ${endsAt}`;
-  if (startsAt) return `from ${startsAt}`;
-  if (endsAt) return `until ${endsAt}`;
-
-  return "";
 }
 
 function jsonListText(value: unknown) {

@@ -171,8 +171,12 @@ export async function selectOnlyCampaignPlacement(
   placement: string,
 ) {
   const label = placementLabel(placement);
+  const name =
+    placement === "PRODUCT_PAGE"
+      ? /^Product page Product detail\b/
+      : new RegExp(`^${escapeRegExp(label)}\\b`);
   const target = scope.getByRole("button", {
-    name: new RegExp(`^${escapeRegExp(label)}\\b`),
+    name,
   });
 
   await target.click();

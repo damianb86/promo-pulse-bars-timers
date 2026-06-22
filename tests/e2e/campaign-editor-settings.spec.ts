@@ -3,6 +3,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  saveCurrentCampaignDraft,
   selectTimezone,
   test,
 } from "./fixtures";
@@ -16,52 +17,31 @@ test("free shipping settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Free Shipping Goal" }).click();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
-  const form = page.locator(
-    'form:has(input[name="_action"][value="saveFreeShippingSettings"])',
-  );
+  await expect(
+    page.getByRole("tab", { name: "Conversion modules" }),
+  ).toHaveCount(0);
+  const form = page.locator("#campaign-basics-form");
 
   await form.getByLabel("Threshold amount").fill("150");
   await form.getByLabel("Currency code").fill("eur");
   await form.getByLabel("Progress style").selectOption("COMPACT");
   await form
-    .getByLabel("Empty cart fallback message")
+    .getByLabel("Empty cart message")
     .fill("Add items for free EU shipping");
-  await form
-    .getByLabel("Success fallback message")
-    .fill("EU free shipping unlocked");
-  await form.getByLabel("Country/market threshold JSON").fill('{"DE":150}');
+  await form.getByLabel("Unlocked message").fill("EU free shipping unlocked");
 
-  await form
-    .getByRole("button", { name: "Save free shipping settings" })
-    .click();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/app/campaigns/") &&
-        response.request().method() === "POST",
-    ),
-    confirmAction(page, "Save free shipping settings"),
-  ]);
+  await saveCurrentCampaignDraft(page);
   await page.reload();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(form.getByLabel("Threshold amount")).toHaveValue("150");
   await expect(form.getByLabel("Currency code")).toHaveValue("EUR");
   await expect(form.getByLabel("Progress style")).toHaveValue("COMPACT");
-  await expect(form.getByLabel("Empty cart fallback message")).toHaveValue(
+  await expect(form.getByLabel("Empty cart message")).toHaveValue(
     "Add items for free EU shipping",
   );
-  await expect(form.getByLabel("Success fallback message")).toHaveValue(
+  await expect(form.getByLabel("Unlocked message")).toHaveValue(
     "EU free shipping unlocked",
   );
-  await expect
-    .poll(async () =>
-      JSON.parse(
-        await form.getByLabel("Country/market threshold JSON").inputValue(),
-      ),
-    )
-    .toEqual({ DE: 150 });
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -76,51 +56,41 @@ test("delivery cutoff settings persist from the campaign editor", async ({
   await loginAsDemoShop("/app/campaigns");
 
   await page.getByRole("link", { name: "E2E Delivery Cutoff" }).click();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
-  const form = page.locator(
-    'form:has(input[name="_action"][value="saveDeliveryCutoffSettings"])',
-  );
+  await expect(
+    page.getByRole("tab", { name: "Conversion modules" }),
+  ).toHaveCount(0);
+  const form = page.locator("#campaign-basics-form");
 
   await form.getByLabel("Cutoff hour").fill("16");
   await form.getByLabel("Cutoff minute").fill("30");
+  await page.getByRole("tab", { name: "Schedule" }).click();
   await selectTimezone(form, "Timezone", "UTC-05", "America/New_York");
-  await form
-    .getByLabel("After cutoff behavior")
+  await page.getByRole("tab", { name: "Setup" }).click();
+  const deliveryRegion = form.getByRole("region", {
+    name: "Delivery promise",
+  });
+  await deliveryRegion
+    .getByLabel("After cutoff")
     .selectOption("SHOW_AFTER_CUTOFF_MESSAGE");
-  await form.getByLabel("Processing days").fill("2");
-  await form.getByLabel("Minimum delivery days").fill("3");
-  await form.getByLabel("Maximum delivery days").fill("6");
-  await form.getByLabel("Working days JSON").fill("[1,2,3,4,5]");
-  await form.getByLabel("Holidays JSON").fill('["2026-12-25"]');
-  await form.getByLabel("Country rules JSON").fill('{"US":{"cutoffHour":15}}');
+  await deliveryRegion.getByLabel("Processing days").fill("2");
+  await deliveryRegion.getByLabel("Minimum delivery days").fill("3");
+  await deliveryRegion.getByLabel("Maximum delivery days").fill("6");
 
-  await form
-    .getByRole("button", { name: "Save delivery cutoff settings" })
-    .click();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/app/campaigns/") &&
-        response.request().method() === "POST",
-    ),
-    confirmAction(page, "Save delivery cutoff settings"),
-  ]);
+  await saveCurrentCampaignDraft(page);
   await page.reload();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
-  await expect(form.getByLabel("Cutoff hour")).toHaveValue("16");
-  await expect(form.getByLabel("Cutoff minute")).toHaveValue("30");
-  await expect(form.getByLabel("After cutoff behavior")).toHaveValue(
+  await expect(deliveryRegion.getByLabel("Cutoff hour")).toHaveValue("16");
+  await expect(deliveryRegion.getByLabel("Cutoff minute")).toHaveValue("30");
+  await expect(deliveryRegion.getByLabel("After cutoff")).toHaveValue(
     "SHOW_AFTER_CUTOFF_MESSAGE",
   );
-  await expect(form.getByLabel("Processing days")).toHaveValue("2");
-  await expect(form.getByLabel("Minimum delivery days")).toHaveValue("3");
-  await expect(form.getByLabel("Maximum delivery days")).toHaveValue("6");
-  await expect
-    .poll(async () =>
-      JSON.parse(await form.getByLabel("Holidays JSON").inputValue()),
-    )
-    .toEqual(["2026-12-25"]);
+  await expect(deliveryRegion.getByLabel("Processing days")).toHaveValue("2");
+  await expect(deliveryRegion.getByLabel("Minimum delivery days")).toHaveValue(
+    "3",
+  );
+  await expect(deliveryRegion.getByLabel("Maximum delivery days")).toHaveValue(
+    "6",
+  );
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -143,30 +113,23 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "LOW_STOCK",
   });
 
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
-  const lowStockForm = page.locator(
-    'form:has(input[name="_action"][value="saveLowStockSettings"])',
-  );
+  await expect(
+    page.getByRole("tab", { name: "Conversion modules" }),
+  ).toHaveCount(0);
+  const lowStockForm = page.locator("#campaign-basics-form");
   await lowStockForm.getByLabel("Inventory threshold").fill("7");
-  await lowStockForm.getByLabel("Show exact quantity").check();
+  await lowStockForm
+    .getByLabel("Show exact quantity when Shopify provides it")
+    .check();
   await lowStockForm.getByLabel("Fallback message").fill("Low stock E2E");
 
-  await lowStockForm
-    .getByRole("button", { name: "Save low stock settings" })
-    .click();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/app/campaigns/") &&
-        response.request().method() === "POST",
-    ),
-    confirmAction(page, "Save low stock settings"),
-  ]);
+  await saveCurrentCampaignDraft(page);
   await page.reload();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
   await expect(lowStockForm.getByLabel("Inventory threshold")).toHaveValue("7");
-  await expect(lowStockForm.getByLabel("Show exact quantity")).toBeChecked();
+  await expect(
+    lowStockForm.getByLabel("Show exact quantity when Shopify provides it"),
+  ).toBeChecked();
   await expect(lowStockForm.getByLabel("Fallback message")).toHaveValue(
     "Low stock E2E",
   );
@@ -199,30 +162,20 @@ test("low stock, badge, and manual discount settings can be saved", async ({
     type: "PRODUCT_BADGE",
   });
 
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
-  const badgeForm = page.locator(
-    'form:has(input[name="_action"][value="saveBadgeSettings"])',
-  );
-  await badgeForm.getByLabel("Badge text").fill("New drop");
-  await badgeForm.getByLabel("Badge shape").selectOption("SQUARE");
-  await badgeForm.getByLabel("Badge position").selectOption("BOTTOM_LEFT");
-  await badgeForm.getByRole("button", { name: "Save badge settings" }).click();
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/app/campaigns/") &&
-        response.request().method() === "POST",
-    ),
-    confirmAction(page, "Save badge settings"),
-  ]);
+  await expect(
+    page.getByRole("tab", { name: "Conversion modules" }),
+  ).toHaveCount(0);
+  const badgeForm = page.locator("#campaign-basics-form");
+  const badgeRegion = badgeForm.getByRole("region", { name: "Product badge" });
+  await badgeRegion.getByLabel("Badge text").fill("New drop");
+  await badgeRegion.getByLabel("Shape").selectOption("SQUARE");
+  await badgeRegion.getByLabel("Position").selectOption("BOTTOM_LEFT");
+  await saveCurrentCampaignDraft(page);
   await page.reload();
-  await page.getByRole("tab", { name: "Conversion modules" }).click();
 
-  await expect(badgeForm.getByLabel("Badge text")).toHaveValue("New drop");
-  await expect(badgeForm.getByLabel("Badge shape")).toHaveValue("SQUARE");
-  await expect(badgeForm.getByLabel("Badge position")).toHaveValue(
-    "BOTTOM_LEFT",
-  );
+  await expect(badgeRegion.getByLabel("Badge text")).toHaveValue("New drop");
+  await expect(badgeRegion.getByLabel("Shape")).toHaveValue("SQUARE");
+  await expect(badgeRegion.getByLabel("Position")).toHaveValue("BOTTOM_LEFT");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

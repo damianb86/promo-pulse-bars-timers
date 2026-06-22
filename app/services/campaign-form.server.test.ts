@@ -74,7 +74,7 @@ describe("campaign form parsing and validation", () => {
       formData({
         accentColor: "#FFFFFF",
         backgroundColor: "#FFFFFF",
-        borderRadius: "99",
+        borderRadius: "-1",
         buttonColor: "#FFFFFF",
         buttonTextColor: "#FFFFFF",
         customCss: ".pp-bar { opacity: .9; }",
@@ -89,7 +89,7 @@ describe("campaign form parsing and validation", () => {
 
     expect(parsed.values.customCss).toBe("");
     expect(parsed.errors).toMatchObject({
-      borderRadius: "Border radius must be between 0 and 24.",
+      borderRadius: "Border radius must be 0 or greater.",
       buttonTextColor:
         "Button text color needs stronger contrast with button color.",
       customCss: "Custom CSS requires the Pro plan.",
@@ -344,7 +344,9 @@ describe("advanced campaign settings form parsing", () => {
       productTags: ["summer", "vip"],
       countries: ["US", "AR"],
     });
-    expect(buildCampaignFreeShippingSettingsValues(parsed.values)).toMatchObject({
+    expect(
+      buildCampaignFreeShippingSettingsValues(parsed.values),
+    ).toMatchObject({
       thresholdAmount: "100",
       currencyCode: "USD",
       includeDiscountedSubtotal: true,
@@ -426,7 +428,8 @@ describe("advanced campaign settings form parsing", () => {
       ).errors,
     ).toMatchObject({
       lowStockThreshold: "Enter a low-stock threshold from 1 to 9999.",
-      lowStockFallbackMessage: "Keep the fallback message under 180 characters.",
+      lowStockFallbackMessage:
+        "Keep the fallback message under 180 characters.",
     });
 
     expect(

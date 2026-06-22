@@ -2110,7 +2110,7 @@ function sanitizePartialDesign(
       ? { fontSize: clampInteger(design.fontSize, 11, 22) }
       : {}),
     ...(typeof design.borderRadius === "number"
-      ? { borderRadius: clampInteger(design.borderRadius, 0, 24) }
+      ? { borderRadius: clampInteger(design.borderRadius, 0, 999) }
       : {}),
     ...(typeof design.borderSize === "number"
       ? { borderSize: clampInteger(design.borderSize, 0, 8) }

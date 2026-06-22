@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   CampaignControlStatusBadge,
   CampaignPublicationStatusBadge,
@@ -28,18 +28,30 @@ type CampaignEditorLayoutProps = {
     isSubmitting?: boolean;
     onPublish?: () => void;
   };
+  attentionSectionKey?: string;
   sections: CampaignEditorSection[];
 };
 
 export function CampaignEditorLayout({
   actionBar,
+  attentionSectionKey,
   sections,
 }: CampaignEditorLayoutProps) {
   const [activeSectionKey, setActiveSectionKey] = useState(
     () => sections[0]?.key ?? "",
   );
+  const sectionKeyList = sections.map((section) => section.key).join("|");
   const activeSection =
     sections.find((section) => section.key === activeSectionKey) ?? sections[0];
+
+  useEffect(() => {
+    if (!attentionSectionKey) return;
+    if (!sections.some((section) => section.key === attentionSectionKey)) {
+      return;
+    }
+
+    setActiveSectionKey(attentionSectionKey);
+  }, [attentionSectionKey, sectionKeyList]);
 
   if (!activeSection) return null;
 

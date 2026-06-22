@@ -1,15 +1,12 @@
-import { useMemo, useState } from "react";
-import { AppAlert } from "./Notifications";
+import { useEffect, useMemo, useState } from "react";
+import { AppAlert, InfoModal } from "./Notifications";
 
 import { DesignControls } from "./DesignControls";
 import {
   CampaignPreviewPanel,
   type PreviewPlacement,
 } from "./CampaignPreviewPanel";
-import {
-  DevicePreviewToggle,
-  type PreviewDevice,
-} from "./DevicePreviewToggle";
+import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 import type {
   CampaignDesignErrors,
@@ -66,8 +63,12 @@ export function CampaignDesignEditor({
       ? placementOverride.placement
       : primaryPlacement;
   const activeDesign = device === "mobile" ? mobileDesign : design;
-  const updateActiveDesign =
-    device === "mobile" ? onMobileChange : onChange;
+  const updateActiveDesign = device === "mobile" ? onMobileChange : onChange;
+  const designErrorSummary = useMemo(
+    () => buildDesignErrorSummary(errors),
+    [errors],
+  );
+  const [openErrorModalKey, setOpenErrorModalKey] = useState("");
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -81,9 +82,30 @@ export function CampaignDesignEditor({
       placement: nextPlacement,
     });
   };
+  const closeErrorModal = () => {
+    const targetField = designErrorSummary?.field;
+
+    setOpenErrorModalKey("");
+    window.setTimeout(() => focusDesignErrorField(targetField), 0);
+  };
+
+  useEffect(() => {
+    if (!designErrorSummary) return;
+
+    setOpenErrorModalKey(designErrorSummary.key);
+  }, [designErrorSummary]);
 
   return (
     <s-section heading="Design & Preview">
+      <InfoModal
+        closeLabel="Review field"
+        open={Boolean(designErrorSummary && openErrorModalKey)}
+        title="Design could not be saved"
+        onClose={closeErrorModal}
+      >
+        <p>{designErrorSummary?.message}</p>
+      </InfoModal>
+
       {errors?.form && (
         <AppAlert tone="critical" title="Design could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
@@ -137,6 +159,88 @@ export function CampaignDesignEditor({
       </div>
     </s-section>
   );
+}
+
+const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
+  "layout",
+  "templateKey",
+  "backgroundType",
+  "backgroundImageUrl",
+  "backgroundColor",
+  "gradientStartColor",
+  "gradientEndColor",
+  "gradientAngle",
+  "borderRadius",
+  "borderSize",
+  "borderColor",
+  "alignment",
+  "paddingBlock",
+  "paddingInline",
+  "contentGap",
+  "contentMaxWidth",
+  "fontFamily",
+  "titleFontSize",
+  "titleColor",
+  "subheadingFontSize",
+  "subheadingColor",
+  "timerFontSize",
+  "timerColor",
+  "legendFontSize",
+  "legendColor",
+  "timerFormat",
+  "timerStyle",
+  "timerSurfaceColor",
+  "timerSurfaceRadius",
+  "timerSurfaceBorderSize",
+  "timerSurfaceBorderColor",
+  "icon",
+  "customIconUrl",
+  "iconSize",
+  "accentColor",
+  "buttonColor",
+  "buttonTextColor",
+  "closeButtonColor",
+  "positionMode",
+  "entranceAnimation",
+  "exitAnimation",
+  "animationDurationMs",
+  "timerTickAnimation",
+  "customCss",
+];
+
+function buildDesignErrorSummary(errors?: CampaignDesignErrors) {
+  if (!errors) return null;
+
+  const field = designErrorFieldOrder.find((key) => errors[key]);
+  const message = field
+    ? errors[field]
+    : errors.form || Object.values(errors).find(Boolean);
+
+  if (!message) return null;
+
+  return {
+    field,
+    key: `${field ?? "form"}:${message}`,
+    message,
+  };
+}
+
+function focusDesignErrorField(field?: keyof CampaignDesignErrors) {
+  const selector = field
+    ? `[name="${field}"], [data-design-error-field="${field}"]`
+    : ".counterpulse-design-editor__controls";
+  const target = document.querySelector<HTMLElement>(selector);
+
+  target?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLSelectElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLButtonElement
+  ) {
+    target.focus({ preventScroll: true });
+  }
 }
 
 function isTimerShown(timer: CampaignViewModel["timer"]) {

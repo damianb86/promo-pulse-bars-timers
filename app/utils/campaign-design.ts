@@ -146,12 +146,8 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     errors.fontSize = "Font size must be between 10 and 24.";
   }
 
-  if (
-    !Number.isInteger(values.borderRadius) ||
-    values.borderRadius < 0 ||
-    values.borderRadius > 24
-  ) {
-    errors.borderRadius = "Border radius must be between 0 and 24.";
+  if (!Number.isInteger(values.borderRadius) || values.borderRadius < 0) {
+    errors.borderRadius = "Border radius must be 0 or greater.";
   }
 
   if (

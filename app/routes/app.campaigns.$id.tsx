@@ -1880,6 +1880,7 @@ export default function EditCampaignPage() {
     publication,
     hasUnsavedChanges,
   );
+  const errorAttentionSectionKey = getActionErrorSectionKey(actionData);
 
   return (
     <>
@@ -1893,6 +1894,7 @@ export default function EditCampaignPage() {
       />
       <s-page inlineSize="large" heading="Edit campaign">
         <CampaignEditorLayout
+          attentionSectionKey={errorAttentionSectionKey}
           actionBar={{
             campaignSectionKey: "campaign",
             campaignTypeLabel,
@@ -2454,6 +2456,51 @@ function readNavigationAction(formData: FormData | undefined) {
   const action = formData?.get("_action");
 
   return typeof action === "string" ? action : "";
+}
+
+function getActionErrorSectionKey(actionData: ActionData | undefined) {
+  if (!actionData) return undefined;
+  if (hasErrorValues(actionData.designErrors)) return "design";
+  if (
+    hasErrorValues(actionData.discountErrors) ||
+    hasErrorValues(actionData.uniqueCodeErrors) ||
+    hasErrorValues(actionData.advancedDiscountErrors) ||
+    hasErrorValues(actionData.emailTimerErrors)
+  ) {
+    return "offers";
+  }
+  if (hasErrorValues(actionData.experimentErrors)) return "experiments";
+  if (
+    hasErrorValues(actionData.behaviorTargetingErrors) ||
+    hasErrorValues(actionData.marketErrors)
+  ) {
+    return "targeting";
+  }
+  if (
+    hasErrorValues(actionData.badgeErrors) ||
+    hasErrorValues(actionData.advancedBadgeErrors) ||
+    hasErrorValues(actionData.deliveryCutoffErrors) ||
+    hasErrorValues(actionData.freeShippingErrors) ||
+    hasErrorValues(actionData.lowStockErrors)
+  ) {
+    return "merchandising";
+  }
+  if (
+    hasErrorValues(actionData.errors) ||
+    hasErrorValues(actionData.translationErrors)
+  ) {
+    return "campaign";
+  }
+
+  return undefined;
+}
+
+function hasErrorValues(errors: unknown) {
+  return (
+    !!errors &&
+    typeof errors === "object" &&
+    Object.values(errors).some(Boolean)
+  );
 }
 
 function buildPublicationStatus(

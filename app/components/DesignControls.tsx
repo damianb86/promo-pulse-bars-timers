@@ -375,7 +375,6 @@ export function DesignControls({
           <NumberField
             error={errors.borderRadius}
             label="Border radius"
-            max={24}
             min={0}
             name="borderRadius"
             value={values.borderRadius}
@@ -1604,14 +1603,14 @@ function NumberField({
   value: number;
   error?: string;
   min: number;
-  max: number;
+  max?: number;
   onChange: (value: string) => void;
 }) {
   return (
     <DesignField label={label} error={error}>
       <div className="counterpulse-number-input">
         <input
-          max={max}
+          {...(typeof max === "number" ? { max } : {})}
           min={min}
           name={name}
           type="number"

@@ -16,6 +16,7 @@ import type {
 import { emptyCampaignDesignMediaOptions } from "../types/campaign-design";
 import type { FreeShippingProgressStyleValue } from "../types/free-shipping";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
+import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
 type CampaignDesignEditorProps = {
   design: CampaignDesignValues;
@@ -62,8 +63,26 @@ export function CampaignDesignEditor({
     placementOverride?.key === actualPlacementKey
       ? placementOverride.placement
       : primaryPlacement;
-  const activeDesign = device === "mobile" ? mobileDesign : design;
-  const updateActiveDesign = device === "mobile" ? onMobileChange : onChange;
+  const sharedMobileDesign = useMemo(
+    () => deriveMobileDesignFromDesktop(design),
+    [design],
+  );
+  const previewMobileDesign = design.separateMobileDesign
+    ? mobileDesign
+    : sharedMobileDesign;
+  const activeDesign =
+    device === "mobile" && design.separateMobileDesign ? mobileDesign : design;
+  const updateDesktopDesign = (nextDesign: CampaignDesignValues) => {
+    onChange(nextDesign);
+
+    if (!nextDesign.separateMobileDesign) {
+      onMobileChange(deriveMobileDesignFromDesktop(nextDesign));
+    }
+  };
+  const updateActiveDesign =
+    device === "mobile" && design.separateMobileDesign
+      ? onMobileChange
+      : updateDesktopDesign;
   const designErrorSummary = useMemo(
     () => buildDesignErrorSummary(errors),
     [errors],
@@ -72,10 +91,22 @@ export function CampaignDesignEditor({
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
-      design: activeDesign,
+      design: device === "mobile" ? previewMobileDesign : design,
     }),
-    [activeDesign, viewModel],
+    [design, device, previewMobileDesign, viewModel],
   );
+  const updateSeparateMobileDesign = (checked: boolean) => {
+    const nextDesign = {
+      ...design,
+      separateMobileDesign: checked,
+    };
+
+    onChange(nextDesign);
+
+    if (!checked) {
+      onMobileChange(deriveMobileDesignFromDesktop(nextDesign));
+    }
+  };
   const selectPreviewPlacement = (nextPlacement: PreviewPlacement) => {
     setPlacementOverride({
       key: actualPlacementKey,
@@ -125,10 +156,32 @@ export function CampaignDesignEditor({
             <h3>Responsive design</h3>
             <div className="counterpulse-design-card__body">
               <DevicePreviewToggle value={device} onChange={setDevice} />
+              <div className="counterpulse-responsive-design-switch">
+                <div>
+                  <strong>Separate desktop and mobile</strong>
+                  <span>
+                    {design.separateMobileDesign
+                      ? "Mobile has its own editable design values."
+                      : "Mobile inherits desktop styling with slightly smaller text."}
+                  </span>
+                </div>
+                <label className="counterpulse-switch">
+                  <input
+                    aria-label="Separate desktop and mobile design"
+                    checked={design.separateMobileDesign}
+                    name="separateMobileDesign"
+                    type="checkbox"
+                    onChange={(event) =>
+                      updateSeparateMobileDesign(event.target.checked)
+                    }
+                  />
+                  <span aria-hidden="true" />
+                </label>
+              </div>
               <p className="counterpulse-design-note">
-                You are editing the {device} design. Switching device changes
-                which campaign design is edited without copying changes to the
-                other one.
+                {design.separateMobileDesign
+                  ? `You are editing the ${device} design. Switching device changes which campaign design is edited.`
+                  : "You are editing one shared design. Use Mobile preview to verify the automatic typography adjustment."}
               </p>
             </div>
           </section>
@@ -150,7 +203,7 @@ export function CampaignDesignEditor({
           className="counterpulse-design-editor__preview"
           design={design}
           device={device}
-          mobileDesign={mobileDesign}
+          mobileDesign={previewMobileDesign}
           placement={placement}
           viewModel={previewViewModel}
           onDeviceChange={setDevice}

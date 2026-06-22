@@ -3958,6 +3958,35 @@ s-page::part(page) {
   padding: 14px;
 }
 
+.counterpulse-responsive-design-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8faf9;
+}
+
+.counterpulse-responsive-design-switch div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.counterpulse-responsive-design-switch strong {
+  color: #202223;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.counterpulse-responsive-design-switch span {
+  color: #616161;
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .counterpulse-layout-picker,
 .counterpulse-timer-style-picker {
   display: grid;

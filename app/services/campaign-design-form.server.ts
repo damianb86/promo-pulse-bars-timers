@@ -20,6 +20,7 @@ import {
   sanitizeCustomCss,
   validateCampaignDesignValues,
 } from "../utils/campaign-design";
+import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import { canUseFeature } from "./planLimits.server";
 
 export type ParsedCampaignDesignForm = {
@@ -189,6 +190,7 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.animationDurationMs,
     ),
     timerTickAnimation: readTimerTickAnimation(formData),
+    separateMobileDesign: readBoolean(formData, "separateMobileDesign"),
     mobileEnabled: readBoolean(formData, "mobileEnabled"),
     customCss: sanitizeCustomCss(
       readString(formData, "customCss"),
@@ -222,6 +224,15 @@ export function parseResponsiveCampaignDesignFormData(
   plan: ShopPlan,
 ): ParsedResponsiveCampaignDesignForm {
   const desktop = parseCampaignDesignFormData(formData, plan);
+
+  if (!desktop.values.separateMobileDesign) {
+    return {
+      values: desktop.values,
+      mobileValues: deriveMobileDesignFromDesktop(desktop.values),
+      errors: desktop.errors,
+    };
+  }
+
   const mobile = parseMobileCampaignDesignFormData(
     formData,
     plan,

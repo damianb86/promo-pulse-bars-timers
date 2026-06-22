@@ -67,6 +67,7 @@ import {
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
 type CampaignFormProps = {
   campaignId?: string;
@@ -1135,16 +1136,20 @@ export function CampaignForm({
 
   const updateDesignValues = useCallback(
     (nextDesign: CampaignDesignValues) => {
+      const nextMobileDesign = nextDesign.separateMobileDesign
+        ? effectiveMobileDesign
+        : deriveMobileDesignFromDesktop(nextDesign);
+
       if (onDesignChange) {
         onDesignChange(nextDesign);
-        onMobileDesignChange?.(nextDesign);
+        onMobileDesignChange?.(nextMobileDesign);
         return;
       }
 
       setLocalDesignValues(nextDesign);
-      setLocalMobileDesignValues(nextDesign);
+      setLocalMobileDesignValues(nextMobileDesign);
     },
-    [onDesignChange, onMobileDesignChange],
+    [effectiveMobileDesign, onDesignChange, onMobileDesignChange],
   );
 
   useEffect(() => {

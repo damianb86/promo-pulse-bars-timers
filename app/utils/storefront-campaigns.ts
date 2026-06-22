@@ -25,6 +25,7 @@ import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
 } from "../types/campaign-design";
+import { resolveMobileCampaignDesign } from "./responsive-design";
 import {
   campaignTranslationFields,
   type CampaignTextField,
@@ -347,17 +348,13 @@ export function serializeDesign(
   device: string = "desktop",
 ) {
   const desktopDesign = serializeDesktopDesign(design);
-  const mobileDesign = isMobileDesignDevice(device)
+  const isMobileDevice = isMobileDesignDevice(device);
+  const mobileDesign = isMobileDevice
     ? readCampaignDesignJsonObject(design?.mobileDesign)
     : null;
-  const resolvedDesign = {
-    ...desktopDesign,
-    ...mobileDesign,
-    customCss:
-      typeof mobileDesign?.customCss === "string"
-        ? mobileDesign.customCss
-        : desktopDesign.customCss,
-  };
+  const resolvedDesign = isMobileDevice
+    ? resolveMobileCampaignDesign(desktopDesign, mobileDesign)
+    : desktopDesign;
 
   return {
     ...resolvedDesign,

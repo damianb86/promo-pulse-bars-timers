@@ -4,6 +4,7 @@ import { CampaignPreview } from "./CampaignPreview";
 import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import type { CampaignDesignValues } from "../types/campaign-design";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
+import { resolveMobileCampaignDesign } from "../utils/responsive-design";
 
 export type PreviewPlacement =
   | "TOP_BAR"
@@ -63,7 +64,9 @@ export function CampaignPreviewPanel({
     ? placement
     : (availablePlacementOptions[0]?.value ?? placement);
   const resolvedDesign =
-    device === "mobile" && mobileDesign ? mobileDesign : design;
+    device === "mobile"
+      ? resolveMobileCampaignDesign(design, mobileDesign)
+      : design;
 
   return (
     <div

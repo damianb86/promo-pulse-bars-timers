@@ -229,6 +229,10 @@ import {
   buildCampaignViewModel,
   type CampaignViewModel,
 } from "../utils/campaign-view-model";
+import {
+  isSeparateMobileDesignEnabled,
+  resolveMobileCampaignDesign,
+} from "../utils/responsive-design";
 
 type LoaderData = {
   id: string;
@@ -3332,12 +3336,15 @@ function toCampaignDesignValues(
   const baseDesign = { ...(design ?? {}) } as Partial<CampaignDesignValues> & {
     mobileDesign?: unknown;
   };
+  const mobileDesign =
+    design && readCampaignDesignJsonObject(design.mobileDesign);
   delete baseDesign.mobileDesign;
 
   return {
     ...defaultCampaignDesignValues,
     ...baseDesign,
     customCss: design?.customCss ?? "",
+    separateMobileDesign: isSeparateMobileDesignEnabled(mobileDesign),
   };
 }
 
@@ -3348,14 +3355,7 @@ function toCampaignMobileDesignValues(
   const mobileDesign =
     design && readCampaignDesignJsonObject(design.mobileDesign);
 
-  return {
-    ...desktopValues,
-    ...mobileDesign,
-    customCss:
-      typeof mobileDesign?.customCss === "string"
-        ? mobileDesign.customCss
-        : desktopValues.customCss,
-  };
+  return resolveMobileCampaignDesign(desktopValues, mobileDesign);
 }
 
 function readCampaignDesignJsonObject(value: unknown) {

@@ -103,8 +103,6 @@ export function createTestContext(
     country: "US",
     market: "US",
     productId: "gid://shopify/Product/1",
-    selectedVariantId: "",
-    inventoryQuantity: null,
     collectionIds: ["gid://shopify/Collection/1"],
     productTags: ["sale"],
     customerTags: [],
@@ -256,7 +254,6 @@ function createTargeting(
     devices: [],
     excludeProductIds: [],
     excludeCollectionIds: [],
-    productPropertyRules: null,
     behaviorRules: null,
     ...overrides,
   };

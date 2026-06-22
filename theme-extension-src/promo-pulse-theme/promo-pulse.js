@@ -13,8 +13,6 @@
     currency: detectCurrency(root),
     productId: root.dataset.productId || "",
     productTags: splitList(root.dataset.productTags),
-    selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
-    inventoryQuantity: readNumber(root.dataset.inventoryQuantity),
     collectionIds: splitList(root.dataset.collectionIds),
     device: detectDevice(),
     utmSource:
@@ -139,12 +137,6 @@
     if (config.productId) params.set("productId", config.productId);
     if (config.productTags.length) {
       params.set("productTags", config.productTags.join(","));
-    }
-    if (config.selectedVariantId) {
-      params.set("selectedVariantId", config.selectedVariantId);
-    }
-    if (config.inventoryQuantity !== null) {
-      params.set("inventoryQuantity", String(config.inventoryQuantity));
     }
     if (config.collectionIds.length) {
       params.set("collectionIds", config.collectionIds.join(","));
@@ -1409,20 +1401,6 @@
         return item.trim();
       })
       .filter(Boolean);
-  }
-
-  function readNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
-    var number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  }
-
-  function normalizeVariantId(value) {
-    if (!value) return "";
-    value = String(value);
-    return value.indexOf("gid://") === 0
-      ? value
-      : "gid://shopify/ProductVariant/" + value;
   }
 
   function isSafeIconUrl(value) {

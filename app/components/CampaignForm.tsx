@@ -2523,52 +2523,6 @@ export function CampaignForm({
                       />
                     </TargetingRadioOption>
                   </div>
-
-                  <div className="counterpulse-product-property-filter">
-                    <div>
-                      <h4>Product property filters</h4>
-                      <p>
-                        Add eligibility rules based on product data exposed by
-                        Shopify on the storefront. Inventory filters only match
-                        when the current product or variant reports inventory.
-                      </p>
-                    </div>
-                    <div className="counterpulse-product-property-grid">
-                      <FormField
-                        label="Inventory filter"
-                        error={errors.productInventoryTargetMode}
-                      >
-                        <select
-                          name="productInventoryTargetMode"
-                          value={formValues.productInventoryTargetMode}
-                          onChange={updateField("productInventoryTargetMode")}
-                        >
-                          <option value="ANY">No inventory filter</option>
-                          <option value="AT_OR_BELOW">
-                            Show when inventory is at or below
-                          </option>
-                          <option value="AT_OR_ABOVE">
-                            Show when inventory is at or above
-                          </option>
-                        </select>
-                      </FormField>
-                      <FormField
-                        label="Inventory threshold"
-                        error={errors.productInventoryThreshold}
-                      >
-                        <input
-                          min="0"
-                          name="productInventoryThreshold"
-                          type="number"
-                          value={formValues.productInventoryThreshold}
-                          disabled={
-                            formValues.productInventoryTargetMode === "ANY"
-                          }
-                          onChange={updateField("productInventoryThreshold")}
-                        />
-                      </FormField>
-                    </div>
-                  </div>
                 </section>
 
                 <section
@@ -3070,8 +3024,6 @@ function applySetupPreset(
     excludeProductIds: values.excludeProductIds,
     collectionIds: values.collectionIds,
     productTags: values.productTags,
-    productInventoryTargetMode: values.productInventoryTargetMode,
-    productInventoryThreshold: values.productInventoryThreshold,
     countrySelection: values.countrySelection,
     countries: values.countries,
     urlContains: values.urlContains,
@@ -3857,8 +3809,6 @@ const campaignErrorFieldLabels: Partial<
   placementType: "Campaign placement",
   placementTypes: "Campaign placements",
   productIds: "Products",
-  productInventoryThreshold: "Inventory threshold",
-  productInventoryTargetMode: "Inventory filter",
   productTags: "Product tags",
   startsAt: "Start date",
   status: "Campaign status",

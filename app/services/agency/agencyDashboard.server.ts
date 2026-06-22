@@ -359,9 +359,6 @@ function buildCrossShopCampaignDraft(
                 .excludeProductIds as Prisma.InputJsonValue,
               excludeCollectionIds: campaign.targeting
                 .excludeCollectionIds as Prisma.InputJsonValue,
-              productPropertyRules: toInputJsonOrNull(
-                campaign.targeting.productPropertyRules,
-              ),
               behaviorRules: toInputJsonOrNull(
                 campaign.targeting.behaviorRules,
               ),

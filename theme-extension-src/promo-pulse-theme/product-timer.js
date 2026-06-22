@@ -13,8 +13,6 @@
       market: root.dataset.market || detectMarket(),
       productId: root.dataset.productId || "",
       productTags: splitList(root.dataset.productTags),
-      selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
-      inventoryQuantity: readNumber(root.dataset.inventoryQuantity),
       device: detectDevice(),
       cartSubtotal:
         typeof window.PromoPulseCartSubtotal === "number"
@@ -114,12 +112,6 @@
     if (config.market) params.set("market", config.market);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
-    if (config.selectedVariantId) {
-      params.set("selectedVariantId", config.selectedVariantId);
-    }
-    if (config.inventoryQuantity !== null) {
-      params.set("inventoryQuantity", String(config.inventoryQuantity));
-    }
     if (config.cartSubtotal !== null)
       params.set("cartSubtotal", String(config.cartSubtotal));
     if (config.currency) params.set("currency", config.currency);
@@ -820,20 +812,6 @@
   function numberOrNull(value) {
     var number = Number(value);
     return Number.isFinite(number) ? number : null;
-  }
-
-  function readNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
-    var number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  }
-
-  function normalizeVariantId(value) {
-    if (!value) return "";
-    value = String(value);
-    return value.indexOf("gid://") === 0
-      ? value
-      : "gid://shopify/ProductVariant/" + value;
   }
 
   function weekdayNumber(value) {

@@ -204,8 +204,6 @@ export function toTargetingWriteData(
     excludeProductIds: targeting.excludeProductIds as Prisma.InputJsonValue,
     excludeCollectionIds:
       targeting.excludeCollectionIds as Prisma.InputJsonValue,
-    productPropertyRules:
-      targeting.productPropertyRules as Prisma.InputJsonValue,
     behaviorRules: targeting.behaviorRules as Prisma.InputJsonValue,
   };
 }
@@ -884,10 +882,6 @@ export async function duplicateCampaign(id: string, shopId: string) {
                   .excludeProductIds as Prisma.InputJsonValue,
                 excludeCollectionIds: campaign.targeting
                   .excludeCollectionIds as Prisma.InputJsonValue,
-                productPropertyRules:
-                  (campaign.targeting
-                    .productPropertyRules as Prisma.InputJsonValue) ??
-                  Prisma.JsonNull,
                 behaviorRules:
                   (campaign.targeting.behaviorRules as Prisma.InputJsonValue) ??
                   Prisma.JsonNull,
@@ -1138,7 +1132,6 @@ export async function updateCampaignBehaviorTargetingForShop(
       devices: [],
       excludeProductIds: [],
       excludeCollectionIds: [],
-      productPropertyRules: Prisma.JsonNull,
       behaviorRules,
     },
     update: {

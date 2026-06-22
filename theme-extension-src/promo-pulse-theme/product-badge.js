@@ -289,10 +289,10 @@
       readDatasetValue(source, "selectedVariantId") ||
       embed.dataset.selectedVariantId ||
       "";
-    slot.dataset.inventoryQuantity = readDatasetValue(
-      source,
-      "inventoryQuantity",
-    );
+    slot.dataset.inventoryQuantity =
+      readDatasetValue(source, "inventoryQuantity") ||
+      embed.dataset.inventoryQuantity ||
+      "";
     slot.dataset.price = readDatasetValue(source, "price");
     slot.dataset.compareAtPrice = readDatasetValue(source, "compareAtPrice");
     slot.dataset.discountActive = readDatasetValue(source, "discountActive");

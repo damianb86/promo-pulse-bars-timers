@@ -671,8 +671,6 @@ function baseContext(
     country: "",
     market: "",
     productId: "",
-    selectedVariantId: "",
-    inventoryQuantity: null,
     collectionIds: [],
     productTags: [],
     customerTags: [],
@@ -776,7 +774,6 @@ function buildCampaign(
           devices: [],
           excludeProductIds: [],
           excludeCollectionIds: [],
-          productPropertyRules: null,
           behaviorRules: null,
           ...overrides.targeting,
         } as StorefrontCampaignSource["targeting"])

@@ -7,7 +7,6 @@ import type {
 import {
   createEmptyTargetingRules,
   type CampaignTargetingRules,
-  type ProductInventoryTargetMode,
 } from "./campaign";
 import {
   badgePositionOptions,
@@ -39,16 +38,8 @@ export const countrySelectionOptions = [
   "SPECIFIC_COUNTRIES",
 ] as const;
 
-export const productInventoryTargetModeOptions = [
-  "ANY",
-  "AT_OR_BELOW",
-  "AT_OR_ABOVE",
-] as const;
-
 export type ProductSelectionValue = (typeof productSelectionOptions)[number];
 export type CountrySelectionValue = (typeof countrySelectionOptions)[number];
-export type ProductInventoryTargetModeValue =
-  (typeof productInventoryTargetModeOptions)[number];
 export type CampaignTimerModeValue =
   | "FIXED_DATE"
   | "EVERGREEN_SESSION"
@@ -101,8 +92,6 @@ export type CampaignFormValues = {
   excludeProductIds: string;
   collectionIds: string;
   productTags: string;
-  productInventoryTargetMode: ProductInventoryTargetModeValue;
-  productInventoryThreshold: string;
   customSelector: string;
   urlContains?: string;
   excludedUrlContains?: string;
@@ -168,8 +157,6 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   excludeProductIds: "",
   collectionIds: "",
   productTags: "",
-  productInventoryTargetMode: "ANY",
-  productInventoryThreshold: "5",
   customSelector: "",
   urlContains: "",
   excludedUrlContains: "",
@@ -284,18 +271,6 @@ export function buildCampaignTargetingValues(
 
   if (values.productSelection === "ALL_PRODUCTS") {
     targeting.excludeProductIds = splitCampaignList(values.excludeProductIds);
-  }
-
-  if (values.productInventoryTargetMode !== "ANY") {
-    targeting.productPropertyRules.inventory = {
-      mode: values.productInventoryTargetMode as ProductInventoryTargetMode,
-      threshold: clampInteger(
-        Number(values.productInventoryThreshold),
-        0,
-        999999,
-        5,
-      ),
-    };
   }
 
   if (values.countrySelection === "SPECIFIC_COUNTRIES") {

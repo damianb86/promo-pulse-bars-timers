@@ -23,8 +23,6 @@ import {
   type CampaignFormErrors,
   type CampaignFormValues,
   type CountrySelectionValue,
-  productInventoryTargetModeOptions,
-  type ProductInventoryTargetModeValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
@@ -55,9 +53,6 @@ const placementTypes = new Set(
 );
 const productSelections = new Set<string>(productSelectionOptions);
 const countrySelections = new Set<string>(countrySelectionOptions);
-const productInventoryTargetModes = new Set<string>(
-  productInventoryTargetModeOptions,
-);
 const timerModes = new Set<string>([
   "FIXED_DATE",
   "EVERGREEN_SESSION",
@@ -167,15 +162,6 @@ export function parseCampaignFormData(
     excludeProductIds: readString(formData, "excludeProductIds"),
     collectionIds: readString(formData, "collectionIds"),
     productTags: readString(formData, "productTags"),
-    productInventoryTargetMode: readOption(
-      formData,
-      "productInventoryTargetMode",
-      productInventoryTargetModes,
-      defaultCampaignFormValues.productInventoryTargetMode,
-    ) as ProductInventoryTargetModeValue,
-    productInventoryThreshold:
-      readString(formData, "productInventoryThreshold") ||
-      defaultCampaignFormValues.productInventoryThreshold,
     customSelector: readString(formData, "customSelector"),
     urlContains: readString(formData, "urlContains"),
     excludedUrlContains: readString(formData, "excludedUrlContains"),
@@ -353,14 +339,6 @@ export function parseCampaignFormData(
     splitCampaignList(values.productTags).length === 0
   ) {
     errors.productTags = "Add at least one product tag.";
-  }
-
-  if (
-    values.productInventoryTargetMode !== "ANY" &&
-    !isIntegerInRange(values.productInventoryThreshold, 0, 999999)
-  ) {
-    errors.productInventoryThreshold =
-      "Enter an inventory threshold from 0 to 999999.";
   }
 
   if (

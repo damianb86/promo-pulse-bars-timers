@@ -1991,37 +1991,6 @@ s-page::part(page) {
   margin: 10px 0 0 26px;
 }
 
-.counterpulse-product-property-filter {
-  display: grid;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
-  gap: 14px;
-  align-items: start;
-  border-top: 1px solid #edf0f2;
-  padding: 14px;
-  background: #fbfbfb;
-}
-
-.counterpulse-product-property-filter h4 {
-  margin: 0;
-  color: #202223;
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 18px;
-}
-
-.counterpulse-product-property-filter p {
-  margin: 4px 0 0;
-  color: #616161;
-  font-size: 12px;
-  line-height: 17px;
-}
-
-.counterpulse-product-property-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(120px, 0.8fr);
-  gap: 12px;
-}
-
 .counterpulse-schedule-stack {
   display: grid;
   gap: 14px;
@@ -5945,7 +5914,6 @@ s-page::part(page) {
   .counterpulse-toggle-grid,
   .counterpulse-panel-grid,
   .counterpulse-url-targeting-grid,
-  .counterpulse-product-property-filter,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,
@@ -6014,8 +5982,6 @@ s-page::part(page) {
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
   .counterpulse-url-targeting-grid,
-  .counterpulse-product-property-filter,
-  .counterpulse-product-property-grid,
   .counterpulse-product-eligibility-options,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,

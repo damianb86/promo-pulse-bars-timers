@@ -31,8 +31,6 @@
         window.location.hostname,
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
-      selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
-      inventoryQuantity: readNumber(root.dataset.inventoryQuantity),
       apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
@@ -68,8 +66,6 @@
       device: device,
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
-      selectedVariantId: normalizeVariantId(root.dataset.selectedVariantId),
-      inventoryQuantity: readNumber(root.dataset.inventoryQuantity),
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
       apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
@@ -120,12 +116,6 @@
     if (config.productId) params.set("productId", config.productId);
     if (config.productTags && config.productTags.length) {
       params.set("productTags", config.productTags.join(","));
-    }
-    if (config.selectedVariantId) {
-      params.set("selectedVariantId", config.selectedVariantId);
-    }
-    if (config.inventoryQuantity !== null) {
-      params.set("inventoryQuantity", String(config.inventoryQuantity));
     }
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
@@ -698,20 +688,6 @@
         return item.trim();
       })
       .filter(Boolean);
-  }
-
-  function readNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
-    var number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  }
-
-  function normalizeVariantId(value) {
-    if (!value) return "";
-    value = String(value);
-    return value.indexOf("gid://") === 0
-      ? value
-      : "gid://shopify/ProductVariant/" + value;
   }
 
   function node(tag, className, text) {

@@ -62,7 +62,7 @@ export type SyncedCampaignDates = {
 export const SHOPIFY_DISCOUNT_SCOPE_MESSAGE =
   "Promo Pulse needs read_discounts and write_discounts scopes. Update SCOPES and reinstall or reauthorize the app.";
 
-const DISCOUNT_FIELDS = `#graphql
+const DISCOUNT_CODE_FIELDS = `#graphql
       __typename
       ... on DiscountCodeBasic {
         title
@@ -97,6 +97,10 @@ const DISCOUNT_FIELDS = `#graphql
           }
         }
       }
+`;
+
+const DISCOUNT_AUTOMATIC_FIELDS = `#graphql
+      __typename
       ... on DiscountAutomaticFreeShipping {
         title
         status
@@ -109,7 +113,7 @@ const DISCOUNT_CODE_NODE_FRAGMENT = `#graphql
   fragment PromoPulseCodeDiscountFields on DiscountCodeNode {
     id
     codeDiscount {
-${DISCOUNT_FIELDS}
+${DISCOUNT_CODE_FIELDS}
     }
   }
 `;
@@ -118,7 +122,8 @@ const DISCOUNT_NODE_FRAGMENT = `#graphql
   fragment PromoPulseDiscountNodeFields on DiscountNode {
     id
     discount {
-${DISCOUNT_FIELDS}
+${DISCOUNT_CODE_FIELDS}
+${DISCOUNT_AUTOMATIC_FIELDS}
     }
   }
 `;
@@ -127,7 +132,7 @@ const DISCOUNT_AUTOMATIC_NODE_FRAGMENT = `#graphql
   fragment PromoPulseAutomaticDiscountFields on DiscountAutomaticNode {
     id
     automaticDiscount {
-${DISCOUNT_FIELDS}
+${DISCOUNT_AUTOMATIC_FIELDS}
     }
   }
 `;

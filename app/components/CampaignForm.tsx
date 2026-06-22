@@ -793,7 +793,7 @@ export function CampaignForm({
     [targetingOptions.countries],
   );
   const campaignEmbedHtml = campaignId
-    ? `<div class="pp-campaign-slot" data-promo-pulse-campaign-id="${campaignId}"></div>`
+    ? `<div class="pp-campaign-slot" data-promo-pulse-placement="CUSTOM_SELECTOR" data-promo-pulse-campaign-id="${campaignId}"></div>`
     : "";
   const previewPlacements = useMemo(
     () =>
@@ -2286,6 +2286,7 @@ export function CampaignForm({
                           {placementInitial(option.label)}
                         </span>
                         <strong>{option.label}</strong>
+                        <small>{option.description}</small>
                         {isSelected && <small>Selected</small>}
                       </button>
                     );
@@ -2314,11 +2315,11 @@ export function CampaignForm({
                 >
                   <div className="counterpulse-targeting-card__header">
                     <h3 id={scopedId("custom-placement-heading")}>
-                      Custom selector
+                      Custom HTML slot
                     </h3>
                     <p>
-                      Use this when the campaign should render in a theme
-                      selector controlled by the app embed.
+                      Use this when the campaign should render in a specific
+                      theme selector or inside the Campaign ID HTML snippet.
                     </p>
                   </div>
                   <div className="counterpulse-placement-custom">
@@ -2334,8 +2335,8 @@ export function CampaignForm({
                         onChange={updateField("customSelector")}
                       />
                       <small>
-                        Promo Pulse will inject the timer inside this selector
-                        when the app embed is active.
+                        Promo Pulse will inject the campaign inside this
+                        selector when the app embed is active.
                       </small>
                       <FieldError message={errors.customSelector} />
                     </div>
@@ -2350,35 +2351,38 @@ export function CampaignForm({
                 />
               )}
 
-              <div className="counterpulse-timer-id-box">
-                <div>
-                  <span>Timer ID</span>
-                  <code>{campaignId ?? "Available after save"}</code>
-                </div>
-                <button
-                  aria-label="Copy timer ID"
-                  type="button"
-                  disabled={!campaignId}
-                  onClick={copyTimerId}
-                >
-                  <CopyIcon />
-                </button>
-                {timerIdCopied && <small>Copied</small>}
-                <p>
-                  Countdown timer app blocks can use this ID to render this
-                  exact campaign.
-                </p>
-                {campaignEmbedHtml && (
-                  <div className="counterpulse-snippet-box">
-                    <span>HTML snippet</span>
-                    <code>{campaignEmbedHtml}</code>
-                    <button type="button" onClick={copyEmbedHtml}>
-                      Copy HTML
-                    </button>
-                    {embedHtmlCopied && <small>HTML copied</small>}
+              {formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
+                <div className="counterpulse-timer-id-box">
+                  <div>
+                    <span>Campaign ID</span>
+                    <code>{campaignId ?? "Available after save"}</code>
                   </div>
-                )}
-              </div>
+                  <button
+                    aria-label="Copy campaign ID"
+                    type="button"
+                    disabled={!campaignId}
+                    onClick={copyTimerId}
+                  >
+                    <CopyIcon />
+                  </button>
+                  {timerIdCopied && <small>Copied</small>}
+                  <p>
+                    Use this ID only for Custom HTML slot placements. Promo
+                    Pulse will render this exact campaign where the snippet is
+                    present.
+                  </p>
+                  {campaignEmbedHtml && (
+                    <div className="counterpulse-snippet-box">
+                      <span>HTML snippet</span>
+                      <code>{campaignEmbedHtml}</code>
+                      <button type="button" onClick={copyEmbedHtml}>
+                        Copy HTML
+                      </button>
+                      {embedHtmlCopied && <small>HTML copied</small>}
+                    </div>
+                  )}
+                </div>
+              )}
             </BuilderPanel>
 
             <BuilderPanel

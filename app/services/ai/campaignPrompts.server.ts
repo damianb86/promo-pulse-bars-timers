@@ -128,8 +128,10 @@ strings, empty arrays, false, or safe defaults, not null:
 }
 
 Design guidance:
-- Use gradient backgrounds for promotional bars when the tone benefits from it.
-- Use SOLID and compact typography for badges and low-stock messages.
+- Select an existing design preset by templateKey when helpful, but do not
+  provide custom color, gradient, or background overrides. Promo Pulse will use
+  the colors built into the selected preset.
+- Use compact typography for badges and low-stock messages.
 - For TOP_BAR or BOTTOM_BAR with fullWidth true, set borderRadius 0.
 - Pick timerStyle and timerFormat intentionally: COLON works well for inline
   plain timers; BOXES works well for balanced sale timers.

@@ -217,11 +217,16 @@ function getMatchingPlacement(
 
   if (!context.placement) return enabledPlacements[0] ?? null;
 
-  return (
-    enabledPlacements.find(
-      (placement) => placement.placementType === context.placement,
-    ) ?? (context.campaignId ? (enabledPlacements[0] ?? null) : null)
+  const matchingPlacement = enabledPlacements.find(
+    (placement) => placement.placementType === context.placement,
   );
+
+  if (matchingPlacement) return matchingPlacement;
+  if (context.campaignId && context.placement === "CUSTOM_SELECTOR") {
+    return null;
+  }
+
+  return context.campaignId ? (enabledPlacements[0] ?? null) : null;
 }
 
 function isTargetingEligible(

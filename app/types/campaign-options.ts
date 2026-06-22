@@ -39,16 +39,56 @@ export const campaignTypeOptions = [
 ] as const;
 
 export const placementTypeOptions = [
-  { value: "TOP_BAR", label: "Top bar" },
-  { value: "BOTTOM_BAR", label: "Bottom bar" },
-  { value: "PRODUCT_PAGE", label: "Product page" },
-  { value: "COLLECTION_CARD", label: "Collection card" },
-  { value: "CART_PAGE", label: "Cart page" },
-  { value: "CART_DRAWER", label: "Cart drawer" },
-  { value: "THANK_YOU_PAGE", label: "Thank you page" },
-  { value: "ORDER_STATUS_PAGE", label: "Order status page" },
-  { value: "PASSWORD_PAGE", label: "Password page" },
-  { value: "CUSTOM_SELECTOR", label: "Custom selector" },
+  {
+    value: "TOP_BAR",
+    label: "Top bar",
+    description: "Global bar injected at the top of the storefront.",
+  },
+  {
+    value: "BOTTOM_BAR",
+    label: "Bottom bar",
+    description: "Global bar injected at the bottom of the storefront.",
+  },
+  {
+    value: "PRODUCT_PAGE",
+    label: "Product page",
+    description: "Product detail page block or automatic product-page surface.",
+  },
+  {
+    value: "COLLECTION_CARD",
+    label: "Collection card badge",
+    description: "Badge rendered on product cards in collection/search grids.",
+  },
+  {
+    value: "CART_PAGE",
+    label: "Cart page",
+    description: "Cart page module.",
+  },
+  {
+    value: "CART_DRAWER",
+    label: "Cart drawer",
+    description: "Cart drawer module.",
+  },
+  {
+    value: "THANK_YOU_PAGE",
+    label: "Thank you page",
+    description: "Post-purchase thank you page extension.",
+  },
+  {
+    value: "ORDER_STATUS_PAGE",
+    label: "Order status page",
+    description: "Order status page extension.",
+  },
+  {
+    value: "PASSWORD_PAGE",
+    label: "Password page",
+    description: "Password page announcement surface.",
+  },
+  {
+    value: "CUSTOM_SELECTOR",
+    label: "Custom HTML slot",
+    description: "Renders into a configured selector or Campaign ID snippet.",
+  },
 ] as const;
 
 export type CampaignStatusValue =
@@ -72,6 +112,9 @@ export function getDefaultPlacementForCampaignType(
 }
 
 export function formatCampaignOption(value: string) {
+  if (value === "COLLECTION_CARD") return "Collection Card Badge";
+  if (value === "CUSTOM_SELECTOR") return "Custom HTML Slot";
+
   return value
     .toLowerCase()
     .split("_")

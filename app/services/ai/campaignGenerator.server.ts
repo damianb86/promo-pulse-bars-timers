@@ -1,4 +1,7 @@
-import { defaultCampaignDesignValues } from "../../types/campaign-design";
+import {
+  defaultCampaignDesignValues,
+  findCampaignDesignTemplate,
+} from "../../types/campaign-design";
 import type { CampaignDesignValues } from "../../types/campaign-design";
 import {
   campaignGoalOptions,
@@ -692,7 +695,7 @@ function completeCampaignSuggestion(
       buildTranslations(input, campaign),
       output.translations ?? {},
     ),
-    design: sanitizeDesign({ ...fallback.design, ...output.design }),
+    design: sanitizeAiDesign(output.design, fallback.design),
     variants:
       output.variants && output.variants.length > 0
         ? output.variants.map((variant, index) =>
@@ -1062,102 +1065,19 @@ function buildDeliveryCutoff(
 }
 
 function buildDesign(input: CampaignAiInput): CampaignDesignValues {
-  if (input.objective === "FREE_SHIPPING") {
-    return {
-      ...defaultCampaignDesignValues,
-      templateKey: "free-shipping",
-      backgroundColor: "#ECFDF5",
-      textColor: "#064E3B",
-      closeButtonColor: "#064E3B",
-      accentColor: "#10B981",
-      buttonColor: "#047857",
-      buttonTextColor: "#FFFFFF",
-      borderRadius: 8,
-      showIcon: true,
-      icon: "TRUCK",
-    };
-  }
+  return findCampaignDesignTemplate(selectDesignTemplateKey(input));
+}
 
-  if (input.objective === "DELIVERY_CUTOFF") {
-    return {
-      ...defaultCampaignDesignValues,
-      templateKey: "delivery-cutoff",
-      backgroundColor: "#EFF6FF",
-      textColor: "#1E3A8A",
-      closeButtonColor: "#1E3A8A",
-      accentColor: "#2563EB",
-      buttonColor: "#2563EB",
-      buttonTextColor: "#FFFFFF",
-      borderRadius: 6,
-      showIcon: true,
-      icon: "CLOCK",
-    };
-  }
+function selectDesignTemplateKey(input: CampaignAiInput) {
+  if (input.objective === "FREE_SHIPPING") return "free-shipping";
+  if (input.objective === "DELIVERY_CUTOFF") return "delivery-cutoff";
+  if (input.objective === "LOW_STOCK_URGENCY") return "low-stock";
+  if (input.objective === "PRODUCT_BADGE") return "clean-minimal";
+  if (input.brandTone === "urgent") return "flash-sale";
+  if (input.brandTone === "playful") return "holiday";
+  if (input.brandTone === "minimal") return "clean-minimal";
 
-  if (input.brandTone === "luxury") {
-    return {
-      ...defaultCampaignDesignValues,
-      templateKey: "premium-dark",
-      backgroundColor: "#111827",
-      textColor: "#F9FAFB",
-      closeButtonColor: "#F9FAFB",
-      accentColor: "#D4AF37",
-      buttonColor: "#F9FAFB",
-      buttonTextColor: "#111827",
-      borderRadius: 6,
-      showIcon: true,
-      icon: "GIFT",
-    };
-  }
-
-  if (input.brandTone === "urgent") {
-    return {
-      ...defaultCampaignDesignValues,
-      templateKey: "flash-sale",
-      backgroundColor: "#7F1D1D",
-      textColor: "#FFFFFF",
-      closeButtonColor: "#FFFFFF",
-      accentColor: "#FDE047",
-      buttonColor: "#FFFFFF",
-      buttonTextColor: "#7F1D1D",
-      fontSize: 15,
-      borderRadius: 6,
-      positionSticky: true,
-      showIcon: true,
-      icon: "FIRE",
-    };
-  }
-
-  if (input.brandTone === "playful") {
-    return {
-      ...defaultCampaignDesignValues,
-      templateKey: "holiday",
-      backgroundColor: "#F0FDF4",
-      textColor: "#14532D",
-      closeButtonColor: "#14532D",
-      accentColor: "#DC2626",
-      buttonColor: "#166534",
-      buttonTextColor: "#FFFFFF",
-      borderRadius: 8,
-      showIcon: true,
-      icon: "GIFT",
-    };
-  }
-
-  return {
-    ...defaultCampaignDesignValues,
-    templateKey:
-      input.brandTone === "minimal" ? "clean-minimal" : "premium-dark",
-    backgroundColor: input.brandTone === "minimal" ? "#FFFFFF" : "#111827",
-    textColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
-    closeButtonColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
-    accentColor: input.brandTone === "minimal" ? "#2563EB" : "#A78BFA",
-    buttonColor: input.brandTone === "minimal" ? "#111827" : "#F9FAFB",
-    buttonTextColor: input.brandTone === "minimal" ? "#FFFFFF" : "#111827",
-    borderRadius: input.brandTone === "minimal" ? 4 : 8,
-    showIcon: input.brandTone !== "minimal",
-    icon: input.brandTone === "minimal" ? "NONE" : "TAG",
-  };
+  return "premium-dark";
 }
 
 function buildVariants(
@@ -1241,7 +1161,7 @@ function sanitizeCampaignSuggestion(
     ...suggestion,
     campaign,
     translations,
-    design: sanitizeDesign(suggestion.design),
+    design: sanitizeAiDesign(suggestion.design, buildDesign(suggestion.input)),
     variants,
     safety: {
       warnings: uniqueStrings(warnings),
@@ -1629,8 +1549,8 @@ function sanitizeVariants(
         field: "variantCtaText",
         blockedClaims,
       }),
-      designOverride: sanitizePartialDesign(
-        variant.designOverride ?? base.designOverride,
+      designOverride: omitPresetVisualOverrides(
+        sanitizePartialDesign(variant.designOverride ?? base.designOverride),
       ),
       discountOverride:
         allowsDiscountClaims(input) && variant.discountOverride
@@ -2116,6 +2036,25 @@ function sanitizeDesign(
   };
 }
 
+function sanitizeAiDesign(
+  design: Partial<CampaignDesignValues> | undefined,
+  fallback: CampaignDesignValues,
+): CampaignDesignValues {
+  const sanitizedDesign = sanitizePartialDesign(design);
+  const templateKey =
+    typeof sanitizedDesign.templateKey === "string"
+      ? sanitizedDesign.templateKey
+      : fallback.templateKey;
+  const template = findCampaignDesignTemplate(templateKey);
+  const nonColorDesign = omitPresetVisualOverrides(sanitizedDesign);
+
+  return sanitizeDesign({
+    ...template,
+    ...nonColorDesign,
+    templateKey: template.templateKey,
+  });
+}
+
 function sanitizePartialDesign(
   design: Partial<CampaignDesignValues> | undefined,
 ): Partial<CampaignDesignValues> {
@@ -2347,6 +2286,34 @@ function sanitizePartialDesign(
       ? { customIconUrl: design.customIconUrl.slice(0, 150_000) }
       : {}),
   };
+}
+
+function omitPresetVisualOverrides(
+  design: Partial<CampaignDesignValues>,
+): Partial<CampaignDesignValues> {
+  const {
+    backgroundType: _backgroundType,
+    backgroundColor: _backgroundColor,
+    backgroundImageUrl: _backgroundImageUrl,
+    gradientStartColor: _gradientStartColor,
+    gradientEndColor: _gradientEndColor,
+    gradientAngle: _gradientAngle,
+    textColor: _textColor,
+    accentColor: _accentColor,
+    buttonColor: _buttonColor,
+    buttonTextColor: _buttonTextColor,
+    closeButtonColor: _closeButtonColor,
+    borderColor: _borderColor,
+    titleColor: _titleColor,
+    subheadingColor: _subheadingColor,
+    timerColor: _timerColor,
+    legendColor: _legendColor,
+    timerSurfaceColor: _timerSurfaceColor,
+    timerSurfaceBorderColor: _timerSurfaceBorderColor,
+    ...rest
+  } = design;
+
+  return rest;
 }
 
 function isHexColor(value: unknown) {

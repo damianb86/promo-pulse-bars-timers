@@ -186,8 +186,13 @@
       .call(document.querySelectorAll("[data-promo-pulse-campaign-id]"))
       .forEach(function (slot, index) {
         var campaignId = slot.dataset.promoPulseCampaignId || "";
+        var placement = slot.dataset.promoPulsePlacement || "";
 
-        if (!campaignId || slot.dataset.promoPulseRenderStarted === "true") {
+        if (
+          placement !== "CUSTOM_SELECTOR" ||
+          !campaignId ||
+          slot.dataset.promoPulseRenderStarted === "true"
+        ) {
           return;
         }
 

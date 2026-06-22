@@ -496,6 +496,10 @@
   box-sizing: border-box;
 }
 
+.pp-product-badge--auto {
+  margin: 0 0 8px;
+}
+
 .pp-badge {
   display: inline-flex;
   align-items: center;

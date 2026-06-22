@@ -1,7 +1,10 @@
 (function () {
   "use strict";
 
+  var requestCache = {};
+
   [].slice.call(document.querySelectorAll(".pp-product-badge")).forEach(init);
+  initAutomaticBadges();
 
   function init(root) {
     var config = {
@@ -32,7 +35,7 @@
       updateDebug(root, "Detenido: falta el shop domain en el bloque.");
       return;
     }
-    if (!config.productId) {
+    if (!config.productId && config.placement !== "COLLECTION_CARD") {
       updateDebug(
         root,
         "Detenido: Shopify no expuso productId. Coloca el bloque en un contexto de producto.",
@@ -177,14 +180,7 @@
   }
 
   function fetchBadges(config) {
-    return fetch(buildBadgesUrl(config), {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    })
-      .then(function (response) {
-        if (!response.ok) throw new Error(response.status);
-        return response.json();
-      })
+    return fetchJson(buildBadgesUrl(config))
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
         return Array.isArray(payload.badges) ? payload.badges : [];
@@ -192,14 +188,7 @@
   }
 
   function fetchCampaign(config) {
-    return fetch(buildCampaignUrl(config), {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    })
-      .then(function (response) {
-        if (!response.ok) throw new Error(response.status);
-        return response.json();
-      })
+    return fetchJson(buildCampaignUrl(config))
       .then(function (payload) {
         applyStorefrontSettings(config, payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
@@ -211,6 +200,139 @@
           })[0] || null
         );
       });
+  }
+
+  function fetchJson(url) {
+    if (!requestCache[url]) {
+      requestCache[url] = fetch(url, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      }).then(function (response) {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+      });
+    }
+
+    return requestCache[url];
+  }
+
+  function initAutomaticBadges() {
+    var embed = document.getElementById("promo-pulse-app-embed");
+
+    if (!embed || embed.dataset.productBadgeAutoInit === "true") return;
+
+    embed.dataset.productBadgeAutoInit = "true";
+    initAutomaticProductPageBadge(embed);
+    initAutomaticCollectionBadges(embed);
+  }
+
+  function initAutomaticProductPageBadge(embed) {
+    var target;
+
+    if (!embed.dataset.productId) return;
+    if (document.querySelector(".pp-product-badge[data-placement='PRODUCT_PAGE']")) {
+      return;
+    }
+
+    target = findProductPageTarget();
+    if (!target) return;
+
+    target.insertBefore(
+      createAutoSlot(embed, target, "PRODUCT_PAGE"),
+      target.firstChild,
+    );
+  }
+
+  function initAutomaticCollectionBadges(embed) {
+    findProductCardTargets().forEach(function (card) {
+      if (card.querySelector(".pp-product-badge")) return;
+
+      card.insertBefore(
+        createAutoSlot(embed, card, "COLLECTION_CARD"),
+        card.firstChild,
+      );
+    });
+  }
+
+  function createAutoSlot(embed, source, placement) {
+    var slot = document.createElement("div");
+
+    slot.className = "pp-root pp-product-badge pp-product-badge--auto";
+    slot.dataset.shop =
+      embed.dataset.shop || (window.Shopify && window.Shopify.shop) || "";
+    slot.dataset.locale =
+      embed.dataset.locale ||
+      embed.dataset.defaultLocale ||
+      document.documentElement.lang ||
+      "en";
+    slot.dataset.country = embed.dataset.country || "";
+    slot.dataset.market = embed.dataset.market || detectMarket();
+    slot.dataset.cartCurrency = embed.dataset.cartCurrency || detectCurrency();
+    slot.dataset.productId = readProductId(source, embed);
+    slot.dataset.productTags = readDatasetValue(source, "productTags");
+    slot.dataset.collectionIds =
+      readDatasetValue(source, "collectionIds") ||
+      embed.dataset.collectionIds ||
+      "";
+    slot.dataset.productVendor = readDatasetValue(source, "productVendor");
+    slot.dataset.inventoryQuantity = readDatasetValue(
+      source,
+      "inventoryQuantity",
+    );
+    slot.dataset.price = readDatasetValue(source, "price");
+    slot.dataset.compareAtPrice = readDatasetValue(source, "compareAtPrice");
+    slot.dataset.discountActive = readDatasetValue(source, "discountActive");
+    slot.dataset.metafields = readDatasetValue(source, "metafields");
+    slot.dataset.fallbackMode = "AUTO_ELIGIBLE";
+    slot.dataset.placement = placement;
+    slot.dataset.apiBaseUrl =
+      embed.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "";
+    slot.dataset.debug = embed.dataset.debug || "false";
+
+    init(slot);
+
+    return slot;
+  }
+
+  function findProductPageTarget() {
+    return document.querySelector(
+      "product-info, .product__info-container, .product-form, [data-product-information]",
+    );
+  }
+
+  function findProductCardTargets() {
+    var cards = [];
+    var seen = new Set();
+
+    [].slice
+      .call(document.querySelectorAll('a[href*="/products/"]'))
+      .forEach(function (link) {
+        var card = link.closest(
+          "[data-product-card], [data-product-id], .card-wrapper, .product-card, .product-grid-item, .grid__item, li",
+        );
+
+        if (!card || card.closest(".pp-root") || seen.has(card)) return;
+
+        seen.add(card);
+        cards.push(card);
+      });
+
+    return cards.slice(0, 48);
+  }
+
+  function readProductId(source, embed) {
+    var value =
+      readDatasetValue(source, "productId") ||
+      readDatasetValue(source, "productGid") ||
+      (source === findProductPageTarget() ? embed.dataset.productId || "" : "");
+
+    if (/^\d+$/.test(value)) return "gid://shopify/Product/" + value;
+
+    return value;
+  }
+
+  function readDatasetValue(source, key) {
+    return source && source.dataset ? source.dataset[key] || "" : "";
   }
 
   function applyExperiment(campaign) {

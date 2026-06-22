@@ -18,6 +18,8 @@
   var drawerRequestInFlight = false;
   var drawerLastRequestAt = 0;
   var drawerMinimumRequestGapMs = 2000;
+  var drawerCampaigns = [];
+  var drawerCampaignsLoaded = false;
   var proxyPauseMs = 60000;
   var cartPauseMs = 30000;
 
@@ -26,7 +28,10 @@
   init();
   document.addEventListener("shopify:section:load", init);
   document.addEventListener("cart:updated", function () {
-    scheduleDrawerRender(true);
+    scheduleDrawerRender(true, false);
+  });
+  document.addEventListener("promo-pulse:cart-changed", function () {
+    scheduleDrawerRender(true, false);
   });
 
   function init() {
@@ -81,7 +86,7 @@
     if (window.location.pathname.replace(/\/$/, "") === "/cart") return;
 
     drawerObserverStarted = true;
-    scheduleDrawerRender();
+    scheduleDrawerRender(false, true);
     updateDebug(
       document.getElementById("promo-pulse-app-embed"),
       "Soporte CART_DRAWER activo. Observando apertura/cambios del drawer.",
@@ -89,27 +94,27 @@
 
     new MutationObserver(function (mutations) {
       if (drawerInternalUpdate || !hasExternalDrawerMutation(mutations)) return;
-      scheduleDrawerRender(false);
+      scheduleDrawerRender(false, false);
     }).observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
   }
 
-  function scheduleDrawerRender(force) {
+  function scheduleDrawerRender(force, shouldFetchCampaigns) {
     if (!drawerObserverStarted) return;
     if (!force && drawerRequestInFlight) return;
 
     window.clearTimeout(drawerRenderTimer);
     drawerRenderTimer = window.setTimeout(
       function () {
-        renderDrawerCampaign(!!force);
+        renderDrawerCampaign(!!force, shouldFetchCampaigns !== false);
       },
       force ? 80 : 300,
     );
   }
 
-  function renderDrawerCampaign(force) {
+  function renderDrawerCampaign(force, shouldFetchCampaigns) {
     var embed = document.getElementById("promo-pulse-app-embed");
     var config;
     var now = Date.now();
@@ -132,7 +137,15 @@
         config.cartSubtotal = cartState.subtotal;
         config.currency = cartState.currency || config.currency;
         config.cartToken = cartState.token || config.cartToken;
-        return fetchCampaigns(config, embed);
+        if (drawerCampaignsLoaded && shouldFetchCampaigns === false) {
+          return drawerCampaigns;
+        }
+
+        return fetchCampaigns(config, embed).then(function (campaigns) {
+          drawerCampaigns = campaigns;
+          drawerCampaignsLoaded = true;
+          return campaigns;
+        });
       })
       .then(function (campaigns) {
         var campaign = campaigns[0];
@@ -319,9 +332,6 @@
 
     if (config.country) params.set("country", config.country);
     if (config.market) params.set("market", config.market);
-    if (config.cartSubtotal !== null) {
-      params.set("cartSubtotal", String(config.cartSubtotal));
-    }
     if (config.currency) params.set("currency", config.currency);
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {
       params.set("campaignId", config.campaignId);
@@ -770,6 +780,10 @@
   }
 
   function readAjaxCartState() {
+    var recentCartState = readRecentCartState();
+
+    if (recentCartState) return Promise.resolve(recentCartState);
+
     if (isPaused("PromoPulseCartPausedUntil")) {
       return Promise.resolve({
         subtotal: detectWindowCartSubtotal(),
@@ -789,6 +803,8 @@
         return response.json();
       })
       .then(function (cart) {
+        updateCartState(cart);
+
         return {
           subtotal:
             typeof cart.total_price === "number"
@@ -805,6 +821,32 @@
           token: "",
         };
       });
+  }
+
+  function updateCartState(cart) {
+    if (typeof window.PromoPulseUpdateCartState === "function") {
+      return window.PromoPulseUpdateCartState(cart);
+    }
+
+    if (!cart || typeof cart.total_price !== "number") return null;
+
+    window.PromoPulseCartSubtotal = cart.total_price / 100;
+    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
+    window.PromoPulseCartState = {
+      subtotal: window.PromoPulseCartSubtotal,
+      currency: window.PromoPulseCartCurrency,
+      token: window.PromoPulseCartToken,
+      updatedAt: Date.now(),
+    };
+
+    return window.PromoPulseCartState;
+  }
+
+  function readRecentCartState() {
+    if (typeof window.PromoPulseGetCartState !== "function") return null;
+
+    return window.PromoPulseGetCartState(2500);
   }
 
   function assertCartJsonResponse(response) {

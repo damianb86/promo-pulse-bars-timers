@@ -112,8 +112,6 @@
     if (config.market) params.set("market", config.market);
     if (config.productTags.length)
       params.set("productTags", config.productTags.join(","));
-    if (config.cartSubtotal !== null)
-      params.set("cartSubtotal", String(config.cartSubtotal));
     if (config.currency) params.set("currency", config.currency);
     appendBehaviorTargetingParams(params);
     if (config.fallbackMode === "SPECIFIC_CAMPAIGN" && config.campaignId) {

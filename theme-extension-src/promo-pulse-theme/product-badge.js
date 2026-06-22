@@ -69,20 +69,10 @@
           );
           renderBadges(root, badges);
         } else {
-          return fetchCampaign(config).then(function (campaign) {
-            if (campaign) {
-              updateDebug(
-                root,
-                "Fallback simple: renderizando badge " + campaign.id + ".",
-              );
-              renderBadges(root, [badgeFromCampaign(campaign)]);
-            } else {
-              updateDebug(
-                root,
-                "API OK: 0 badges elegibles. Revisa tipo PRODUCT_BADGE, placement, status ACTIVE, targeting, reglas y fechas.",
-              );
-            }
-          });
+          updateDebug(
+            root,
+            "API OK: 0 badges elegibles. Revisa tipo PRODUCT_BADGE, placement, status ACTIVE, targeting, reglas y fechas.",
+          );
         }
       })
       .catch(function (error) {
@@ -146,31 +136,12 @@
     }
   }
 
-  function buildCampaignUrl(config) {
-    return (
-      getCampaignsEndpoint(config.apiBaseUrl) +
-      "?" +
-      buildCommonParams(config).toString()
-    );
-  }
-
   function buildBadgesUrl(config) {
     return (
       getBadgesEndpoint(config.apiBaseUrl) +
       "?" +
       buildCommonParams(config).toString()
     );
-  }
-
-  function getCampaignsEndpoint(apiBaseUrl) {
-    var value = String(apiBaseUrl || "")
-      .trim()
-      .replace(/\/+$/, "");
-
-    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
-    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
-
-    return value + "/api/storefront/campaigns";
   }
 
   function getBadgesEndpoint(apiBaseUrl) {
@@ -190,20 +161,6 @@
     return fetchJson(buildBadgesUrl(config)).then(function (payload) {
       applyStorefrontSettings(config, payload.settings);
       return Array.isArray(payload.badges) ? payload.badges : [];
-    });
-  }
-
-  function fetchCampaign(config) {
-    return fetchJson(buildCampaignUrl(config)).then(function (payload) {
-      applyStorefrontSettings(config, payload.settings);
-      var campaigns = Array.isArray(payload.campaigns)
-        ? payload.campaigns.map(applyExperiment)
-        : [];
-      return (
-        campaigns.filter(function (campaign) {
-          return campaign.type === "PRODUCT_BADGE";
-        })[0] || null
-      );
     });
   }
 
@@ -251,6 +208,8 @@
   }
 
   function initAutomaticCollectionBadges(embed) {
+    if (embed.dataset.productId) return;
+
     findProductCardTargets().forEach(function (card) {
       var target;
 
@@ -391,42 +350,6 @@
 
   function readDatasetValue(source, key) {
     return source && source.dataset ? source.dataset[key] || "" : "";
-  }
-
-  function applyExperiment(campaign) {
-    if (window.PromoPulseApplyExperiment) {
-      return window.PromoPulseApplyExperiment(campaign);
-    }
-
-    return campaign;
-  }
-
-  function badgeFromCampaign(campaign) {
-    var badge = campaign.badge || {};
-    var texts = campaign.texts || {};
-
-    return {
-      id: campaign.id,
-      campaignId: campaign.id,
-      ruleId: null,
-      text:
-        badge.badgeText || texts.badgeText || texts.headline || "Limited offer",
-      placement: campaign.placement,
-      badge: {
-        badgeText:
-          badge.badgeText ||
-          texts.badgeText ||
-          texts.headline ||
-          "Limited offer",
-        badgeShape: badge.badgeShape,
-        badgePosition: badge.badgePosition,
-        url: "",
-      },
-      design: campaign.design || {},
-      startsAt: campaign.startsAt,
-      endsAt: campaign.endsAt,
-      timezone: campaign.timezone,
-    };
   }
 
   function renderBadges(root, badges) {

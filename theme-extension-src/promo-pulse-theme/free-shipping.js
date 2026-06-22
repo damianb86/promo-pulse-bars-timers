@@ -20,6 +20,9 @@
     market: detectMarket(root),
     currency: detectCurrency(root) || "USD",
     cartSubtotal: readCartSubtotal(root),
+    productId: root.dataset.productId || "",
+    productTags: splitList(root.dataset.productTags),
+    collectionIds: splitList(root.dataset.collectionIds),
     device: detectDevice(),
     debugMode: root.dataset.debug === "true",
     apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
@@ -140,8 +143,12 @@
     if (config.country) params.set("country", config.country);
     if (config.market) params.set("market", config.market);
     if (config.currency) params.set("currency", config.currency);
-    if (config.cartSubtotal !== null) {
-      params.set("cartSubtotal", String(config.cartSubtotal));
+    if (config.productId) params.set("productId", config.productId);
+    if (config.productTags.length) {
+      params.set("productTags", config.productTags.join(","));
+    }
+    if (config.collectionIds.length) {
+      params.set("collectionIds", config.collectionIds.join(","));
     }
     appendBehaviorTargetingParams(params);
     var url = getCampaignsEndpoint(config.apiBaseUrl) + "?" + params.toString();
@@ -819,7 +826,9 @@
 
         return nativeFetch.apply(this, arguments).then(function (response) {
           if (shouldNotify && response && response.ok) {
-            notifyCartChanged();
+            updateCartStateFromResponse(response).then(function (cartState) {
+              notifyCartChanged(!cartState);
+            });
           }
 
           return response;
@@ -840,7 +849,7 @@
         if (this.__promoPulseCartMutation) {
           this.addEventListener("loadend", function () {
             if (this.status >= 200 && this.status < 400) {
-              notifyCartChanged();
+              notifyCartChanged(!updateCartStateFromText(this.responseText));
             }
           });
         }
@@ -850,9 +859,12 @@
     }
   }
 
-  function notifyCartChanged() {
+  function notifyCartChanged(forceCartFetch) {
     if (typeof window.PromoPulseClearRequestCache === "function") {
-      window.PromoPulseClearRequestCache();
+      window.PromoPulseClearRequestCache("cart");
+    }
+    if (forceCartFetch && window.PromoPulseCartState) {
+      window.PromoPulseCartState.updatedAt = 0;
     }
 
     window.clearTimeout(window.PromoPulseCartChangedTimer);
@@ -883,6 +895,12 @@
   }
 
   function readAjaxCartState() {
+    var recentCartState = readRecentCartState();
+
+    if (recentCartState) {
+      return Promise.resolve(recentCartState);
+    }
+
     if (isPaused("PromoPulseCartPausedUntil")) {
       return Promise.resolve({ subtotal: null, currency: "" });
     }
@@ -898,6 +916,8 @@
         return response.json();
       })
       .then(function (cart) {
+        updateCartState(cart);
+
         return {
           subtotal:
             typeof cart.total_price === "number"
@@ -909,6 +929,54 @@
       .catch(function () {
         return { subtotal: null, currency: "" };
       });
+  }
+
+  function updateCartStateFromResponse(response) {
+    try {
+      return response
+        .clone()
+        .json()
+        .then(updateCartState)
+        .catch(function () {
+          return null;
+        });
+    } catch (error) {
+      return Promise.resolve(null);
+    }
+  }
+
+  function updateCartStateFromText(value) {
+    try {
+      return updateCartState(JSON.parse(value || "null"));
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function updateCartState(cart) {
+    if (typeof window.PromoPulseUpdateCartState === "function") {
+      return window.PromoPulseUpdateCartState(cart);
+    }
+
+    if (!cart || typeof cart.total_price !== "number") return null;
+
+    window.PromoPulseCartSubtotal = cart.total_price / 100;
+    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
+    window.PromoPulseCartState = {
+      subtotal: window.PromoPulseCartSubtotal,
+      currency: window.PromoPulseCartCurrency,
+      token: window.PromoPulseCartToken,
+      updatedAt: Date.now(),
+    };
+
+    return window.PromoPulseCartState;
+  }
+
+  function readRecentCartState() {
+    if (typeof window.PromoPulseGetCartState !== "function") return null;
+
+    return window.PromoPulseGetCartState(2500);
   }
 
   function assertCartJsonResponse(response) {

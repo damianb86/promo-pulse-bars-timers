@@ -831,10 +831,40 @@
     var cartPauseMs = 30000;
 
     window.PromoPulseFetchGuardReady = true;
-    window.PromoPulseClearRequestCache = function () {
-      responseCache = {};
+    window.PromoPulseClearRequestCache = function (kind) {
+      if (!kind) {
+        responseCache = {};
+        return;
+      }
+
+      Object.keys(responseCache).forEach(function (key) {
+        if (kind === "cart" && key.indexOf("/cart.js") !== -1) {
+          delete responseCache[key];
+        }
+        if (kind === "proxy" && key.indexOf("/cart.js") === -1) {
+          delete responseCache[key];
+        }
+      });
     };
-    document.addEventListener("cart:updated", window.PromoPulseClearRequestCache);
+    window.PromoPulseUpdateCartState = updateCartState;
+    window.PromoPulseGetCartState = function (maxAgeMs) {
+      var state = window.PromoPulseCartState || null;
+      var ageLimit = Number(maxAgeMs || 0);
+
+      if (!state || typeof state.subtotal !== "number") return null;
+      if (ageLimit > 0 && Date.now() - Number(state.updatedAt || 0) > ageLimit) {
+        return null;
+      }
+
+      return {
+        subtotal: state.subtotal,
+        currency: state.currency || window.PromoPulseCartCurrency || "",
+        token: state.token || "",
+      };
+    };
+    document.addEventListener("cart:updated", function () {
+      window.PromoPulseClearRequestCache("cart");
+    });
 
     window.fetch = function (input, init) {
       var request = normalizeRequest(input, init);
@@ -882,6 +912,13 @@
           }
 
           if (request.method === "GET" && response.ok) {
+            if (request.kind === "cart") {
+              response
+                .clone()
+                .json()
+                .then(updateCartState)
+                .catch(function () {});
+            }
             responseCache[cacheKey] = {
               response: response.clone(),
               expiresAt:
@@ -977,6 +1014,31 @@
     nextInit.credentials = "same-origin";
 
     return nextInit;
+  }
+
+  function updateCartState(cart) {
+    var totalCents =
+      cart && typeof cart.total_price === "number"
+        ? cart.total_price
+        : cart && typeof cart.items_subtotal_price === "number"
+          ? cart.items_subtotal_price
+          : null;
+    var subtotal;
+
+    if (totalCents === null) return null;
+
+    subtotal = totalCents / 100;
+    window.PromoPulseCartSubtotal = subtotal;
+    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
+    window.PromoPulseCartState = {
+      subtotal: subtotal,
+      currency: window.PromoPulseCartCurrency,
+      token: window.PromoPulseCartToken,
+      updatedAt: Date.now(),
+    };
+
+    return window.PromoPulseCartState;
   }
 
   function pauseKeyFor(url) {

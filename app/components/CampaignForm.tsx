@@ -67,6 +67,7 @@ import {
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
 type CampaignFormProps = {
@@ -1091,20 +1092,20 @@ export function CampaignForm({
         ? campaignTypeSetupPresets.PRODUCT_TIMER
         : campaignGoalSetupPresets[choice.goal];
 
-    const nextValues = applySetupPreset(
-      {
-        ...formValues,
-        goal: choice.goal,
-        type: choice.type,
-      },
-      preset,
+    const nextValues = applyCampaignTypeDefaultTextValues(
+      applySetupPreset(
+        {
+          ...formValues,
+          goal: choice.goal,
+          type: choice.type,
+        },
+        preset,
+      ),
+      { overwrite: true },
     );
     const nextTranslations = buildCampaignTypeDefaultTranslations(nextValues);
 
-    setFormValues({
-      ...nextValues,
-      ...getCampaignMessageValues(nextTranslations.en),
-    });
+    setFormValues(nextValues);
     setLocalMessageTranslations(nextTranslations);
     setCampaignPreviewPlacementOverride(null);
     setCampaignTypePickerOpen(false);
@@ -3058,21 +3059,6 @@ function buildCampaignTypeDefaultTranslations(values: CampaignFormValues) {
     };
     return translations;
   }, {} as CampaignTranslationsByLocale);
-}
-
-function getCampaignMessageValues(
-  values: CampaignTranslationsByLocale["en"],
-): Pick<
-  CampaignFormValues,
-  "headline" | "subheadline" | "ctaText" | "ctaUrl" | "expiredText"
-> {
-  return {
-    headline: values.headline,
-    subheadline: values.subheadline,
-    ctaText: values.ctaText,
-    ctaUrl: values.ctaUrl,
-    expiredText: values.expiredText,
-  };
 }
 
 function resolveCampaignTranslationValues(

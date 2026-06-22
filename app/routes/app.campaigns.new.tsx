@@ -76,6 +76,7 @@ import {
 } from "../types/campaign-form";
 import type { StorefrontLocale } from "../types/localization";
 import { buildDefaultCampaignTranslations } from "../utils/campaign-localization";
+import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 
 type ActionData = {
   aiErrors?: CampaignAiFormErrors;
@@ -127,7 +128,9 @@ export const loader = async ({
     defaults: template
       ? buildCampaignFormDefaultsFromTemplate(template)
       : {
-          ...defaultCampaignFormValues,
+          ...applyCampaignTypeDefaultTextValues(defaultCampaignFormValues, {
+            overwrite: true,
+          }),
           startsAt: "",
           endsAt: toDateTimeLocalValue(
             new Date(Date.now() + 24 * 60 * 60 * 1000),

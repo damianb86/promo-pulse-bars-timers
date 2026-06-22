@@ -2275,6 +2275,9 @@ function sanitizePartialDesign(
     ...(typeof design.showButton === "boolean"
       ? { showButton: design.showButton }
       : {}),
+    ...(typeof design.showProgressBar === "boolean"
+      ? { showProgressBar: design.showProgressBar }
+      : {}),
     ...(typeof design.showIcon === "boolean"
       ? { showIcon: design.showIcon }
       : {}),

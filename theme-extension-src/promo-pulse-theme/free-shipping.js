@@ -178,9 +178,7 @@
       .then(function (campaigns) {
         updateDebug(
           root,
-          "API OK: " +
-            campaigns.length +
-            " FREE_SHIPPING_GOAL globales.",
+          "API OK: " + campaigns.length + " FREE_SHIPPING_GOAL globales.",
           url,
         );
         return campaigns;
@@ -337,7 +335,9 @@
     message.appendChild(headline);
     message.appendChild(detail);
     bar.appendChild(message);
-    bar.appendChild(renderProgress(campaign, progress, detail.textContent));
+    if (design.showProgressBar !== false) {
+      bar.appendChild(renderProgress(campaign, progress, detail.textContent));
+    }
 
     if (
       campaign.discount &&
@@ -345,10 +345,7 @@
       typeof window.PromoPulseCouponButton === "function"
     ) {
       bar.appendChild(
-        window.PromoPulseCouponButton(
-          campaign.discount.discountCode,
-          campaign,
-        ),
+        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
       );
     }
 
@@ -452,7 +449,7 @@
 
   function readProgressStyle(campaign) {
     var style = String(
-      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+      (campaign.freeShipping || {}).progressStyle || "BAR",
     ).toUpperCase();
 
     return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";

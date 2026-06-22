@@ -87,6 +87,7 @@ export type CampaignDesignValues = {
   alignment: DesignAlignmentValue;
   showCloseButton: boolean;
   showButton: boolean;
+  showProgressBar: boolean;
   showIcon: boolean;
   icon: CampaignDesignIconValue;
   iconSize: number;
@@ -180,6 +181,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   alignment: "CENTER",
   showCloseButton: true,
   showButton: true,
+  showProgressBar: true,
   showIcon: false,
   icon: "NONE",
   iconSize: 20,

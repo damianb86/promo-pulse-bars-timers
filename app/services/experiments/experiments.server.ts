@@ -1015,6 +1015,8 @@ async function applyDesignOverride(
       "positionSticky",
       "mobileEnabled",
       "showCloseButton",
+      "showButton",
+      "showProgressBar",
       "showIcon",
     ]),
     ...(alignment ? { alignment } : {}),

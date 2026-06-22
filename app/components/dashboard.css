@@ -1683,6 +1683,12 @@ s-page::part(page) {
   line-height: 20px;
 }
 
+.counterpulse-panel-heading__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .counterpulse-kicker {
   margin: 0 0 2px;
   color: #006f4e;
@@ -1864,6 +1870,36 @@ s-page::part(page) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.counterpulse-product-eligibility-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  border-top: 1px solid #edf0f2;
+  padding: 14px;
+}
+
+.counterpulse-product-eligibility-options .counterpulse-targeting-option {
+  display: grid;
+  align-content: start;
+  min-height: 92px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.counterpulse-product-eligibility-options
+  .counterpulse-targeting-option.is-selected {
+  border-color: #008060;
+  background: #f4faf7;
+  box-shadow: 0 0 0 1px #008060;
+}
+
+.counterpulse-product-eligibility-options
+  .counterpulse-targeting-option__content {
+  margin: 10px 0 0 26px;
 }
 
 .counterpulse-schedule-stack {
@@ -5170,6 +5206,29 @@ s-page::part(page) {
   bottom: 0;
 }
 
+.counterpulse-preview-promo--position-overlay:not(
+  .counterpulse-preview-promo--bar
+) {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  left: 24px;
+  z-index: 5;
+  width: min(calc(100% - 48px), var(--cp-content-max-width, 920px));
+  max-width: var(--cp-content-max-width, 920px);
+  margin: 0 auto;
+}
+
+.counterpulse-preview-promo--position-overlay.counterpulse-preview-promo--full-width:not(
+    .counterpulse-preview-promo--bar
+  ) {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
 .counterpulse-preview-promo--full-width {
   width: 100%;
   max-width: 100%;
@@ -5770,7 +5829,8 @@ s-page::part(page) {
   .counterpulse-email-timer-card,
   .counterpulse-help-card-grid,
   .counterpulse-help-service-grid,
-  .counterpulse-help-privacy {
+  .counterpulse-help-privacy,
+  .counterpulse-product-eligibility-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -5832,6 +5892,7 @@ s-page::part(page) {
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
   .counterpulse-url-targeting-grid,
+  .counterpulse-product-eligibility-options,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,

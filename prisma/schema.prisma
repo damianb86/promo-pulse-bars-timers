@@ -233,6 +233,7 @@ model CampaignDesign {
   alignment               DesignAlignment          @default(CENTER)
   showCloseButton         Boolean                  @default(true)
   showButton              Boolean                  @default(true)
+  showProgressBar         Boolean                  @default(true)
   showIcon                Boolean                  @default(true)
   icon                    CampaignDesignIcon       @default(NONE)
   iconSize                Int                      @default(20)

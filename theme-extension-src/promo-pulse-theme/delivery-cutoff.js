@@ -29,25 +29,26 @@
         root.dataset.shop ||
         (window.Shopify && window.Shopify.shop) ||
         window.location.hostname,
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
       updateDebug(root, "Delivery cutoff detenido: falta el shop domain.");
       return;
     }
-    fetchCampaigns(config, "TOP_BAR,BOTTOM_BAR", root).then(function (campaigns) {
-      if (!campaigns.length) {
-        updateDebug(
-          root,
-          "API OK: 0 campanas DELIVERY_CUTOFF elegibles para placements globales.",
-        );
-      }
-      campaigns.forEach(function (campaign) {
-        renderGlobal(campaign, config);
-      });
-    });
+    fetchCampaigns(config, "TOP_BAR,BOTTOM_BAR", root).then(
+      function (campaigns) {
+        if (!campaigns.length) {
+          updateDebug(
+            root,
+            "API OK: 0 campanas DELIVERY_CUTOFF elegibles para placements globales.",
+          );
+        }
+        campaigns.forEach(function (campaign) {
+          renderGlobal(campaign, config);
+        });
+      },
+    );
   }
 
   function initProduct(root) {
@@ -64,8 +65,7 @@
       productId: root.dataset.productId || "",
       productTags: split(root.dataset.productTags),
       shop: root.dataset.shop || (window.Shopify && window.Shopify.shop) || "",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -309,6 +309,9 @@
     var detail = document.createElement("span");
 
     surface.className = className + " pp-delivery-cutoff";
+    if (design.positionMode === "OVERLAY") {
+      surface.classList.add("pp-surface--overlay");
+    }
     surface.dataset.campaignId = campaign.id;
     setDesign(surface, design);
 
@@ -337,10 +340,7 @@
       typeof window.PromoPulseCouponButton === "function"
     ) {
       surface.appendChild(
-        window.PromoPulseCouponButton(
-          campaign.discount.discountCode,
-          campaign,
-        ),
+        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
       );
     }
 

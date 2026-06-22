@@ -31,8 +31,7 @@
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       placement: root.dataset.placement || "COLLECTION_CARD",
       debug: root.dataset.debug === "true",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
 
     if (!config.shop) {
@@ -184,26 +183,24 @@
   }
 
   function fetchBadges(config) {
-    return fetchJson(buildBadgesUrl(config))
-      .then(function (payload) {
-        applyStorefrontSettings(config, payload.settings);
-        return Array.isArray(payload.badges) ? payload.badges : [];
-      });
+    return fetchJson(buildBadgesUrl(config)).then(function (payload) {
+      applyStorefrontSettings(config, payload.settings);
+      return Array.isArray(payload.badges) ? payload.badges : [];
+    });
   }
 
   function fetchCampaign(config) {
-    return fetchJson(buildCampaignUrl(config))
-      .then(function (payload) {
-        applyStorefrontSettings(config, payload.settings);
-        var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns.map(applyExperiment)
-          : [];
-        return (
-          campaigns.filter(function (campaign) {
-            return campaign.type === "PRODUCT_BADGE";
-          })[0] || null
-        );
-      });
+    return fetchJson(buildCampaignUrl(config)).then(function (payload) {
+      applyStorefrontSettings(config, payload.settings);
+      var campaigns = Array.isArray(payload.campaigns)
+        ? payload.campaigns.map(applyExperiment)
+        : [];
+      return (
+        campaigns.filter(function (campaign) {
+          return campaign.type === "PRODUCT_BADGE";
+        })[0] || null
+      );
+    });
   }
 
   function fetchJson(url) {
@@ -344,7 +341,11 @@
       "[data-product-card-media], .card__media, .product-card__media, .product-card__image-wrapper, .media, .card__inner, a[href*='/products/']",
     );
 
-    if (!target || target === document.body || target === document.documentElement) {
+    if (
+      !target ||
+      target === document.body ||
+      target === document.documentElement
+    ) {
       target = image.parentElement || card;
     }
 
@@ -421,14 +422,15 @@
   }
 
   function renderBadges(root, badges) {
+    var isAutomaticSlot = root.classList.contains("pp-product-badge--auto");
     var renderableBadges = selectRenderableBadges(
       badges,
-      root.classList.contains("pp-product-badge--auto") ? 1 : 3,
+      isAutomaticSlot ? 1 : 3,
     );
 
     root.replaceChildren();
     renderableBadges.forEach(function (badge) {
-      root.appendChild(renderBadge(badge));
+      root.appendChild(renderBadge(badge, isAutomaticSlot));
       emitBadgeImpression(badge);
     });
   }
@@ -450,8 +452,9 @@
     return output;
   }
 
-  function renderBadge(badgePayload) {
+  function renderBadge(badgePayload, isAutomaticSlot) {
     var badge = badgePayload.badge || {};
+    var design = badgePayload.design || {};
     var text = badge.badgeText || badgePayload.text || "Limited offer";
     var href = badge.url || "";
     var element = href
@@ -464,6 +467,9 @@
       "pp-badge--" +
         position(badge.badgePosition).toLowerCase().replace("_", "-"),
     ].join(" ");
+    if (!isAutomaticSlot && design.positionMode === "OVERLAY") {
+      element.classList.add("pp-surface--overlay");
+    }
     element.dataset.campaignId = badgePayload.campaignId || badgePayload.id;
     if (badgePayload.ruleId) element.dataset.badgeRuleId = badgePayload.ruleId;
     element.textContent = text;
@@ -475,7 +481,7 @@
         emitBadgeClick(badgePayload);
       });
     }
-    setDesign(element, badgePayload.design || {});
+    setDesign(element, design);
 
     return element;
   }
@@ -512,7 +518,10 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 13) + "px",
     );
-    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
+    element.style.setProperty(
+      "--pp-font-family",
+      fontFamily(design.fontFamily),
+    );
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 999, 999) + "px",
@@ -529,14 +538,18 @@
 
   function fontFamily(value) {
     if (value === "SERIF") return "Georgia, Times New Roman, serif";
-    if (value === "MONO") return "ui-monospace, SFMono-Regular, Menlo, monospace";
+    if (value === "MONO")
+      return "ui-monospace, SFMono-Regular, Menlo, monospace";
     if (value === "ROUNDED") {
       return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
     }
-    if (value === "GEOMETRIC") return "Avenir Next, Montserrat, system-ui, sans-serif";
+    if (value === "GEOMETRIC")
+      return "Avenir Next, Montserrat, system-ui, sans-serif";
     if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
-    if (value === "CONDENSED") return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
-    if (value === "CASUAL") return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
+    if (value === "CONDENSED")
+      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
+    if (value === "CASUAL")
+      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
     if (value === "SYSTEM") {
       return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
     }

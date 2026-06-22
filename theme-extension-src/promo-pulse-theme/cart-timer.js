@@ -195,8 +195,7 @@
       compactMode: root.dataset.compact === "true",
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
   }
 
@@ -219,8 +218,7 @@
       compactMode: false,
       debugMode: root.dataset.debug === "true",
       customCartDrawerSelector: root.dataset.customCartDrawerSelector || "",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
   }
 
@@ -394,6 +392,9 @@
       (config.compactMode ? " pp-cart-card--compact" : "") +
       (isDrawer ? " pp-cart-card--drawer" : "") +
       (isFullWidth ? " pp-cart-card--full-width" : "");
+    if (design.positionMode === "OVERLAY") {
+      card.classList.add("pp-surface--overlay");
+    }
     applyMotionClasses(card, design);
     card.dataset.campaignId = campaign.id;
     if (isDrawer) {
@@ -412,7 +413,10 @@
 
     card.appendChild(renderMessage(campaign, timerState, config));
 
-    if (campaign.type === "FREE_SHIPPING_GOAL") {
+    if (
+      campaign.type === "FREE_SHIPPING_GOAL" &&
+      design.showProgressBar !== false
+    ) {
       card.appendChild(renderFreeShippingProgress(campaign, config));
     }
 
@@ -584,7 +588,7 @@
 
   function readProgressStyle(campaign) {
     var style = String(
-      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+      (campaign.freeShipping || {}).progressStyle || "BAR",
     ).toUpperCase();
 
     return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";

@@ -569,7 +569,7 @@ function PromoSurface({
         </span>
       )}
 
-      {freeShippingPreview && (
+      {freeShippingPreview && design.showProgressBar !== false && (
         <div
           className={[
             "counterpulse-preview-progress",
@@ -857,7 +857,12 @@ function formatTimerPartsAsColon(
   return timerParts.map((part) => part.value).join(":");
 }
 
-function clampNumber(value: number, min: number, max: number, fallback: number) {
+function clampNumber(
+  value: number,
+  min: number,
+  max: number,
+  fallback: number,
+) {
   return Number.isFinite(value)
     ? Math.min(max, Math.max(min, Math.round(value)))
     : fallback;

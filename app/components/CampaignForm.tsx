@@ -1057,8 +1057,7 @@ export function CampaignForm({
   };
 
   const setManualListField =
-    (field: TextListFieldName) =>
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
+    (field: TextListFieldName) => (event: ChangeEvent<HTMLTextAreaElement>) => {
       setFormValues((currentValues) => ({
         ...currentValues,
         [field]: event.currentTarget.value,
@@ -2409,146 +2408,159 @@ export function CampaignForm({
                   </div>
                 )}
                 <section
-                  className="counterpulse-targeting-card"
+                  className="counterpulse-targeting-card counterpulse-targeting-card--wide counterpulse-product-eligibility-card"
                   aria-labelledby={scopedId("products-heading")}
                 >
                   <div className="counterpulse-targeting-card__header">
                     <h3 id={scopedId("products-heading")}>
                       Product eligibility
                     </h3>
+                    <p>
+                      Choose which products can show this campaign. Use Shopify
+                      pickers for product and collection targeting, or target
+                      tags by search.
+                    </p>
                   </div>
 
-                  <TargetingRadioOption
-                    checked={formValues.productSelection === "ALL_PRODUCTS"}
-                    disabled={false}
-                    name="productSelection"
-                    title="All products"
-                    value="ALL_PRODUCTS"
-                    onSelect={() => selectProductSelection("ALL_PRODUCTS")}
-                  >
-                    <button
-                      className="counterpulse-link-button"
-                      type="button"
-                      disabled={Boolean(
-                        advancedTargetingLocked &&
-                        formValues.excludeProductIds.trim().length === 0,
-                      )}
-                      onClick={() => setShowProductExclusions(true)}
+                  <div className="counterpulse-product-eligibility-options">
+                    <TargetingRadioOption
+                      checked={formValues.productSelection === "ALL_PRODUCTS"}
+                      disabled={false}
+                      name="productSelection"
+                      title="All products"
+                      value="ALL_PRODUCTS"
+                      onSelect={() => selectProductSelection("ALL_PRODUCTS")}
                     >
-                      Exclude specific products
-                    </button>
-                    {advancedTargetingLocked &&
-                      formValues.excludeProductIds.trim().length === 0 && (
-                        <UpgradeText reason={advancedTargetingLocked} />
+                      <button
+                        className="counterpulse-link-button"
+                        type="button"
+                        disabled={Boolean(
+                          advancedTargetingLocked &&
+                          formValues.excludeProductIds.trim().length === 0,
+                        )}
+                        onClick={() => setShowProductExclusions(true)}
+                      >
+                        Exclude specific products
+                      </button>
+                      {advancedTargetingLocked &&
+                        formValues.excludeProductIds.trim().length === 0 && (
+                          <UpgradeText reason={advancedTargetingLocked} />
+                        )}
+                      {showProductExclusions ? (
+                        <ResourcePickerField
+                          chips={resourceChipsFor("excludeProductIds")}
+                          disabled={Boolean(advancedTargetingLocked)}
+                          error={errors.excludeProductIds}
+                          label="Excluded products"
+                          name="excludeProductIds"
+                          pickerLabel="Select products to exclude"
+                          value={formValues.excludeProductIds}
+                          onManualChange={setManualListField(
+                            "excludeProductIds",
+                          )}
+                          onOpenPicker={() =>
+                            openResourcePicker("product", "excludeProductIds")
+                          }
+                          onRemove={(id) =>
+                            removeResourceChip("excludeProductIds", id)
+                          }
+                        />
+                      ) : (
+                        <input
+                          type="hidden"
+                          name="excludeProductIds"
+                          value={formValues.excludeProductIds}
+                        />
                       )}
-                    {showProductExclusions ? (
+                    </TargetingRadioOption>
+
+                    <TargetingRadioOption
+                      checked={
+                        formValues.productSelection === "SPECIFIC_PRODUCTS"
+                      }
+                      disabled={Boolean(
+                        basicTargetingLocked &&
+                        formValues.productSelection !== "SPECIFIC_PRODUCTS",
+                      )}
+                      lockReason={basicTargetingLocked}
+                      name="productSelection"
+                      title="Specific products"
+                      value="SPECIFIC_PRODUCTS"
+                      onSelect={() =>
+                        selectProductSelection("SPECIFIC_PRODUCTS")
+                      }
+                    >
                       <ResourcePickerField
-                        chips={resourceChipsFor("excludeProductIds")}
-                        disabled={Boolean(advancedTargetingLocked)}
-                        error={errors.excludeProductIds}
-                        label="Excluded products"
-                        name="excludeProductIds"
-                        pickerLabel="Select products to exclude"
-                        value={formValues.excludeProductIds}
-                        onManualChange={setManualListField("excludeProductIds")}
+                        chips={resourceChipsFor("productIds")}
+                        error={errors.productIds}
+                        label="Included products"
+                        name="productIds"
+                        pickerLabel="Select products"
+                        value={formValues.productIds}
+                        onManualChange={setManualListField("productIds")}
                         onOpenPicker={() =>
-                          openResourcePicker("product", "excludeProductIds")
+                          openResourcePicker("product", "productIds")
+                        }
+                        onRemove={(id) => removeResourceChip("productIds", id)}
+                      />
+                    </TargetingRadioOption>
+
+                    <TargetingRadioOption
+                      checked={formValues.productSelection === "COLLECTIONS"}
+                      disabled={Boolean(
+                        basicTargetingLocked &&
+                        formValues.productSelection !== "COLLECTIONS",
+                      )}
+                      lockReason={basicTargetingLocked}
+                      name="productSelection"
+                      title="Specific collections"
+                      value="COLLECTIONS"
+                      onSelect={() => selectProductSelection("COLLECTIONS")}
+                    >
+                      <ResourcePickerField
+                        chips={resourceChipsFor("collectionIds")}
+                        error={errors.collectionIds}
+                        label="Included collections"
+                        name="collectionIds"
+                        pickerLabel="Select collections"
+                        value={formValues.collectionIds}
+                        onManualChange={setManualListField("collectionIds")}
+                        onOpenPicker={() =>
+                          openResourcePicker("collection", "collectionIds")
                         }
                         onRemove={(id) =>
-                          removeResourceChip("excludeProductIds", id)
+                          removeResourceChip("collectionIds", id)
                         }
                       />
-                    ) : (
-                      <input
-                        type="hidden"
-                        name="excludeProductIds"
-                        value={formValues.excludeProductIds}
+                    </TargetingRadioOption>
+
+                    <TargetingRadioOption
+                      checked={formValues.productSelection === "TAGS"}
+                      disabled={Boolean(
+                        basicTargetingLocked &&
+                        formValues.productSelection !== "TAGS",
+                      )}
+                      lockReason={basicTargetingLocked}
+                      name="productSelection"
+                      title="Specific product tags"
+                      value="TAGS"
+                      onSelect={() => selectProductSelection("TAGS")}
+                    >
+                      <TagSelectorField
+                        error={errors.productTags}
+                        searchId={scopedId("product-tag-search")}
+                        matchingTags={matchingProductTags}
+                        query={tagQuery}
+                        selectedTags={selectedProductTags}
+                        onAddTag={addProductTag}
+                        onManualChange={setManualListField("productTags")}
+                        onQueryChange={setTagQuery}
+                        onRemoveTag={removeProductTag}
+                        onSelectFirst={selectFirstMatchingTag}
+                        value={formValues.productTags}
                       />
-                    )}
-                  </TargetingRadioOption>
-
-                  <TargetingRadioOption
-                    checked={
-                      formValues.productSelection === "SPECIFIC_PRODUCTS"
-                    }
-                    disabled={Boolean(
-                      basicTargetingLocked &&
-                      formValues.productSelection !== "SPECIFIC_PRODUCTS",
-                    )}
-                    lockReason={basicTargetingLocked}
-                    name="productSelection"
-                    title="Specific products"
-                    value="SPECIFIC_PRODUCTS"
-                    onSelect={() => selectProductSelection("SPECIFIC_PRODUCTS")}
-                  >
-                    <ResourcePickerField
-                      chips={resourceChipsFor("productIds")}
-                      error={errors.productIds}
-                      label="Included products"
-                      name="productIds"
-                      pickerLabel="Select products"
-                      value={formValues.productIds}
-                      onManualChange={setManualListField("productIds")}
-                      onOpenPicker={() =>
-                        openResourcePicker("product", "productIds")
-                      }
-                      onRemove={(id) => removeResourceChip("productIds", id)}
-                    />
-                  </TargetingRadioOption>
-
-                  <TargetingRadioOption
-                    checked={formValues.productSelection === "COLLECTIONS"}
-                    disabled={Boolean(
-                      basicTargetingLocked &&
-                      formValues.productSelection !== "COLLECTIONS",
-                    )}
-                    lockReason={basicTargetingLocked}
-                    name="productSelection"
-                    title="All products in specific collections"
-                    value="COLLECTIONS"
-                    onSelect={() => selectProductSelection("COLLECTIONS")}
-                  >
-                    <ResourcePickerField
-                      chips={resourceChipsFor("collectionIds")}
-                      error={errors.collectionIds}
-                      label="Included collections"
-                      name="collectionIds"
-                      pickerLabel="Select collections"
-                      value={formValues.collectionIds}
-                      onManualChange={setManualListField("collectionIds")}
-                      onOpenPicker={() =>
-                        openResourcePicker("collection", "collectionIds")
-                      }
-                      onRemove={(id) => removeResourceChip("collectionIds", id)}
-                    />
-                  </TargetingRadioOption>
-
-                  <TargetingRadioOption
-                    checked={formValues.productSelection === "TAGS"}
-                    disabled={Boolean(
-                      basicTargetingLocked &&
-                      formValues.productSelection !== "TAGS",
-                    )}
-                    lockReason={basicTargetingLocked}
-                    name="productSelection"
-                    title="All products with specific tags"
-                    value="TAGS"
-                    onSelect={() => selectProductSelection("TAGS")}
-                  >
-                    <TagSelectorField
-                      error={errors.productTags}
-                      searchId={scopedId("product-tag-search")}
-                      matchingTags={matchingProductTags}
-                      query={tagQuery}
-                      selectedTags={selectedProductTags}
-                      onAddTag={addProductTag}
-                      onManualChange={setManualListField("productTags")}
-                      onQueryChange={setTagQuery}
-                      onRemoveTag={removeProductTag}
-                      onSelectFirst={selectFirstMatchingTag}
-                      value={formValues.productTags}
-                    />
-                  </TargetingRadioOption>
+                    </TargetingRadioOption>
+                  </div>
                 </section>
 
                 <section

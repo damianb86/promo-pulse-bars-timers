@@ -320,6 +320,7 @@ function createDesign(
     alignment: DesignAlignment.CENTER,
     showCloseButton: true,
     showButton: true,
+    showProgressBar: true,
     showIcon: false,
     icon: CampaignDesignIcon.NONE,
     iconSize: 20,

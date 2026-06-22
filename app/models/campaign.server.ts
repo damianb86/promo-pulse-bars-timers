@@ -198,8 +198,7 @@ export function toTargetingWriteData(
     productTags: targeting.productTags as Prisma.InputJsonValue,
     customerTags: targeting.customerTags as Prisma.InputJsonValue,
     urlContains: targeting.urlContains as Prisma.InputJsonValue,
-    excludedUrlContains:
-      targeting.excludedUrlContains as Prisma.InputJsonValue,
+    excludedUrlContains: targeting.excludedUrlContains as Prisma.InputJsonValue,
     utmSources: targeting.utmSources as Prisma.InputJsonValue,
     devices: targeting.devices as Prisma.InputJsonValue,
     excludeProductIds: targeting.excludeProductIds as Prisma.InputJsonValue,
@@ -642,6 +641,7 @@ function toCampaignDesignWriteData(
     alignment: input.alignment,
     showCloseButton: input.showCloseButton,
     showButton: input.showButton,
+    showProgressBar: input.showProgressBar,
     showIcon: input.showIcon,
     icon: input.icon,
     iconSize: input.iconSize,
@@ -873,8 +873,8 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 urlContains: campaign.targeting
                   .urlContains as Prisma.InputJsonValue,
                 excludedUrlContains:
-                  (campaign.targeting.excludedUrlContains as Prisma.InputJsonValue) ??
-                  [],
+                  (campaign.targeting
+                    .excludedUrlContains as Prisma.InputJsonValue) ?? [],
                 utmSources: campaign.targeting
                   .utmSources as Prisma.InputJsonValue,
                 devices: campaign.targeting.devices as Prisma.InputJsonValue,
@@ -949,14 +949,15 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 alignment: campaign.design.alignment,
                 showCloseButton: campaign.design.showCloseButton,
                 showButton: campaign.design.showButton,
+                showProgressBar: campaign.design.showProgressBar,
                 showIcon: campaign.design.showIcon,
                 icon: campaign.design.icon,
                 iconSize: campaign.design.iconSize,
                 customIconUrl: campaign.design.customIconUrl,
                 ...(campaign.design.mobileDesign
                   ? {
-                      mobileDesign:
-                        campaign.design.mobileDesign as Prisma.InputJsonValue,
+                      mobileDesign: campaign.design
+                        .mobileDesign as Prisma.InputJsonValue,
                     }
                   : {}),
               },

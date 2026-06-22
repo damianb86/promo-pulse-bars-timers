@@ -202,6 +202,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         mobileEnabled: true,
         alignment: DesignAlignment.CENTER,
         showCloseButton: true,
+        showButton: true,
+        showProgressBar: true,
         showIcon: true,
         icon: CampaignDesignIcon.FIRE,
       },

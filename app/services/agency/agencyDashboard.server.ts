@@ -418,6 +418,8 @@ function buildCrossShopCampaignDraft(
               mobileEnabled: campaign.design.mobileEnabled,
               alignment: campaign.design.alignment,
               showCloseButton: campaign.design.showCloseButton,
+              showButton: campaign.design.showButton,
+              showProgressBar: campaign.design.showProgressBar,
               showIcon: campaign.design.showIcon,
               icon: campaign.design.icon,
               customIconUrl: campaign.design.customIconUrl,

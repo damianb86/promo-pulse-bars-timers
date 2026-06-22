@@ -779,25 +779,39 @@ export function DesignControls({
 
       {progressStyle && onProgressStyleChange ? (
         <DesignPanel title="Progress">
-          <DesignGroup label="Progress style">
-            <select
-              aria-label="Progress style"
-              value={progressStyle}
-              onChange={(event) =>
-                onProgressStyleChange(
-                  event.currentTarget.value as FreeShippingProgressStyleValue,
-                )
-              }
-            >
-              {freeShippingProgressStyleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </DesignGroup>
+          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+            <ToggleField
+              checked={values.showProgressBar}
+              label="Show progress bar"
+              name="showProgressBar"
+              onChange={(checked) => updateValue("showProgressBar", checked)}
+            />
+            <DesignGroup label="Progress style">
+              <select
+                aria-label="Progress style"
+                value={progressStyle}
+                onChange={(event) =>
+                  onProgressStyleChange(
+                    event.currentTarget.value as FreeShippingProgressStyleValue,
+                  )
+                }
+              >
+                {freeShippingProgressStyleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </DesignGroup>
+          </div>
         </DesignPanel>
-      ) : null}
+      ) : (
+        <input
+          name="showProgressBar"
+          type="hidden"
+          value={String(values.showProgressBar)}
+        />
+      )}
 
       <DesignPanel title="Elements">
         <div className="counterpulse-form-grid counterpulse-form-grid--wide">

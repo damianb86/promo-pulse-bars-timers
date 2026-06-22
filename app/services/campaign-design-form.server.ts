@@ -197,6 +197,7 @@ export function parseCampaignDesignFormData(
     alignment: readAlignment(formData),
     showCloseButton: readBoolean(formData, "showCloseButton"),
     showButton: readBoolean(formData, "showButton"),
+    showProgressBar: readBoolean(formData, "showProgressBar"),
     showIcon: readBoolean(formData, "showIcon"),
     icon: readIcon(formData),
     iconSize: readInteger(

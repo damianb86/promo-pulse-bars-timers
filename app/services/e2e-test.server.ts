@@ -1484,6 +1484,7 @@ function flashSaleDesign() {
     alignment: DesignAlignment.CENTER,
     showCloseButton: true,
     showButton: true,
+    showProgressBar: true,
     showIcon: true,
     icon: CampaignDesignIcon.FIRE,
     customIconUrl: "",

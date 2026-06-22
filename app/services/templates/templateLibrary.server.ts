@@ -637,6 +637,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.showButton,
       defaultCampaignDesignValues.showButton,
     ),
+    showProgressBar: readBoolean(
+      input.showProgressBar,
+      defaultCampaignDesignValues.showProgressBar,
+    ),
     showIcon: readBoolean(input.showIcon, defaultCampaignDesignValues.showIcon),
     icon:
       readEnum(input.icon, [

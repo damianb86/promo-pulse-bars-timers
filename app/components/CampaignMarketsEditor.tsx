@@ -326,31 +326,31 @@ export function CampaignMarketsEditor({
                 eyebrow="Delivery"
                 title="Market cutoff"
                 description="Optional delivery settings for this market or country."
+                action={
+                  <FieldInfoButton
+                    label="Market cutoff"
+                    title="Market delivery cutoff"
+                  >
+                    <MarketInfoContent
+                      intro="Market delivery settings override the global delivery cutoff for matching requests."
+                      items={[
+                        [
+                          "Cutoff hour",
+                          "Use 0 through 23 in the market's operating timezone context.",
+                        ],
+                        [
+                          "Delivery days",
+                          "Minimum and maximum days describe the promise shown after matching this override.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                }
               />
               <div className="counterpulse-form-grid">
                 <FormField
                   label="Cutoff hour"
                   error={errors?.deliverySettingsJson}
-                  info={
-                    <FieldInfoButton
-                      label="Market cutoff hour"
-                      title="Market delivery cutoff"
-                    >
-                      <MarketInfoContent
-                        intro="Market delivery settings override the global delivery cutoff for matching requests."
-                        items={[
-                          [
-                            "Cutoff hour",
-                            "Use 0 through 23 in the market's operating timezone context.",
-                          ],
-                          [
-                            "Delivery days",
-                            "Minimum and maximum days describe the promise shown after matching this override.",
-                          ],
-                        ]}
-                      />
-                    </FieldInfoButton>
-                  }
                 >
                   <input
                     max="23"
@@ -507,10 +507,12 @@ function DeleteMarketRuleForm({ ruleId }: { ruleId: string }) {
 }
 
 function PanelHeader({
+  action,
   description,
   eyebrow,
   title,
 }: {
+  action?: ReactNode;
   description: string;
   eyebrow: string;
   title: string;
@@ -519,7 +521,10 @@ function PanelHeader({
     <div className="counterpulse-panel-heading counterpulse-panel-heading--compact">
       <div>
         <p className="counterpulse-kicker">{eyebrow}</p>
-        <h3>{title}</h3>
+        <div className="counterpulse-panel-heading__title-row">
+          <h3>{title}</h3>
+          {action}
+        </div>
         <p className="counterpulse-panel-description">{description}</p>
       </div>
     </div>

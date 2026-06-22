@@ -24,8 +24,7 @@
       alignment: root.dataset.alignment || "CENTER",
       compactMode: root.dataset.compact === "true",
       debugMode: root.dataset.debug === "true",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -180,6 +179,9 @@
     card.className =
       "pp-product-card" +
       (config.compactMode ? " pp-product-card--compact" : "");
+    if (design.positionMode === "OVERLAY") {
+      card.classList.add("pp-surface--overlay");
+    }
     applyMotionClasses(card, design);
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "region");
@@ -194,7 +196,10 @@
 
     card.appendChild(renderMessage(campaign, timerState, config));
 
-    if (campaign.type === "FREE_SHIPPING_GOAL") {
+    if (
+      campaign.type === "FREE_SHIPPING_GOAL" &&
+      design.showProgressBar !== false
+    ) {
       card.appendChild(renderFreeShippingProgress(campaign, config));
     }
 
@@ -205,10 +210,7 @@
       typeof window.PromoPulseCouponButton === "function"
     ) {
       card.appendChild(
-        window.PromoPulseCouponButton(
-          campaign.discount.discountCode,
-          campaign,
-        ),
+        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
       );
     }
 
@@ -319,7 +321,7 @@
 
   function readProgressStyle(campaign) {
     var style = String(
-      ((campaign.freeShipping || {}).progressStyle || "BAR"),
+      (campaign.freeShipping || {}).progressStyle || "BAR",
     ).toUpperCase();
 
     return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";

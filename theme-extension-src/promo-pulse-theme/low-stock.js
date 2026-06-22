@@ -24,8 +24,7 @@
       inventoryQuantity: numberOrNull(root.dataset.inventoryQuantity),
       variants: readVariants(root.dataset.variantsScriptId),
       customProductFormSelector: root.dataset.customProductFormSelector || "",
-      apiBaseUrl:
-        root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
+      apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
     var requestUrl;
 
@@ -177,6 +176,9 @@
     card.className =
       "pp-product-card pp-low-stock" +
       (config.compactMode ? " pp-product-card--compact" : "");
+    if (design.positionMode === "OVERLAY") {
+      card.classList.add("pp-surface--overlay");
+    }
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "status");
     card.setAttribute("aria-label", message);

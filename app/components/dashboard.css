@@ -2930,7 +2930,7 @@ s-page::part(page) {
 
 .counterpulse-email-style-presets {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -2961,7 +2961,9 @@ s-page::part(page) {
   border: 1px solid currentColor;
   border-radius: 8px;
   display: grid;
+  gap: 4px;
   place-items: center;
+  align-content: center;
 }
 
 .counterpulse-email-style-preset__swatch > span {
@@ -2975,10 +2977,22 @@ s-page::part(page) {
 .counterpulse-email-style-preset__swatch strong {
   position: relative;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
   line-height: 1;
   letter-spacing: 1px;
+}
+
+.counterpulse-email-style-preset__swatch em {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .counterpulse-email-style-preset > span:last-child {
@@ -3024,6 +3038,8 @@ s-page::part(page) {
   overflow: hidden;
   width: min(100%, 420px);
   min-height: 112px;
+  box-sizing: border-box;
+  border-style: solid;
   padding: 18px 24px 16px;
   display: grid;
   gap: 8px;
@@ -3049,7 +3065,7 @@ s-page::part(page) {
 .counterpulse-email-timer-live-preview__time {
   position: relative;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 34px;
+  font-size: 30px;
   font-weight: 900;
   line-height: 1;
 }
@@ -3070,9 +3086,100 @@ s-page::part(page) {
 
 .counterpulse-email-timer-live-preview__labels {
   position: relative;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 14px;
+}
+
+.counterpulse-email-timer-live-preview__units {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+}
+
+.counterpulse-email-timer-live-preview__unit {
+  min-width: 42px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.counterpulse-email-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.counterpulse-email-unit-card {
+  min-width: 0;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  background: #ffffff;
+}
+
+.counterpulse-email-unit-card .counterpulse-field {
+  gap: 4px;
+}
+
+.counterpulse-email-unit-card input:disabled {
+  color: #8c9196;
+  background: #f6f6f7;
+}
+
+.counterpulse-email-fallback-preview {
+  margin-top: 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #fafbfb;
+}
+
+.counterpulse-email-fallback-preview > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.counterpulse-email-fallback-preview strong {
+  color: #202223;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.counterpulse-email-fallback-preview small {
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.counterpulse-email-fallback-preview .counterpulse-email-timer-live-preview {
+  padding: 8px;
+}
+
+.counterpulse-email-fallback-preview__pixel {
+  width: 28px;
+  height: 28px;
+  border: 1px dashed #8c9196;
+  border-radius: 4px;
+  background:
+    linear-gradient(45deg, #ffffff 25%, transparent 25%),
+    linear-gradient(-45deg, #ffffff 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ffffff 75%),
+    linear-gradient(-45deg, transparent 75%, #ffffff 75%);
+  background-color: #edf0f2;
+  background-position:
+    0 0,
+    0 5px,
+    5px -5px,
+    -5px 0;
+  background-size: 10px 10px;
 }
 
 .counterpulse-email-timer-card {
@@ -5639,6 +5746,7 @@ s-page::part(page) {
   .counterpulse-toggle-grid,
   .counterpulse-panel-grid,
   .counterpulse-email-style-presets,
+  .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,
   .counterpulse-help-card-grid,
   .counterpulse-help-service-grid,
@@ -5704,6 +5812,7 @@ s-page::part(page) {
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
   .counterpulse-email-style-presets,
+  .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,
   .counterpulse-tier-row,
   .counterpulse-preset-row {

@@ -24,11 +24,23 @@ export type EmailTimerDesignInput = {
   textColor: string;
   accentColor: string;
   labelColor: string;
+  borderColor: string;
   fontFamily: EmailTimerFontFamily;
   cornerRadius: number;
+  borderWidth: number;
+  paddingX: number;
+  paddingY: number;
   showHeading: boolean;
   headingText: string;
   showLabels: boolean;
+  showDays: boolean;
+  showHours: boolean;
+  showMinutes: boolean;
+  showSeconds: boolean;
+  daysLabel: string;
+  hoursLabel: string;
+  minutesLabel: string;
+  secondsLabel: string;
 };
 
 export type EmailTimerListItem = Awaited<
@@ -67,11 +79,23 @@ export async function createEmailTimerForCampaign({
     textColor: design.textColor,
     accentColor: design.accentColor,
     labelColor: design.labelColor,
+    borderColor: design.borderColor,
     fontFamily: design.fontFamily,
     cornerRadius: design.cornerRadius,
+    borderWidth: design.borderWidth,
+    paddingX: design.paddingX,
+    paddingY: design.paddingY,
     showHeading: design.showHeading,
     headingText: design.headingText,
     showLabels: design.showLabels,
+    showDays: design.showDays,
+    showHours: design.showHours,
+    showMinutes: design.showMinutes,
+    showSeconds: design.showSeconds,
+    daysLabel: design.daysLabel,
+    hoursLabel: design.hoursLabel,
+    minutesLabel: design.minutesLabel,
+    secondsLabel: design.secondsLabel,
   } satisfies Prisma.InputJsonObject;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {

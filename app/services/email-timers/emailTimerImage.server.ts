@@ -31,10 +31,15 @@ export function renderEmailTimerPng(
   const width = clampInteger(design.width, 240, 1200, 600);
   const height = clampInteger(design.height, 80, 400, 180);
   const cornerRadius = clampInteger(design.cornerRadius, 0, 40, 0);
+  const borderWidth = clampInteger(design.borderWidth, 0, 16, 0);
+  const paddingX = clampInteger(design.paddingX, 0, 160, 34);
+  const paddingY = clampInteger(design.paddingY, 0, 120, 24);
   const fontFamily = readFontFamily(design.fontFamily);
   const showHeading = readBoolean(design.showHeading, true);
   const showLabels = readBoolean(design.showLabels, true);
   const headingText = readBitmapText(design.headingText, "ENDS IN", 24);
+  const unitVisibility = readUnitVisibility(design);
+  const timerLabels = readTimerLabels(design);
   const remainingSeconds = getRemainingSeconds(timer.endsAt, now);
   const expired = remainingSeconds <= 0;
 
@@ -65,51 +70,64 @@ export function renderEmailTimerPng(
       "#F97316",
     ),
     label: readHexColor(design.labelColor, design.accentColor, "#FDBA74"),
+    border: readHexColor(design.borderColor, design.accentColor, "#111827"),
   };
   const canvas = createCanvas(width, height, colors.background);
   const accentHeight = Math.max(4, Math.floor(height * 0.05));
+  const contentX = Math.min(
+    Math.floor(width / 2) - 12,
+    Math.max(borderWidth + paddingX, 12),
+  );
+  const contentTop = Math.min(
+    Math.floor(height / 2) - 12,
+    Math.max(borderWidth + paddingY, accentHeight + 6),
+  );
+  const contentWidth = Math.max(24, width - contentX * 2);
+  const contentHeight = Math.max(
+    24,
+    height - contentTop - Math.max(borderWidth + paddingY, 12),
+  );
 
   fillRect(canvas, 0, 0, width, accentHeight, colors.accent);
 
   if (expired) {
-    const label =
-      timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO
-        ? "00:00:00"
-        : "EXPIRED";
-    const expiredFont =
-      timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO
-        ? fontFamily
-        : "BLOCK";
-    const scale = fitTextScale(
-      label,
-      width - 40,
-      Math.floor(height * 0.34),
-      7,
-      expiredFont,
-    );
+    if (timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO) {
+      drawTimerBlock(canvas, {
+        contentHeight,
+        contentWidth,
+        contentX,
+        contentY: contentTop,
+        fontFamily,
+        headingText,
+        labelColor: colors.label,
+        showHeading,
+        showLabels,
+        textColor: colors.text,
+        units: buildTimerUnits(0, unitVisibility, timerLabels),
+      });
+    } else {
+      const label = "EXPIRED";
+      const scale = fitTextScale(
+        label,
+        contentWidth,
+        contentHeight,
+        7,
+        "BLOCK",
+      );
 
-    drawCenteredText(
-      canvas,
-      label,
-      Math.floor(height * 0.38),
-      scale,
-      colors.text,
-      expiredFont,
-    );
-    if (
-      timer.expiredBehavior === EmailTimerExpiredBehavior.SHOW_ZERO &&
-      showLabels
-    ) {
-      drawCenteredText(
+      drawCenteredTextInBounds(
         canvas,
-        "HRS MIN SEC",
-        Math.floor(height * 0.7),
-        Math.max(2, Math.floor(scale * 0.36)),
-        colors.label,
+        label,
+        contentX,
+        contentWidth,
+        contentTop + Math.max(0, Math.floor((contentHeight - scale * 7) / 2)),
+        scale,
+        colors.text,
         "BLOCK",
       );
     }
 
+    drawBorder(canvas, borderWidth, colors.border);
     applyRoundedCorners(canvas, cornerRadius);
 
     return {
@@ -121,48 +139,21 @@ export function renderEmailTimerPng(
     };
   }
 
-  const timeText = formatRemainingTime(remainingSeconds);
-  const labelText = timeText.length > 8 ? "DAYS HRS MIN SEC" : "HRS MIN SEC";
-  const timeScale = fitTextScale(
-    timeText,
-    width - 40,
-    Math.floor(height * 0.38),
-    7,
+  drawTimerBlock(canvas, {
+    contentHeight,
+    contentWidth,
+    contentX,
+    contentY: contentTop,
     fontFamily,
-  );
-  const labelScale = Math.max(2, Math.floor(timeScale * 0.34));
-  const headingScale = Math.max(2, Math.min(4, Math.floor(timeScale * 0.45)));
-  const timeY = showHeading
-    ? Math.floor(height * 0.39)
-    : Math.floor(showLabels ? height * 0.32 : height * 0.38);
-  const labelY = showHeading
-    ? Math.floor(height * 0.74)
-    : Math.floor(height * 0.66);
+    headingText,
+    labelColor: colors.label,
+    showHeading,
+    showLabels,
+    textColor: colors.text,
+    units: buildTimerUnits(remainingSeconds, unitVisibility, timerLabels),
+  });
 
-  if (showHeading) {
-    drawCenteredText(
-      canvas,
-      headingText,
-      Math.floor(height * 0.18),
-      headingScale,
-      colors.accent,
-      "BLOCK",
-    );
-  }
-
-  drawCenteredText(canvas, timeText, timeY, timeScale, colors.text, fontFamily);
-
-  if (showLabels) {
-    drawCenteredText(
-      canvas,
-      labelText,
-      labelY,
-      labelScale,
-      colors.label,
-      "BLOCK",
-    );
-  }
-
+  drawBorder(canvas, borderWidth, colors.border);
   applyRoundedCorners(canvas, cornerRadius);
 
   return {
@@ -172,6 +163,304 @@ export function renderEmailTimerPng(
     expired,
     remainingSeconds,
   };
+}
+
+function drawTimerBlock(
+  canvas: Canvas,
+  {
+    contentHeight,
+    contentWidth,
+    contentX,
+    contentY,
+    fontFamily,
+    headingText,
+    labelColor,
+    showHeading,
+    showLabels,
+    textColor,
+    units,
+  }: {
+    contentHeight: number;
+    contentWidth: number;
+    contentX: number;
+    contentY: number;
+    fontFamily: EmailTimerFontFamily;
+    headingText: string;
+    labelColor: RgbaColor;
+    showHeading: boolean;
+    showLabels: boolean;
+    textColor: RgbaColor;
+    units: TimerUnit[];
+  },
+) {
+  const headingScale = showHeading
+    ? Math.min(5, fitTextScale(headingText, contentWidth, 42, 7, "BLOCK"))
+    : 0;
+  const headingHeight = showHeading ? headingScale * 7 : 0;
+  const headingGap = showHeading ? Math.max(5, headingScale * 2) : 0;
+  const availableTimerHeight = Math.max(
+    16,
+    contentHeight - headingHeight - headingGap,
+  );
+  const timeScale = fitTimerUnitScale(
+    units,
+    contentWidth,
+    availableTimerHeight,
+    fontFamily,
+    showLabels,
+  );
+  const labelScale = getTimerLabelScale(timeScale, showLabels);
+  const timerHeight = measureTimerUnitsHeight(
+    timeScale,
+    labelScale,
+    showLabels,
+  );
+  const blockHeight = headingHeight + headingGap + timerHeight;
+  const blockTop =
+    contentY + Math.max(0, Math.floor((contentHeight - blockHeight) / 2));
+
+  if (showHeading) {
+    drawCenteredTextInBounds(
+      canvas,
+      headingText,
+      contentX,
+      contentWidth,
+      blockTop,
+      headingScale,
+      textColor,
+      "BLOCK",
+    );
+  }
+
+  drawTimerUnits(canvas, {
+    contentWidth,
+    contentX,
+    fontFamily,
+    labelColor,
+    labelScale,
+    showLabels,
+    textColor,
+    timeScale,
+    units,
+    y: blockTop + headingHeight + headingGap,
+  });
+}
+
+type TimerUnit = {
+  key: "days" | "hours" | "minutes" | "seconds";
+  label: string;
+  value: string;
+};
+
+function buildTimerUnits(
+  totalSeconds: number,
+  visibility: Record<TimerUnit["key"], boolean>,
+  labels: Record<TimerUnit["key"], string>,
+): TimerUnit[] {
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const allUnits: TimerUnit[] = [
+    {
+      key: "days",
+      label: labels.days,
+      value: String(days).padStart(2, "0"),
+    },
+    {
+      key: "hours",
+      label: labels.hours,
+      value: String(hours).padStart(2, "0"),
+    },
+    {
+      key: "minutes",
+      label: labels.minutes,
+      value: String(minutes).padStart(2, "0"),
+    },
+    {
+      key: "seconds",
+      label: labels.seconds,
+      value: String(seconds).padStart(2, "0"),
+    },
+  ];
+  const units = allUnits.filter((unit) => visibility[unit.key]);
+
+  return units.length > 0
+    ? units
+    : [{ key: "seconds", label: labels.seconds, value: "00" }];
+}
+
+function drawTimerUnits(
+  canvas: Canvas,
+  {
+    contentWidth,
+    contentX,
+    fontFamily,
+    labelColor,
+    labelScale,
+    showLabels,
+    textColor,
+    timeScale,
+    units,
+    y,
+  }: {
+    contentWidth: number;
+    contentX: number;
+    fontFamily: EmailTimerFontFamily;
+    labelColor: RgbaColor;
+    labelScale: number;
+    showLabels: boolean;
+    textColor: RgbaColor;
+    timeScale: number;
+    units: TimerUnit[];
+    y: number;
+  },
+) {
+  const gap = getTimerUnitGap(timeScale);
+  const columns = units.map((unit) =>
+    measureTimerUnitColumn(unit, timeScale, labelScale, fontFamily, showLabels),
+  );
+  const totalWidth =
+    columns.reduce((sum, width) => sum + width, 0) +
+    gap * Math.max(0, units.length - 1);
+  let cursorX =
+    contentX + Math.max(0, Math.floor((contentWidth - totalWidth) / 2));
+
+  units.forEach((unit, index) => {
+    const columnWidth = columns[index] ?? 0;
+    const timeWidth = measureText(unit.value, timeScale, fontFamily);
+    const timeX =
+      cursorX + Math.max(0, Math.floor((columnWidth - timeWidth) / 2));
+
+    drawText(canvas, unit.value, timeX, y, timeScale, textColor, fontFamily);
+
+    if (showLabels) {
+      const labelWidth = measureText(unit.label, labelScale, "BLOCK");
+      const labelX =
+        cursorX + Math.max(0, Math.floor((columnWidth - labelWidth) / 2));
+      drawText(
+        canvas,
+        unit.label,
+        labelX,
+        y + timeScale * 7 + Math.max(4, Math.floor(timeScale * 0.8)),
+        labelScale,
+        labelColor,
+        "BLOCK",
+      );
+    }
+
+    cursorX += columnWidth + gap;
+  });
+}
+
+function fitTimerUnitScale(
+  units: TimerUnit[],
+  maxWidth: number,
+  maxHeight: number,
+  fontFamily: EmailTimerFontFamily,
+  showLabels: boolean,
+) {
+  for (let scale = 12; scale >= 2; scale -= 1) {
+    const labelScale = getTimerLabelScale(scale, showLabels);
+    const width = measureTimerUnitsWidth(
+      units,
+      scale,
+      labelScale,
+      fontFamily,
+      showLabels,
+    );
+    const height = measureTimerUnitsHeight(scale, labelScale, showLabels);
+
+    if (width <= maxWidth && height <= maxHeight) {
+      return scale;
+    }
+  }
+
+  return 2;
+}
+
+function measureTimerUnitsWidth(
+  units: TimerUnit[],
+  timeScale: number,
+  labelScale: number,
+  fontFamily: EmailTimerFontFamily,
+  showLabels: boolean,
+) {
+  const gap = getTimerUnitGap(timeScale);
+
+  return (
+    units.reduce(
+      (sum, unit) =>
+        sum +
+        measureTimerUnitColumn(
+          unit,
+          timeScale,
+          labelScale,
+          fontFamily,
+          showLabels,
+        ),
+      0,
+    ) +
+    gap * Math.max(0, units.length - 1)
+  );
+}
+
+function measureTimerUnitColumn(
+  unit: TimerUnit,
+  timeScale: number,
+  labelScale: number,
+  fontFamily: EmailTimerFontFamily,
+  showLabels: boolean,
+) {
+  const timeWidth = measureText(unit.value, timeScale, fontFamily);
+
+  if (!showLabels) return timeWidth;
+
+  return Math.max(timeWidth, measureText(unit.label, labelScale, "BLOCK"));
+}
+
+function measureTimerUnitsHeight(
+  timeScale: number,
+  labelScale: number,
+  showLabels: boolean,
+) {
+  return (
+    timeScale * 7 +
+    (showLabels ? Math.max(4, Math.floor(timeScale * 0.8)) + labelScale * 7 : 0)
+  );
+}
+
+function getTimerLabelScale(timeScale: number, showLabels: boolean) {
+  return showLabels ? Math.max(2, Math.floor(timeScale * 0.34)) : 0;
+}
+
+function getTimerUnitGap(timeScale: number) {
+  return Math.max(8, Math.floor(timeScale * 2.2));
+}
+
+function drawBorder(canvas: Canvas, width: number, color: RgbaColor) {
+  if (width <= 0) return;
+
+  fillRect(canvas, 0, 0, canvas.width, width, color);
+  fillRect(canvas, 0, canvas.height - width, canvas.width, width, color);
+  fillRect(canvas, 0, 0, width, canvas.height, color);
+  fillRect(canvas, canvas.width - width, 0, width, canvas.height, color);
+}
+
+function drawCenteredTextInBounds(
+  canvas: Canvas,
+  text: string,
+  x: number,
+  width: number,
+  y: number,
+  scale: number,
+  color: RgbaColor,
+  fontFamily: EmailTimerFontFamily,
+) {
+  const textWidth = measureText(text, scale, fontFamily);
+  const textX = x + Math.max(0, Math.floor((width - textWidth) / 2));
+
+  drawText(canvas, text, textX, y, scale, color, fontFamily);
 }
 
 function createCanvas(width: number, height: number, color: RgbaColor) {
@@ -216,20 +505,6 @@ function fillRect(
       setPixel(canvas, column, row, color);
     }
   }
-}
-
-function drawCenteredText(
-  canvas: Canvas,
-  text: string,
-  y: number,
-  scale: number,
-  color: RgbaColor,
-  fontFamily: EmailTimerFontFamily,
-) {
-  const width = measureText(text, scale, fontFamily);
-  const x = Math.max(0, Math.floor((canvas.width - width) / 2));
-
-  drawText(canvas, text, x, y, scale, color, fontFamily);
 }
 
 function drawText(
@@ -409,25 +684,6 @@ function crc32(buffer: Buffer) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function formatRemainingTime(totalSeconds: number) {
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) {
-    return `${String(days).padStart(2, "0")}:${String(hours).padStart(
-      2,
-      "0",
-    )}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  }
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-    2,
-    "0",
-  )}:${String(seconds).padStart(2, "0")}`;
-}
-
 function getRemainingSeconds(value: Date | string | null, now: Date) {
   if (!value) return 0;
 
@@ -496,9 +752,44 @@ function readBoolean(value: unknown, fallback: boolean) {
   return fallback;
 }
 
+function readUnitVisibility(
+  design: Record<string, unknown>,
+): Record<TimerUnit["key"], boolean> {
+  const visibility = {
+    days: readBoolean(design.showDays, true),
+    hours: readBoolean(design.showHours, true),
+    minutes: readBoolean(design.showMinutes, true),
+    seconds: readBoolean(design.showSeconds, true),
+  };
+
+  if (
+    visibility.days ||
+    visibility.hours ||
+    visibility.minutes ||
+    visibility.seconds
+  ) {
+    return visibility;
+  }
+
+  return { ...visibility, seconds: true };
+}
+
+function readTimerLabels(
+  design: Record<string, unknown>,
+): Record<TimerUnit["key"], string> {
+  return {
+    days: readBitmapText(design.daysLabel, "Days", 10),
+    hours: readBitmapText(design.hoursLabel, "Hrs", 10),
+    minutes: readBitmapText(design.minutesLabel, "Mins", 10),
+    seconds: readBitmapText(design.secondsLabel, "Secs", 10),
+  };
+}
+
 function readBitmapText(value: unknown, fallback: string, maxLength: number) {
   const candidate = typeof value === "string" ? value.trim() : "";
-  const text = candidate || fallback;
+  const text = (candidate || fallback)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 
   return text.replace(/[^\w\s:.-]/g, "").slice(0, maxLength) || fallback;
 }

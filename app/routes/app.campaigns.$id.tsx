@@ -2679,6 +2679,9 @@ function parseEmailTimerFormData(formData: FormData): {
   const width = Number(formData.get("emailTimerWidth"));
   const height = Number(formData.get("emailTimerHeight"));
   const cornerRadius = Number(formData.get("emailTimerCornerRadius"));
+  const borderWidth = Number(formData.get("emailTimerBorderWidth"));
+  const paddingX = Number(formData.get("emailTimerPaddingX"));
+  const paddingY = Number(formData.get("emailTimerPaddingY"));
   const presetKey = readEmailTimerPresetKey(
     String(formData.get("emailTimerPresetKey") ?? ""),
   );
@@ -2709,12 +2712,47 @@ function parseEmailTimerFormData(formData: FormData): {
     "labelColor",
     errors,
   );
+  const borderColor = readEmailTimerHexColor(
+    formData.get("emailTimerBorderColor"),
+    "#111827",
+    "borderColor",
+    errors,
+  );
   const headingText = String(
     formData.get("emailTimerHeadingText") ?? "ENDS IN",
   ).trim();
+  const daysLabel = readEmailTimerLabel(
+    formData.get("emailTimerDaysLabel"),
+    "Days",
+    "daysLabel",
+    errors,
+  );
+  const hoursLabel = readEmailTimerLabel(
+    formData.get("emailTimerHoursLabel"),
+    "Hrs",
+    "hoursLabel",
+    errors,
+  );
+  const minutesLabel = readEmailTimerLabel(
+    formData.get("emailTimerMinutesLabel"),
+    "Mins",
+    "minutesLabel",
+    errors,
+  );
+  const secondsLabel = readEmailTimerLabel(
+    formData.get("emailTimerSecondsLabel"),
+    "Secs",
+    "secondsLabel",
+    errors,
+  );
   const expiredBehavior = readEmailTimerExpiredBehavior(
     String(formData.get("emailTimerExpiredBehavior") ?? ""),
   );
+  const showDays = formData.getAll("emailTimerShowDays").includes("true");
+  const showHours = formData.getAll("emailTimerShowHours").includes("true");
+  const showMinutes = formData.getAll("emailTimerShowMinutes").includes("true");
+  const showSeconds = formData.getAll("emailTimerShowSeconds").includes("true");
+  const hasVisibleUnit = showDays || showHours || showMinutes || showSeconds;
 
   if (!Number.isInteger(width) || width < 240 || width > 1200) {
     errors.width = "Enter a width from 240 to 1200 pixels.";
@@ -2730,6 +2768,22 @@ function parseEmailTimerFormData(formData: FormData): {
     cornerRadius > 40
   ) {
     errors.cornerRadius = "Enter a corner radius from 0 to 40 pixels.";
+  }
+
+  if (!Number.isInteger(borderWidth) || borderWidth < 0 || borderWidth > 16) {
+    errors.borderWidth = "Enter a border width from 0 to 16 pixels.";
+  }
+
+  if (!Number.isInteger(paddingX) || paddingX < 0 || paddingX > 160) {
+    errors.paddingX = "Enter horizontal padding from 0 to 160 pixels.";
+  }
+
+  if (!Number.isInteger(paddingY) || paddingY < 0 || paddingY > 120) {
+    errors.paddingY = "Enter vertical padding from 0 to 120 pixels.";
+  }
+
+  if (!hasVisibleUnit) {
+    errors.form = "Show at least one timer unit.";
   }
 
   if (!fontFamily) {
@@ -2754,11 +2808,23 @@ function parseEmailTimerFormData(formData: FormData): {
       textColor,
       accentColor,
       labelColor,
+      borderColor,
       fontFamily: fontFamily ?? "BLOCK",
       cornerRadius: Number.isInteger(cornerRadius) ? cornerRadius : 0,
+      borderWidth: Number.isInteger(borderWidth) ? borderWidth : 0,
+      paddingX: Number.isInteger(paddingX) ? paddingX : 34,
+      paddingY: Number.isInteger(paddingY) ? paddingY : 24,
       showHeading: formData.getAll("emailTimerShowHeading").includes("true"),
       headingText: headingText || "ENDS IN",
       showLabels: formData.getAll("emailTimerShowLabels").includes("true"),
+      showDays: hasVisibleUnit ? showDays : true,
+      showHours,
+      showMinutes,
+      showSeconds,
+      daysLabel,
+      hoursLabel,
+      minutesLabel,
+      secondsLabel,
     },
     expiredBehavior: expiredBehavior ?? EmailTimerExpiredBehavior.SHOW_EXPIRED,
   };
@@ -2784,7 +2850,12 @@ function readEmailTimerFontFamily(value: string): EmailTimerFontFamily | null {
 function readEmailTimerHexColor(
   value: FormDataEntryValue | null,
   fallback: string,
-  field: "backgroundColor" | "textColor" | "accentColor" | "labelColor",
+  field:
+    | "backgroundColor"
+    | "textColor"
+    | "accentColor"
+    | "labelColor"
+    | "borderColor",
   errors: EmailTimerErrors,
 ) {
   const candidate = typeof value === "string" ? value.trim() : "";
@@ -2795,6 +2866,22 @@ function readEmailTimerHexColor(
 
   errors[field] = "Enter a valid hex color.";
   return fallback;
+}
+
+function readEmailTimerLabel(
+  value: FormDataEntryValue | null,
+  fallback: string,
+  field: "daysLabel" | "hoursLabel" | "minutesLabel" | "secondsLabel",
+  errors: EmailTimerErrors,
+) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+
+  if (candidate.length > 10) {
+    errors[field] = "Use 10 characters or fewer.";
+    return fallback;
+  }
+
+  return candidate || fallback;
 }
 
 function readEmailTimerExpiredBehavior(value: string) {

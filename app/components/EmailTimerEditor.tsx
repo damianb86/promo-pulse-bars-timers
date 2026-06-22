@@ -26,8 +26,16 @@ export type EmailTimerErrors = {
   textColor?: string;
   accentColor?: string;
   labelColor?: string;
+  borderColor?: string;
+  borderWidth?: string;
+  paddingX?: string;
+  paddingY?: string;
   cornerRadius?: string;
   headingText?: string;
+  daysLabel?: string;
+  hoursLabel?: string;
+  minutesLabel?: string;
+  secondsLabel?: string;
 };
 
 type EmailTimerEditorProps = {
@@ -68,11 +76,23 @@ type EmailTimerConfig = {
   textColor: string;
   accentColor: string;
   labelColor: string;
+  borderColor: string;
   fontFamily: string;
   cornerRadius: number;
+  borderWidth: number;
+  paddingX: number;
+  paddingY: number;
   showHeading: boolean;
   headingText: string;
   showLabels: boolean;
+  showDays: boolean;
+  showHours: boolean;
+  showMinutes: boolean;
+  showSeconds: boolean;
+  daysLabel: string;
+  hoursLabel: string;
+  minutesLabel: string;
+  secondsLabel: string;
 };
 
 const emailTimerFontOptions = [
@@ -95,11 +115,23 @@ const emailTimerStylePresets: Array<
     textColor: "#FFFFFF",
     accentColor: "#F97316",
     labelColor: "#FDBA74",
+    borderColor: "#111827",
     fontFamily: "BLOCK",
     cornerRadius: 0,
+    borderWidth: 0,
+    paddingX: 34,
+    paddingY: 24,
     showHeading: true,
     headingText: "ENDS IN",
     showLabels: true,
+    showDays: true,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: true,
+    daysLabel: "Days",
+    hoursLabel: "Hrs",
+    minutesLabel: "Mins",
+    secondsLabel: "Secs",
   },
   {
     presetKey: "clean-light",
@@ -111,11 +143,23 @@ const emailTimerStylePresets: Array<
     textColor: "#111827",
     accentColor: "#2563EB",
     labelColor: "#4B5563",
+    borderColor: "#CBD5E1",
     fontFamily: "COMPACT",
     cornerRadius: 12,
+    borderWidth: 2,
+    paddingX: 40,
+    paddingY: 28,
     showHeading: true,
     headingText: "SALE ENDS IN",
     showLabels: true,
+    showDays: true,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: false,
+    daysLabel: "Days",
+    hoursLabel: "Hours",
+    minutesLabel: "Minutes",
+    secondsLabel: "Seconds",
   },
   {
     presetKey: "neon-sale",
@@ -127,31 +171,103 @@ const emailTimerStylePresets: Array<
     textColor: "#67E8F9",
     accentColor: "#EC4899",
     labelColor: "#BAE6FD",
+    borderColor: "#EC4899",
     fontFamily: "DIGITAL",
     cornerRadius: 18,
+    borderWidth: 3,
+    paddingX: 46,
+    paddingY: 30,
     showHeading: true,
     headingText: "FLASH SALE",
     showLabels: true,
+    showDays: false,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: true,
+    daysLabel: "Days",
+    hoursLabel: "Hrs",
+    minutesLabel: "Mins",
+    secondsLabel: "Secs",
   },
   {
     presetKey: "soft-countdown",
     label: "Soft countdown",
-    description: "Low contrast blue for lifecycle emails.",
+    description: "Compact lifecycle reminder without a headline.",
     width: 480,
     height: 140,
-    backgroundColor: "#EEF6FF",
-    textColor: "#1E3A8A",
-    accentColor: "#0EA5E9",
-    labelColor: "#2563EB",
+    backgroundColor: "#ECFDF5",
+    textColor: "#064E3B",
+    accentColor: "#10B981",
+    labelColor: "#047857",
+    borderColor: "#A7F3D0",
     fontFamily: "WIDE",
-    cornerRadius: 16,
+    cornerRadius: 22,
+    borderWidth: 1,
+    paddingX: 28,
+    paddingY: 20,
     showHeading: false,
     headingText: "ENDS IN",
     showLabels: true,
+    showDays: true,
+    showHours: true,
+    showMinutes: true,
+    showSeconds: false,
+    daysLabel: "Days",
+    hoursLabel: "Hrs",
+    minutesLabel: "Min",
+    secondsLabel: "Sec",
   },
 ];
 
 const defaultEmailTimerConfig = emailTimerStylePresets[0];
+
+const emailTimerUnitControls = [
+  {
+    key: "days",
+    label: "Days",
+    showField: "showDays",
+    labelField: "daysLabel",
+    name: "emailTimerShowDays",
+    inputName: "emailTimerDaysLabel",
+  },
+  {
+    key: "hours",
+    label: "Hours",
+    showField: "showHours",
+    labelField: "hoursLabel",
+    name: "emailTimerShowHours",
+    inputName: "emailTimerHoursLabel",
+  },
+  {
+    key: "minutes",
+    label: "Minutes",
+    showField: "showMinutes",
+    labelField: "minutesLabel",
+    name: "emailTimerShowMinutes",
+    inputName: "emailTimerMinutesLabel",
+  },
+  {
+    key: "seconds",
+    label: "Seconds",
+    showField: "showSeconds",
+    labelField: "secondsLabel",
+    name: "emailTimerShowSeconds",
+    inputName: "emailTimerSecondsLabel",
+  },
+] satisfies Array<{
+  key: string;
+  label: string;
+  showField: keyof Pick<
+    EmailTimerConfig,
+    "showDays" | "showHours" | "showMinutes" | "showSeconds"
+  >;
+  labelField: keyof Pick<
+    EmailTimerConfig,
+    "daysLabel" | "hoursLabel" | "minutesLabel" | "secondsLabel"
+  >;
+  name: string;
+  inputName: string;
+}>;
 
 export function EmailTimerEditor({
   errors,
@@ -248,12 +364,19 @@ export function EmailTimerEditor({
                       className="counterpulse-email-style-preset__swatch"
                       style={{
                         background: preset.backgroundColor,
-                        borderColor: preset.accentColor,
+                        borderColor: preset.borderColor,
+                        borderRadius: `${Math.min(preset.cornerRadius, 18)}px`,
+                        borderWidth: `${Math.max(1, preset.borderWidth)}px`,
                         color: preset.textColor,
                       }}
                     >
                       <span style={{ background: preset.accentColor }} />
-                      <strong>01:59:24</strong>
+                      <strong>{formatPreviewTimeText(preset)}</strong>
+                      {preset.showLabels && (
+                        <em style={{ color: preset.labelColor }}>
+                          {formatPreviewLabelText(preset)}
+                        </em>
+                      )}
                     </span>
                     <span>
                       <strong>{preset.label}</strong>
@@ -364,6 +487,51 @@ export function EmailTimerEditor({
                     }
                   />
                 </FormField>
+                <FormField label="Horizontal padding" error={errors?.paddingX}>
+                  <input
+                    name="emailTimerPaddingX"
+                    type="number"
+                    min="0"
+                    max="160"
+                    step="1"
+                    value={timerConfig.paddingX}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        paddingX: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </FormField>
+                <FormField label="Vertical padding" error={errors?.paddingY}>
+                  <input
+                    name="emailTimerPaddingY"
+                    type="number"
+                    min="0"
+                    max="120"
+                    step="1"
+                    value={timerConfig.paddingY}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        paddingY: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </FormField>
+                <FormField label="Border width" error={errors?.borderWidth}>
+                  <input
+                    name="emailTimerBorderWidth"
+                    type="number"
+                    min="0"
+                    max="16"
+                    step="1"
+                    value={timerConfig.borderWidth}
+                    onChange={(event) =>
+                      updateTimerConfig({
+                        borderWidth: Number(event.currentTarget.value),
+                      })
+                    }
+                  />
+                </FormField>
               </div>
             </div>
 
@@ -436,6 +604,15 @@ export function EmailTimerEditor({
                   value={timerConfig.labelColor}
                   onChange={(value) => updateTimerConfig({ labelColor: value })}
                 />
+                <EmailTimerColorField
+                  error={errors?.borderColor}
+                  label="Border"
+                  name="emailTimerBorderColor"
+                  value={timerConfig.borderColor}
+                  onChange={(value) =>
+                    updateTimerConfig({ borderColor: value })
+                  }
+                />
               </div>
               <div className="counterpulse-toggle-grid">
                 <div className="counterpulse-toggle">
@@ -480,6 +657,64 @@ export function EmailTimerEditor({
                     <span>Show time labels</span>
                   </label>
                 </div>
+              </div>
+            </div>
+
+            <div className="counterpulse-config-card counterpulse-config-card--wide">
+              <PanelHeader
+                eyebrow="Timer"
+                title="Units and labels"
+                description="Choose which time units appear in the email image and edit the label text shown under each unit."
+              />
+              <div className="counterpulse-email-unit-grid">
+                {emailTimerUnitControls.map((unit) => {
+                  const checked = Boolean(timerConfig[unit.showField]);
+                  const labelValue = String(timerConfig[unit.labelField]);
+                  const error =
+                    unit.key === "days"
+                      ? errors?.daysLabel
+                      : unit.key === "hours"
+                        ? errors?.hoursLabel
+                        : unit.key === "minutes"
+                          ? errors?.minutesLabel
+                          : errors?.secondsLabel;
+
+                  return (
+                    <div
+                      className="counterpulse-email-unit-card"
+                      key={unit.key}
+                    >
+                      <label className="counterpulse-toggle-label">
+                        <input name={unit.name} type="hidden" value="false" />
+                        <input
+                          checked={checked}
+                          name={unit.name}
+                          type="checkbox"
+                          value="true"
+                          onChange={(event) =>
+                            updateTimerConfig({
+                              [unit.showField]: event.currentTarget.checked,
+                            })
+                          }
+                        />
+                        <span>{unit.label}</span>
+                      </label>
+                      <FormField label={`${unit.label} label`} error={error}>
+                        <input
+                          disabled={!checked}
+                          maxLength={10}
+                          name={unit.inputName}
+                          value={labelValue}
+                          onChange={(event) =>
+                            updateTimerConfig({
+                              [unit.labelField]: event.currentTarget.value,
+                            })
+                          }
+                        />
+                      </FormField>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -538,6 +773,10 @@ export function EmailTimerEditor({
                   );
                 })}
               </div>
+              <EmailTimerFallbackPreview
+                config={timerConfig}
+                expiredBehavior={expiredBehavior}
+              />
             </div>
           </div>
 
@@ -769,8 +1008,15 @@ function EmailTimerColorField({
   );
 }
 
-function EmailTimerLivePreview({ config }: { config: EmailTimerConfig }) {
+function EmailTimerLivePreview({
+  config,
+  previewMode = "active",
+}: {
+  config: EmailTimerConfig;
+  previewMode?: "active" | "expired" | "zero";
+}) {
   const fontClass = `counterpulse-email-timer-live-preview__time--${config.fontFamily.toLowerCase()}`;
+  const previewUnits = getEmailTimerPreviewUnits(config, previewMode);
 
   return (
     <div className="counterpulse-email-timer-live-preview">
@@ -778,8 +1024,14 @@ function EmailTimerLivePreview({ config }: { config: EmailTimerConfig }) {
         className="counterpulse-email-timer-live-preview__bar"
         style={{
           backgroundColor: config.backgroundColor,
+          borderColor: config.borderColor,
           borderRadius: `${Math.min(config.cornerRadius, 24)}px`,
+          borderWidth: `${config.borderWidth}px`,
           color: config.textColor,
+          padding: `${Math.min(config.paddingY, 32)}px ${Math.min(
+            config.paddingX,
+            52,
+          )}px`,
         }}
       >
         <span
@@ -794,22 +1046,130 @@ function EmailTimerLivePreview({ config }: { config: EmailTimerConfig }) {
             {config.headingText || "ENDS IN"}
           </span>
         )}
-        <strong
-          className={`counterpulse-email-timer-live-preview__time ${fontClass}`}
-        >
-          01:59:24
-        </strong>
-        {config.showLabels && (
-          <span
-            className="counterpulse-email-timer-live-preview__labels"
-            style={{ color: config.labelColor }}
+        {previewMode === "expired" ? (
+          <strong
+            className={`counterpulse-email-timer-live-preview__time ${fontClass}`}
           >
-            Hrs&nbsp;&nbsp;&nbsp;Min&nbsp;&nbsp;&nbsp;Sec
+            EXPIRED
+          </strong>
+        ) : (
+          <span className="counterpulse-email-timer-live-preview__units">
+            {previewUnits.map((unit) => (
+              <span
+                className="counterpulse-email-timer-live-preview__unit"
+                key={unit.key}
+              >
+                <strong
+                  className={`counterpulse-email-timer-live-preview__time ${fontClass}`}
+                >
+                  {unit.value}
+                </strong>
+                {config.showLabels && (
+                  <span
+                    className="counterpulse-email-timer-live-preview__labels"
+                    style={{ color: config.labelColor }}
+                  >
+                    {unit.label}
+                  </span>
+                )}
+              </span>
+            ))}
           </span>
         )}
       </div>
     </div>
   );
+}
+
+function EmailTimerFallbackPreview({
+  config,
+  expiredBehavior,
+}: {
+  config: EmailTimerConfig;
+  expiredBehavior: string;
+}) {
+  if (expiredBehavior === "HIDE") {
+    return (
+      <div className="counterpulse-email-fallback-preview">
+        <span className="counterpulse-email-fallback-preview__pixel" />
+        <div>
+          <strong>Transparent pixel</strong>
+          <small>
+            The expired email image collapses to a 1px transparent PNG.
+          </small>
+        </div>
+      </div>
+    );
+  }
+
+  const previewMode = expiredBehavior === "SHOW_ZERO" ? "zero" : "expired";
+  const expiredConfig =
+    expiredBehavior === "SHOW_ZERO"
+      ? config
+      : { ...config, showHeading: true, headingText: "OFFER ENDED" };
+
+  return (
+    <div className="counterpulse-email-fallback-preview">
+      <div>
+        <strong>Fallback preview</strong>
+        <small>
+          {expiredBehavior === "SHOW_ZERO"
+            ? "Subscribers see the same timer frame at zero."
+            : "Subscribers see a branded expired-state image."}
+        </small>
+      </div>
+      <EmailTimerLivePreview config={expiredConfig} previewMode={previewMode} />
+    </div>
+  );
+}
+
+function getEmailTimerPreviewUnits(
+  config: EmailTimerConfig,
+  previewMode: "active" | "expired" | "zero" = "active",
+) {
+  const activeValues = previewMode === "zero" ? ["00", "00", "00", "00"] : null;
+  const units = [
+    {
+      key: "days",
+      value: activeValues?.[0] ?? "06",
+      label: config.daysLabel || "Days",
+      visible: config.showDays,
+    },
+    {
+      key: "hours",
+      value: activeValues?.[1] ?? "01",
+      label: config.hoursLabel || "Hrs",
+      visible: config.showHours,
+    },
+    {
+      key: "minutes",
+      value: activeValues?.[2] ?? "59",
+      label: config.minutesLabel || "Mins",
+      visible: config.showMinutes,
+    },
+    {
+      key: "seconds",
+      value: activeValues?.[3] ?? "24",
+      label: config.secondsLabel || "Secs",
+      visible: config.showSeconds,
+    },
+  ].filter((unit) => unit.visible);
+
+  return units.length > 0
+    ? units
+    : [{ key: "seconds", value: "24", label: "Secs", visible: true }];
+}
+
+function formatPreviewTimeText(config: EmailTimerConfig) {
+  return getEmailTimerPreviewUnits(config)
+    .map((unit) => unit.value)
+    .join(":");
+}
+
+function formatPreviewLabelText(config: EmailTimerConfig) {
+  return getEmailTimerPreviewUnits(config)
+    .map((unit) => unit.label)
+    .join(" ");
 }
 
 function isHexColor(value: string) {

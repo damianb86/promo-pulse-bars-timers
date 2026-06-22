@@ -195,6 +195,10 @@ export function parseCampaignFormData(
       readString(formData, "freeShippingSuccessMessage") ||
       defaultCampaignFormValues.freeShippingSuccessMessage,
     freeShippingAutoDiscount: readBoolean(formData, "freeShippingAutoDiscount"),
+    freeShippingExistingDiscount: readString(
+      formData,
+      "freeShippingExistingDiscount",
+    ),
     freeShippingDiscountCode:
       readString(formData, "freeShippingDiscountCode").toUpperCase() ||
       defaultCampaignFormValues.freeShippingDiscountCode,
@@ -379,12 +383,18 @@ export function parseCampaignFormData(
     }
 
     if (values.freeShippingAutoDiscount) {
-      if (!/^[A-Z0-9_-]{3,40}$/.test(values.freeShippingDiscountCode)) {
-        errors.freeShippingDiscountCode =
-          "Use 3-40 characters: letters, numbers, dashes, or underscores.";
+      if (
+        values.freeShippingExistingDiscount &&
+        !isValidShopifyDiscountReference(values.freeShippingExistingDiscount)
+      ) {
+        errors.freeShippingExistingDiscount =
+          "Use an existing Shopify discount ID or code.";
       }
 
-      if (!values.freeShippingDiscountTitle.trim()) {
+      if (
+        !values.freeShippingExistingDiscount &&
+        !values.freeShippingDiscountTitle.trim()
+      ) {
         errors.freeShippingDiscountTitle = "Add a Shopify discount title.";
       }
     }
@@ -571,4 +581,15 @@ function hasProductVariantIds(value: string) {
   return splitCampaignList(value).some((id) =>
     id.includes("/shopify/ProductVariant/"),
   );
+}
+
+function isValidShopifyDiscountReference(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) return true;
+  if (/^gid:\/\/shopify\/Discount(?:Automatic)?Node\/\d+$/i.test(trimmed)) {
+    return true;
+  }
+
+  return /^[A-Z0-9_-]{3,80}$/i.test(trimmed);
 }

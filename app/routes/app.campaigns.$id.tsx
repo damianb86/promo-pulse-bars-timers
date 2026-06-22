@@ -141,12 +141,14 @@ import {
   type ShopifyMarket,
 } from "../services/markets/markets.server";
 import {
+  createAutomaticFreeShippingDiscount,
   createBasicCodeDiscount,
   createFreeShippingCodeDiscount,
   getDiscountByCodeOrId,
   listCodeDiscounts,
   SHOPIFY_DISCOUNT_SCOPE_MESSAGE,
   syncCampaignDatesFromDiscount,
+  updateAutomaticFreeShippingDiscount,
   type ShopifyGraphqlClient,
   type ShopifyDiscountSummary,
 } from "../services/shopifyDiscounts.server";
@@ -1331,7 +1333,7 @@ export const action = async ({
           designValues: parsedDesign.values,
           mobileDesignValues: parsedDesign.mobileValues,
           errors: {
-            freeShippingDiscountCode: discountGate.reason,
+            form: discountGate.reason,
           },
         };
       }
@@ -3428,6 +3430,8 @@ function toCampaignFreeShippingFormValues(
     progressStyle: string;
   } | null,
   discountSync: {
+    method?: string | null;
+    shopifyDiscountId?: string | null;
     discountCode?: string | null;
     title?: string | null;
     valueType?: string | null;
@@ -3444,6 +3448,7 @@ function toCampaignFreeShippingFormValues(
   | "freeShippingEmptyCartMessage"
   | "freeShippingSuccessMessage"
   | "freeShippingAutoDiscount"
+  | "freeShippingExistingDiscount"
   | "freeShippingDiscountCode"
   | "freeShippingDiscountTitle"
   | "freeShippingDiscountAppliesOncePerCustomer"
@@ -3464,6 +3469,8 @@ function toCampaignFreeShippingFormValues(
     freeShippingEmptyCartMessage: freeShippingValues.emptyCartMessage,
     freeShippingSuccessMessage: freeShippingValues.successMessage,
     freeShippingAutoDiscount: hasFreeShippingDiscount,
+    freeShippingExistingDiscount:
+      discountSync?.method === "CODE" ? (discountSync.discountCode ?? "") : "",
     freeShippingDiscountCode:
       discountSync?.discountCode ??
       defaultCampaignFormValues.freeShippingDiscountCode,
@@ -3753,36 +3760,84 @@ async function createOrLinkFreeShippingDiscountForCampaign({
   endsAt: Date | null;
 }) {
   const thresholdAmount = Number(values.freeShippingThresholdAmount);
-  const discountCode = values.freeShippingDiscountCode.trim().toUpperCase();
+  const existingReference = values.freeShippingExistingDiscount.trim();
   let discount: ShopifyDiscountSummary | null = null;
 
-  try {
-    discount = await createFreeShippingCodeDiscount(admin, {
+  if (existingReference) {
+    discount = await getDiscountByCodeOrId(
+      admin,
+      normalizeShopifyDiscountReference(existingReference),
+    );
+
+    if (!discount) {
+      throw new Error(
+        "The existing Shopify free shipping discount was not found.",
+      );
+    }
+
+    if (!isShopifyFreeShippingDiscount(discount)) {
+      throw new Error("Link an existing Shopify free shipping discount.");
+    }
+
+    return updateDiscountSyncForShop(campaignId, shopId, {
+      shopifyDiscountId: discount.id,
+      discountCode: discount.code || null,
+      method: getDiscountSyncMethodForShopifyDiscount(discount),
+      syncStartEnd: false,
+      startsAt,
+      endsAt,
+      lastSyncedAt: new Date(),
+      title: discount.title || values.freeShippingDiscountTitle,
+      valueType: "FREE_SHIPPING",
+      value: null,
+      minimumSubtotal: thresholdAmount.toFixed(2),
+      appliesOncePerCustomer: false,
+      showCodeOnStorefront:
+        values.freeShippingShowDiscountCode && Boolean(discount.code),
+    });
+  }
+
+  const existingCampaign = await getCampaignForShop(campaignId, shopId);
+  const existingAutomaticDiscountId =
+    existingCampaign?.discountSync?.method === "AUTOMATIC" &&
+    existingCampaign.discountSync.shopifyDiscountId?.startsWith(
+      "gid://shopify/DiscountAutomaticNode/",
+    )
+      ? existingCampaign.discountSync.shopifyDiscountId
+      : null;
+
+  if (existingAutomaticDiscountId) {
+    try {
+      discount = await updateAutomaticFreeShippingDiscount(
+        admin,
+        existingAutomaticDiscountId,
+        {
+          title: values.freeShippingDiscountTitle,
+          startsAt,
+          endsAt,
+          minimumSubtotal: thresholdAmount,
+        },
+      );
+    } catch (error) {
+      if (!isMissingShopifyDiscountError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  if (!discount) {
+    discount = await createAutomaticFreeShippingDiscount(admin, {
       title: values.freeShippingDiscountTitle,
-      code: discountCode,
       startsAt,
       endsAt,
       minimumSubtotal: thresholdAmount,
-      appliesOncePerCustomer: values.freeShippingDiscountAppliesOncePerCustomer,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-
-    if (!/already|exists|taken|code/i.test(message)) {
-      throw error;
-    }
-
-    discount = await getDiscountByCodeOrId(admin, discountCode);
-
-    if (!discount) {
-      throw error;
-    }
   }
 
   return updateDiscountSyncForShop(campaignId, shopId, {
     shopifyDiscountId: discount.id,
-    discountCode: discount.code ?? discountCode,
-    method: "CODE",
+    discountCode: null,
+    method: "AUTOMATIC",
     syncStartEnd: false,
     startsAt,
     endsAt,
@@ -3791,9 +3846,35 @@ async function createOrLinkFreeShippingDiscountForCampaign({
     valueType: "FREE_SHIPPING",
     value: null,
     minimumSubtotal: thresholdAmount.toFixed(2),
-    appliesOncePerCustomer: values.freeShippingDiscountAppliesOncePerCustomer,
-    showCodeOnStorefront: values.freeShippingShowDiscountCode,
+    appliesOncePerCustomer: false,
+    showCodeOnStorefront: false,
   });
+}
+
+function isShopifyFreeShippingDiscount(discount: ShopifyDiscountSummary) {
+  return /FreeShipping/i.test(discount.type);
+}
+
+function getDiscountSyncMethodForShopifyDiscount(
+  discount: ShopifyDiscountSummary,
+) {
+  return /Automatic/i.test(discount.type) ? "AUTOMATIC" : "CODE";
+}
+
+function isMissingShopifyDiscountError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return /not found|could not be found|does not exist|invalid id/i.test(
+    message,
+  );
+}
+
+function normalizeShopifyDiscountReference(value: string) {
+  const trimmed = value.trim();
+
+  return trimmed.startsWith("gid://shopify/Discount")
+    ? trimmed
+    : trimmed.toUpperCase();
 }
 
 async function saveDiscountForCampaign({

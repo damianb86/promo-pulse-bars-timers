@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createAutomaticFreeShippingDiscount,
   createBasicCodeDiscount,
   createFreeShippingCodeDiscount,
   deactivateCodeDiscount,
@@ -66,6 +67,24 @@ describe("shopifyDiscounts service", () => {
     });
     expect(firstGraphqlQuery(admin)).toContain("... on DiscountNode");
     expect(firstGraphqlQuery(admin)).toContain("... on DiscountCodeNode");
+  });
+
+  it("gets an automatic free shipping discount by id", async () => {
+    const admin = mockAdmin({
+      data: {
+        node: automaticFreeShippingNode({ title: "Free shipping over 50" }),
+      },
+    });
+
+    await expect(
+      getDiscountByCodeOrId(admin, "gid://shopify/DiscountAutomaticNode/1"),
+    ).resolves.toMatchObject({
+      code: "",
+      id: "gid://shopify/DiscountAutomaticNode/1",
+      title: "Free shipping over 50",
+      type: "DiscountAutomaticFreeShipping",
+    });
+    expect(firstGraphqlQuery(admin)).toContain("... on DiscountAutomaticNode");
   });
 
   it("creates a percentage discount with normalized percentage value", async () => {
@@ -168,6 +187,40 @@ describe("shopifyDiscounts service", () => {
       expect.objectContaining({
         variables: expect.objectContaining({
           input: expect.objectContaining({
+            minimumRequirement: {
+              subtotal: { greaterThanOrEqualToSubtotal: "50.00" },
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("creates an automatic free shipping discount with a subtotal threshold", async () => {
+    const admin = mockAdmin({
+      data: {
+        discountAutomaticFreeShippingCreate: {
+          automaticDiscountNode: automaticFreeShippingNode({
+            title: "Free shipping over 50",
+          }),
+          userErrors: [],
+        },
+      },
+    });
+
+    await createAutomaticFreeShippingDiscount(admin, {
+      title: "Free shipping over 50",
+      startsAt: null,
+      endsAt: null,
+      minimumSubtotal: 50,
+    });
+
+    expect(admin.graphql).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          input: expect.objectContaining({
+            destination: { all: true },
             minimumRequirement: {
               subtotal: { greaterThanOrEqualToSubtotal: "50.00" },
             },
@@ -280,6 +333,19 @@ function discountAdminNode({
       startsAt: "2026-01-01T00:00:00Z",
       endsAt: null,
       codes: { nodes: [{ code }] },
+    },
+  };
+}
+
+function automaticFreeShippingNode({ title }: { title: string }) {
+  return {
+    id: "gid://shopify/DiscountAutomaticNode/1",
+    automaticDiscount: {
+      __typename: "DiscountAutomaticFreeShipping",
+      title,
+      status: "ACTIVE",
+      startsAt: "2026-01-01T00:00:00Z",
+      endsAt: null,
     },
   };
 }

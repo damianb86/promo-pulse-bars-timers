@@ -298,7 +298,7 @@ describe("advanced campaign settings form parsing", () => {
     expect(valid.thresholdRules).toEqual({ AR: 120 });
   });
 
-  it("parses free shipping campaign settings, targeting, placements, and discount code visibility", () => {
+  it("parses free shipping campaign settings, targeting, placements, and linked discount visibility", () => {
     const parsed = parseCampaignFormData(
       formData({
         goal: "FREE_SHIPPING",
@@ -317,9 +317,8 @@ describe("advanced campaign settings form parsing", () => {
         freeShippingEmptyCartMessage: "Add {{amount}} more",
         freeShippingSuccessMessage: "Shipping is free",
         freeShippingAutoDiscount: "on",
-        freeShippingDiscountCode: "ship100",
+        freeShippingExistingDiscount: "ship100",
         freeShippingDiscountTitle: "Free shipping over 100",
-        freeShippingDiscountAppliesOncePerCustomer: "on",
         freeShippingShowDiscountCode: "on",
       }),
     );
@@ -338,8 +337,7 @@ describe("advanced campaign settings form parsing", () => {
       freeShippingCurrencyCode: "USD",
       freeShippingProgressStyle: "CIRCULAR",
       freeShippingAutoDiscount: true,
-      freeShippingDiscountCode: "SHIP100",
-      freeShippingDiscountAppliesOncePerCustomer: true,
+      freeShippingExistingDiscount: "ship100",
       freeShippingShowDiscountCode: true,
     });
     expect(buildCampaignTargetingValues(parsed.values)).toMatchObject({
@@ -369,7 +367,7 @@ describe("advanced campaign settings form parsing", () => {
           freeShippingThresholdAmount: "0",
           freeShippingCurrencyCode: "US",
           freeShippingAutoDiscount: "on",
-          freeShippingDiscountCode: "!!",
+          freeShippingExistingDiscount: "!!",
           freeShippingDiscountTitle: "",
         }),
       ).errors,
@@ -377,8 +375,8 @@ describe("advanced campaign settings form parsing", () => {
       freeShippingThresholdAmount:
         "Enter a free shipping threshold greater than 0.",
       freeShippingCurrencyCode: "Currency code must use a 3-letter ISO code.",
-      freeShippingDiscountCode:
-        "Use 3-40 characters: letters, numbers, dashes, or underscores.",
+      freeShippingExistingDiscount:
+        "Use an existing Shopify discount ID or code.",
     });
 
     expect(

@@ -329,6 +329,14 @@ export function buildCampaignFormDefaultsFromTemplate(
     subheadline: texts.subheadline ?? "",
     ctaText: texts.ctaText ?? "",
     ctaUrl: texts.ctaUrl ?? "/collections/all",
+    ...(template.type === "FREE_SHIPPING_GOAL"
+      ? {
+          freeShippingAutoDiscount: true,
+          freeShippingDiscountCode: "",
+          freeShippingExistingDiscount: "",
+          freeShippingDiscountTitle: `${template.eventName} free shipping`,
+        }
+      : {}),
   };
 }
 

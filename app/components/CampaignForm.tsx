@@ -308,8 +308,9 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
     },
     FREE_SHIPPING_GOAL: {
       form: {
-        freeShippingAutoDiscount: false,
-        freeShippingDiscountCode: "FREESHIP",
+        freeShippingAutoDiscount: true,
+        freeShippingDiscountCode: "",
+        freeShippingExistingDiscount: "",
         freeShippingDiscountTitle: "Promo Pulse free shipping",
         timerExpiredBehavior: "DO_NOTHING",
         timerMode: "FIXED_DATE",
@@ -739,7 +740,7 @@ export function CampaignForm({
           : null,
         discountSync: formValues.freeShippingAutoDiscount
           ? {
-              discountCode: formValues.freeShippingDiscountCode,
+              discountCode: getVisibleFreeShippingDiscountCode(formValues),
               showCodeOnStorefront: formValues.freeShippingShowDiscountCode,
             }
           : null,
@@ -812,7 +813,7 @@ export function CampaignForm({
       checked &&
       typeof window !== "undefined" &&
       !window.confirm(
-        "Promo Pulse will create or link a Shopify free shipping discount code with this threshold the next time you save.",
+        "Promo Pulse will create or update a Shopify automatic free shipping discount with this threshold the next time you save.",
       )
     ) {
       return;
@@ -1739,29 +1740,16 @@ export function CampaignForm({
                           type="checkbox"
                           onChange={toggleFreeShippingAutoDiscount}
                         />
-                        <span>
-                          Create or link the real Shopify discount code
-                        </span>
+                        <span>Create Shopify automatic free shipping</span>
                       </label>
                       <p>
-                        When enabled, saving creates or links a Shopify free
-                        shipping code and sets its minimum subtotal to this
-                        threshold, so checkout enforces the same rule.
+                        When enabled, saving creates or updates a Shopify
+                        automatic free shipping discount with this subtotal
+                        threshold. Checkout applies it without requiring a code.
                       </p>
 
                       {formValues.freeShippingAutoDiscount && (
                         <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-                          <FormField
-                            label="Discount code"
-                            error={errors.freeShippingDiscountCode}
-                          >
-                            <input
-                              name="freeShippingDiscountCode"
-                              value={formValues.freeShippingDiscountCode}
-                              onChange={updateField("freeShippingDiscountCode")}
-                            />
-                          </FormField>
-
                           <FormField
                             label="Discount title"
                             error={errors.freeShippingDiscountTitle}
@@ -1775,42 +1763,48 @@ export function CampaignForm({
                             />
                           </FormField>
 
-                          <div className="counterpulse-toggle">
-                            <label className="counterpulse-toggle-label">
-                              <input
-                                checked={
-                                  formValues.freeShippingDiscountAppliesOncePerCustomer
-                                }
-                                name="freeShippingDiscountAppliesOncePerCustomer"
-                                type="checkbox"
-                                onChange={updateCheckboxField(
-                                  "freeShippingDiscountAppliesOncePerCustomer",
-                                )}
-                              />
-                              <span>Limit to one use per customer</span>
-                            </label>
-                          </div>
-
-                          <div className="counterpulse-toggle">
-                            <label className="counterpulse-toggle-label">
-                              <input
-                                checked={
-                                  formValues.freeShippingShowDiscountCode
-                                }
-                                name="freeShippingShowDiscountCode"
-                                type="checkbox"
-                                onChange={updateCheckboxField(
-                                  "freeShippingShowDiscountCode",
-                                )}
-                              />
-                              <span>Show discount code on storefront</span>
-                            </label>
+                          <FormField
+                            label="Existing Shopify discount ID or code"
+                            error={errors.freeShippingExistingDiscount}
+                          >
+                            <input
+                              name="freeShippingExistingDiscount"
+                              value={formValues.freeShippingExistingDiscount}
+                              onChange={updateField(
+                                "freeShippingExistingDiscount",
+                              )}
+                              placeholder="Optional"
+                            />
                             <p className="counterpulse-field-hint">
-                              Leave this off when the code should only be kept
-                              for Shopify checkout enforcement and not promoted
-                              in the storefront banner.
+                              Leave empty to let Promo Pulse manage the
+                              automatic discount. Use this only to link an
+                              existing Shopify free shipping discount.
                             </p>
-                          </div>
+                          </FormField>
+
+                          {isFreeShippingCodeReference(
+                            formValues.freeShippingExistingDiscount,
+                          ) ? (
+                            <div className="counterpulse-toggle">
+                              <label className="counterpulse-toggle-label">
+                                <input
+                                  checked={
+                                    formValues.freeShippingShowDiscountCode
+                                  }
+                                  name="freeShippingShowDiscountCode"
+                                  type="checkbox"
+                                  onChange={updateCheckboxField(
+                                    "freeShippingShowDiscountCode",
+                                  )}
+                                />
+                                <span>Show discount code on storefront</span>
+                              </label>
+                              <p className="counterpulse-field-hint">
+                                Only use this when the linked Shopify discount
+                                is code based and you want to promote that code.
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -3040,6 +3034,27 @@ function applySetupPreset(
   };
 }
 
+function getVisibleFreeShippingDiscountCode(values: CampaignFormValues) {
+  if (!values.freeShippingShowDiscountCode) return null;
+
+  const existingReference = values.freeShippingExistingDiscount.trim();
+  if (isFreeShippingCodeReference(existingReference)) {
+    return existingReference.toUpperCase();
+  }
+
+  const legacyCode = values.freeShippingDiscountCode.trim();
+  return legacyCode ? legacyCode.toUpperCase() : null;
+}
+
+function isFreeShippingCodeReference(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) return false;
+  if (/^gid:\/\/shopify\/Discount/i.test(trimmed)) return false;
+
+  return /^[A-Z0-9_-]{3,80}$/i.test(trimmed);
+}
+
 function buildCampaignTypeDefaultTranslations(values: CampaignFormValues) {
   return storefrontLocales.reduce((translations, localeOption) => {
     translations[localeOption.locale] = {
@@ -3781,6 +3796,7 @@ const campaignErrorFieldLabels: Partial<
   expiredText: "Expired text",
   freeShippingCurrencyCode: "Free shipping currency",
   freeShippingDiscountCode: "Free shipping discount code",
+  freeShippingExistingDiscount: "Existing free shipping discount",
   freeShippingDiscountTitle: "Free shipping discount title",
   freeShippingEmptyCartMessage: "Empty cart message",
   freeShippingSuccessMessage: "Success message",

@@ -34,6 +34,21 @@ export type CreateFreeShippingCodeDiscountInput = {
   appliesOncePerCustomer: boolean;
 };
 
+export type AutomaticFreeShippingDiscountInput = {
+  title: string;
+  startsAt: Date | string | null;
+  endsAt: Date | string | null;
+  minimumSubtotal?: number | null;
+  destinationCountries?: string[];
+  maximumShippingPrice?: number | null;
+  appliesOnOneTimePurchase?: boolean;
+  appliesOnSubscription?: boolean;
+  combinesWith?: {
+    orderDiscounts?: boolean;
+    productDiscounts?: boolean;
+  };
+};
+
 export type CampaignDateSyncInput = {
   syncStartEnd: boolean;
 };
@@ -82,6 +97,12 @@ const DISCOUNT_FIELDS = `#graphql
           }
         }
       }
+      ... on DiscountAutomaticFreeShipping {
+        title
+        status
+        startsAt
+        endsAt
+      }
 `;
 
 const DISCOUNT_CODE_NODE_FRAGMENT = `#graphql
@@ -97,6 +118,15 @@ const DISCOUNT_NODE_FRAGMENT = `#graphql
   fragment PromoPulseDiscountNodeFields on DiscountNode {
     id
     discount {
+${DISCOUNT_FIELDS}
+    }
+  }
+`;
+
+const DISCOUNT_AUTOMATIC_NODE_FRAGMENT = `#graphql
+  fragment PromoPulseAutomaticDiscountFields on DiscountAutomaticNode {
+    id
+    automaticDiscount {
 ${DISCOUNT_FIELDS}
     }
   }
@@ -148,6 +178,7 @@ export async function getDiscountByCodeOrId(
       admin,
       `${DISCOUNT_CODE_NODE_FRAGMENT}
       ${DISCOUNT_NODE_FRAGMENT}
+      ${DISCOUNT_AUTOMATIC_NODE_FRAGMENT}
       query PromoPulseDiscountById($id: ID!) {
         node(id: $id) {
           ... on DiscountCodeNode {
@@ -155,6 +186,9 @@ export async function getDiscountByCodeOrId(
           }
           ... on DiscountNode {
             ...PromoPulseDiscountNodeFields
+          }
+          ... on DiscountAutomaticNode {
+            ...PromoPulseAutomaticDiscountFields
           }
         }
       }`,
@@ -274,6 +308,64 @@ export async function createFreeShippingCodeDiscount(
   return parseMutationPayload(response.discountCodeFreeShippingCreate);
 }
 
+export async function createAutomaticFreeShippingDiscount(
+  admin: ShopifyGraphqlClient,
+  input: AutomaticFreeShippingDiscountInput,
+) {
+  const response = await executeGraphql<{
+    discountAutomaticFreeShippingCreate?: DiscountMutationPayload;
+  }>(
+    admin,
+    `${DISCOUNT_AUTOMATIC_NODE_FRAGMENT}
+    mutation PromoPulseCreateAutomaticFreeShippingDiscount($input: DiscountAutomaticFreeShippingInput!) {
+      discountAutomaticFreeShippingCreate(freeShippingAutomaticDiscount: $input) {
+        automaticDiscountNode {
+          ...PromoPulseAutomaticDiscountFields
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }`,
+    {
+      input: buildAutomaticFreeShippingDiscountInput(input),
+    },
+  );
+
+  return parseMutationPayload(response.discountAutomaticFreeShippingCreate);
+}
+
+export async function updateAutomaticFreeShippingDiscount(
+  admin: ShopifyGraphqlClient,
+  discountId: string,
+  input: AutomaticFreeShippingDiscountInput,
+) {
+  const response = await executeGraphql<{
+    discountAutomaticFreeShippingUpdate?: DiscountMutationPayload;
+  }>(
+    admin,
+    `${DISCOUNT_AUTOMATIC_NODE_FRAGMENT}
+    mutation PromoPulseUpdateAutomaticFreeShippingDiscount($id: ID!, $input: DiscountAutomaticFreeShippingInput!) {
+      discountAutomaticFreeShippingUpdate(id: $id, freeShippingAutomaticDiscount: $input) {
+        automaticDiscountNode {
+          ...PromoPulseAutomaticDiscountFields
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }`,
+    {
+      id: discountId,
+      input: buildAutomaticFreeShippingDiscountInput(input),
+    },
+  );
+
+  return parseMutationPayload(response.discountAutomaticFreeShippingUpdate);
+}
+
 export async function deactivateCodeDiscount(
   admin: ShopifyGraphqlClient,
   discountId: string,
@@ -337,6 +429,7 @@ type DiscountNodeRecord = {
   id?: string | null;
   discount?: DiscountCodeRecord | null;
   codeDiscount?: DiscountCodeRecord | null;
+  automaticDiscount?: DiscountCodeRecord | null;
 };
 
 type DiscountCodeRecord = {
@@ -352,6 +445,7 @@ type DiscountCodeRecord = {
 
 type DiscountMutationPayload = {
   codeDiscountNode?: DiscountNodeRecord | null;
+  automaticDiscountNode?: DiscountNodeRecord | null;
   userErrors?: Array<{
     field?: string[] | string | null;
     message?: string | null;
@@ -395,7 +489,9 @@ function parseMutationPayload(payload: DiscountMutationPayload | undefined) {
     );
   }
 
-  const discount = normalizeDiscountNode(payload?.codeDiscountNode ?? null);
+  const discount = normalizeDiscountNode(
+    payload?.codeDiscountNode ?? payload?.automaticDiscountNode ?? null,
+  );
 
   if (!discount) {
     throw new Error("Shopify did not return the created discount.");
@@ -407,7 +503,8 @@ function parseMutationPayload(payload: DiscountMutationPayload | undefined) {
 function normalizeDiscountNode(
   node: DiscountNodeRecord | null,
 ): ShopifyDiscountSummary | null {
-  const discount = node?.codeDiscount ?? node?.discount;
+  const discount =
+    node?.codeDiscount ?? node?.discount ?? node?.automaticDiscount;
 
   if (!node?.id || !discount) return null;
 
@@ -427,6 +524,40 @@ function normalizeDiscountNode(
 function normalizePercentage(value: number) {
   if (value <= 1) return value;
   return value / 100;
+}
+
+function buildAutomaticFreeShippingDiscountInput(
+  input: AutomaticFreeShippingDiscountInput,
+) {
+  const freeShippingAutomaticDiscount: Record<string, unknown> = {
+    title: input.title,
+    startsAt: toIsoDate(input.startsAt) ?? new Date().toISOString(),
+    endsAt: toIsoDate(input.endsAt),
+    destination: input.destinationCountries?.length
+      ? { countries: { add: input.destinationCountries } }
+      : { all: true },
+    appliesOnOneTimePurchase: input.appliesOnOneTimePurchase ?? true,
+    appliesOnSubscription: input.appliesOnSubscription ?? false,
+    combinesWith: {
+      orderDiscounts: input.combinesWith?.orderDiscounts ?? true,
+      productDiscounts: input.combinesWith?.productDiscounts ?? true,
+    },
+  };
+
+  if (input.maximumShippingPrice && input.maximumShippingPrice > 0) {
+    freeShippingAutomaticDiscount.maximumShippingPrice =
+      input.maximumShippingPrice.toFixed(2);
+  }
+
+  if (input.minimumSubtotal && input.minimumSubtotal > 0) {
+    freeShippingAutomaticDiscount.minimumRequirement = {
+      subtotal: {
+        greaterThanOrEqualToSubtotal: input.minimumSubtotal.toFixed(2),
+      },
+    };
+  }
+
+  return freeShippingAutomaticDiscount;
 }
 
 function toIsoDate(value: Date | string | null | undefined) {

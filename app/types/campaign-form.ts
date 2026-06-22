@@ -104,6 +104,7 @@ export type CampaignFormValues = {
   freeShippingEmptyCartMessage: string;
   freeShippingSuccessMessage: string;
   freeShippingAutoDiscount: boolean;
+  freeShippingExistingDiscount: string;
   freeShippingDiscountCode: string;
   freeShippingDiscountTitle: string;
   freeShippingDiscountAppliesOncePerCustomer: boolean;
@@ -172,7 +173,8 @@ export const defaultCampaignFormValues: CampaignFormValues = {
     defaultFreeShippingSettingsValues.emptyCartMessage,
   freeShippingSuccessMessage: defaultFreeShippingSettingsValues.successMessage,
   freeShippingAutoDiscount: false,
-  freeShippingDiscountCode: "FREESHIP",
+  freeShippingExistingDiscount: "",
+  freeShippingDiscountCode: "",
   freeShippingDiscountTitle: "Promo Pulse free shipping",
   freeShippingDiscountAppliesOncePerCustomer: false,
   freeShippingShowDiscountCode: false,

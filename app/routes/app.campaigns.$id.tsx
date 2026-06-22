@@ -2402,6 +2402,7 @@ function getCompatibleMerchandisingLabels(
   const labels = new Set<string>();
   const hasProductSurface =
     placements.has("PRODUCT_PAGE") ||
+    placements.has("PRODUCT_PAGE_BADGE") ||
     placements.has("COLLECTION_CARD") ||
     placements.has("CUSTOM_SELECTOR");
   const hasCartSurface =

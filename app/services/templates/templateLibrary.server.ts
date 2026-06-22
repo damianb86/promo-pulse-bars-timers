@@ -684,6 +684,7 @@ function readPlacementType(
     "TOP_BAR",
     "BOTTOM_BAR",
     "PRODUCT_PAGE",
+    "PRODUCT_PAGE_BADGE",
     "COLLECTION_CARD",
     "CART_PAGE",
     "CART_DRAWER",

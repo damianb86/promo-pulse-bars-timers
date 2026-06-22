@@ -3660,6 +3660,7 @@ function toPreviewPlacement(
   if (placementType === "PRODUCT_PAGE") return "PRODUCT_PAGE";
   if (placementType === "CART_PAGE") return "CART_PAGE";
   if (placementType === "CART_DRAWER") return "CART_DRAWER";
+  if (placementType === "PRODUCT_PAGE_BADGE") return "PRODUCT_BADGE";
   if (placementType === "COLLECTION_CARD") return "PRODUCT_BADGE";
   if (placementType === "CUSTOM_SELECTOR") return "PRODUCT_PAGE";
 

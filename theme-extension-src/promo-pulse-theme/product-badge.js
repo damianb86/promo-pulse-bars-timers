@@ -234,7 +234,11 @@
     var target;
 
     if (!embed.dataset.productId) return;
-    if (document.querySelector(".pp-product-badge[data-placement='PRODUCT_PAGE']")) {
+    if (
+      document.querySelector(
+        ".pp-product-badge[data-placement='PRODUCT_PAGE_BADGE']",
+      )
+    ) {
       return;
     }
 
@@ -242,7 +246,7 @@
     if (!target) return;
 
     ensureBadgeMountTarget(target);
-    target.appendChild(createAutoSlot(embed, target, "PRODUCT_PAGE"));
+    target.appendChild(createAutoSlot(embed, target, "PRODUCT_PAGE_BADGE"));
   }
 
   function initAutomaticCollectionBadges(embed) {

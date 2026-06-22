@@ -1789,7 +1789,7 @@ function getPlacementsForInput(
 
   if (input.objective === "PRODUCT_BADGE") {
     return hasAnswer(input, "badge_product_page")
-      ? ["COLLECTION_CARD", "PRODUCT_PAGE"]
+      ? ["COLLECTION_CARD", "PRODUCT_PAGE_BADGE"]
       : ["COLLECTION_CARD"];
   }
 
@@ -1806,7 +1806,7 @@ function getPlacementsForInput(
   }
 
   if (input.campaignShape === "merchandising") {
-    return ["COLLECTION_CARD", "PRODUCT_PAGE"];
+    return ["COLLECTION_CARD", "PRODUCT_PAGE_BADGE"];
   }
 
   const defaultPlacement = getDefaultPlacementForCampaignType(campaignType);
@@ -2366,6 +2366,7 @@ function isPlacementType(value: unknown): value is PlacementTypeValue {
     "TOP_BAR",
     "BOTTOM_BAR",
     "PRODUCT_PAGE",
+    "PRODUCT_PAGE_BADGE",
     "COLLECTION_CARD",
     "CART_PAGE",
     "CART_DRAWER",

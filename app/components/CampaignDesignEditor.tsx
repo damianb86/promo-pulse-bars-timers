@@ -255,6 +255,7 @@ function toPreviewPlacementFromCampaign(value: string): PreviewPlacement {
   if (value === "PRODUCT_PAGE") return "PRODUCT_PAGE";
   if (value === "CART_PAGE") return "CART_PAGE";
   if (value === "CART_DRAWER") return "CART_DRAWER";
+  if (value === "PRODUCT_PAGE_BADGE") return "PRODUCT_BADGE";
   if (value === "COLLECTION_CARD") return "PRODUCT_BADGE";
   if (value === "CUSTOM_SELECTOR") return "PRODUCT_PAGE";
 

@@ -55,6 +55,11 @@ export const placementTypeOptions = [
     description: "Product detail page block or automatic product-page surface.",
   },
   {
+    value: "PRODUCT_PAGE_BADGE",
+    label: "Product page badge",
+    description: "Badge over product media on product detail pages only.",
+  },
+  {
     value: "COLLECTION_CARD",
     label: "Collection card badge",
     description: "Badge rendered on product cards in collection/search grids.",
@@ -112,6 +117,7 @@ export function getDefaultPlacementForCampaignType(
 }
 
 export function formatCampaignOption(value: string) {
+  if (value === "PRODUCT_PAGE_BADGE") return "Product Page Badge";
   if (value === "COLLECTION_CARD") return "Collection Card Badge";
   if (value === "CUSTOM_SELECTOR") return "Custom HTML Slot";
 

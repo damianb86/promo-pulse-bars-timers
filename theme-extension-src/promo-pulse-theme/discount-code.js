@@ -796,15 +796,23 @@
 
     var nativeFetch = window.fetch.bind(window);
     var pending = {};
+    var responseCache = {};
+    var proxyCacheTtlMs = 5000;
+    var cartCacheTtlMs = 750;
     var proxyPauseMs = 60000;
     var cartPauseMs = 30000;
 
     window.PromoPulseFetchGuardReady = true;
+    window.PromoPulseClearRequestCache = function () {
+      responseCache = {};
+    };
+    document.addEventListener("cart:updated", window.PromoPulseClearRequestCache);
 
     window.fetch = function (input, init) {
       var request = normalizeRequest(input, init);
       var pauseKey = pauseKeyFor(request.url);
       var cacheKey;
+      var cached;
 
       if (!request.watch) {
         return nativeFetch(input, init);
@@ -814,12 +822,19 @@
         return Promise.resolve(syntheticResponse(request));
       }
 
-      cacheKey = request.method + ":" + request.url;
+      cacheKey = request.method + ":" + normalizeCacheUrl(request.url);
 
-      if (request.method === "GET" && pending[cacheKey]) {
-        return pending[cacheKey].then(function (response) {
-          return response.clone();
-        });
+      if (request.method === "GET") {
+        cached = responseCache[cacheKey];
+        if (cached && cached.expiresAt > Date.now()) {
+          return Promise.resolve(cached.response.clone());
+        }
+
+        if (pending[cacheKey]) {
+          return pending[cacheKey].then(function (response) {
+            return response.clone();
+          });
+        }
       }
 
       pending[cacheKey] = nativeFetch(input, sameOriginInit(init))
@@ -836,6 +851,16 @@
               "Paused repeated Promo Pulse storefront requests.",
             );
             return syntheticResponse(request);
+          }
+
+          if (request.method === "GET" && response.ok) {
+            responseCache[cacheKey] = {
+              response: response.clone(),
+              expiresAt:
+                Date.now() +
+                (request.kind === "cart" ? cartCacheTtlMs : proxyCacheTtlMs),
+            };
+            pruneResponseCache(responseCache);
           }
 
           return response;
@@ -865,7 +890,10 @@
     var method = (init && init.method) || (input && input.method) || "GET";
     var url = new URL(rawUrl || "", window.location.href);
     var path = url.pathname;
-    var isProxy = path === "/apps/promo-pulse";
+    var isProxy =
+      path === "/apps/promo-pulse" ||
+      path.indexOf("/apps/promo-pulse/") === 0 ||
+      path.indexOf("/api/storefront/") === 0;
     var isCart = path === "/cart.js";
 
     return {
@@ -874,6 +902,39 @@
       url: url.toString(),
       watch: isProxy || isCart,
     };
+  }
+
+  function normalizeCacheUrl(rawUrl) {
+    var url = new URL(rawUrl, window.location.href);
+    var entries = [];
+
+    url.searchParams.forEach(function (value, key) {
+      entries.push([key, value]);
+    });
+    entries.sort(function (left, right) {
+      if (left[0] === right[0]) {
+        if (left[1] === right[1]) return 0;
+        return left[1] < right[1] ? -1 : 1;
+      }
+      return left[0] < right[0] ? -1 : 1;
+    });
+
+    url.search = "";
+    entries.forEach(function (entry) {
+      url.searchParams.append(entry[0], entry[1]);
+    });
+
+    return url.toString();
+  }
+
+  function pruneResponseCache(cache) {
+    var now = Date.now();
+
+    Object.keys(cache).forEach(function (key) {
+      if (cache[key].expiresAt <= now) {
+        delete cache[key];
+      }
+    });
   }
 
   function sameOriginInit(init) {
@@ -894,7 +955,11 @@
     var pathname = new URL(url, window.location.href).pathname;
 
     if (pathname === "/cart.js") return "PromoPulseCartPausedUntil";
-    if (pathname === "/apps/promo-pulse") {
+    if (
+      pathname === "/apps/promo-pulse" ||
+      pathname.indexOf("/apps/promo-pulse/") === 0 ||
+      pathname.indexOf("/api/storefront/") === 0
+    ) {
       return "PromoPulseProxyPausedUntil";
     }
 
@@ -940,6 +1005,11 @@
         saved: false,
         ignored: true,
         reason: "storefront_proxy_paused",
+      });
+    } else if (request.url.indexOf("/badges") !== -1) {
+      body = JSON.stringify({
+        badges: [],
+        settings: window.PromoPulseSettings || null,
       });
     } else {
       body = JSON.stringify({

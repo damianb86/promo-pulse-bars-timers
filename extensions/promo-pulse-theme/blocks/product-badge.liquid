@@ -29,13 +29,13 @@
   ></div>
 {% endif %}
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
+<script src="{{ 'product-badge.js' | asset_url }}" defer></script>
 
 {% schema %}
 {
   "name": "Promo Pulse badge",
   "target": "section",
   "stylesheet": "promo-pulse.css",
-  "javascript": "product-badge.js",
   "templates": ["product", "collection"],
   "settings": [
     {

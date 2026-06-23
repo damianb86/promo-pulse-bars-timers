@@ -703,7 +703,6 @@ function readPlacementType(
     "CART_DRAWER",
     "THANK_YOU_PAGE",
     "ORDER_STATUS_PAGE",
-    "PASSWORD_PAGE",
     "CUSTOM_SELECTOR",
   ]) ??
     (getDefaultPlacementForCampaignType(

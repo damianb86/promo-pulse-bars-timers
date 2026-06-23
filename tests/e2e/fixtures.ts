@@ -218,10 +218,12 @@ export async function publishCurrentCampaign(page: Page) {
   const publishButton = page.getByTestId("campaign-publish-button");
 
   await expect(publishButton).toBeVisible();
-  await expect(publishButton).toBeEnabled({ timeout: 5000 }).catch(() => {
-    // Already-published campaigns with no publishable changes intentionally
-    // keep the Publish changes button disabled.
-  });
+  await expect(publishButton)
+    .toBeEnabled({ timeout: 5000 })
+    .catch(() => {
+      // Already-published campaigns with no publishable changes intentionally
+      // keep the Publish changes button disabled.
+    });
 
   if (await publishButton.isDisabled()) return;
 
@@ -236,9 +238,11 @@ export async function publishCurrentCampaign(page: Page) {
   const response = await responsePromise;
   expect(response.ok()).toBe(true);
   await page.waitForURL((url) => /\/app\/campaigns\/[^/]+$/.test(url.pathname));
-  await expect(publishButton).toBeDisabled({ timeout: 5000 }).catch(() => {
-    // Leave later assertions to report the exact published-state mismatch.
-  });
+  await expect(publishButton)
+    .toBeDisabled({ timeout: 5000 })
+    .catch(() => {
+      // Leave later assertions to report the exact published-state mismatch.
+    });
 }
 
 export async function saveCurrentCampaignDraft(page: Page) {
@@ -260,7 +264,6 @@ function placementLabel(value: string) {
     COLLECTION_CARD: "Collection card",
     CUSTOM_SELECTOR: "Custom selector",
     ORDER_STATUS_PAGE: "Order status page",
-    PASSWORD_PAGE: "Password page",
     PRODUCT_PAGE: "Product page",
     THANK_YOU_PAGE: "Thank you page",
     TOP_BAR: "Top bar",

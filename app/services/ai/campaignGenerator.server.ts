@@ -2387,7 +2387,6 @@ function isPlacementType(value: unknown): value is PlacementTypeValue {
     "CART_DRAWER",
     "THANK_YOU_PAGE",
     "ORDER_STATUS_PAGE",
-    "PASSWORD_PAGE",
     "CUSTOM_SELECTOR",
   ].includes(String(value));
 }

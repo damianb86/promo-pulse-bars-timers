@@ -85,11 +85,6 @@ export const placementTypeOptions = [
     description: "Order status page extension.",
   },
   {
-    value: "PASSWORD_PAGE",
-    label: "Password page",
-    description: "Password page announcement surface.",
-  },
-  {
     value: "CUSTOM_SELECTOR",
     label: "Custom HTML slot",
     description: "Renders into a configured selector or Campaign ID snippet.",

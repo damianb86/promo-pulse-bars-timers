@@ -110,7 +110,6 @@ function placementLabel(value: string) {
     COLLECTION_CARD: "Collection card",
     CUSTOM_SELECTOR: "Custom selector",
     ORDER_STATUS_PAGE: "Order status page",
-    PASSWORD_PAGE: "Password page",
     PRODUCT_PAGE: "Product page",
     THANK_YOU_PAGE: "Thank you page",
     TOP_BAR: "Top bar",

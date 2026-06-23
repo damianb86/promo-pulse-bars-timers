@@ -1256,6 +1256,7 @@ function VariantCard({
       <div className="counterpulse-variant-changes">
         <VariantChangesList
           changes={changes}
+          isControl={isControl}
           title={index === 0 ? "What is shown" : "Changes vs. control"}
         />
       </div>
@@ -1923,14 +1924,17 @@ function DeleteVariantModal({
 
 function VariantChangesList({
   changes,
+  isControl = false,
   title,
 }: {
   changes: string[];
+  isControl?: boolean;
   title: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const visibleChanges = changes.slice(0, collapsedVariantChangeCount);
-  const hiddenChanges = changes.slice(collapsedVariantChangeCount);
+  const visibleLimit = isControl ? 4 : collapsedVariantChangeCount;
+  const visibleChanges = changes.slice(0, visibleLimit);
+  const hiddenChanges = isControl ? [] : changes.slice(visibleLimit);
   const hasHiddenChanges = hiddenChanges.length > 0;
 
   return (

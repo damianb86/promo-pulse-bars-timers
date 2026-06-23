@@ -194,6 +194,15 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(
     page.getByRole("complementary", { name: "Edit variant" }),
   ).toHaveCount(0);
+  const controlVariantCard = createExperimentForm
+    .locator(".counterpulse-variant-card")
+    .filter({ hasText: "Control" });
+  await expect(
+    controlVariantCard.locator(".counterpulse-variant-changes li"),
+  ).toHaveCount(4);
+  await expect(
+    controlVariantCard.locator(".counterpulse-variant-changes__toggle"),
+  ).toHaveCount(0);
   await createExperimentForm
     .getByLabel("Experiment name")
     .fill("E2E A/B Experiment");

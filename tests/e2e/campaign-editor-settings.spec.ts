@@ -304,17 +304,18 @@ test("unique visitor discount settings issue reusable E2E codes", async ({
   await expect(uniqueCodesForm.getByLabel("Duration per visitor")).toHaveValue(
     "30",
   );
+  const uniqueCodeStats = page.locator(".counterpulse-offer-stat-strip");
   await expect(
-    page.getByRole("columnheader", { name: "Total assigned" }),
+    uniqueCodeStats.locator("dt").filter({ hasText: "Total assigned" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("columnheader", { name: "Total used" }),
+    uniqueCodeStats.locator("dt").filter({ hasText: "Total used" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("columnheader", { name: "Total expired" }),
+    uniqueCodeStats.locator("dt").filter({ hasText: "Total expired" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("columnheader", { name: "Conversion rate" }),
+    uniqueCodeStats.locator("dt").filter({ hasText: "Conversion rate" }),
   ).toBeVisible();
 
   const firstResponse = await page.request.post("/api/discounts/unique-code", {

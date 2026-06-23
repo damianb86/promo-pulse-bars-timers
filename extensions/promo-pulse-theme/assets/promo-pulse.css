@@ -6,6 +6,7 @@
   width: 100%;
   box-sizing: border-box;
   z-index: 214748000;
+  container-type: inline-size;
 }
 
 .pp-container--top-bar {
@@ -625,6 +626,7 @@
 
 .pp-product-timer {
   display: block;
+  container-type: inline-size;
 }
 
 .pp-product-timer--full-width {
@@ -941,6 +943,7 @@
 
 .pp-cart-timer {
   display: block;
+  container-type: inline-size;
 }
 
 .pp-cart-timer--full-width {
@@ -1240,6 +1243,170 @@
 
 .pp-cart-drawer-slot {
   display: block;
+  container-type: inline-size;
+}
+
+@container (max-width: 430px) {
+  .pp-container .pp-bar,
+  .pp-product-card,
+  .pp-cart-card {
+    padding: max(10px, calc(var(--pp-padding-block, 12px) * 0.72))
+      max(12px, calc(var(--pp-padding-inline, 14px) * 0.68));
+  }
+
+  .pp-container .pp-bar--layout-balanced,
+  .pp-container .pp-bar--layout-cta_right,
+  .pp-container .pp-bar--layout-cta_left,
+  .pp-product-card--layout-balanced,
+  .pp-product-card--layout-cta-right,
+  .pp-product-card--layout-cta-left,
+  .pp-cart-card--layout-balanced,
+  .pp-cart-card--layout-cta-right,
+  .pp-cart-card--layout-cta-left {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .pp-container .pp-bar--layout-balanced .pp-message,
+  .pp-container .pp-bar--layout-balanced .pp-countdown,
+  .pp-container .pp-bar--layout-balanced .pp-cta,
+  .pp-container .pp-bar--layout-balanced .pp-code,
+  .pp-container .pp-bar--layout-balanced .pp-unique-code,
+  .pp-container .pp-bar--layout-balanced .pp-progress,
+  .pp-container .pp-bar--layout-cta_right .pp-message,
+  .pp-container .pp-bar--layout-cta_right .pp-countdown,
+  .pp-container .pp-bar--layout-cta_right .pp-cta,
+  .pp-container .pp-bar--layout-cta_right .pp-code,
+  .pp-container .pp-bar--layout-cta_right .pp-unique-code,
+  .pp-container .pp-bar--layout-cta_left .pp-message,
+  .pp-container .pp-bar--layout-cta_left .pp-countdown,
+  .pp-container .pp-bar--layout-cta_left .pp-cta,
+  .pp-container .pp-bar--layout-cta_left .pp-code,
+  .pp-container .pp-bar--layout-cta_left .pp-unique-code,
+  .pp-container .pp-bar--layout-cta_left .pp-progress,
+  .pp-product-card--layout-balanced .pp-message,
+  .pp-product-card--layout-balanced .pp-countdown,
+  .pp-product-card--layout-balanced .pp-progress,
+  .pp-product-card--layout-balanced .pp-cta,
+  .pp-product-card--layout-balanced .pp-code,
+  .pp-product-card--layout-balanced .pp-unique-code,
+  .pp-product-card--layout-cta-right .pp-message,
+  .pp-product-card--layout-cta-right .pp-countdown,
+  .pp-product-card--layout-cta-right .pp-progress,
+  .pp-product-card--layout-cta-right .pp-cta,
+  .pp-product-card--layout-cta-right .pp-code,
+  .pp-product-card--layout-cta-right .pp-unique-code,
+  .pp-product-card--layout-cta-left .pp-message,
+  .pp-product-card--layout-cta-left .pp-countdown,
+  .pp-product-card--layout-cta-left .pp-progress,
+  .pp-product-card--layout-cta-left .pp-cta,
+  .pp-product-card--layout-cta-left .pp-code,
+  .pp-product-card--layout-cta-left .pp-unique-code,
+  .pp-cart-card--layout-balanced .pp-message,
+  .pp-cart-card--layout-balanced .pp-countdown,
+  .pp-cart-card--layout-balanced .pp-cart-progress,
+  .pp-cart-card--layout-balanced .pp-cta,
+  .pp-cart-card--layout-balanced .pp-code,
+  .pp-cart-card--layout-balanced .pp-unique-code,
+  .pp-cart-card--layout-cta-right .pp-message,
+  .pp-cart-card--layout-cta-right .pp-countdown,
+  .pp-cart-card--layout-cta-right .pp-cart-progress,
+  .pp-cart-card--layout-cta-right .pp-cta,
+  .pp-cart-card--layout-cta-right .pp-code,
+  .pp-cart-card--layout-cta-right .pp-unique-code,
+  .pp-cart-card--layout-cta-left .pp-message,
+  .pp-cart-card--layout-cta-left .pp-countdown,
+  .pp-cart-card--layout-cta-left .pp-cart-progress,
+  .pp-cart-card--layout-cta-left .pp-cta,
+  .pp-cart-card--layout-cta-left .pp-code,
+  .pp-cart-card--layout-cta-left .pp-unique-code {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: center;
+    max-width: 100%;
+  }
+
+  .pp-container .pp-bar .pp-message,
+  .pp-product-card .pp-message,
+  .pp-cart-card .pp-message {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pp-container .pp-bar .pp-message-copy,
+  .pp-product-card .pp-message-copy,
+  .pp-cart-card .pp-message-copy {
+    justify-items: center;
+  }
+
+  .pp-container .pp-bar .pp-message strong,
+  .pp-product-card .pp-message strong,
+  .pp-cart-card .pp-message strong {
+    font-size: min(22px, var(--pp-title-size, 18px));
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .pp-container .pp-bar .pp-message-copy > span:not(.pp-countdown),
+  .pp-product-card .pp-message-copy > span:not(.pp-countdown),
+  .pp-cart-card .pp-message-copy > span:not(.pp-countdown) {
+    font-size: min(14px, var(--pp-subheading-size, 14px));
+  }
+
+  .pp-container .pp-bar .pp-countdown,
+  .pp-product-card .pp-countdown,
+  .pp-cart-card .pp-countdown {
+    max-width: 100%;
+    gap: 6px;
+    font-size: min(32px, var(--pp-timer-size, 24px));
+  }
+
+  .pp-container .pp-bar .pp-countdown--colon,
+  .pp-product-card .pp-countdown--colon,
+  .pp-cart-card .pp-countdown--colon {
+    font-size: min(30px, var(--pp-timer-size, 24px));
+  }
+
+  .pp-container .pp-bar .pp-countdown--grouped,
+  .pp-container .pp-bar .pp-countdown--colon.pp-countdown--boxes,
+  .pp-product-card .pp-countdown--grouped,
+  .pp-product-card .pp-countdown--colon.pp-countdown--boxes,
+  .pp-cart-card .pp-countdown--grouped,
+  .pp-cart-card .pp-countdown--colon.pp-countdown--boxes {
+    padding: 6px 8px;
+  }
+
+  .pp-container .pp-bar .pp-countdown-unit,
+  .pp-product-card .pp-countdown-unit,
+  .pp-cart-card .pp-countdown-unit {
+    min-width: 34px;
+  }
+
+  .pp-container .pp-bar .pp-countdown--boxes .pp-countdown-unit,
+  .pp-product-card .pp-countdown--boxes .pp-countdown-unit,
+  .pp-cart-card .pp-countdown--boxes .pp-countdown-unit {
+    min-width: 38px;
+    padding: 6px 7px;
+  }
+
+  .pp-container .pp-bar .pp-cta,
+  .pp-container .pp-bar .pp-code,
+  .pp-container .pp-bar .pp-unique-code,
+  .pp-product-card .pp-cta,
+  .pp-product-card .pp-code,
+  .pp-product-card .pp-unique-code,
+  .pp-cart-card .pp-cta,
+  .pp-cart-card .pp-code,
+  .pp-cart-card .pp-unique-code {
+    justify-self: center;
+  }
+
+  .pp-progress,
+  .pp-cart-progress {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 .pp-root.pp-product-badge {

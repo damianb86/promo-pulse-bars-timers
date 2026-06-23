@@ -816,10 +816,26 @@ test("AI variant drawer generates a reviewable experiment variant", async ({
     aiDrawer.getByRole("button", { name: "Generate variant" }).click(),
   ]);
 
+  const aiSuggestion = aiDrawer.locator(
+    ".counterpulse-ai-variant-suggestion",
+  );
   await expect(aiDrawer.getByText("Suggested variant")).toBeVisible();
+  await expect(aiSuggestion).toBeInViewport({ ratio: 0.35 });
   await expect(aiDrawer.getByText("Hypothesis", { exact: true })).toBeVisible();
   await expect(aiDrawer.getByText("Trust proof")).toBeVisible();
   await expect(aiDrawer.getByTestId("variant-preview-surface")).toBeVisible();
+  const aiPreviewFrame = aiSuggestion.locator(".counterpulse-variant-preview");
+  await expect(aiPreviewFrame).toBeVisible();
+
+  const aiPreviewFrameBox = await aiPreviewFrame.boundingBox();
+
+  expect(aiPreviewFrameBox).not.toBeNull();
+  if (aiPreviewFrameBox) {
+    const previewRatio = aiPreviewFrameBox.width / aiPreviewFrameBox.height;
+
+    expect(previewRatio).toBeGreaterThan(1.55);
+    expect(previewRatio).toBeLessThan(1.95);
+  }
 
   await aiDrawer.getByRole("button", { name: "Accept variant" }).click();
   await expect(aiDrawer).toHaveCount(0);
@@ -829,6 +845,7 @@ test("AI variant drawer generates a reviewable experiment variant", async ({
     .filter({ hasText: "Trust proof" });
 
   await expect(generatedVariantCard).toBeVisible();
+  await expect(generatedVariantCard).toBeInViewport({ ratio: 0.35 });
   await expect(generatedVariantCard).toContainText("Trusted choice");
   await expect(
     createExperimentForm.locator(".counterpulse-variant-card"),

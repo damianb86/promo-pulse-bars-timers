@@ -789,6 +789,8 @@ function ExperimentComposer({
     message: string;
   } | null>(null);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("copy");
+  const variantGridRef = useRef<HTMLDivElement | null>(null);
+  const pendingVariantScrollIndexRef = useRef<number | null>(null);
   const [name, setName] = useState(
     experiment?.name || `${baseViewModel.name} experiment`,
   );
@@ -832,6 +834,27 @@ function ExperimentComposer({
 
     return () => window.clearTimeout(syncAiVariant);
   }, [aiVariantFetcher.data]);
+
+  useEffect(() => {
+    const variantIndex = pendingVariantScrollIndexRef.current;
+
+    if (variantIndex === null) return;
+
+    const scrollTimeout = window.setTimeout(() => {
+      const variantCard = variantGridRef.current?.querySelector<HTMLElement>(
+        `[data-variant-index="${variantIndex}"]`,
+      );
+
+      variantCard?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+      pendingVariantScrollIndexRef.current = null;
+    }, 220);
+
+    return () => window.clearTimeout(scrollTimeout);
+  }, [variants.length]);
 
   const updateVariant = (
     index: number,
@@ -914,6 +937,7 @@ function ExperimentComposer({
         acceptedVariant,
       ]);
 
+      pendingVariantScrollIndexRef.current = nextVariants.length - 1;
       setActiveVariantIndex(nextVariants.length - 1);
       setDrawerTab("copy");
 
@@ -1100,7 +1124,7 @@ function ExperimentComposer({
       </div>
 
       <div className="counterpulse-experiment-board">
-        <div className="counterpulse-variant-grid">
+        <div className="counterpulse-variant-grid" ref={variantGridRef}>
           {variants.map((variant, index) => (
             <VariantCard
               baseDesign={baseDesign}
@@ -1225,6 +1249,7 @@ function VariantCard({
           ? "counterpulse-variant-card is-active"
           : "counterpulse-variant-card"
       }
+      data-variant-index={index}
     >
       <header>
         <div>
@@ -1646,6 +1671,7 @@ function AiVariantDrawer({
   onGenerate: () => void;
 }) {
   const [isClosing, setIsClosing] = useState(false);
+  const suggestionRef = useRef<HTMLElement | null>(null);
   const requestClose = () => setIsClosing(true);
   const previewVariant = useMemo(() => {
     if (!suggestion) return null;
@@ -1669,6 +1695,20 @@ function AiVariantDrawer({
 
     return () => window.clearTimeout(timeout);
   }, [isClosing, onClose]);
+
+  useEffect(() => {
+    if (!suggestion) return;
+
+    const scrollTimeout = window.setTimeout(() => {
+      suggestionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }, 40);
+
+    return () => window.clearTimeout(scrollTimeout);
+  }, [suggestion]);
 
   return (
     <div
@@ -1825,7 +1865,10 @@ function AiVariantDrawer({
           </section>
 
           {suggestion && previewVariant && previewViewModel && (
-            <section className="counterpulse-ai-variant-suggestion">
+            <section
+              className="counterpulse-ai-variant-suggestion"
+              ref={suggestionRef}
+            >
               <div>
                 <p className="counterpulse-kicker">Suggested variant</p>
                 <h4>{suggestion.name}</h4>

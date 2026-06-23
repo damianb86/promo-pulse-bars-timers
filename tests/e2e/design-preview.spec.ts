@@ -135,6 +135,106 @@ test("design changes update live preview and persist", async ({
   expectNoFailedRequests(page);
 });
 
+test("separate desktop and mobile design uses distinct editable previews", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("countdown");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
+
+  const editor = page.getByRole("tabpanel", { name: "Design" });
+  const controls = editor.locator(".counterpulse-design-editor__controls");
+  const previewPanel = editor.locator(".counterpulse-design-editor__preview");
+  const leftDeviceToggle = controls.getByLabel("Preview device");
+  const previewDeviceToggle = previewPanel.getByLabel("Preview device");
+  const preview = previewPanel.locator(".counterpulse-preview-promo").first();
+
+  await expect(leftDeviceToggle).toHaveCount(0);
+  await expect(previewDeviceToggle).toBeVisible();
+
+  await editor.getByLabel("Separate desktop and mobile design").check();
+  await expect(leftDeviceToggle).toHaveCount(1);
+
+  await leftDeviceToggle.getByRole("button", { name: "Desktop" }).click();
+  await editor.getByRole("button", { name: "Preset options" }).click();
+  await editor.getByRole("option", { name: /^Black Friday\b/ }).click();
+  await expect(editor.locator('input[name="templateKey"]')).toHaveValue(
+    "black-friday",
+  );
+
+  await leftDeviceToggle.getByRole("button", { name: "Mobile" }).click();
+  await editor.getByRole("button", { name: "Preset options" }).click();
+  await editor.getByRole("option", { name: /^Love\b/ }).click();
+  await expect(editor.locator('input[name="templateKey"]')).toHaveValue("love");
+
+  await previewDeviceToggle.getByRole("button", { name: "Desktop" }).click();
+  await expect(editor.locator('input[name="templateKey"]')).toHaveValue(
+    "black-friday",
+  );
+  await expect(preview).toHaveCSS("background-color", "rgb(5, 5, 5)");
+
+  await previewDeviceToggle.getByRole("button", { name: "Mobile" }).click();
+  await expect(editor.locator('input[name="templateKey"]')).toHaveValue("love");
+  await expect(preview).toHaveCSS(
+    "background-image",
+    /linear-gradient.*rgb\(230, 57, 70\).*rgb\(255, 53, 162\)/,
+  );
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/") &&
+        response.request().method() === "POST",
+    ),
+    page.locator("ui-save-bar").getByRole("button", { name: "Save" }).click(),
+  ]);
+
+  await page.reload();
+  await page.getByRole("tab", { name: "Design" }).click();
+
+  const reloadedEditor = page.getByRole("tabpanel", { name: "Design" });
+  const reloadedControls = reloadedEditor.locator(
+    ".counterpulse-design-editor__controls",
+  );
+  const reloadedPreviewPanel = reloadedEditor.locator(
+    ".counterpulse-design-editor__preview",
+  );
+  const reloadedLeftToggle = reloadedControls.getByLabel("Preview device");
+  const reloadedPreviewToggle =
+    reloadedPreviewPanel.getByLabel("Preview device");
+  const reloadedPreview = reloadedPreviewPanel
+    .locator(".counterpulse-preview-promo")
+    .first();
+
+  await expect(
+    reloadedEditor.getByLabel("Separate desktop and mobile design"),
+  ).toBeChecked();
+  await expect(reloadedLeftToggle).toHaveCount(1);
+  await expect(reloadedEditor.locator('input[name="templateKey"]')).toHaveValue(
+    "black-friday",
+  );
+  await expect(reloadedPreview).toHaveCSS(
+    "background-color",
+    "rgb(5, 5, 5)",
+  );
+
+  await reloadedPreviewToggle.getByRole("button", { name: "Mobile" }).click();
+  await expect(reloadedEditor.locator('input[name="templateKey"]')).toHaveValue(
+    "love",
+  );
+  await expect(reloadedPreview).toHaveCSS(
+    "background-image",
+    /linear-gradient.*rgb\(230, 57, 70\).*rgb\(255, 53, 162\)/,
+  );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("placement preview only lists selected campaign placements and CSS reference is scrollable", async ({
   page,
   resetDb,

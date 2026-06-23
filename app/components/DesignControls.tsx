@@ -144,6 +144,7 @@ export function DesignControls({
           ...template,
           customCss: values.customCss,
           layout: values.layout,
+          separateMobileDesign: values.separateMobileDesign,
         },
         values.layout,
       ),

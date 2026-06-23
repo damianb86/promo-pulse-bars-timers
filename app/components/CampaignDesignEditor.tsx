@@ -68,20 +68,30 @@ export function CampaignDesignEditor({
     [design],
   );
   const previewMobileDesign = design.separateMobileDesign
-    ? mobileDesign
+    ? toSeparateMobileDesign(mobileDesign)
     : sharedMobileDesign;
   const activeDesign =
-    device === "mobile" && design.separateMobileDesign ? mobileDesign : design;
+    device === "mobile" && design.separateMobileDesign
+      ? previewMobileDesign
+      : design;
   const updateDesktopDesign = (nextDesign: CampaignDesignValues) => {
-    onChange(nextDesign);
+    const normalizedDesign = {
+      ...nextDesign,
+      separateMobileDesign: design.separateMobileDesign,
+    };
 
-    if (!nextDesign.separateMobileDesign) {
-      onMobileChange(deriveMobileDesignFromDesktop(nextDesign));
+    onChange(normalizedDesign);
+
+    if (!normalizedDesign.separateMobileDesign) {
+      onMobileChange(deriveMobileDesignFromDesktop(normalizedDesign));
     }
+  };
+  const updateMobileDesign = (nextDesign: CampaignDesignValues) => {
+    onMobileChange(toSeparateMobileDesign(nextDesign));
   };
   const updateActiveDesign =
     device === "mobile" && design.separateMobileDesign
-      ? onMobileChange
+      ? updateMobileDesign
       : updateDesktopDesign;
   const designErrorSummary = useMemo(
     () => buildDesignErrorSummary(errors),
@@ -103,7 +113,13 @@ export function CampaignDesignEditor({
 
     onChange(nextDesign);
 
-    if (!checked) {
+    if (checked) {
+      onMobileChange(
+        toSeparateMobileDesign(
+          mobileDesign.separateMobileDesign ? mobileDesign : sharedMobileDesign,
+        ),
+      );
+    } else {
       onMobileChange(deriveMobileDesignFromDesktop(nextDesign));
     }
   };
@@ -159,7 +175,9 @@ export function CampaignDesignEditor({
           <section className="counterpulse-design-card">
             <h3>Responsive design</h3>
             <div className="counterpulse-design-card__body">
-              <DevicePreviewToggle value={device} onChange={setDevice} />
+              {design.separateMobileDesign ? (
+                <DevicePreviewToggle value={device} onChange={setDevice} />
+              ) : null}
               <div className="counterpulse-responsive-design-switch">
                 <div>
                   <strong>Separate desktop and mobile</strong>
@@ -216,6 +234,15 @@ export function CampaignDesignEditor({
       </div>
     </s-section>
   );
+}
+
+function toSeparateMobileDesign(
+  design: CampaignDesignValues,
+): CampaignDesignValues {
+  return {
+    ...design,
+    separateMobileDesign: true,
+  };
 }
 
 const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [

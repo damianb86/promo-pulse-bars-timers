@@ -64,6 +64,7 @@ import type {
 import {
   campaignTranslationFields,
   storefrontLocales,
+  translationInputName,
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
@@ -535,6 +536,7 @@ export function CampaignForm({
     () => mobileDesign,
   );
   const [submitAction, setSubmitAction] = useState("saveDraft");
+  const submitActionInputRef = useRef<HTMLInputElement | null>(null);
   const [aiSuggestionJson, setAiSuggestionJson] = useState("");
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
@@ -1168,7 +1170,11 @@ export function CampaignForm({
   }, [design, mobileDesign, onDesignChange]);
 
   useEffect(() => {
-    setLocalMessageTranslations(messageTranslations);
+    const syncTranslations = window.setTimeout(() => {
+      setLocalMessageTranslations(messageTranslations);
+    }, 0);
+
+    return () => window.clearTimeout(syncTranslations);
   }, [messageTranslations]);
 
   useEffect(() => {
@@ -1180,18 +1186,22 @@ export function CampaignForm({
 
     const syncFormValues = window.setTimeout(() => {
       setFormValues(values);
-      setLocalMessageTranslations(messageTranslations);
     }, 0);
 
     return () => window.clearTimeout(syncFormValues);
-  }, [messageTranslations, syncExternalValues, values]);
+  }, [syncExternalValues, values]);
 
   useEffect(() => {
     if (!listenForSaveEvents) return undefined;
 
     const submitWithAction = (action: "saveDraft" | "publishCampaign") => {
       setSubmitAction(action);
-      window.setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.setTimeout(() => {
+        if (submitActionInputRef.current) {
+          submitActionInputRef.current.value = action;
+        }
+        formRef.current?.requestSubmit();
+      }, 0);
     };
     const handleSaveRequest = () => submitWithAction("saveDraft");
     const handlePublishRequest = () => submitWithAction("publishCampaign");
@@ -1225,7 +1235,7 @@ export function CampaignForm({
         handleDiscardRequest,
       );
     };
-  }, [listenForSaveEvents, values]);
+  }, [listenForSaveEvents, messageTranslations, values]);
 
   useEffect(() => {
     if (!visibleBuilderTabs.some((tab) => tab.key === activeTab)) {
@@ -1331,7 +1341,13 @@ export function CampaignForm({
         className="counterpulse-create-form"
         onSubmit={confirmOnSubmit ? confirmSubmit.onSubmit : undefined}
       >
-        <input name="_action" type="hidden" value={submitAction} />
+        <input
+          ref={submitActionInputRef}
+          name="_action"
+          type="hidden"
+          value={submitAction}
+          onChange={() => undefined}
+        />
         <input
           data-ai-suggestion-json
           name="aiSuggestionJson"
@@ -2149,7 +2165,10 @@ export function CampaignForm({
               {effectiveMessageTranslations &&
               effectiveMessageResolvedTranslations ? (
                 <>
-                  <CampaignMessageHiddenInputs values={formValues} />
+                  <CampaignMessageHiddenInputs
+                    values={formValues}
+                    translations={effectiveMessageTranslations}
+                  />
                   <CampaignTranslationsEditor
                     embedded
                     errors={messageTranslationErrors}
@@ -3918,8 +3937,10 @@ function getShopifyBridge() {
 
 function CampaignMessageHiddenInputs({
   values,
+  translations,
 }: {
   values: CampaignFormValues;
+  translations?: CampaignTranslationsByLocale;
 }) {
   return (
     <>
@@ -3928,6 +3949,18 @@ function CampaignMessageHiddenInputs({
       <input name="ctaText" type="hidden" value={values.ctaText} />
       <input name="ctaUrl" type="hidden" value={values.ctaUrl} />
       <input name="expiredText" type="hidden" value={values.expiredText} />
+      {translations
+        ? storefrontLocales.flatMap((localeOption) =>
+            campaignTranslationFields.map((field) => (
+              <input
+                key={`${localeOption.locale}-${field.key}`}
+                name={translationInputName(localeOption.locale, field.key)}
+                type="hidden"
+                value={translations[localeOption.locale][field.key]}
+              />
+            )),
+          )
+        : null}
     </>
   );
 }

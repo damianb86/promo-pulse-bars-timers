@@ -29,14 +29,18 @@ test("advanced market rules override storefront free shipping thresholds by mark
   await marketForm.getByLabel("Currency").fill("EUR");
   await marketForm.getByLabel("Free shipping threshold").fill("95");
 
-  await marketForm.getByRole("button", { name: "Save market rule" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    confirmAction(page, "Save market rule"),
+    (async () => {
+      await marketForm
+        .getByRole("button", { name: "Save market rule" })
+        .click();
+      await confirmAction(page, "Save market rule");
+    })(),
   ]);
 
   await expect(page.getByText("country: ES")).toBeVisible();

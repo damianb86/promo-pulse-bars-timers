@@ -41,18 +41,22 @@ export function CampaignEditorLayout({
   const [activeSectionKey, setActiveSectionKey] = useState(
     () => sections[0]?.key ?? "",
   );
-  const sectionKeyList = sections.map((section) => section.key).join("|");
   const activeSection =
     sections.find((section) => section.key === activeSectionKey) ?? sections[0];
+  const hasAttentionSection = sections.some(
+    (section) => section.key === attentionSectionKey,
+  );
 
   useEffect(() => {
     if (!attentionSectionKey) return;
-    if (!sections.some((section) => section.key === attentionSectionKey)) {
-      return;
-    }
+    if (!hasAttentionSection) return;
 
-    setActiveSectionKey(attentionSectionKey);
-  }, [attentionSectionKey, sectionKeyList]);
+    const focusSection = window.setTimeout(() => {
+      setActiveSectionKey(attentionSectionKey);
+    }, 0);
+
+    return () => window.clearTimeout(focusSection);
+  }, [attentionSectionKey, hasAttentionSection]);
 
   if (!activeSection) return null;
 

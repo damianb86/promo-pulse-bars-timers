@@ -317,6 +317,10 @@ export async function createAutomaticFreeShippingDiscount(
   admin: ShopifyGraphqlClient,
   input: AutomaticFreeShippingDiscountInput,
 ) {
+  if (isLocalE2EMode()) {
+    return buildE2EAutomaticFreeShippingDiscount(input);
+  }
+
   const response = await executeGraphql<{
     discountAutomaticFreeShippingCreate?: DiscountMutationPayload;
   }>(
@@ -346,6 +350,10 @@ export async function updateAutomaticFreeShippingDiscount(
   discountId: string,
   input: AutomaticFreeShippingDiscountInput,
 ) {
+  if (isLocalE2EMode()) {
+    return buildE2EAutomaticFreeShippingDiscount(input, discountId);
+  }
+
   const response = await executeGraphql<{
     discountAutomaticFreeShippingUpdate?: DiscountMutationPayload;
   }>(
@@ -511,6 +519,28 @@ function parseMutationPayload(payload: DiscountMutationPayload | undefined) {
   }
 
   return discount;
+}
+
+function isLocalE2EMode() {
+  return (
+    process.env.E2E_TEST_MODE === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
+}
+
+function buildE2EAutomaticFreeShippingDiscount(
+  input: AutomaticFreeShippingDiscountInput,
+  id = "gid://shopify/DiscountAutomaticNode/e2e-free-shipping",
+): ShopifyDiscountSummary {
+  return {
+    id,
+    code: "",
+    title: input.title,
+    status: "ACTIVE",
+    startsAt: toIsoDate(input.startsAt),
+    endsAt: toIsoDate(input.endsAt),
+    type: "DiscountAutomaticFreeShipping",
+  };
 }
 
 function normalizeDiscountNode(

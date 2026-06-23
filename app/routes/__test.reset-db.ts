@@ -40,6 +40,16 @@ async function reset(request: Request) {
 function readScenario(value: string | null): E2ETestScenario {
   if (
     value === "countdown" ||
+    value === "campaign-type-countdown" ||
+    value === "campaign-type-product-timer" ||
+    value === "campaign-type-cart-timer" ||
+    value === "campaign-type-free-shipping" ||
+    value === "campaign-type-free-shipping-circular" ||
+    value === "campaign-type-delivery-cutoff" ||
+    value === "campaign-type-low-stock" ||
+    value === "campaign-type-product-badge" ||
+    value === "campaign-targeting-filters" ||
+    value === "campaign-custom-selector" ||
     value === "countdown-consent-strict" ||
     value === "targeting" ||
     value === "behavior-targeting" ||

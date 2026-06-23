@@ -158,8 +158,6 @@ describe("shopifyDiscounts service", () => {
         }),
       }),
     );
-    expect(firstGraphqlQuery(admin)).not.toContain("DiscountCodeBasic");
-    expect(firstGraphqlQuery(admin)).toContain("DiscountAutomaticFreeShipping");
   });
 
   it("creates a free shipping discount with optional minimum subtotal", async () => {
@@ -230,6 +228,8 @@ describe("shopifyDiscounts service", () => {
         }),
       }),
     );
+    expect(firstGraphqlQuery(admin)).not.toContain("DiscountCodeBasic");
+    expect(firstGraphqlQuery(admin)).toContain("DiscountAutomaticFreeShipping");
   });
 
   it("throws clear Shopify user errors", async () => {

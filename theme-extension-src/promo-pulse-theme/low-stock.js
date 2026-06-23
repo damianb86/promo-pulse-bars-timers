@@ -175,7 +175,7 @@
         root,
         "Campana LOW_STOCK recibida, pero no se muestra: no hay inventario real bajo el threshold ni fallback configurado.",
       );
-      if (!config.debug) root.replaceChildren();
+      root.replaceChildren();
       return;
     }
 

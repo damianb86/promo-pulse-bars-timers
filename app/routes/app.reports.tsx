@@ -1,6 +1,5 @@
 import { Form, useLoaderData } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
-import { PlacementType } from "@prisma/client";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
@@ -24,6 +23,7 @@ import {
   defaultReportFilterValues,
   type ReportFilterValues,
 } from "../types/report-filters";
+import { placementTypeOptions } from "../types/campaign-options";
 
 type CampaignOption = {
   id: string;
@@ -199,9 +199,9 @@ function ReportFilters({
           <span>Placement</span>
           <select name="placement" defaultValue={filters.placement}>
             <option value="">All placements</option>
-            {Object.values(PlacementType).map((placement) => (
-              <option key={placement} value={placement}>
-                {formatEnum(placement)}
+            {placementTypeOptions.map((placement) => (
+              <option key={placement.value} value={placement.value}>
+                {placement.label}
               </option>
             ))}
           </select>
@@ -486,12 +486,4 @@ function formatCurrency(value: number, currencyCode: string) {
 
 function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
-}
-
-function formatEnum(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }

@@ -123,7 +123,11 @@ export function CampaignDesignEditor({
   useEffect(() => {
     if (!designErrorSummary) return;
 
-    setOpenErrorModalKey(designErrorSummary.key);
+    const openModal = window.setTimeout(() => {
+      setOpenErrorModalKey(designErrorSummary.key);
+    }, 0);
+
+    return () => window.clearTimeout(openModal);
   }, [designErrorSummary]);
 
   return (

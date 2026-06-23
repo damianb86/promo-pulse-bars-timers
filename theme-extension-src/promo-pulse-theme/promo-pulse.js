@@ -44,7 +44,9 @@
           campaigns.length +
           " campana(s) recibidas para placements globales.",
       );
-      campaigns.forEach(renderCampaign);
+      campaigns.forEach(function (campaign) {
+        renderCampaign(campaign);
+      });
     })
     .catch(function (error) {
       updateDebug(root, "Error global del embed: " + error.message);
@@ -1419,12 +1421,6 @@
     if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
     if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
     return "desktop";
-  }
-
-  function detectCartSubtotal() {
-    return typeof window.PromoPulseCartSubtotal === "number"
-      ? window.PromoPulseCartSubtotal
-      : null;
   }
 
   function splitList(value) {

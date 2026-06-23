@@ -28,9 +28,11 @@
   init();
   document.addEventListener("shopify:section:load", init);
   document.addEventListener("cart:updated", function () {
+    scheduleCartPageRefresh(true);
     scheduleDrawerRender(true, false);
   });
   document.addEventListener("promo-pulse:cart-changed", function () {
+    scheduleCartPageRefresh(true);
     scheduleDrawerRender(true, false);
   });
 
@@ -52,6 +54,8 @@
   function initCartPageBlock(root) {
     var config = readBlockConfig(root, "CART_PAGE");
 
+    root.__promoPulseCartConfig = config;
+
     if (!config.shop) {
       updateDebug(root, "Detenido: falta el shop domain en el bloque.");
       return;
@@ -66,6 +70,7 @@
 
     fetchCampaigns(config, root)
       .then(function (campaigns) {
+        root.__promoPulseCartCampaigns = campaigns;
         if (campaigns[0]) {
           renderCartCampaign(root, campaigns[0], config, false);
         } else {
@@ -78,6 +83,72 @@
       .catch(function (error) {
         updateDebug(root, "Error consultando la API: " + error.message);
         debug(config, "[CP cart]", error);
+      });
+  }
+
+  function scheduleCartPageRefresh(force) {
+    [].slice
+      .call(
+        document.querySelectorAll(".pp-cart-timer[data-pp-initialized='true']"),
+      )
+      .forEach(function (root) {
+        if (root.__promoPulseCartRefreshInFlight) {
+          root.__promoPulseCartRefreshQueued = true;
+          return;
+        }
+
+        window.clearTimeout(root.__promoPulseCartRefreshTimer);
+        root.__promoPulseCartRefreshTimer = window.setTimeout(
+          function () {
+            refreshCartPageBlock(root);
+          },
+          force ? 80 : 300,
+        );
+      });
+  }
+
+  function refreshCartPageBlock(root) {
+    var config =
+      root.__promoPulseCartConfig || readBlockConfig(root, "CART_PAGE");
+
+    if (!config.shop || root.__promoPulseCartRefreshInFlight) return;
+
+    root.__promoPulseCartRefreshInFlight = true;
+
+    readAjaxCartState()
+      .then(function (cartState) {
+        config.cartSubtotal =
+          cartState.subtotal === null
+            ? config.cartSubtotal
+            : cartState.subtotal;
+        config.currency = cartState.currency || config.currency;
+        config.cartToken = cartState.token || config.cartToken;
+        root.__promoPulseCartConfig = config;
+
+        if (Array.isArray(root.__promoPulseCartCampaigns)) {
+          return root.__promoPulseCartCampaigns;
+        }
+
+        return fetchCampaigns(config, root).then(function (campaigns) {
+          root.__promoPulseCartCampaigns = campaigns;
+          return campaigns;
+        });
+      })
+      .then(function (campaigns) {
+        if (campaigns[0]) {
+          renderCartCampaign(root, campaigns[0], config, false);
+        }
+      })
+      .catch(function (error) {
+        updateDebug(root, "Error actualizando CART_PAGE: " + error.message);
+        debug(config, "[CP cart refresh]", error);
+      })
+      .finally(function () {
+        root.__promoPulseCartRefreshInFlight = false;
+        if (root.__promoPulseCartRefreshQueued) {
+          root.__promoPulseCartRefreshQueued = false;
+          scheduleCartPageRefresh(true);
+        }
       });
   }
 
@@ -831,7 +902,8 @@
     if (!cart || typeof cart.total_price !== "number") return null;
 
     window.PromoPulseCartSubtotal = cart.total_price / 100;
-    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartCurrency =
+      cart.currency || window.PromoPulseCartCurrency || "";
     window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
     window.PromoPulseCartState = {
       subtotal: window.PromoPulseCartSubtotal,

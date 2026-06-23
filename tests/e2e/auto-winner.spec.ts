@@ -48,13 +48,14 @@ test("experiment results can auto-detect and apply a winning variant", async ({
   await page.getByRole("tab", { name: "Message" }).click();
 
   const campaignForm = page.locator("#campaign-basics-form");
+  const messagePanel = campaignForm.getByRole("tabpanel", { name: "Message" });
 
-  await expect(campaignForm.locator('input[name="headline"]')).toHaveValue(
-    "Winning headline",
-  );
-  await expect(campaignForm.locator('textarea[name="subheadline"]')).toHaveValue(
-    "Winning treatment copy.",
-  );
+  await expect(
+    messagePanel.getByRole("textbox", { name: "Headline", exact: true }),
+  ).toHaveValue("Winning headline");
+  await expect(
+    messagePanel.getByRole("textbox", { name: "Subheadline", exact: true }),
+  ).toHaveValue("Winning treatment copy.");
   await page.getByRole("tab", { name: "Offers" }).click();
   await expect(page.getByLabel("Existing discount code or ID")).toHaveValue(
     "WINNER20",

@@ -101,6 +101,14 @@ export async function sendPromoPulseEmail({
     .filter(([, value]) => !value)
     .map(([name]) => name);
 
+  if (
+    process.env.E2E_TEST_MODE === "true" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    console.log("[email.server] E2E mode; email not sent:", payload);
+    return payload;
+  }
+
   if (missing.length > 0) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(`Missing email configuration: ${missing.join(", ")}`);

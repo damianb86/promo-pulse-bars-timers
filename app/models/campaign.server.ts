@@ -581,7 +581,7 @@ export async function updateFreeShippingSettingsForShop(
   });
 }
 
-function toCampaignDesignWriteData(
+export function toCampaignDesignWriteData(
   input: CampaignDesignValues,
   mobileInput: CampaignDesignValues = input,
 ) {
@@ -721,6 +721,11 @@ export async function updateCampaignTranslationsForShop(
   await assertCampaignBelongsToShop(id, shopId);
 
   return prisma.$transaction(async (tx) => {
+    await tx.campaign.update({
+      where: { id },
+      data: { lastSavedAt: new Date() },
+    });
+
     for (const translation of translations) {
       await tx.campaignTranslation.upsert({
         where: {

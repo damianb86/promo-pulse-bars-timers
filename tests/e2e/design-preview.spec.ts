@@ -40,8 +40,9 @@ test("design changes update live preview and persist", async ({
   await editor
     .locator('select[name="timerTickAnimation"]')
     .selectOption("PULSE");
-  await page
+  await editor
     .getByLabel("Preview device")
+    .first()
     .getByRole("button", { name: "Mobile" })
     .click();
 
@@ -102,7 +103,9 @@ test("design changes update live preview and persist", async ({
   await expect(reloadedEditor.locator('input[name="timerFormat"]')).toHaveValue(
     "COLON",
   );
-  await expect(page.getByLabel("Show timer labels")).not.toBeChecked();
+  await expect(
+    reloadedEditor.getByLabel("Show timer labels"),
+  ).not.toBeChecked();
   await expect(reloadedEditor.locator('select[name="icon"]')).toHaveValue(
     "FIRE",
   );

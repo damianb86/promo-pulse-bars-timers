@@ -16,6 +16,14 @@ export function buildE2EStorefrontHtml(
   const visitorId = url.searchParams.get("visitorId") || "";
   const sessionId = url.searchParams.get("sessionId") || "";
   const subtotal = Number(url.searchParams.get("subtotal") || "40");
+  const productId =
+    url.searchParams.get("productId") || "gid://shopify/Product/e2e-hoodie";
+  const productTags = url.searchParams.get("productTags") || "sale,hoodie";
+  const collectionIds =
+    url.searchParams.get("collectionIds") ||
+    "gid://shopify/Collection/e2e-sale";
+  const inventory = Number(url.searchParams.get("inventory") || "3");
+  const inventoryQuantity = Number.isFinite(inventory) ? inventory : 3;
   const subtotalCents = Number.isFinite(subtotal)
     ? Math.round(subtotal * 100)
     : 4000;
@@ -38,6 +46,9 @@ export function buildE2EStorefrontHtml(
       main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
       .e2e-product { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; }
       .e2e-image { width: 100%; aspect-ratio: 1; background: #f1f2f4; border-radius: 8px; }
+      .e2e-product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 32px 0; }
+      .e2e-product-card a { position: relative; display: grid; gap: 10px; color: inherit; text-decoration: none; }
+      .e2e-product-card img { width: 100%; display: block; border-radius: 10px; }
       .e2e-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); padding: 20px; background: #fff; border-left: 1px solid #d8d8d8; box-shadow: -20px 0 60px rgba(0,0,0,.12); transform: translateX(105%); transition: transform 120ms ease; z-index: 20; }
       .e2e-cart-drawer[data-open="true"] { transform: translateX(0); }
       .drawer__contents { display: grid; gap: 12px; }
@@ -98,8 +109,28 @@ export function buildE2EStorefrontHtml(
     </script>
   </head>
   <body>
-    ${embedRoot({ locale, country, currency, market, subtotalCents })}
-    ${bodyForKind(kind, { locale, country, currency, subtotalCents })}
+    ${embedRoot({
+      locale,
+      country,
+      currency,
+      market,
+      subtotalCents,
+      productId: kind === "product" ? productId : "",
+      productTags: kind === "product" ? productTags : "",
+      collectionIds: kind === "product" ? collectionIds : "",
+      inventoryQuantity: kind === "product" ? inventoryQuantity : null,
+    })}
+    ${bodyForKind(kind, {
+      locale,
+      country,
+      currency,
+      subtotalCents,
+      productId,
+      productTags,
+      collectionIds,
+      inventoryQuantity,
+      customCampaignId: url.searchParams.get("customCampaignId") || "",
+    })}
     ${scriptsForKind(kind)}
   </body>
 </html>`;
@@ -111,12 +142,20 @@ function embedRoot({
   currency,
   market,
   subtotalCents,
+  productId,
+  productTags,
+  collectionIds,
+  inventoryQuantity,
 }: {
   locale: string;
   country: string;
   currency: string;
   market: string;
   subtotalCents: number;
+  productId: string;
+  productTags: string;
+  collectionIds: string;
+  inventoryQuantity: number | null;
 }) {
   return `<div
     id="promo-pulse-app-embed"
@@ -129,6 +168,11 @@ function embedRoot({
     data-cart-total-cents="${subtotalCents}"
     data-cart-currency="${escapeHtml(currency)}"
     data-cart-token="e2e-cart-token"
+    data-product-id="${escapeHtml(productId)}"
+    data-product-tags="${escapeHtml(productTags)}"
+    data-collection-ids="${escapeHtml(collectionIds)}"
+    data-selected-variant-id="${productId ? "gid://shopify/ProductVariant/e2e-low" : ""}"
+    data-inventory-quantity="${inventoryQuantity ?? ""}"
     data-cart-timer-src="/__test/theme-asset/cart-timer.js"
     data-analytics-path="/api/analytics/event"
     data-custom-cart-drawer-selector="#CartDrawer .drawer__contents"
@@ -148,26 +192,48 @@ function bodyForKind(
     country: string;
     currency: string;
     subtotalCents: number;
+    productId: string;
+    productTags: string;
+    collectionIds: string;
+    inventoryQuantity: number;
+    customCampaignId: string;
   },
 ) {
   if (kind === "product") {
     return `<main>
       <div class="e2e-product">
-        <div class="e2e-image"></div>
+        <div class="e2e-image" data-product-media></div>
         <section>
           <h1>Everyday Hoodie</h1>
           <p>$78.00</p>
+          <form action="/cart/add">
+            <label for="e2e-variant">Variant</label>
+            <select id="e2e-variant" name="id">
+              <option value="e2e-low">Low inventory</option>
+              <option value="e2e-high">High inventory</option>
+            </select>
+          </form>
           <div
             class="pp-product-timer"
             data-shop="${E2E_DEMO_SHOP_DOMAIN}"
-            data-product-id="gid://shopify/Product/e2e-hoodie"
-            data-product-tags="sale,hoodie"
+            data-product-id="${escapeHtml(context.productId)}"
+            data-product-tags="${escapeHtml(context.productTags)}"
+            data-collection-ids="${escapeHtml(context.collectionIds)}"
+            data-selected-variant-id="gid://shopify/ProductVariant/e2e-low"
+            data-inventory-quantity="${context.inventoryQuantity}"
+            data-variants-script-id="promo-pulse-e2e-variants"
             data-locale="${escapeHtml(context.locale)}"
             data-country="${escapeHtml(context.country)}"
             data-fallback-mode="AUTO_ELIGIBLE"
             data-alignment="CENTER"
             data-debug="true"
           ></div>
+          <script id="promo-pulse-e2e-variants" type="application/json">
+            [
+              {"id":"gid://shopify/ProductVariant/e2e-low","legacyId":"e2e-low","inventoryQuantity":${context.inventoryQuantity}},
+              {"id":"gid://shopify/ProductVariant/e2e-high","legacyId":"e2e-high","inventoryQuantity":10}
+            ]
+          </script>
           <button type="button">Add to cart</button>
         </section>
       </div>
@@ -218,8 +284,65 @@ function bodyForKind(
   return `<main>
     <h1>E2E Storefront</h1>
     <p>This page simulates a Shopify storefront with the Promo Pulse app embed enabled.</p>
+    ${
+      context.customCampaignId
+        ? `<div
+      data-promo-pulse-placement="CUSTOM_SELECTOR"
+      data-promo-pulse-campaign-id="${escapeHtml(context.customCampaignId)}"
+    ></div>`
+        : ""
+    }
+    <section class="e2e-product-grid" aria-label="Featured products">
+      ${productCard({
+        id: "gid://shopify/Product/e2e-hoodie",
+        title: "Everyday Hoodie",
+        tags: "sale,hoodie",
+        collectionIds: "gid://shopify/Collection/e2e-sale",
+      })}
+      ${productCard({
+        id: "gid://shopify/Product/e2e-mug",
+        title: "Ceramic Mug",
+        tags: "gift,home",
+        collectionIds: "gid://shopify/Collection/e2e-home",
+      })}
+      ${productCard({
+        id: "gid://shopify/Product/e2e-bag",
+        title: "Canvas Bag",
+        tags: "vip-tag,accessory",
+        collectionIds: "gid://shopify/Collection/e2e-sale",
+      })}
+    </section>
     <a href="/collections/sale">Sale collection</a>
   </main>`;
+}
+
+function productCard({
+  id,
+  title,
+  tags,
+  collectionIds,
+}: {
+  id: string;
+  title: string;
+  tags: string;
+  collectionIds: string;
+}) {
+  return `<article
+    class="e2e-product-card"
+    data-product-card
+    data-product-id="${escapeHtml(id)}"
+    data-product-tags="${escapeHtml(tags)}"
+    data-collection-ids="${escapeHtml(collectionIds)}"
+    data-product-vendor="E2E Vendor"
+    data-price="24"
+    data-compare-at-price="32"
+    data-discount-active="true"
+  >
+    <a href="/products/${escapeHtml(title.toLowerCase().replace(/\s+/g, "-"))}">
+      <img alt="${escapeHtml(title)}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23f1f5f9'/%3E%3C/svg%3E" />
+      <span>${escapeHtml(title)}</span>
+    </a>
+  </article>`;
 }
 
 function scriptsForKind(kind: StorefrontPageKind) {
@@ -228,8 +351,10 @@ function scriptsForKind(kind: StorefrontPageKind) {
 
   if (kind === "product") {
     return `${common}
+    <script src="/__test/theme-asset/product-badge.js" defer></script>
     <script src="/__test/theme-asset/delivery-cutoff.js" defer></script>
-    <script src="/__test/theme-asset/product-timer.js" defer></script>`;
+    <script src="/__test/theme-asset/product-timer.js" defer></script>
+    <script src="/__test/theme-asset/low-stock.js" defer></script>`;
   }
 
   if (kind === "cart") {
@@ -239,6 +364,7 @@ function scriptsForKind(kind: StorefrontPageKind) {
   }
 
   return `${common}
+    <script src="/__test/theme-asset/product-badge.js" defer></script>
     <script src="/__test/theme-asset/free-shipping.js" defer></script>
     <script src="/__test/theme-asset/delivery-cutoff.js" defer></script>
     <script src="/__test/theme-asset/cart-timer.js" defer></script>

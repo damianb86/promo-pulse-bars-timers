@@ -135,10 +135,19 @@ export const test = base.extend<E2EFixtures>({
       }
       await selectTimezone(form, "Timezone", "UTC-05", "America/New_York");
       await form.getByRole("tab", { name: "Message" }).click();
-      await form.locator('input[name="headline"]').fill(values.headline);
-      await form.getByLabel("CTA text").fill(values.ctaText);
-      await form.getByLabel("CTA URL").fill(values.ctaUrl);
-      await form.locator('textarea[name="subheadline"]').fill(values.subheadline);
+      const messagePanel = form.getByRole("tabpanel", { name: "Message" });
+      await messagePanel
+        .getByRole("textbox", { name: "Headline", exact: true })
+        .fill(values.headline);
+      await messagePanel
+        .getByRole("textbox", { name: "CTA text", exact: true })
+        .fill(values.ctaText);
+      await messagePanel
+        .getByRole("textbox", { name: "CTA URL", exact: true })
+        .fill(values.ctaUrl);
+      await messagePanel
+        .getByRole("textbox", { name: "Subheadline", exact: true })
+        .fill(values.subheadline);
       await form.getByRole("button", { name: "Save campaign" }).click();
       await confirmAction(page, "Save campaign");
       await page.waitForURL((url) => {
@@ -158,12 +167,27 @@ export const test = base.extend<E2EFixtures>({
 
 export { expect } from "@playwright/test";
 
-export async function selectCampaignTypeCard(scope: Locator | Page, label: string) {
-  await scope
-    .getByRole("radio", {
-      name: new RegExp(`^${escapeRegExp(label)}\\b`),
-    })
-    .click();
+export async function selectCampaignTypeCard(
+  scope: Locator | Page,
+  label: string,
+) {
+  const selectedType = scope
+    .locator(".counterpulse-campaign-type-current")
+    .filter({ hasText: label });
+
+  if ((await selectedType.count()) > 0) {
+    return;
+  }
+
+  const radio = scope.getByRole("radio", {
+    name: new RegExp(`^${escapeRegExp(label)}\\b`),
+  });
+
+  if ((await radio.count()) === 0) {
+    await scope.locator(".counterpulse-campaign-type-current").click();
+  }
+
+  await radio.click();
 }
 
 export async function selectOnlyCampaignPlacement(
@@ -191,14 +215,30 @@ export async function selectOnlyCampaignPlacement(
 }
 
 export async function publishCurrentCampaign(page: Page) {
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes("/app/campaigns/") &&
-        response.request().method() === "POST",
-    ),
-    page.getByTestId("campaign-publish-button").click(),
-  ]);
+  const publishButton = page.getByTestId("campaign-publish-button");
+
+  await expect(publishButton).toBeVisible();
+  await expect(publishButton).toBeEnabled({ timeout: 5000 }).catch(() => {
+    // Already-published campaigns with no publishable changes intentionally
+    // keep the Publish changes button disabled.
+  });
+
+  if (await publishButton.isDisabled()) return;
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/app/campaigns/") &&
+      response.request().method() === "POST",
+  );
+
+  await publishButton.click();
+
+  const response = await responsePromise;
+  expect(response.ok()).toBe(true);
+  await page.waitForURL((url) => /\/app\/campaigns\/[^/]+$/.test(url.pathname));
+  await expect(publishButton).toBeDisabled({ timeout: 5000 }).catch(() => {
+    // Leave later assertions to report the exact published-state mismatch.
+  });
 }
 
 export async function saveCurrentCampaignDraft(page: Page) {

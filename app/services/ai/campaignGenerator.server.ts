@@ -2302,27 +2302,26 @@ function sanitizePartialDesign(
 function omitPresetVisualOverrides(
   design: Partial<CampaignDesignValues>,
 ): Partial<CampaignDesignValues> {
-  const {
-    backgroundType: _backgroundType,
-    backgroundColor: _backgroundColor,
-    backgroundImageUrl: _backgroundImageUrl,
-    gradientStartColor: _gradientStartColor,
-    gradientEndColor: _gradientEndColor,
-    gradientAngle: _gradientAngle,
-    textColor: _textColor,
-    accentColor: _accentColor,
-    buttonColor: _buttonColor,
-    buttonTextColor: _buttonTextColor,
-    closeButtonColor: _closeButtonColor,
-    borderColor: _borderColor,
-    titleColor: _titleColor,
-    subheadingColor: _subheadingColor,
-    timerColor: _timerColor,
-    legendColor: _legendColor,
-    timerSurfaceColor: _timerSurfaceColor,
-    timerSurfaceBorderColor: _timerSurfaceBorderColor,
-    ...rest
-  } = design;
+  const rest = { ...design };
+
+  delete rest.backgroundType;
+  delete rest.backgroundColor;
+  delete rest.backgroundImageUrl;
+  delete rest.gradientStartColor;
+  delete rest.gradientEndColor;
+  delete rest.gradientAngle;
+  delete rest.textColor;
+  delete rest.accentColor;
+  delete rest.buttonColor;
+  delete rest.buttonTextColor;
+  delete rest.closeButtonColor;
+  delete rest.borderColor;
+  delete rest.titleColor;
+  delete rest.subheadingColor;
+  delete rest.timerColor;
+  delete rest.legendColor;
+  delete rest.timerSurfaceColor;
+  delete rest.timerSurfaceBorderColor;
 
   return rest;
 }

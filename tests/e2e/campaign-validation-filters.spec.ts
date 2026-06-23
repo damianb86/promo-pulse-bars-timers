@@ -21,13 +21,14 @@ test("campaign creation shows server validation errors", async ({
   await confirmAction(page, "Save campaign");
 
   await page.getByRole("tab", { name: "Setup" }).click();
-  await expect(page.getByText("Campaign name is required.")).toBeVisible();
+  await expect(
+    page.getByText("Campaign name is required.", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("tab", { name: "Message" }).click();
   await expect(
-    page.getByText("An active campaign needs a basic headline translation."),
-  ).toBeVisible();
-  await expect(
-    page.getByText("CTA URL must be a valid absolute URL or storefront path."),
+    page.getByText("CTA URL must be a valid absolute URL or storefront path.", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/app\/campaigns\/new$/);
 

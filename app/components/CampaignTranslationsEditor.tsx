@@ -68,9 +68,30 @@ export function CampaignTranslationsEditor({
     setValues(nextValues);
     onValuesChange?.(nextValues, locale);
   };
+  const updateFieldValue = (
+    locale: StorefrontLocale,
+    field: CampaignTextField,
+    value: string,
+  ) => {
+    setValues((currentValues) => {
+      const nextValues = updateTranslationValue(
+        currentValues,
+        locale,
+        field,
+        value,
+      );
+
+      onValuesChange?.(nextValues, locale);
+      return nextValues;
+    });
+  };
 
   useEffect(() => {
-    setValues(initialValues);
+    const syncValues = window.setTimeout(() => {
+      setValues(initialValues);
+    }, 0);
+
+    return () => window.clearTimeout(syncValues);
   }, [initialValues]);
 
   const content = (
@@ -144,15 +165,7 @@ export function CampaignTranslationsEditor({
                 placeholder={resolvedValues[localeOption.locale][field.key]}
                 value={values[localeOption.locale][field.key]}
                 onChange={(nextValue) =>
-                  replaceValues(
-                    updateTranslationValue(
-                      values,
-                      localeOption.locale,
-                      field.key,
-                      nextValue,
-                    ),
-                    localeOption.locale,
-                  )
+                  updateFieldValue(localeOption.locale, field.key, nextValue)
                 }
               />
             ))}

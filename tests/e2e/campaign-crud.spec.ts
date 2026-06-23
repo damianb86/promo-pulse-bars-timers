@@ -109,8 +109,8 @@ test("campaign builder tabs preview and layout are interactive", async ({
     "true",
   );
   await expect(
-    form.getByRole("radio", { name: /^Flash sale\b/ }),
-  ).toHaveAttribute("aria-checked", "true");
+    form.locator(".counterpulse-campaign-type-current"),
+  ).toContainText("Flash sale");
 
   await form.getByTitle("About Campaign type").click();
   let infoDialog = page.getByRole("dialog", { name: "Campaign types" });
@@ -120,12 +120,13 @@ test("campaign builder tabs preview and layout are interactive", async ({
 
   await selectCampaignTypeCard(form, "Free shipping");
   await expect(
-    form.getByRole("radio", { name: /^Free shipping\b/ }),
-  ).toHaveAttribute("aria-checked", "true");
+    form.locator(".counterpulse-campaign-type-current"),
+  ).toContainText("Free shipping");
 
   await form.getByRole("tab", { name: "Message" }).click();
   await form
-    .locator('input[name="headline"]')
+    .getByRole("tabpanel", { name: "Message" })
+    .getByRole("textbox", { name: "Headline", exact: true })
     .fill("Interactive preview headline");
   await expect(preview).toContainText("Interactive preview headline");
 

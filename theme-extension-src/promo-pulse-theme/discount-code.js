@@ -94,12 +94,9 @@
       window.PromoPulseTrackEvent("COPY_CODE", event.detail || {});
     });
 
-    document.addEventListener(
-      "promo-pulse:badge-impression",
-      function (event) {
-        window.PromoPulseTrackEvent("BADGE_IMPRESSION", event.detail || {});
-      },
-    );
+    document.addEventListener("promo-pulse:badge-impression", function (event) {
+      window.PromoPulseTrackEvent("BADGE_IMPRESSION", event.detail || {});
+    });
 
     document.addEventListener("promo-pulse:badge-click", function (event) {
       window.PromoPulseTrackEvent("BADGE_CLICK", event.detail || {});
@@ -847,12 +844,15 @@
       });
     };
     window.PromoPulseUpdateCartState = updateCartState;
-    window.PromoPulseGetCartState = function (maxAgeMs) {
+    window.PromoPulseGetCartState = function getPromoPulseCartState(maxAgeMs) {
       var state = window.PromoPulseCartState || null;
       var ageLimit = Number(maxAgeMs || 0);
 
       if (!state || typeof state.subtotal !== "number") return null;
-      if (ageLimit > 0 && Date.now() - Number(state.updatedAt || 0) > ageLimit) {
+      if (
+        ageLimit > 0 &&
+        Date.now() - Number(state.updatedAt || 0) > ageLimit
+      ) {
         return null;
       }
 
@@ -862,7 +862,7 @@
         token: state.token || "",
       };
     };
-    document.addEventListener("cart:updated", function () {
+    document.addEventListener("cart:updated", function handleCartUpdated() {
       window.PromoPulseClearRequestCache("cart");
     });
 
@@ -1029,7 +1029,8 @@
 
     subtotal = totalCents / 100;
     window.PromoPulseCartSubtotal = subtotal;
-    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartCurrency =
+      cart.currency || window.PromoPulseCartCurrency || "";
     window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
     window.PromoPulseCartState = {
       subtotal: subtotal,

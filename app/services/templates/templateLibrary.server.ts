@@ -35,6 +35,7 @@ import {
   buildDefaultCampaignTranslations,
   normalizeStorefrontLocale,
 } from "../../utils/campaign-localization";
+import { toCampaignDesignWriteData } from "../../models/campaign.server";
 import {
   buildSystemCampaignTemplates,
   templateMarkets,
@@ -200,7 +201,7 @@ export async function createDraftCampaignFromTemplate(
         create: buildTemplateTranslations(template, texts),
       },
       design: {
-        create: design,
+        create: toCampaignDesignWriteData(design),
       },
       ...(shouldCreateTimerSettings(template.type)
         ? {

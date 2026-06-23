@@ -26,6 +26,6 @@ for (const name of assets) {
 
   await writeFile(
     `extensions/promo-pulse-theme/assets/${name}.js`,
-    `${result.code.trimEnd()}\n`,
+    `/* eslint-disable */\n${result.code.trimEnd()}\n`,
   );
 }

@@ -102,8 +102,10 @@ export async function fetchShopMarkets(
 
   if (!response.ok || body.errors?.length) {
     throw new Error(
-      body.errors?.map((error) => error.message).filter(Boolean).join(" ") ||
-        "Shopify markets could not be loaded.",
+      body.errors
+        ?.map((error) => error.message)
+        .filter(Boolean)
+        .join(" ") || "Shopify markets could not be loaded.",
     );
   }
 
@@ -169,25 +171,32 @@ export async function saveMarketRule({
     textOverrides: Prisma.JsonNull,
   };
 
-  if (ruleId) {
-    const result = await prisma.marketCampaignRule.updateMany({
-      where: { id: ruleId, shopId, campaignId },
-      data,
+  return prisma.$transaction(async (tx) => {
+    await tx.campaign.updateMany({
+      where: { id: campaignId, shopId },
+      data: { lastSavedAt: new Date() },
     });
 
-    if (result.count === 0) {
-      throw new Error("Market rule not found.");
+    if (ruleId) {
+      const result = await tx.marketCampaignRule.updateMany({
+        where: { id: ruleId, shopId, campaignId },
+        data,
+      });
+
+      if (result.count === 0) {
+        throw new Error("Market rule not found.");
+      }
+
+      return result;
     }
 
-    return result;
-  }
-
-  return prisma.marketCampaignRule.create({
-    data: {
-      ...data,
-      shopId,
-      campaignId,
-    },
+    return tx.marketCampaignRule.create({
+      data: {
+        ...data,
+        shopId,
+        campaignId,
+      },
+    });
   });
 }
 
@@ -200,8 +209,15 @@ export function deleteMarketRule({
   ruleId: string;
   shopId: string;
 }) {
-  return prisma.marketCampaignRule.deleteMany({
-    where: { id: ruleId, campaignId, shopId },
+  return prisma.$transaction(async (tx) => {
+    await tx.campaign.updateMany({
+      where: { id: campaignId, shopId },
+      data: { lastSavedAt: new Date() },
+    });
+
+    return tx.marketCampaignRule.deleteMany({
+      where: { id: ruleId, campaignId, shopId },
+    });
   });
 }
 

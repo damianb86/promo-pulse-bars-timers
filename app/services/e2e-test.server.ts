@@ -2,6 +2,8 @@ import {
   AgencyShopRole,
   AnalyticsEventType,
   AttributionModel,
+  BadgePosition,
+  BadgeShape,
   CampaignDesignIcon,
   CampaignGoal,
   CampaignRecommendationStatus,
@@ -41,6 +43,16 @@ export const E2E_AUTH_COOKIE =
 
 export type E2ETestScenario =
   | "empty"
+  | "campaign-type-countdown"
+  | "campaign-type-product-timer"
+  | "campaign-type-cart-timer"
+  | "campaign-type-free-shipping"
+  | "campaign-type-free-shipping-circular"
+  | "campaign-type-delivery-cutoff"
+  | "campaign-type-low-stock"
+  | "campaign-type-product-badge"
+  | "campaign-targeting-filters"
+  | "campaign-custom-selector"
   | "countdown"
   | "countdown-consent-strict"
   | "targeting"
@@ -222,6 +234,88 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
+  if (scenario === "campaign-type-countdown") {
+    await createCountdownCampaign(shopId, {
+      placements: [PlacementType.TOP_BAR],
+      translations: [
+        {
+          ...englishTranslation("Flash sale ends soon"),
+          subheadline: "Countdown bar across the storefront.",
+          ctaText: "Shop countdown",
+        },
+      ],
+    });
+    await createCountdownCampaign(shopId, {
+      placements: [PlacementType.BOTTOM_BAR],
+      translations: [
+        {
+          ...englishTranslation("Bottom bar flash sale"),
+          subheadline: "Countdown bar anchored at the bottom.",
+          ctaText: "Shop bottom bar",
+        },
+      ],
+    });
+    return;
+  }
+
+  if (scenario === "campaign-type-product-timer") {
+    await createProductTimerCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-type-cart-timer") {
+    await createCartTimerCampaign(shopId, [
+      PlacementType.CART_PAGE,
+      PlacementType.CART_DRAWER,
+    ]);
+    return;
+  }
+
+  if (scenario === "campaign-type-free-shipping") {
+    await createFreeShippingCampaign(
+      shopId,
+      [PlacementType.CART_PAGE, PlacementType.CART_DRAWER],
+      {
+        thresholdAmount: 50,
+        progressStyle: "BAR",
+      },
+    );
+    return;
+  }
+
+  if (scenario === "campaign-type-free-shipping-circular") {
+    await createFreeShippingCampaign(shopId, [PlacementType.CART_PAGE], {
+      thresholdAmount: 80,
+      progressStyle: "CIRCULAR",
+    });
+    return;
+  }
+
+  if (scenario === "campaign-type-delivery-cutoff") {
+    await createDeliveryCutoffCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-type-low-stock") {
+    await createLowStockCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-type-product-badge") {
+    await createProductBadgeCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-targeting-filters") {
+    await createTargetingMatrixCampaigns(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-custom-selector") {
+    await createCustomSelectorCampaign(shopId);
+    return;
+  }
+
   if (scenario === "countdown-consent-strict") {
     await prisma.shopSettings.update({
       where: { shopId },
@@ -383,6 +477,7 @@ async function createCountdownCampaign(
       ctaUrl?: string;
       expiredText?: string;
     }>;
+    placements?: PlacementType[];
   },
 ) {
   const now = new Date();
@@ -399,7 +494,12 @@ async function createCountdownCampaign(
       endsAt,
       timezone: "America/New_York",
       placements: {
-        create: [{ placementType: PlacementType.TOP_BAR, enabled: true }],
+        create: (options.placements ?? [PlacementType.TOP_BAR]).map(
+          (placementType) => ({
+            placementType,
+            enabled: true,
+          }),
+        ),
       },
       targeting: options.targeting
         ? {
@@ -1287,10 +1387,378 @@ async function createPostPurchaseCampaigns(shopId: string) {
   });
 }
 
+async function createProductTimerCampaign(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 90 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Product Timer",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.PRODUCT_TIMER,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.PRODUCT_PAGE, enabled: true }],
+      },
+      targeting: {
+        create: {
+          countries: [],
+          markets: [],
+          locales: [],
+          productIds: ["gid://shopify/Product/e2e-hoodie"],
+          collectionIds: [],
+          productTags: ["hoodie"],
+          customerTags: [],
+          urlContains: [],
+          excludedUrlContains: [],
+          utmSources: [],
+          devices: [],
+          excludeProductIds: [],
+          excludeCollectionIds: [],
+          behaviorRules: Prisma.JsonNull,
+        },
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "product-timer",
+          layout: DesignLayout.BALANCED,
+          icon: CampaignDesignIcon.CLOCK,
+          gradientStartColor: "#0F766E",
+          gradientEndColor: "#2563EB",
+        },
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+          expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Product timer offer"),
+            subheadline: "Only for this hoodie.",
+            ctaText: "Add before it ends",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createLowStockCampaign(shopId: string) {
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Low Stock Message",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.LOW_STOCK,
+      goal: CampaignGoal.LOW_STOCK_URGENCY,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.PRODUCT_PAGE, enabled: true }],
+      },
+      targeting: {
+        create: {
+          countries: [],
+          markets: [],
+          locales: [],
+          productIds: ["gid://shopify/Product/e2e-hoodie"],
+          collectionIds: [],
+          productTags: [],
+          customerTags: [],
+          urlContains: [],
+          excludedUrlContains: [],
+          utmSources: [],
+          devices: [],
+          excludeProductIds: [],
+          excludeCollectionIds: [],
+          behaviorRules: Prisma.JsonNull,
+        },
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "low-stock",
+          backgroundType: DesignBackgroundType.SOLID,
+          backgroundColor: "#111827",
+          textColor: "#FFFFFF",
+          accentColor: "#F97316",
+          icon: CampaignDesignIcon.TAG,
+        },
+      },
+      lowStockSettings: {
+        create: {
+          threshold: 5,
+          showExactQuantity: true,
+          fallbackMessage: "Almost gone",
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Low stock"),
+            subheadline: "",
+            ctaText: "",
+            lowStockText: "Only {{quantity}} left in stock.",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createProductBadgeCampaign(shopId: string) {
+  return prisma.campaign.create({
+    data: {
+      shopId,
+      name: "E2E Product Badge",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.PRODUCT_BADGE,
+      goal: CampaignGoal.PRODUCT_BADGE,
+      timezone: "America/New_York",
+      placements: {
+        create: [
+          { placementType: PlacementType.COLLECTION_CARD, enabled: true },
+          { placementType: PlacementType.PRODUCT_PAGE_BADGE, enabled: true },
+        ],
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "product-badge",
+          backgroundType: DesignBackgroundType.SOLID,
+          backgroundColor: "#111827",
+          textColor: "#FFFFFF",
+          accentColor: "#A78BFA",
+          borderRadius: 999,
+          paddingBlock: 7,
+          paddingInline: 11,
+          fontSize: 13,
+          icon: CampaignDesignIcon.NONE,
+        },
+      },
+      badgeSettings: {
+        create: {
+          badgeText: "Launch badge",
+          badgeShape: BadgeShape.PILL,
+          badgePosition: BadgePosition.TOP_RIGHT,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Product badge"),
+            badgeText: "Launch badge",
+            ctaText: "",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createCustomSelectorCampaign(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      id: "e2e-custom-selector-campaign",
+      shopId,
+      name: "E2E Custom Selector",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.ANNOUNCEMENT,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [
+          { placementType: PlacementType.CUSTOM_SELECTOR, enabled: true },
+        ],
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "custom-selector",
+          layout: DesignLayout.INLINE,
+          icon: CampaignDesignIcon.GIFT,
+        },
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+          expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Custom slot announcement"),
+            subheadline: "Rendered only into the configured HTML slot.",
+            ctaText: "",
+          },
+        ],
+      },
+    },
+  });
+}
+
+async function createTargetingMatrixCampaigns(shopId: string) {
+  const matrix: Array<{
+    id: string;
+    headline: string;
+    targeting: Prisma.CampaignTargetingCreateWithoutCampaignInput;
+  }> = [
+    {
+      id: "e2e-target-product",
+      headline: "Product targeting matched",
+      targeting: targetingInput({
+        productIds: ["gid://shopify/Product/e2e-hoodie"],
+      }),
+    },
+    {
+      id: "e2e-target-collection",
+      headline: "Collection targeting matched",
+      targeting: targetingInput({
+        collectionIds: ["gid://shopify/Collection/e2e-sale"],
+      }),
+    },
+    {
+      id: "e2e-target-tag",
+      headline: "Tag targeting matched",
+      targeting: targetingInput({ productTags: ["vip-tag"] }),
+    },
+    {
+      id: "e2e-target-country",
+      headline: "Country targeting matched",
+      targeting: targetingInput({ countries: ["AR"] }),
+    },
+    {
+      id: "e2e-target-device",
+      headline: "Device targeting matched",
+      targeting: targetingInput({ devices: ["mobile"] }),
+    },
+    {
+      id: "e2e-target-url",
+      headline: "URL targeting matched",
+      targeting: targetingInput({ urlContains: ["/collections/sale"] }),
+    },
+    {
+      id: "e2e-target-exclude-url",
+      headline: "Excluded URL targeting matched",
+      targeting: targetingInput({ excludedUrlContains: ["/blocked"] }),
+    },
+    {
+      id: "e2e-target-exclude-product",
+      headline: "Excluded product targeting matched",
+      targeting: targetingInput({
+        excludeProductIds: ["gid://shopify/Product/e2e-blocked-product"],
+      }),
+    },
+  ];
+
+  for (const item of matrix) {
+    await createTargetedCountdownCampaign(shopId, item);
+  }
+}
+
+async function createTargetedCountdownCampaign(
+  shopId: string,
+  item: {
+    id: string;
+    headline: string;
+    targeting: Prisma.CampaignTargetingCreateWithoutCampaignInput;
+  },
+) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      id: item.id,
+      shopId,
+      name: item.headline,
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.FLASH_SALE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.TOP_BAR, enabled: true }],
+      },
+      targeting: {
+        create: item.targeting,
+      },
+      design: {
+        create: flashSaleDesign(),
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+          expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation(item.headline),
+            ctaText: "",
+          },
+        ],
+      },
+    },
+  });
+}
+
+function targetingInput(
+  overrides: Partial<Prisma.CampaignTargetingCreateWithoutCampaignInput>,
+): Prisma.CampaignTargetingCreateWithoutCampaignInput {
+  return {
+    countries: [],
+    markets: [],
+    locales: [],
+    productIds: [],
+    collectionIds: [],
+    productTags: [],
+    customerTags: [],
+    urlContains: [],
+    excludedUrlContains: [],
+    utmSources: [],
+    devices: [],
+    excludeProductIds: [],
+    excludeCollectionIds: [],
+    behaviorRules: Prisma.JsonNull,
+    ...overrides,
+  };
+}
+
 async function createFreeShippingCampaign(
   shopId: string,
   placements: PlacementType[],
+  options: {
+    thresholdAmount?: number;
+    progressStyle?: "BAR" | "COMPACT" | "CIRCULAR";
+  } = {},
 ) {
+  const thresholdAmount = options.thresholdAmount ?? 100;
+
   return prisma.campaign.create({
     data: {
       shopId,
@@ -1319,11 +1787,11 @@ async function createFreeShippingCampaign(
       },
       freeShippingSettings: {
         create: {
-          thresholdAmount: new Prisma.Decimal(100),
+          thresholdAmount: new Prisma.Decimal(thresholdAmount),
           currencyCode: "USD",
           includeDiscountedSubtotal: true,
           emptyCartMessage: "Add items to unlock free shipping",
-          progressStyle: "BAR",
+          progressStyle: options.progressStyle ?? "BAR",
           successMessage: "You've unlocked free shipping!",
         },
       },
@@ -1394,7 +1862,10 @@ async function createDeliveryCutoffCampaign(
   });
 }
 
-async function createCartTimerCampaign(shopId: string) {
+async function createCartTimerCampaign(
+  shopId: string,
+  placements: PlacementType[] = [PlacementType.CART_DRAWER],
+) {
   return prisma.campaign.create({
     data: {
       shopId,
@@ -1404,7 +1875,10 @@ async function createCartTimerCampaign(shopId: string) {
       goal: CampaignGoal.CART_RESCUE,
       timezone: "America/New_York",
       placements: {
-        create: [{ placementType: PlacementType.CART_DRAWER, enabled: true }],
+        create: placements.map((placementType) => ({
+          placementType,
+          enabled: true,
+        })),
       },
       design: {
         create: flashSaleDesign(),

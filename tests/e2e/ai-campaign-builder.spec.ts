@@ -36,7 +36,9 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   await expect(page.getByText("AI suggestion preview")).toBeVisible();
   const campaignNameInput = page.getByTestId("campaign-name-input");
   await expect(campaignNameInput).toHaveValue("");
-  await expect(page.locator('input[name="headline"]')).toHaveValue("");
+  await expect(page.locator('input[name="headline"]')).toHaveValue(
+    "Flash sale ends soon",
+  );
 
   await page.getByRole("button", { name: "Apply suggestion" }).click();
   await expect(campaignNameInput).toHaveValue(

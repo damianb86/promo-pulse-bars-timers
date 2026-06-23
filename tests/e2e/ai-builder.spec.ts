@@ -52,7 +52,9 @@ test("mock AI builder generates a reviewed draft without auto-publishing", async
   ).toBeVisible();
   const campaignNameInput = page.getByTestId("campaign-name-input");
   await expect(campaignNameInput).toHaveValue("");
-  await expect(page.locator('input[name="headline"]')).toHaveValue("");
+  await expect(page.locator('input[name="headline"]')).toHaveValue(
+    "Flash sale ends soon",
+  );
 
   await page.getByRole("button", { name: "Apply suggestion" }).click();
   await expect(campaignNameInput).toHaveValue(

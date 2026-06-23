@@ -145,7 +145,7 @@ const assignableVariantStatuses = new Set<ExperimentVariantStatus>([
 export async function createExperiment(input: CreateExperimentInput) {
   await assertCampaignBelongsToShop(input.campaignId, input.shopId);
 
-  return prisma.experiment.create({
+  const experiment = await prisma.experiment.create({
     data: {
       shopId: input.shopId,
       campaignId: input.campaignId,
@@ -162,6 +162,10 @@ export async function createExperiment(input: CreateExperimentInput) {
     },
     include: experimentInclude,
   });
+
+  await markCampaignSaved(input.campaignId, input.shopId);
+
+  return experiment;
 }
 
 export async function updateExperiment(input: UpdateExperimentInput) {
@@ -212,6 +216,8 @@ export async function updateExperiment(input: UpdateExperimentInput) {
     }
   }
 
+  await markCampaignSaved(experiment.campaignId, input.shopId);
+
   return getExperimentForShop(input.experimentId, input.shopId);
 }
 
@@ -224,9 +230,9 @@ export async function updateExperimentAutoWinner({
   shopId: string;
   settings: AutoWinnerSettingsInput;
 }) {
-  await assertExperimentBelongsToShop(experimentId, shopId);
+  const experiment = await assertExperimentBelongsToShop(experimentId, shopId);
 
-  return prisma.experiment.update({
+  const updatedExperiment = await prisma.experiment.update({
     where: { id: experimentId },
     data: {
       autoWinnerEnabled: settings.enabled ?? false,
@@ -242,6 +248,10 @@ export async function updateExperimentAutoWinner({
     },
     include: experimentInclude,
   });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function startExperiment({
@@ -279,7 +289,7 @@ export async function startExperiment({
     data: { status: ExperimentVariantStatus.ACTIVE },
   });
 
-  return prisma.experiment.update({
+  const updatedExperiment = await prisma.experiment.update({
     where: { id: experimentId },
     data: {
       status: ExperimentStatus.RUNNING,
@@ -288,6 +298,10 @@ export async function startExperiment({
     },
     include: experimentInclude,
   });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function pauseExperiment({
@@ -297,7 +311,7 @@ export async function pauseExperiment({
   experimentId: string;
   shopId: string;
 }) {
-  await assertExperimentBelongsToShop(experimentId, shopId);
+  const experiment = await assertExperimentBelongsToShop(experimentId, shopId);
 
   await prisma.experimentVariant.updateMany({
     where: {
@@ -307,11 +321,15 @@ export async function pauseExperiment({
     data: { status: ExperimentVariantStatus.PAUSED },
   });
 
-  return prisma.experiment.update({
+  const updatedExperiment = await prisma.experiment.update({
     where: { id: experimentId },
     data: { status: ExperimentStatus.PAUSED },
     include: experimentInclude,
   });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function stopExperiment({
@@ -323,9 +341,9 @@ export async function stopExperiment({
   shopId: string;
   now?: Date;
 }) {
-  await assertExperimentBelongsToShop(experimentId, shopId);
+  const experiment = await assertExperimentBelongsToShop(experimentId, shopId);
 
-  return prisma.experiment.update({
+  const updatedExperiment = await prisma.experiment.update({
     where: { id: experimentId },
     data: {
       status: ExperimentStatus.COMPLETED,
@@ -333,6 +351,10 @@ export async function stopExperiment({
     },
     include: experimentInclude,
   });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function listExperimentsForCampaign(
@@ -698,12 +720,21 @@ async function assertExperimentBelongsToShop(
 ) {
   const experiment = await prisma.experiment.findFirst({
     where: { id: experimentId, shopId },
-    select: { id: true },
+    select: { id: true, campaignId: true },
   });
 
   if (!experiment) {
     throw new Error("Experiment not found.");
   }
+
+  return experiment;
+}
+
+function markCampaignSaved(campaignId: string, shopId: string) {
+  return prisma.campaign.updateMany({
+    where: { id: campaignId, shopId },
+    data: { lastSavedAt: new Date() },
+  });
 }
 
 function isExperimentRunning(

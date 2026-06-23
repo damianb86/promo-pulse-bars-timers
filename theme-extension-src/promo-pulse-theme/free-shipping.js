@@ -626,7 +626,8 @@
     var timer = campaign.timer || {};
     var mode = timer.mode || "FIXED_DATE";
 
-    if (mode === "EVERGREEN_SESSION") return calculateEvergreenTimer(campaign, now);
+    if (mode === "EVERGREEN_SESSION")
+      return calculateEvergreenTimer(campaign, now);
     if (mode === "RECURRING_DAILY") return calculateDailyTimer(timer, now);
 
     return remainingUntil(now, parseDate(campaign.endsAt));
@@ -635,7 +636,8 @@
   function calculateEvergreenTimer(campaign, now) {
     var timer = campaign.timer || {};
     var duration = Number(timer.durationMinutes);
-    var storage = timer.resetBehavior === "NEVER" ? localStorage : sessionStorage;
+    var storage =
+      timer.resetBehavior === "NEVER" ? localStorage : sessionStorage;
     var key = "promo_pulse_deadline_" + campaign.id;
     var saved = readStoredTimer(storage, key);
     var endsAt = parseDate(saved && saved.endsAt);
@@ -961,7 +963,8 @@
     if (!cart || typeof cart.total_price !== "number") return null;
 
     window.PromoPulseCartSubtotal = cart.total_price / 100;
-    window.PromoPulseCartCurrency = cart.currency || window.PromoPulseCartCurrency || "";
+    window.PromoPulseCartCurrency =
+      cart.currency || window.PromoPulseCartCurrency || "";
     window.PromoPulseCartToken = cart.token || window.PromoPulseCartToken || "";
     window.PromoPulseCartState = {
       subtotal: window.PromoPulseCartSubtotal,
@@ -1054,7 +1057,10 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
-    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
+    element.style.setProperty(
+      "--pp-font-family",
+      fontFamily(design.fontFamily),
+    );
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 999, 0) + "px",
@@ -1185,6 +1191,15 @@
     if (className) element.className = className;
     element.textContent = text;
     return element;
+  }
+
+  function splitList(value) {
+    return String(value || "")
+      .split(",")
+      .map(function (item) {
+        return item.trim();
+      })
+      .filter(Boolean);
   }
 
   function link(className, text, href) {

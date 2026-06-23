@@ -127,19 +127,24 @@ async function gotoStorefront(
       { timeout: 1500 },
     )
     .catch(() => null);
+  const optionalBottomBarResponse = page
+    .waitForResponse(
+      (response) =>
+        isStorefrontCampaignResponse(response, visitorId, "BOTTOM_BAR"),
+      { timeout: 1500 },
+    )
+    .catch(() => null);
 
   await Promise.all([
     page.waitForResponse((response) =>
       isStorefrontCampaignResponse(response, visitorId, "TOP_BAR"),
-    ),
-    page.waitForResponse((response) =>
-      isStorefrontCampaignResponse(response, visitorId, "BOTTOM_BAR"),
     ),
     page.goto(
       `/__test/storefront?visitorId=${visitorId}&sessionId=${sessionId}`,
     ),
   ]);
   await optionalCartDrawerResponse;
+  await optionalBottomBarResponse;
 }
 
 function isStorefrontCampaignResponse(

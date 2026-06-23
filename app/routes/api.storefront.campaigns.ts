@@ -125,11 +125,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     planAllowedCampaigns,
     { ...context, behaviorProfile },
   );
+  const hasActiveExperiment = planAllowedCampaigns.some((campaign) =>
+    campaign.experiments.some((experiment) =>
+      isExperimentActiveForCache(experiment, new Date()),
+    ),
+  );
 
   return jsonResponse(
     { campaigns: storefrontCampaigns, settings: publicSettings },
     {
-      cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
+      cacheControl: getCacheControlHeader(
+        context,
+        behaviorLookbackDays > 0 || hasActiveExperiment,
+      ),
       rateLimit,
     },
   );
@@ -214,6 +222,19 @@ function getMaxBehaviorLookbackDays(
       getBehaviorTargetingLookbackDays(behaviorRules),
     );
   }, 0);
+}
+
+function isExperimentActiveForCache(
+  experiment: Awaited<
+    ReturnType<typeof getActiveCampaignsForShop>
+  >[number]["experiments"][number],
+  now: Date,
+) {
+  return (
+    experiment.status === "RUNNING" &&
+    (!experiment.startsAt || experiment.startsAt <= now) &&
+    (!experiment.endsAt || experiment.endsAt >= now)
+  );
 }
 
 function jsonResponse(

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { AppAlert, ConfirmModal, useConfirmSubmit } from "./Notifications";
-import { Form, useNavigation, useSubmit } from "react-router";
+import { Form, useFetcher, useNavigation, useSubmit } from "react-router";
 
 import {
   campaignTranslationFields,
   storefrontLocales,
+  translationFallbackInputName,
   translationInputName,
   type CampaignTextField,
   type CampaignTranslationFormErrors,
@@ -30,6 +31,21 @@ type CampaignTranslationsEditorProps = {
   ) => void;
 };
 
+type CampaignTranslationAiFetcherData = {
+  aiTranslation?: {
+    source: "mock" | "provider";
+    sourceLocale: StorefrontLocale;
+    translations: CampaignTranslationsByLocale;
+  };
+  aiTranslationError?: string;
+};
+
+type TranslationNotice = {
+  message: string;
+  title: string;
+  tone: "success" | "critical";
+};
+
 export function CampaignTranslationsEditor({
   embedded = false,
   initialLocale = "en",
@@ -42,11 +58,17 @@ export function CampaignTranslationsEditor({
 }: CampaignTranslationsEditorProps) {
   const navigation = useNavigation();
   const submit = useSubmit();
+  const aiTranslationFetcher = useFetcher<CampaignTranslationAiFetcherData>();
   const [activeLocale, setActiveLocale] =
     useState<StorefrontLocale>(initialLocale);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [translatingLocale, setTranslatingLocale] =
+    useState<StorefrontLocale | null>(null);
+  const [translationNotice, setTranslationNotice] =
+    useState<TranslationNotice | null>(null);
   const [values, setValues] = useState(initialValues);
   const isSubmitting = navigation.state === "submitting";
+  const isAiTranslating = aiTranslationFetcher.state !== "idle";
   const confirmSubmit = useConfirmSubmit({
     confirmLabel: "Save translations",
     title: "Save campaign translations?",
@@ -85,6 +107,14 @@ export function CampaignTranslationsEditor({
       return nextValues;
     });
   };
+  const translateFromLocale = (locale: StorefrontLocale) => {
+    setTranslationNotice(null);
+    setTranslatingLocale(locale);
+    aiTranslationFetcher.submit(
+      buildAiTranslationFormData(values, resolvedValues, locale),
+      { method: "post" },
+    );
+  };
 
   useEffect(() => {
     const syncValues = window.setTimeout(() => {
@@ -93,6 +123,41 @@ export function CampaignTranslationsEditor({
 
     return () => window.clearTimeout(syncValues);
   }, [initialValues]);
+
+  useEffect(() => {
+    const data = aiTranslationFetcher.data;
+
+    if (!data) return;
+
+    const syncAiTranslation = window.setTimeout(() => {
+      if (data.aiTranslation?.translations) {
+        const sourceLabel =
+          localeLabel(data.aiTranslation.sourceLocale) ??
+          data.aiTranslation.sourceLocale;
+
+        setValues(data.aiTranslation.translations);
+        onValuesChange?.(
+          data.aiTranslation.translations,
+          data.aiTranslation.sourceLocale,
+        );
+        setTranslationNotice({
+          tone: "success",
+          title: "Translations generated",
+          message: `AI filled the other languages using ${sourceLabel} as the source.`,
+        });
+      } else if (data.aiTranslationError) {
+        setTranslationNotice({
+          tone: "critical",
+          title: "Translations could not be generated",
+          message: data.aiTranslationError,
+        });
+      }
+
+      setTranslatingLocale(null);
+    }, 0);
+
+    return () => window.clearTimeout(syncAiTranslation);
+  }, [aiTranslationFetcher.data, onValuesChange]);
 
   const content = (
     <>
@@ -122,6 +187,12 @@ export function CampaignTranslationsEditor({
           </button>
         ))}
       </div>
+
+      {translationNotice && (
+        <AppAlert tone={translationNotice.tone} title={translationNotice.title}>
+          <p>{translationNotice.message}</p>
+        </AppAlert>
+      )}
 
       <div className="counterpulse-translations__actions">
         {activeLocale !== "en" && (
@@ -153,6 +224,33 @@ export function CampaignTranslationsEditor({
           key={localeOption.locale}
           role="tabpanel"
         >
+          <div className="counterpulse-translation-panel__toolbar">
+            <div>
+              <strong>Use {localeOption.label} as source</strong>
+              <small>
+                Translate this copy into every other campaign language with AI.
+              </small>
+            </div>
+            <button
+              className="counterpulse-button-secondary counterpulse-ai-translation-button"
+              disabled={
+                isAiTranslating ||
+                !hasTranslationSourceCopy(
+                  localeOption.locale,
+                  values,
+                  resolvedValues,
+                )
+              }
+              type="button"
+              onClick={() => translateFromLocale(localeOption.locale)}
+            >
+              <AiTranslationIcon />
+              {isAiTranslating && translatingLocale === localeOption.locale
+                ? "Translating..."
+                : `Translate from ${localeOption.shortLabel}`}
+            </button>
+          </div>
+
           <div className="counterpulse-form-grid">
             {campaignTranslationFields.map((field) => (
               <TranslationField
@@ -254,18 +352,20 @@ function TranslationField({
   onChange: (value: string) => void;
 }) {
   const name = translationInputName(locale, field.key);
+  const inputId = `translation-${locale}-${field.key}`;
 
   return (
-    <label
+    <div
       className={
         field.multiline
           ? "counterpulse-form-field counterpulse-form-field--full"
           : "counterpulse-form-field"
       }
     >
-      <span>{field.label}</span>
+      <label htmlFor={inputId}>{field.label}</label>
       {field.multiline ? (
         <textarea
+          id={inputId}
           name={name}
           placeholder={placeholder}
           rows={3}
@@ -274,6 +374,7 @@ function TranslationField({
         />
       ) : (
         <input
+          id={inputId}
           name={name}
           placeholder={placeholder}
           value={value}
@@ -284,7 +385,7 @@ function TranslationField({
         <span className="counterpulse-form-hint">Fallback: {placeholder}</span>
       )}
       {error && <span className="counterpulse-form-error">{error}</span>}
-    </label>
+    </div>
   );
 }
 
@@ -323,6 +424,33 @@ function copyEnglishToAll(values: CampaignTranslationsByLocale) {
   }, {} as CampaignTranslationsByLocale);
 }
 
+function buildAiTranslationFormData(
+  values: CampaignTranslationsByLocale,
+  resolvedValues: CampaignTranslationsByLocale,
+  sourceLocale: StorefrontLocale,
+) {
+  const formData = new FormData();
+
+  formData.set("_action", "translateCampaignTranslations");
+  formData.set("sourceLocale", sourceLocale);
+  storefrontLocales.forEach((localeOption) => {
+    campaignTranslationFields.forEach((field) => {
+      formData.set(
+        translationInputName(localeOption.locale, field.key),
+        values[localeOption.locale][field.key],
+      );
+    });
+  });
+  campaignTranslationFields.forEach((field) => {
+    formData.set(
+      translationFallbackInputName(sourceLocale, field.key),
+      resolvedValues[sourceLocale][field.key],
+    );
+  });
+
+  return formData;
+}
+
 function buildTranslationsFormData(values: CampaignTranslationsByLocale) {
   const formData = new FormData();
 
@@ -337,4 +465,43 @@ function buildTranslationsFormData(values: CampaignTranslationsByLocale) {
   });
 
   return formData;
+}
+
+function hasTranslationSourceCopy(
+  locale: StorefrontLocale,
+  values: CampaignTranslationsByLocale,
+  resolvedValues: CampaignTranslationsByLocale,
+) {
+  return campaignTranslationFields
+    .filter((field) => field.key !== "ctaUrl")
+    .some((field) => {
+      return (
+        values[locale][field.key].trim() ||
+        resolvedValues[locale][field.key].trim()
+      );
+    });
+}
+
+function localeLabel(locale: StorefrontLocale) {
+  return storefrontLocales.find(
+    (localeOption) => localeOption.locale === locale,
+  )?.label;
+}
+
+function AiTranslationIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20">
+      <path
+        d="M10 2.5 11.2 6.8 15.5 8l-4.3 1.2L10 13.5 8.8 9.2 4.5 8l4.3-1.2L10 2.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M15.3 12.2 16 14.1l1.9.6-1.9.6-.7 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }

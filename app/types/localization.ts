@@ -90,3 +90,10 @@ export function translationInputName(
 ) {
   return `translation.${locale}.${field}`;
 }
+
+export function translationFallbackInputName(
+  locale: StorefrontLocale,
+  field: CampaignTextField,
+) {
+  return `translationFallback.${locale}.${field}`;
+}

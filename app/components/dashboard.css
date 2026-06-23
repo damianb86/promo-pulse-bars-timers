@@ -5855,6 +5855,42 @@ s-page::part(page) {
   display: none;
 }
 
+.counterpulse-translation-panel__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8faf9;
+}
+
+.counterpulse-translation-panel__toolbar strong {
+  display: block;
+  color: #202223;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 18px;
+}
+
+.counterpulse-translation-panel__toolbar small {
+  display: block;
+  margin-top: 2px;
+  color: #616161;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-ai-translation-button {
+  min-width: max-content;
+}
+
+.counterpulse-ai-translation-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .counterpulse-template-picker {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

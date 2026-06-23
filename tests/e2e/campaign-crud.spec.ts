@@ -266,3 +266,58 @@ test("campaign type keeps announcement selected and exposes timer basics", async
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("campaign message translations can be filled from any source locale with AI", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app");
+
+  await createCampaignViaUI({
+    name: "E2E AI Translation Campaign",
+    headline: "Sale ends soon",
+    subheadline: "Save before midnight.",
+    ctaText: "Shop sale",
+    ctaUrl: "/collections/sale",
+  });
+
+  const form = page.locator("#campaign-basics-form");
+  await form.getByRole("tab", { name: "Message" }).click();
+
+  const messagePanel = form.getByRole("tabpanel", { name: "Message" });
+  await messagePanel.getByRole("tab", { name: /Spanish/ }).click();
+  await messagePanel
+    .getByRole("textbox", { name: "Headline", exact: true })
+    .fill("Venta relampago");
+  await messagePanel
+    .getByRole("textbox", { name: "Subheadline", exact: true })
+    .fill("Solo por hoy.");
+  await messagePanel
+    .getByRole("textbox", { name: "CTA text", exact: true })
+    .fill("Comprar");
+  await messagePanel
+    .getByRole("textbox", { name: "CTA URL", exact: true })
+    .fill("/collections/sale-es");
+
+  await messagePanel.getByRole("button", { name: "Translate from ES" }).click();
+  await expect(messagePanel).toContainText("Translations generated");
+
+  await messagePanel.getByRole("tab", { name: /English/ }).click();
+  await expect(
+    messagePanel.getByRole("textbox", { name: "Headline", exact: true }),
+  ).toHaveValue("Venta relampago");
+  await expect(
+    messagePanel.getByRole("textbox", { name: "CTA URL", exact: true }),
+  ).toHaveValue("/collections/sale-es");
+
+  await messagePanel.getByRole("tab", { name: /Portuguese BR/ }).click();
+  await expect(
+    messagePanel.getByRole("textbox", { name: "CTA text", exact: true }),
+  ).toHaveValue("Comprar");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});

@@ -33,6 +33,10 @@ import {
   shouldAskCampaignAiFollowUpQuestions,
 } from "../services/ai/campaignGenerator.server";
 import {
+  generateCampaignTranslationSuggestions,
+  parseCampaignTranslationAiFormData,
+} from "../services/ai/campaignTranslationGenerator.server";
+import {
   hasCampaignFormErrors,
   parseCampaignFormData,
 } from "../services/campaign-form.server";
@@ -206,6 +210,48 @@ export const action = async ({
           form: "Suggestion could not be generated. Check the fields and try again.",
         },
       };
+    }
+  }
+
+  if (intent === "translateCampaignTranslations") {
+    const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
+    const parsedTranslationAi = parseCampaignTranslationAiFormData(formData);
+
+    if (!aiGate.allowed) {
+      return Response.json(
+        { aiTranslationError: aiGate.reason },
+        { status: 403 },
+      );
+    }
+
+    if (parsedTranslationAi.errors.form) {
+      return Response.json(
+        { aiTranslationError: parsedTranslationAi.errors.form },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const aiTranslation = await generateCampaignTranslationSuggestions(
+        parsedTranslationAi.input,
+      );
+
+      return Response.json({
+        aiTranslation: {
+          ...aiTranslation,
+          sourceLocale: parsedTranslationAi.input.sourceLocale,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to translate campaign copy", error);
+
+      return Response.json(
+        {
+          aiTranslationError:
+            "Translations could not be generated. Check the source copy and try again.",
+        },
+        { status: 500 },
+      );
     }
   }
 

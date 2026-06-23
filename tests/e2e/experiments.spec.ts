@@ -18,7 +18,12 @@ type StorefrontExperimentVariant = {
 
 async function setRangeValue(locator: Locator, value: number) {
   await locator.evaluate((element: HTMLInputElement, nextValue) => {
-    element.value = String(nextValue);
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+
+    valueSetter?.call(element, String(nextValue));
     element.dispatchEvent(new Event("input", { bubbles: true }));
     element.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
@@ -398,6 +403,79 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(
     savedExperiment.locator(".counterpulse-experiment-status"),
   ).toHaveText("Completed");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("traffic split keeps the previously adjusted variant fixed", async ({
+  createCampaignViaUI,
+  loginAsDemoShop,
+  page,
+  resetDb,
+}) => {
+  await resetDb("premium");
+  await loginAsDemoShop();
+  const campaignId = await createCampaignViaUI({
+    name: "E2E Traffic Split Lock",
+    headline: "Traffic split headline",
+    subheadline: "Traffic split copy.",
+  });
+
+  await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  const createExperimentForm = page.locator(
+    'form:has(input[name="_action"][value="createExperiment"])',
+  );
+
+  await createExperimentForm
+    .getByRole("button", { name: "Add variant" })
+    .click();
+  await page
+    .getByRole("complementary", { name: "Edit variant" })
+    .getByRole("button", { name: "Done" })
+    .click();
+  await createExperimentForm
+    .getByRole("button", { name: "Add variant" })
+    .click();
+  await page
+    .getByRole("complementary", { name: "Edit variant" })
+    .getByRole("button", { name: "Done" })
+    .click();
+
+  const controlSlider = createExperimentForm.getByLabel(
+    "Variant 1 traffic split slider",
+  );
+  const variantBSlider = createExperimentForm.getByLabel(
+    "Variant 2 traffic split slider",
+  );
+  const variantCSlider = createExperimentForm.getByLabel(
+    "Variant 3 traffic split slider",
+  );
+
+  await expect(controlSlider).toHaveValue("34");
+  await expect(variantBSlider).toHaveValue("33");
+  await expect(variantCSlider).toHaveValue("33");
+
+  await setRangeValue(variantBSlider, 40);
+  await expect(controlSlider).toHaveValue("30");
+  await expect(variantBSlider).toHaveValue("40");
+  await expect(variantCSlider).toHaveValue("30");
+
+  await setRangeValue(variantCSlider, 45);
+  await expect(controlSlider).toHaveValue("15");
+  await expect(variantBSlider).toHaveValue("40");
+  await expect(variantCSlider).toHaveValue("45");
+
+  await setRangeValue(variantBSlider, 35);
+  await expect(controlSlider).toHaveValue("20");
+  await expect(variantBSlider).toHaveValue("35");
+  await expect(variantCSlider).toHaveValue("45");
+
+  await setRangeValue(controlSlider, 50);
+  await expect(controlSlider).toHaveValue("50");
+  await expect(variantBSlider).toHaveValue("35");
+  await expect(variantCSlider).toHaveValue("15");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

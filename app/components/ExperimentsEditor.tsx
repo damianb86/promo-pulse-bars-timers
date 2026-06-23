@@ -775,6 +775,9 @@ function ExperimentComposer({
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
     null,
   );
+  const [lastAdjustedVariantIndex, setLastAdjustedVariantIndex] = useState<
+    number | null
+  >(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [aiVariantRequest, setAiVariantRequest] =
     useState<AiVariantRequestDraft>(defaultAiVariantRequest);
@@ -842,11 +845,18 @@ function ExperimentComposer({
 
   const updateVariantWeight = (index: number, weight: number) => {
     setVariants((currentVariants) =>
-      redistributeVariantWeight(currentVariants, index, weight),
+      redistributeVariantWeight(
+        currentVariants,
+        index,
+        weight,
+        lastAdjustedVariantIndex,
+      ),
     );
+    setLastAdjustedVariantIndex(index);
   };
 
   const addVariant = () => {
+    setLastAdjustedVariantIndex(null);
     setVariants((currentVariants) => {
       const nextVariant = createVariantDraft(
         currentVariants.length,
@@ -887,6 +897,7 @@ function ExperimentComposer({
   const acceptAiVariant = () => {
     if (!aiVariantSuggestion) return;
 
+    setLastAdjustedVariantIndex(null);
     setVariants((currentVariants) => {
       const nextVariant = createVariantDraft(
         currentVariants.length,
@@ -942,6 +953,7 @@ function ExperimentComposer({
         currentVariants.filter((_, index) => index !== pendingDeleteIndex),
       ),
     );
+    setLastAdjustedVariantIndex(null);
     setActiveVariantIndex(-1);
     setPendingDeleteIndex(null);
   };
@@ -3294,15 +3306,33 @@ function redistributeVariantWeight(
   variants: VariantDraft[],
   changedIndex: number,
   nextWeight: number,
+  lockedIndex: number | null = null,
 ) {
   if (!variants[changedIndex]) return variants;
   if (variants.length === 1) return [{ ...variants[0], weight: 100 }];
 
-  const targetWeight = clampVariantWeight(nextWeight);
-  const remainingWeight = 100 - targetWeight;
+  const preservedIndex =
+    variants.length > 2 &&
+    lockedIndex !== null &&
+    lockedIndex !== changedIndex &&
+    variants[lockedIndex]
+      ? lockedIndex
+      : null;
+  const preservedWeight =
+    preservedIndex === null
+      ? 0
+      : clampVariantWeight(variants[preservedIndex].weight);
+  const targetWeight = clampVariantWeight(
+    preservedIndex === null
+      ? nextWeight
+      : Math.min(nextWeight, 100 - preservedWeight),
+  );
+  const remainingWeight = 100 - targetWeight - preservedWeight;
   const otherWeights = variants
     .map((variant, index) =>
-      index === changedIndex ? null : Math.max(0, Math.round(variant.weight)),
+      index === changedIndex || index === preservedIndex
+        ? null
+        : Math.max(0, Math.round(variant.weight)),
     )
     .filter((weight): weight is number => weight !== null);
   const otherTotal = otherWeights.reduce((total, weight) => total + weight, 0);
@@ -3311,13 +3341,17 @@ function redistributeVariantWeight(
       ? distributeIntegerTotal(remainingWeight, otherWeights)
       : distributeIntegerTotal(
           remainingWeight,
-          Array.from({ length: variants.length - 1 }, () => 1),
+          Array.from({ length: otherWeights.length }, () => 1),
         );
   let nextOtherWeightIndex = 0;
 
   return variants.map((variant, index) => {
     if (index === changedIndex) {
       return { ...variant, weight: targetWeight };
+    }
+
+    if (index === preservedIndex) {
+      return { ...variant, weight: preservedWeight };
     }
 
     const weight = nextOtherWeights[nextOtherWeightIndex] ?? 0;

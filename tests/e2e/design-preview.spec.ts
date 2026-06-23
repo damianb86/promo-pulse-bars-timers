@@ -25,8 +25,11 @@ test("design changes update live preview and persist", async ({
     .first();
   const cardPanel = editor.locator(".counterpulse-card-editor");
 
-  await expect(cardPanel).toContainText("Customize the appearance and layout");
-  await expect(cardPanel).toContainText("Preview");
+  await expect(cardPanel.getByRole("heading", { name: "Card" })).toBeVisible();
+  await expect(cardPanel).not.toContainText(
+    "Customize the appearance and layout",
+  );
+  await expect(cardPanel).not.toContainText("Preview");
   await expect(
     cardPanel.getByRole("radiogroup", { name: "Background" }),
   ).toBeVisible();

@@ -1149,21 +1149,7 @@ function CardDesignPanel({
 }) {
   return (
     <section className="counterpulse-design-card counterpulse-card-editor">
-      <div className="counterpulse-card-editor__header">
-        <div className="counterpulse-card-editor__title">
-          <span className="counterpulse-card-editor__title-icon">
-            <CardControlIcon kind="card" />
-          </span>
-          <div>
-            <strong>Card</strong>
-            <p>Customize the appearance and layout of your card.</p>
-          </div>
-        </div>
-        <div className="counterpulse-card-editor__preview">
-          <span>Preview</span>
-          <CardPreviewSwatch values={values} />
-        </div>
-      </div>
+      <h3>Card</h3>
 
       <div className="counterpulse-card-editor__body">
         <div className="counterpulse-card-editor__section">
@@ -1499,26 +1485,6 @@ function CardBackgroundVisual({
   );
 }
 
-function CardPreviewSwatch({ values }: { values: CampaignDesignValues }) {
-  const background =
-    values.backgroundType === "IMAGE" && values.backgroundImageUrl
-      ? `linear-gradient(rgba(0, 0, 0, .08), rgba(0, 0, 0, .08)), url("${values.backgroundImageUrl}") center / cover`
-      : values.backgroundType === "GRADIENT"
-        ? `linear-gradient(${values.gradientAngle}deg, ${values.gradientStartColor}, ${values.gradientEndColor})`
-        : values.backgroundColor;
-
-  return (
-    <span
-      className="counterpulse-card-editor__preview-swatch"
-      style={{ background, borderColor: values.borderColor }}
-    >
-      <span />
-      <span />
-      <span />
-    </span>
-  );
-}
-
 function CardColorField({
   name,
   label,
@@ -1723,44 +1689,27 @@ function getBackgroundTypeDetail(type: DesignBackgroundTypeValue) {
   };
 }
 
-function CardControlIcon({
-  kind,
-}: {
-  kind:
-    | "align"
-    | "borderSize"
-    | "card"
-    | "eyedropper"
-    | "gap"
-    | "horizontalPadding"
-    | "image"
-    | "maxWidth"
-    | "radius"
-    | "verticalPadding";
-}) {
+type CardControlIconKind =
+  | "align"
+  | "borderSize"
+  | "duration"
+  | "eyedropper"
+  | "gap"
+  | "horizontalPadding"
+  | "iconSize"
+  | "image"
+  | "maxWidth"
+  | "radius"
+  | "timer"
+  | "typography"
+  | "verticalPadding";
+
+function CardControlIcon({ kind }: { kind: CardControlIconKind }) {
   const common = {
     "aria-hidden": true,
     focusable: false,
     viewBox: "0 0 24 24",
   };
-
-  if (kind === "card") {
-    return (
-      <svg {...common}>
-        <rect
-          x="4"
-          y="6"
-          width="16"
-          height="12"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        />
-        <path d="M8 14h8" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    );
-  }
 
   if (kind === "image") {
     return (
@@ -1895,6 +1844,74 @@ function CardControlIcon({
           height="5"
           fill="none"
           stroke="currentColor"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "typography") {
+    return (
+      <svg {...common}>
+        <path
+          d="M5 6h14M12 6v12M9 18h6"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "timer") {
+    return (
+      <svg {...common}>
+        <circle
+          cx="12"
+          cy="12"
+          r="7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="M12 8v4l2.5 2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "duration") {
+    return (
+      <svg {...common}>
+        <path
+          d="M5 12h4l2-6 2 12 2-6h4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "iconSize") {
+    return (
+      <svg {...common}>
+        <path
+          d="M7 7h10v10H7zM4 10V4h6M20 14v6h-6"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           strokeWidth="2"
         />
       </svg>
@@ -2142,8 +2159,10 @@ function DesignGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="counterpulse-form-field">
-      <span>{label}</span>
+    <div className="counterpulse-form-field counterpulse-design-control-field">
+      <span className="counterpulse-card-field__label">
+        <span className="counterpulse-design-field-title">{label}</span>
+      </span>
       {children}
       {error && <span className="counterpulse-form-error">{error}</span>}
     </div>
@@ -2160,8 +2179,10 @@ function DesignField({
   children: ReactNode;
 }) {
   return (
-    <label className="counterpulse-form-field">
-      <span>{label}</span>
+    <label className="counterpulse-form-field counterpulse-design-control-field">
+      <span className="counterpulse-card-field__label">
+        <span className="counterpulse-design-field-title">{label}</span>
+      </span>
       {children}
       {error && <span className="counterpulse-form-error">{error}</span>}
     </label>
@@ -2183,19 +2204,27 @@ function ColorField({
 }) {
   return (
     <DesignField label={label} error={error}>
-      <div className="counterpulse-color-input">
-        <input
-          aria-label={`${label} color picker`}
-          type="color"
-          value={isHexColor(value) ? value : "#000000"}
-          onChange={(event) => onChange(event.target.value)}
-        />
+      <span className="counterpulse-card-color-control counterpulse-design-color-control">
+        <span className="counterpulse-card-color-control__swatch">
+          <input
+            aria-label={`${label} color picker`}
+            type="color"
+            value={isHexColor(value) ? value : "#000000"}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </span>
         <input
           name={name}
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
-      </div>
+        <span
+          className="counterpulse-card-color-control__picker"
+          aria-hidden="true"
+        >
+          <CardControlIcon kind="eyedropper" />
+        </span>
+      </span>
     </DesignField>
   );
 }
@@ -2219,7 +2248,13 @@ function NumberField({
 }) {
   return (
     <DesignField label={label} error={error}>
-      <div className="counterpulse-number-input">
+      <span className="counterpulse-card-number-control counterpulse-design-number-control">
+        <span
+          className="counterpulse-card-number-control__icon"
+          aria-hidden="true"
+        >
+          <CardControlIcon kind={getNumberFieldIcon(name)} />
+        </span>
         <input
           {...(typeof max === "number" ? { max } : {})}
           min={min}
@@ -2228,10 +2263,40 @@ function NumberField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
-        <span>px</span>
-      </div>
+        <span className="counterpulse-card-number-control__unit">
+          {getNumberFieldUnit(name)}
+        </span>
+      </span>
     </DesignField>
   );
+}
+
+function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
+  if (
+    name === "titleFontSize" ||
+    name === "subheadingFontSize" ||
+    name === "legendFontSize"
+  ) {
+    return "typography";
+  }
+
+  if (name === "timerFontSize") return "timer";
+  if (name === "timerSurfaceRadius") return "radius";
+  if (name === "timerSurfaceBorderSize") return "borderSize";
+  if (name === "animationDurationMs") return "duration";
+  if (name === "iconSize") return "iconSize";
+  if (name === "contentGap") return "gap";
+  if (name === "contentMaxWidth") return "maxWidth";
+  if (name === "paddingBlock") return "verticalPadding";
+  if (name === "paddingInline") return "horizontalPadding";
+
+  return "maxWidth";
+}
+
+function getNumberFieldUnit(name: NumberDesignKey) {
+  if (name === "animationDurationMs") return "ms";
+
+  return "px";
 }
 
 function ToggleSwitch({

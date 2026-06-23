@@ -81,6 +81,7 @@ type CampaignFormProps = {
   errors?: CampaignFormErrors;
   formId?: string;
   hiddenBuilderTabs?: BuilderTabKey[];
+  hasSaveBarChanges?: boolean;
   idPrefix?: string;
   initialTab?: BuilderTabKey;
   lockedTargetingFeatures?: {
@@ -538,6 +539,7 @@ export function CampaignForm({
   errors = {},
   formId,
   hiddenBuilderTabs = [],
+  hasSaveBarChanges = true,
   idPrefix = "campaign",
   initialTab = "setup",
   listenForSaveEvents = true,
@@ -1383,7 +1385,11 @@ export function CampaignForm({
         formRef.current?.requestSubmit();
       }, 0);
     };
-    const handleSaveRequest = () => submitWithAction("saveDraft");
+    const handleSaveRequest = () => {
+      if (!hasSaveBarChanges) return;
+
+      submitWithAction("saveDraft");
+    };
     const handlePublishRequest = () => submitWithAction("publishCampaign");
     const handleDiscardRequest = () => {
       setFormValues(values);
@@ -1416,7 +1422,7 @@ export function CampaignForm({
         handleDiscardRequest,
       );
     };
-  }, [listenForSaveEvents, messageTranslations, values]);
+  }, [hasSaveBarChanges, listenForSaveEvents, messageTranslations, values]);
 
   useEffect(() => {
     if (!visibleBuilderTabs.some((tab) => tab.key === activeTab)) {

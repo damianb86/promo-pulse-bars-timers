@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -2397,8 +2398,103 @@ function ExperimentAutoWinnerForm({
 }: {
   experiment: ExperimentRow;
 }) {
+  const fetcher = useFetcher();
+  const persistedValues = useMemo(
+    () => ({
+      enabled: experiment.autoWinnerEnabled,
+      minSampleSize: experiment.autoWinnerMinSampleSize,
+      minRuntimeHours: experiment.autoWinnerMinRuntimeHours,
+      confidenceThreshold: experiment.autoWinnerConfidenceThreshold,
+    }),
+    [
+      experiment.autoWinnerConfidenceThreshold,
+      experiment.autoWinnerEnabled,
+      experiment.autoWinnerMinRuntimeHours,
+      experiment.autoWinnerMinSampleSize,
+    ],
+  );
+  const [values, setValues] = useState(persistedValues);
+  const valuesRef = useRef(values);
+  const persistedKey = useMemo(
+    () => JSON.stringify(persistedValues),
+    [persistedValues],
+  );
+  const draftKey = useMemo(() => JSON.stringify(values), [values]);
+  const isDirty = draftKey !== persistedKey;
+  const isSaving = fetcher.state !== "idle";
+
+  useEffect(() => {
+    const syncValues = window.setTimeout(() => {
+      setValues(persistedValues);
+    }, 0);
+
+    return () => window.clearTimeout(syncValues);
+  }, [persistedKey, persistedValues]);
+
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("promo-pulse:experiment-auto-winner-state", {
+        detail: {
+          dirty: isDirty,
+          saving: isSaving,
+        },
+      }),
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("promo-pulse:experiment-auto-winner-state", {
+          detail: {
+            dirty: false,
+            saving: false,
+          },
+        }),
+      );
+    };
+  }, [isDirty, isSaving]);
+
+  useEffect(() => {
+    const saveAutoWinner = () => {
+      if (!isDirty || isSaving) return;
+
+      fetcher.submit(
+        buildAutoWinnerFormData(experiment.id, valuesRef.current),
+        { method: "post" },
+      );
+    };
+    const discardAutoWinner = () => setValues(persistedValues);
+
+    window.addEventListener(
+      "promo-pulse:experiment-auto-winner-save",
+      saveAutoWinner,
+    );
+    window.addEventListener(
+      "promo-pulse:experiment-auto-winner-discard",
+      discardAutoWinner,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "promo-pulse:experiment-auto-winner-save",
+        saveAutoWinner,
+      );
+      window.removeEventListener(
+        "promo-pulse:experiment-auto-winner-discard",
+        discardAutoWinner,
+      );
+    };
+  }, [experiment.id, fetcher, isDirty, isSaving, persistedValues]);
+
   return (
-    <Form method="post" className="counterpulse-experiment-auto-winner">
+    <fetcher.Form
+      method="post"
+      className="counterpulse-experiment-auto-winner"
+      onSubmit={(event) => event.preventDefault()}
+    >
       <input name="_action" type="hidden" value="saveExperimentAutoWinner" />
       <input name="experimentId" type="hidden" value={experiment.id} />
       <div className="counterpulse-experiment-auto-winner__header">
@@ -2413,10 +2509,15 @@ function ExperimentAutoWinnerForm({
         <div className="counterpulse-toggle counterpulse-experiment-auto-winner__toggle">
           <label className="counterpulse-toggle-label">
             <input
-              defaultChecked={experiment.autoWinnerEnabled}
+              checked={values.enabled}
               name="autoWinnerEnabled"
               type="checkbox"
-              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              onChange={(event) =>
+                setValues((currentValues) => ({
+                  ...currentValues,
+                  enabled: event.target.checked,
+                }))
+              }
             />
             <span>Enable auto-winner</span>
           </label>
@@ -2438,38 +2539,79 @@ function ExperimentAutoWinnerForm({
         </div>
         <FormField label="Minimum sample size">
           <input
-            defaultValue={experiment.autoWinnerMinSampleSize}
             min="1"
             name="autoWinnerMinSampleSize"
             step="1"
             type="number"
-            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+            value={values.minSampleSize}
+            onChange={(event) =>
+              setValues((currentValues) => ({
+                ...currentValues,
+                minSampleSize: Number(event.target.value),
+              }))
+            }
           />
         </FormField>
         <FormField label="Minimum runtime hours">
           <input
-            defaultValue={experiment.autoWinnerMinRuntimeHours}
             min="0"
             name="autoWinnerMinRuntimeHours"
             step="1"
             type="number"
-            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+            value={values.minRuntimeHours}
+            onChange={(event) =>
+              setValues((currentValues) => ({
+                ...currentValues,
+                minRuntimeHours: Number(event.target.value),
+              }))
+            }
           />
         </FormField>
         <FormField label="Confidence threshold">
           <input
-            defaultValue={experiment.autoWinnerConfidenceThreshold}
             max="0.99"
             min="0.5"
             name="autoWinnerConfidenceThreshold"
             step="0.01"
             type="number"
-            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+            value={values.confidenceThreshold}
+            onChange={(event) =>
+              setValues((currentValues) => ({
+                ...currentValues,
+                confidenceThreshold: Number(event.target.value),
+              }))
+            }
           />
         </FormField>
       </div>
-    </Form>
+    </fetcher.Form>
   );
+}
+
+function buildAutoWinnerFormData(
+  experimentId: string,
+  values: {
+    enabled: boolean;
+    minSampleSize: number;
+    minRuntimeHours: number;
+    confidenceThreshold: number;
+  },
+) {
+  const formData = new FormData();
+
+  formData.set("_action", "saveExperimentAutoWinner");
+  formData.set("experimentId", experimentId);
+  if (values.enabled) {
+    formData.set("autoWinnerEnabled", "on");
+  }
+  formData.set("autoWinnerMinSampleSize", String(values.minSampleSize));
+  formData.set("autoWinnerMinRuntimeHours", String(values.minRuntimeHours));
+  formData.set(
+    "autoWinnerConfidenceThreshold",
+    String(values.confidenceThreshold),
+  );
+
+  return formData;
 }
 
 function ExperimentLifecycleActions({

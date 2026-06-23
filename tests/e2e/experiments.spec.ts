@@ -257,6 +257,36 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(
     savedExperiment.getByRole("button", { name: "Save auto-winner" }),
   ).toHaveCount(0);
+  let autoWinnerPostRequests = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      request.url().includes(`/app/campaigns/${campaignId}`) &&
+      request.postData()?.includes("saveExperimentAutoWinner")
+    ) {
+      autoWinnerPostRequests += 1;
+    }
+  });
+  await savedExperiment.getByLabel("Minimum sample size").fill("150");
+  await savedExperiment.getByLabel("Minimum sample size").blur();
+  await page.waitForTimeout(300);
+  expect(autoWinnerPostRequests).toBe(0);
+  await expect(
+    page.locator("ui-save-bar").getByRole("button", { name: "Save" }),
+  ).toBeVisible();
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes(`/app/campaigns/${campaignId}`) &&
+        response.request().method() === "POST" &&
+        response.request().postData()?.includes("saveExperimentAutoWinner") ===
+          true,
+    ),
+    page.locator("ui-save-bar").getByRole("button", { name: "Save" }).click(),
+  ]);
+  await expect(savedExperiment.getByLabel("Minimum sample size")).toHaveValue(
+    "150",
+  );
   await expect(
     savedExperiment.locator(
       'form:has(input[name="_action"][value="updateExperiment"])',

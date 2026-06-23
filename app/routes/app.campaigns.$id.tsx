@@ -1658,6 +1658,11 @@ export default function EditCampaignPage() {
   const [draftMobileDesignValues, setDraftMobileDesignValues] = useState(
     activeMobileDesignValues,
   );
+  const [experimentAutoWinnerSaveBarState, setExperimentAutoWinnerSaveBarState] =
+    useState({
+      dirty: false,
+      saving: false,
+    });
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
@@ -1677,7 +1682,9 @@ export default function EditCampaignPage() {
       }),
     [draftCampaignValues, draftDesignValues, draftMobileDesignValues],
   );
-  const hasUnsavedChanges = currentDraftKey !== persistedDraftKey;
+  const hasCampaignDraftUnsavedChanges = currentDraftKey !== persistedDraftKey;
+  const hasUnsavedChanges =
+    hasCampaignDraftUnsavedChanges || experimentAutoWinnerSaveBarState.dirty;
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
     draftCampaignValues.goal === "FREE_SHIPPING";
@@ -1723,6 +1730,9 @@ export default function EditCampaignPage() {
     setDraftMobileDesignValues(activeMobileDesignValues);
     setDiscardVersion((version) => version + 1);
     window.dispatchEvent(new CustomEvent("promo-pulse:campaign-discard"));
+    window.dispatchEvent(
+      new CustomEvent("promo-pulse:experiment-auto-winner-discard"),
+    );
   };
 
   useEffect(() => {
@@ -1742,9 +1752,37 @@ export default function EditCampaignPage() {
 
   useShopifySaveBar({
     dirty: hasUnsavedChanges,
-    disabled: navigation.state === "submitting",
-    saving: isSavingDraft,
+    disabled:
+      navigation.state === "submitting" ||
+      experimentAutoWinnerSaveBarState.saving,
+    saving: isSavingDraft || experimentAutoWinnerSaveBarState.saving,
   });
+
+  useEffect(() => {
+    const handleExperimentAutoWinnerState = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        dirty?: boolean;
+        saving?: boolean;
+      }>).detail;
+
+      setExperimentAutoWinnerSaveBarState({
+        dirty: Boolean(detail?.dirty),
+        saving: Boolean(detail?.saving),
+      });
+    };
+
+    window.addEventListener(
+      "promo-pulse:experiment-auto-winner-state",
+      handleExperimentAutoWinnerState,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "promo-pulse:experiment-auto-winner-state",
+        handleExperimentAutoWinnerState,
+      );
+    };
+  }, []);
 
   const campaignStatusLabel = formatCampaignOption(activeCampaignValues.status);
   const campaignTypeLabel =
@@ -1754,11 +1792,11 @@ export default function EditCampaignPage() {
   );
   const publicationStatus = buildPublicationStatus(
     publication,
-    hasUnsavedChanges,
+    hasCampaignDraftUnsavedChanges,
     activeCampaignValues.status,
   );
   const hasPublishableChanges =
-    hasUnsavedChanges ||
+    hasCampaignDraftUnsavedChanges ||
     !publication.hasPublishedVersion ||
     publication.hasUnpublishedChanges;
   const errorAttentionSectionKey = getActionErrorSectionKey(actionData);
@@ -1766,11 +1804,21 @@ export default function EditCampaignPage() {
   return (
     <>
       <CampaignDraftSaveBar
-        disabled={navigation.state === "submitting"}
-        saving={isSavingDraft}
+        disabled={
+          navigation.state === "submitting" ||
+          experimentAutoWinnerSaveBarState.saving
+        }
+        saving={isSavingDraft || experimentAutoWinnerSaveBarState.saving}
         onDiscard={discardDraft}
         onSave={() => {
-          window.dispatchEvent(new CustomEvent("promo-pulse:campaign-save"));
+          if (hasCampaignDraftUnsavedChanges) {
+            window.dispatchEvent(new CustomEvent("promo-pulse:campaign-save"));
+            return;
+          }
+
+          window.dispatchEvent(
+            new CustomEvent("promo-pulse:experiment-auto-winner-save"),
+          );
         }}
       />
       <s-page inlineSize="large" heading="Edit campaign">
@@ -1817,6 +1865,7 @@ export default function EditCampaignPage() {
                   }
                   formId="campaign-basics-form"
                   hiddenBuilderTabs={["targeting"]}
+                  hasSaveBarChanges={hasCampaignDraftUnsavedChanges}
                   idPrefix="campaign-basics"
                   key={`${JSON.stringify(activeCampaignValues)}:${discardVersion}`}
                   lockedTargetingFeatures={{

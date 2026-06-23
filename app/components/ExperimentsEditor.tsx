@@ -1085,193 +1085,12 @@ function VariantDrawer({
         type="button"
         onClick={requestClose}
       />
-      <aside className="counterpulse-variant-drawer" aria-label="Edit variant">
-        <header className="counterpulse-variant-drawer__header">
-          <div>
-            <p className="counterpulse-kicker">Variant {index + 1}</p>
-            <h3>Edit {variant.name || `Variant ${index + 1}`}</h3>
-          </div>
-          <button
-            aria-label="Close variant editor"
-            className="counterpulse-icon-button"
-            type="button"
-            onClick={requestClose}
-          >
-            x
-          </button>
-        </header>
-
-        <div className="counterpulse-subtabs" role="tablist">
-          {(["copy", "placement", "design", "settings"] as DrawerTab[]).map(
-            (tab) => (
-              <button
-                aria-selected={drawerTab === tab}
-                className={drawerTab === tab ? "is-active" : ""}
-                key={tab}
-                role="tab"
-                type="button"
-                onClick={() => onDrawerTabChange(tab)}
-              >
-                <span>{formatDrawerTab(tab)}</span>
-              </button>
-            ),
-          )}
-        </div>
-
-        {drawerTab === "copy" && (
-          <div className="counterpulse-variant-drawer__body">
-            {textFields.map((field) => (
-              <VariantDrawerField
-                description={field.description}
-                key={field.key}
-                label={field.label}
-              >
-                <input
-                  maxLength={field.maxLength}
-                  value={variant.text[field.key]}
-                  onChange={(event) =>
-                    onChange({
-                      ...variant,
-                      text: {
-                        ...variant.text,
-                        [field.key]: event.target.value,
-                      },
-                    })
-                  }
-                />
-              </VariantDrawerField>
-            ))}
-          </div>
-        )}
-
-        {drawerTab === "placement" && (
-          <div className="counterpulse-variant-drawer__body">
-            <VariantDrawerField
-              description="Choose where this variant renders. Leave as base campaign to inherit the current campaign placement."
-              label="Placement"
-            >
-              <select
-                value={variant.placement.placementType}
-                onChange={(event) =>
-                  onChange({
-                    ...variant,
-                    placement: {
-                      ...variant.placement,
-                      placementType: event.target.value as
-                        | PlacementTypeValue
-                        | "",
-                    },
-                  })
-                }
-              >
-                <option value="">Base campaign placement</option>
-                {placementTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </VariantDrawerField>
-
-            {variant.placement.placementType === "CUSTOM_SELECTOR" && (
-              <VariantDrawerField
-                description="CSS selector used by the custom HTML slot."
-                label="Custom selector"
-              >
-                <input
-                  placeholder="#promo-slot"
-                  value={variant.placement.customSelector}
-                  onChange={(event) =>
-                    onChange({
-                      ...variant,
-                      placement: {
-                        ...variant.placement,
-                        customSelector: event.target.value,
-                      },
-                    })
-                  }
-                />
-              </VariantDrawerField>
-            )}
-          </div>
-        )}
-
-        {drawerTab === "design" && (
-          <div className="counterpulse-variant-drawer__design">
-            <DesignControls
-              errors={{}}
-              hasTimer={Boolean(
-                baseViewModel.timer || baseViewModel.deliveryCutoff,
-              )}
-              isProPlan={isProPlan}
-              mediaOptions={designMediaOptions}
-              values={variant.design}
-              onChange={(design) =>
-                onChange({
-                  ...variant,
-                  design,
-                })
-              }
-            />
-          </div>
-        )}
-
-        {drawerTab === "settings" && (
-          <div className="counterpulse-variant-drawer__body">
-            <VariantDrawerField
-              description="Internal label used in reports and result tables."
-              label="Variant name"
-            >
-              <input
-                value={variant.name}
-                onChange={(event) =>
-                  onChange({ ...variant, name: event.target.value })
-                }
-              />
-            </VariantDrawerField>
-            <VariantDrawerField
-              description="Traffic allocation for this variant. Moving the slider rebalances the other variants automatically."
-              label="Traffic split"
-            >
-              <div className="counterpulse-variant-weight-editor">
-                <input
-                  aria-label={`Variant ${index + 1} traffic split`}
-                  max={100}
-                  min={0}
-                  type="range"
-                  value={variant.weight}
-                  onChange={(event) =>
-                    onWeightChange(Number(event.target.value))
-                  }
-                />
-                <strong>{variant.weight}%</strong>
-              </div>
-            </VariantDrawerField>
-            <VariantDrawerField
-              description="Controls whether the variant can receive traffic when the experiment is running."
-              label="Status"
-            >
-              <select
-                value={variant.status}
-                onChange={(event) =>
-                  onChange({ ...variant, status: event.target.value })
-                }
-              >
-                {variantStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {formatEnum(status)}
-                  </option>
-                ))}
-              </select>
-            </VariantDrawerField>
-            <div className="counterpulse-variant-scope-note">
-              Offers, discount setup, targeting, markets, and schedule are
-              always inherited from the base campaign for every variant.
-            </div>
-          </div>
-        )}
-
-        <div className="counterpulse-variant-drawer__preview">
+      <div className="counterpulse-variant-drawer-cluster">
+        <section
+          aria-label="Variant preview"
+          className="counterpulse-variant-drawer-preview-wing"
+          data-testid="variant-drawer-preview"
+        >
           <div>
             <strong>Preview</strong>
             <span>
@@ -1281,17 +1100,271 @@ function VariantDrawer({
             </span>
           </div>
           <VariantMiniPreview design={variant.design} viewModel={preview} />
-        </div>
-        <footer className="counterpulse-variant-drawer__footer">
-          <button
-            className="counterpulse-button"
-            type="button"
-            onClick={requestClose}
-          >
-            Done
-          </button>
-        </footer>
-      </aside>
+        </section>
+        <aside
+          className="counterpulse-variant-drawer"
+          aria-label="Edit variant"
+        >
+          <header className="counterpulse-variant-drawer__header">
+            <div>
+              <p className="counterpulse-kicker">Variant {index + 1}</p>
+              <h3>Edit {variant.name || `Variant ${index + 1}`}</h3>
+            </div>
+            <button
+              aria-label="Close variant editor"
+              className="counterpulse-icon-button"
+              type="button"
+              onClick={requestClose}
+            >
+              x
+            </button>
+          </header>
+
+          <div className="counterpulse-subtabs" role="tablist">
+            {(["copy", "placement", "design", "settings"] as DrawerTab[]).map(
+              (tab) => (
+                <button
+                  aria-selected={drawerTab === tab}
+                  className={drawerTab === tab ? "is-active" : ""}
+                  key={tab}
+                  role="tab"
+                  type="button"
+                  onClick={() => onDrawerTabChange(tab)}
+                >
+                  <span>{formatDrawerTab(tab)}</span>
+                </button>
+              ),
+            )}
+          </div>
+
+          {drawerTab === "copy" && (
+            <div className="counterpulse-variant-drawer__body">
+              {textFields.map((field) => (
+                <VariantDrawerField
+                  description={field.description}
+                  key={field.key}
+                  label={field.label}
+                >
+                  <input
+                    maxLength={field.maxLength}
+                    value={variant.text[field.key]}
+                    onChange={(event) =>
+                      onChange({
+                        ...variant,
+                        text: {
+                          ...variant.text,
+                          [field.key]: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </VariantDrawerField>
+              ))}
+            </div>
+          )}
+
+          {drawerTab === "placement" && (
+            <div className="counterpulse-variant-drawer__body">
+              <div className="counterpulse-variant-drawer-field">
+                <span>
+                  <strong>Placement</strong>
+                  <small>
+                    Choose one storefront surface for this variant, or inherit
+                    the campaign placement.
+                  </small>
+                </span>
+                <div
+                  className="counterpulse-placement-grid counterpulse-variant-placement-grid"
+                  role="group"
+                  aria-label="Variant placement"
+                >
+                  <button
+                    aria-pressed={!variant.placement.placementType}
+                    className={
+                      !variant.placement.placementType
+                        ? "counterpulse-placement-tile is-selected"
+                        : "counterpulse-placement-tile"
+                    }
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        ...variant,
+                        placement: {
+                          ...variant.placement,
+                          placementType: "",
+                        },
+                      })
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="counterpulse-placement-tile__initial"
+                    >
+                      BP
+                    </span>
+                    <span className="counterpulse-placement-tile__body">
+                      <strong>Base campaign</strong>
+                      <small>{formatBasePlacement(baseViewModel)}</small>
+                    </span>
+                  </button>
+                  {placementTypeOptions.map((option) => {
+                    const isSelected =
+                      variant.placement.placementType === option.value;
+
+                    return (
+                      <button
+                        aria-pressed={isSelected}
+                        className={
+                          isSelected
+                            ? "counterpulse-placement-tile is-selected"
+                            : "counterpulse-placement-tile"
+                        }
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...variant,
+                            placement: {
+                              ...variant.placement,
+                              placementType: option.value,
+                              customSelector:
+                                option.value === "CUSTOM_SELECTOR"
+                                  ? variant.placement.customSelector
+                                  : "",
+                            },
+                          })
+                        }
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="counterpulse-placement-tile__initial"
+                        >
+                          {placementInitial(option.label)}
+                        </span>
+                        <span className="counterpulse-placement-tile__body">
+                          <strong>{option.label}</strong>
+                          <small>{option.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  name={`variant-${index}-placementType`}
+                  type="hidden"
+                  value={variant.placement.placementType}
+                />
+              </div>
+
+              {variant.placement.placementType === "CUSTOM_SELECTOR" && (
+                <VariantDrawerField
+                  description="CSS selector used by the custom HTML slot."
+                  label="Custom selector"
+                >
+                  <input
+                    placeholder="#promo-slot"
+                    value={variant.placement.customSelector}
+                    onChange={(event) =>
+                      onChange({
+                        ...variant,
+                        placement: {
+                          ...variant.placement,
+                          customSelector: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </VariantDrawerField>
+              )}
+            </div>
+          )}
+
+          {drawerTab === "design" && (
+            <div className="counterpulse-variant-drawer__design">
+              <DesignControls
+                errors={{}}
+                hasTimer={Boolean(
+                  baseViewModel.timer || baseViewModel.deliveryCutoff,
+                )}
+                isProPlan={isProPlan}
+                mediaOptions={designMediaOptions}
+                values={variant.design}
+                onChange={(design) =>
+                  onChange({
+                    ...variant,
+                    design,
+                  })
+                }
+              />
+            </div>
+          )}
+
+          {drawerTab === "settings" && (
+            <div className="counterpulse-variant-drawer__body">
+              <VariantDrawerField
+                description="Internal label used in reports and result tables."
+                label="Variant name"
+              >
+                <input
+                  value={variant.name}
+                  onChange={(event) =>
+                    onChange({ ...variant, name: event.target.value })
+                  }
+                />
+              </VariantDrawerField>
+              <VariantDrawerField
+                description="Traffic allocation for this variant. Moving the slider rebalances the other variants automatically."
+                label="Traffic split"
+              >
+                <div className="counterpulse-variant-weight-editor">
+                  <input
+                    aria-label={`Variant ${index + 1} traffic split`}
+                    max={100}
+                    min={0}
+                    type="range"
+                    value={variant.weight}
+                    onChange={(event) =>
+                      onWeightChange(Number(event.target.value))
+                    }
+                  />
+                  <strong>{variant.weight}%</strong>
+                </div>
+              </VariantDrawerField>
+              <VariantDrawerField
+                description="Controls whether the variant can receive traffic when the experiment is running."
+                label="Status"
+              >
+                <select
+                  value={variant.status}
+                  onChange={(event) =>
+                    onChange({ ...variant, status: event.target.value })
+                  }
+                >
+                  {variantStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {formatEnum(status)}
+                    </option>
+                  ))}
+                </select>
+              </VariantDrawerField>
+              <div className="counterpulse-variant-scope-note">
+                Offers, discount setup, targeting, markets, and schedule are
+                always inherited from the base campaign for every variant.
+              </div>
+            </div>
+          )}
+
+          <footer className="counterpulse-variant-drawer__footer">
+            <button
+              className="counterpulse-button"
+              type="button"
+              onClick={requestClose}
+            >
+              Done
+            </button>
+          </footer>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -3026,6 +3099,15 @@ function formatBasePlacement(baseViewModel: CampaignViewModel) {
   return placement
     ? formatCampaignOption(placement)
     : "Base campaign placement";
+}
+
+function placementInitial(label: string) {
+  return label
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function formatDrawerTab(tab: DrawerTab) {

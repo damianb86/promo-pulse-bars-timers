@@ -541,6 +541,13 @@ test("experiment variant copy is prefilled and design preview updates live", asy
     name: "Edit variant",
   });
   await expect(variantDrawer).toBeVisible();
+  await expect(page.getByTestId("variant-drawer-preview")).toBeVisible();
+  await expect(
+    variantDrawer.getByTestId("variant-preview-surface"),
+  ).toHaveCount(0);
+  await expect(
+    variantDrawer.locator(".counterpulse-variant-drawer__footer"),
+  ).toHaveCSS("max-height", "32px");
   await expect(
     variantDrawer.getByRole("textbox", { name: /^Headline / }),
   ).toHaveValue("Control headline");
@@ -551,8 +558,26 @@ test("experiment variant copy is prefilled and design preview updates live", asy
     variantDrawer.getByRole("textbox", { name: /^CTA text / }),
   ).toHaveValue("Control CTA");
 
+  await variantDrawer.getByRole("tab", { name: "Placement" }).click();
+  await expect(
+    variantDrawer.getByRole("button", { name: /Base campaign/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    variantDrawer.getByRole("button", { name: /^Top bar/ }),
+  ).toBeVisible();
+  const productPagePlacement = variantDrawer.getByRole("button", {
+    name: /^Product page Product detail/,
+  });
+  await productPagePlacement.click();
+  await expect(productPagePlacement).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("variant-drawer-preview")).toContainText(
+    "Product Page",
+  );
+
   await variantDrawer.getByRole("tab", { name: "Design" }).click();
-  const previewSurface = variantDrawer.getByTestId("variant-preview-surface");
+  const previewSurface = page
+    .getByTestId("variant-drawer-preview")
+    .getByTestId("variant-preview-surface");
 
   await variantDrawer.getByLabel("Font").selectOption("MONO");
   await expect(previewSurface).toHaveCSS("font-family", /Consolas/);

@@ -3198,6 +3198,67 @@ s-page::part(page) {
   line-height: 20px;
 }
 
+.counterpulse-url-eligibility-mode {
+  border-top: 1px solid #edf0f2;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.counterpulse-url-eligibility-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 4px;
+  background: #f6f6f7;
+}
+
+.counterpulse-url-eligibility-switch button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5c5f62;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.counterpulse-url-eligibility-switch button.is-selected {
+  background: #ffffff;
+  color: #008060;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.counterpulse-url-eligibility-switch button:focus-visible {
+  outline: 2px solid rgba(0, 128, 96, 0.35);
+  outline-offset: 2px;
+}
+
+.counterpulse-url-eligibility-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.counterpulse-url-eligibility-copy strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 18px;
+}
+
+.counterpulse-url-eligibility-copy span {
+  color: #616161;
+  font-size: 12px;
+  line-height: 17px;
+}
+
 .counterpulse-url-targeting-grid {
   border-top: 1px solid #edf0f2;
   padding: 14px;
@@ -3206,12 +3267,20 @@ s-page::part(page) {
   gap: 14px;
 }
 
+.counterpulse-url-targeting-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .counterpulse-url-page-targeting-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   border-top: 1px solid #edf0f2;
   padding: 14px 14px 0;
+}
+
+.counterpulse-url-page-targeting-grid--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .counterpulse-url-page-targeting {
@@ -7805,6 +7874,7 @@ s-page::part(page) {
   .counterpulse-subtabs,
   .counterpulse-toggle-grid,
   .counterpulse-panel-grid,
+  .counterpulse-url-eligibility-mode,
   .counterpulse-url-targeting-grid,
   .counterpulse-url-page-targeting-grid,
   .counterpulse-email-style-presets,
@@ -7924,6 +7994,7 @@ s-page::part(page) {
 
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
+  .counterpulse-url-eligibility-mode,
   .counterpulse-url-targeting-grid,
   .counterpulse-url-page-targeting-grid,
   .counterpulse-url-page-options,

@@ -116,26 +116,47 @@ test("URL page type targeting persists from the campaign editor", async ({
   await page.getByRole("tab", { name: "Targeting" }).click();
   const form = page.locator("#campaign-targeting-form");
   const urlRegion = form.getByRole("region", { name: "URL eligibility" });
-  const includeGroup = urlRegion.getByRole("group", {
-    name: "Show only on page types",
+  const includeMode = urlRegion.getByRole("button", {
+    name: "Include pages",
   });
-  const excludeGroup = urlRegion.getByRole("group", {
-    name: "Exclude page types",
+  const excludeMode = urlRegion.getByRole("button", {
+    name: "Exclude pages",
+  });
+  const includeGroup = urlRegion.getByRole("group", {
+    name: "Included page types",
   });
 
+  await expect(includeMode).toHaveAttribute("aria-pressed", "true");
+  await expect(excludeMode).toHaveAttribute("aria-pressed", "false");
   await includeGroup.getByLabel("Product pages").check();
   await includeGroup.getByLabel("Store pages").check();
-  await excludeGroup.getByLabel("Cart page").check();
   await urlRegion
-    .getByLabel("Show only on custom URLs containing")
+    .getByLabel("Custom URLs to include")
     .fill("/products/special");
-  await urlRegion
-    .getByLabel("Exclude custom URLs containing")
-    .fill("/pages/wholesale");
 
   await expect(form.locator('input[name="urlContains"]')).toHaveValue(
     "page:product\npage:page\n/products/special",
   );
+  await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
+    "",
+  );
+  await expect(
+    urlRegion.getByRole("group", { name: "Excluded page types" }),
+  ).toHaveCount(0);
+
+  await excludeMode.click();
+  await expect(includeMode).toHaveAttribute("aria-pressed", "false");
+  await expect(excludeMode).toHaveAttribute("aria-pressed", "true");
+  await expect(form.locator('input[name="urlContains"]')).toHaveValue("");
+
+  const excludeGroup = urlRegion.getByRole("group", {
+    name: "Excluded page types",
+  });
+  await expect(
+    urlRegion.getByRole("group", { name: "Included page types" }),
+  ).toHaveCount(0);
+  await excludeGroup.getByLabel("Cart page").check();
+  await urlRegion.getByLabel("Custom URLs to exclude").fill("/pages/wholesale");
   await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
     "page:cart\n/pages/wholesale",
   );
@@ -144,15 +165,17 @@ test("URL page type targeting persists from the campaign editor", async ({
   await page.reload();
   await page.getByRole("tab", { name: "Targeting" }).click();
 
-  await expect(includeGroup.getByLabel("Product pages")).toBeChecked();
-  await expect(includeGroup.getByLabel("Store pages")).toBeChecked();
+  await expect(includeMode).toHaveAttribute("aria-pressed", "false");
+  await expect(excludeMode).toHaveAttribute("aria-pressed", "true");
+  await expect(form.locator('input[name="urlContains"]')).toHaveValue("");
+  await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
+    "page:cart\n/pages/wholesale",
+  );
   await expect(excludeGroup.getByLabel("Cart page")).toBeChecked();
-  await expect(
-    urlRegion.getByLabel("Show only on custom URLs containing"),
-  ).toHaveValue("/products/special");
-  await expect(
-    urlRegion.getByLabel("Exclude custom URLs containing"),
-  ).toHaveValue("/pages/wholesale");
+  await expect(urlRegion.getByLabel("Custom URLs to exclude")).toHaveValue(
+    "/pages/wholesale",
+  );
+  await expect(urlRegion.getByLabel("Custom URLs to include")).toHaveCount(0);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -116,6 +116,7 @@ type TextListFieldName =
   | "urlContains"
   | "excludedUrlContains";
 type UrlTargetingFieldName = "urlContains" | "excludedUrlContains";
+type UrlEligibilityMode = "include" | "exclude";
 type AiApplyValuesEventDetail = {
   design?: CampaignDesignValues;
   values?: Partial<CampaignFormValues>;
@@ -599,6 +600,8 @@ export function CampaignForm({
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
   );
+  const [urlEligibilityMode, setUrlEligibilityMode] =
+    useState<UrlEligibilityMode>(() => getInitialUrlEligibilityMode(values));
   const [isCampaignTypePickerOpen, setCampaignTypePickerOpen] = useState(false);
   const [timerIdCopied, setTimerIdCopied] = useState(false);
   const [embedHtmlCopied, setEmbedHtmlCopied] = useState(false);
@@ -1026,6 +1029,50 @@ export function CampaignForm({
     () => manualUrlTargetingText(formValues.excludedUrlContains),
     [formValues.excludedUrlContains],
   );
+  const activeUrlTargetingField: UrlTargetingFieldName =
+    urlEligibilityMode === "include" ? "urlContains" : "excludedUrlContains";
+  const activeUrlPageTokens =
+    urlEligibilityMode === "include"
+      ? selectedIncludedUrlPageTokens
+      : selectedExcludedUrlPageTokens;
+  const activeManualUrlText =
+    urlEligibilityMode === "include"
+      ? manualIncludedUrlText
+      : manualExcludedUrlText;
+  const activeUrlFieldError =
+    urlEligibilityMode === "include"
+      ? errors.urlContains
+      : errors.excludedUrlContains;
+  const activeUrlModeCopy =
+    urlEligibilityMode === "include"
+      ? {
+          title: "Include only these pages",
+          description:
+            "The campaign will render only on the selected page types or custom URL fragments. Leave everything empty to allow any URL that matches the rest of targeting.",
+          pickerTitle: "Included page types",
+          pickerDescription:
+            "Select the Shopify page groups where this campaign is allowed to render.",
+          textareaLabel: "Custom URLs to include",
+          textareaPlaceholder: "/products/summer-hat\n/collections/sale",
+        }
+      : {
+          title: "Exclude these pages",
+          description:
+            "The campaign can render broadly, except on the selected page types or custom URL fragments.",
+          pickerTitle: "Excluded page types",
+          pickerDescription:
+            "Select the Shopify page groups where this campaign should never render.",
+          textareaLabel: "Custom URLs to exclude",
+          textareaPlaceholder: "/pages/wholesale\n?preview_theme_id=",
+        };
+
+  const selectUrlEligibilityMode = (nextMode: UrlEligibilityMode) => {
+    setUrlEligibilityMode(nextMode);
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      [nextMode === "include" ? "excludedUrlContains" : "urlContains"]: "",
+    }));
+  };
 
   const setUrlPageTargetingToken = (
     field: UrlTargetingFieldName,
@@ -1300,6 +1347,11 @@ export function CampaignForm({
 
     const syncFormValues = window.setTimeout(() => {
       setFormValues(values);
+      const nextUrlEligibilityMode = getUrlEligibilityModeFromValues(values);
+
+      if (nextUrlEligibilityMode) {
+        setUrlEligibilityMode(nextUrlEligibilityMode);
+      }
     }, 0);
 
     return () => window.clearTimeout(syncFormValues);
@@ -1321,6 +1373,7 @@ export function CampaignForm({
     const handlePublishRequest = () => submitWithAction("publishCampaign");
     const handleDiscardRequest = () => {
       setFormValues(values);
+      setUrlEligibilityMode(getInitialUrlEligibilityMode(values));
       setLocalMessageTranslations(messageTranslations);
       setSubmitAction("saveDraft");
     };
@@ -2703,57 +2756,78 @@ export function CampaignForm({
                   <input
                     name="urlContains"
                     type="hidden"
-                    value={formValues.urlContains ?? ""}
+                    value={
+                      activeUrlTargetingField === "urlContains"
+                        ? (formValues.urlContains ?? "")
+                        : ""
+                    }
                   />
                   <input
                     name="excludedUrlContains"
                     type="hidden"
-                    value={formValues.excludedUrlContains ?? ""}
+                    value={
+                      activeUrlTargetingField === "excludedUrlContains"
+                        ? (formValues.excludedUrlContains ?? "")
+                        : ""
+                    }
                   />
-                  <div className="counterpulse-url-page-targeting-grid">
+                  <div className="counterpulse-url-eligibility-mode">
+                    <div
+                      aria-label="URL eligibility mode"
+                      className="counterpulse-url-eligibility-switch"
+                      role="group"
+                    >
+                      <button
+                        aria-pressed={urlEligibilityMode === "include"}
+                        className={
+                          urlEligibilityMode === "include" ? "is-selected" : ""
+                        }
+                        type="button"
+                        onClick={() => selectUrlEligibilityMode("include")}
+                      >
+                        Include pages
+                      </button>
+                      <button
+                        aria-pressed={urlEligibilityMode === "exclude"}
+                        className={
+                          urlEligibilityMode === "exclude" ? "is-selected" : ""
+                        }
+                        type="button"
+                        onClick={() => selectUrlEligibilityMode("exclude")}
+                      >
+                        Exclude pages
+                      </button>
+                    </div>
+                    <div className="counterpulse-url-eligibility-copy">
+                      <strong>{activeUrlModeCopy.title}</strong>
+                      <span>{activeUrlModeCopy.description}</span>
+                    </div>
+                  </div>
+                  <div className="counterpulse-url-page-targeting-grid counterpulse-url-page-targeting-grid--single">
                     <UrlPageTargetingPicker
-                      selectedTokens={selectedIncludedUrlPageTokens}
-                      title="Show only on page types"
-                      description="Leave empty to keep the campaign eligible on any page that matches the rest of targeting."
-                      onToggle={(token, checked) =>
-                        setUrlPageTargetingToken("urlContains", token, checked)
-                      }
-                    />
-                    <UrlPageTargetingPicker
-                      selectedTokens={selectedExcludedUrlPageTokens}
-                      title="Exclude page types"
-                      description="Use this when a campaign should never render on specific page groups."
+                      selectedTokens={activeUrlPageTokens}
+                      title={activeUrlModeCopy.pickerTitle}
+                      description={activeUrlModeCopy.pickerDescription}
                       onToggle={(token, checked) =>
                         setUrlPageTargetingToken(
-                          "excludedUrlContains",
+                          activeUrlTargetingField,
                           token,
                           checked,
                         )
                       }
                     />
                   </div>
-                  <div className="counterpulse-url-targeting-grid">
+                  <div className="counterpulse-url-targeting-grid counterpulse-url-targeting-grid--single">
                     <FormField
-                      label="Show only on custom URLs containing"
-                      error={errors.urlContains}
+                      label={activeUrlModeCopy.textareaLabel}
+                      error={activeUrlFieldError}
                     >
                       <textarea
                         rows={4}
-                        placeholder={"/products/summer-hat\n/collections/sale"}
-                        value={manualIncludedUrlText}
-                        onChange={setManualUrlTargetingField("urlContains")}
-                      />
-                    </FormField>
-                    <FormField
-                      label="Exclude custom URLs containing"
-                      error={errors.excludedUrlContains}
-                    >
-                      <textarea
-                        rows={4}
-                        placeholder={"/pages/wholesale\n?preview_theme_id="}
-                        value={manualExcludedUrlText}
+                        placeholder={activeUrlModeCopy.textareaPlaceholder}
+                        value={activeManualUrlText}
                         onChange={setManualUrlTargetingField(
-                          "excludedUrlContains",
+                          activeUrlTargetingField,
                         )}
                       />
                     </FormField>
@@ -3423,6 +3497,26 @@ function manualUrlTargetingItems(value: string | undefined) {
 
 function manualUrlTargetingText(value: string | undefined) {
   return manualUrlTargetingItems(value).join("\n");
+}
+
+function getInitialUrlEligibilityMode(
+  values: Pick<CampaignFormValues, "urlContains" | "excludedUrlContains">,
+): UrlEligibilityMode {
+  return getUrlEligibilityModeFromValues(values) ?? "include";
+}
+
+function getUrlEligibilityModeFromValues(
+  values: Pick<CampaignFormValues, "urlContains" | "excludedUrlContains">,
+): UrlEligibilityMode | null {
+  const includeCount = splitCampaignList(values.urlContains ?? "").length;
+  const excludeCount = splitCampaignList(
+    values.excludedUrlContains ?? "",
+  ).length;
+
+  if (excludeCount > 0 && includeCount === 0) return "exclude";
+  if (includeCount > 0 && excludeCount === 0) return "include";
+
+  return null;
 }
 
 function toggleUrlPageTargetingToken(

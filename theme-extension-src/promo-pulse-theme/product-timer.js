@@ -152,6 +152,9 @@
 
   function render(root, campaign, config) {
     var design = campaign.design || {};
+    var layout = normalizeLayout(design.layout);
+    var isInline = layout === "inline";
+    var isFullWidth = design.fullWidth === true;
     var timerState;
     var card = document.createElement("section");
 
@@ -176,7 +179,10 @@
 
     card.className =
       "pp-product-card" +
-      (config.compactMode ? " pp-product-card--compact" : "");
+      " pp-product-card--layout-" +
+      layout +
+      (config.compactMode ? " pp-product-card--compact" : "") +
+      (isFullWidth ? " pp-product-card--full-width" : "");
     if (design.positionMode === "OVERLAY") {
       card.classList.add("pp-surface--overlay");
     }
@@ -188,11 +194,15 @@
       ((campaign.texts || {}).headline || "Limited-time offer").trim(),
     );
     setDesign(card, design, config.alignment);
+    applyProductBlockWidth(root, isFullWidth);
 
-    var icon = renderDesignIcon(design);
-    if (icon) card.appendChild(icon);
+    card.appendChild(
+      renderMessage(campaign, timerState, config, renderDesignIcon(design)),
+    );
 
-    card.appendChild(renderMessage(campaign, timerState, config));
+    if (timerState.isActive && !isInline) {
+      card.appendChild(renderCountdown(timerState.remainingMs, design, false));
+    }
 
     if (
       campaign.type === "FREE_SHIPPING_GOAL" &&
@@ -222,9 +232,54 @@
       );
     }
 
+    if (design.showCloseButton) {
+      card.appendChild(renderCloseButton(card, design));
+    }
+
+    stopProductTimers(root);
     root.replaceChildren(card);
     tick(card, campaign);
     emitImpression(campaign);
+  }
+
+  function applyProductBlockWidth(root, isFullWidth) {
+    var block = root && root.closest ? root.closest(".shopify-block") : null;
+
+    if (root && root.classList) {
+      root.classList.toggle("pp-product-timer--full-width", isFullWidth);
+    }
+
+    if (!block) return;
+
+    if (isFullWidth) {
+      block.dataset.ppProductTimerFullWidth = "true";
+      block.style.setProperty("width", "100vw");
+      block.style.setProperty("max-width", "100vw");
+      block.style.setProperty("margin-left", "calc(50% - 50vw)");
+      block.style.setProperty("margin-right", "calc(50% - 50vw)");
+      return;
+    }
+
+    if (block.dataset.ppProductTimerFullWidth !== "true") return;
+
+    delete block.dataset.ppProductTimerFullWidth;
+    block.style.removeProperty("width");
+    block.style.removeProperty("max-width");
+    block.style.removeProperty("margin-left");
+    block.style.removeProperty("margin-right");
+  }
+
+  function stopProductTimers(root) {
+    if (!root || !root.querySelectorAll) return;
+
+    [].slice
+      .call(root.querySelectorAll(".pp-product-card"))
+      .forEach(function (card) {
+        if (card.__promoPulseTimerInterval) {
+          window.clearInterval(card.__promoPulseTimerInterval);
+          card.__promoPulseTimerInterval = null;
+        }
+      });
   }
 
   function applyExperiment(campaign) {
@@ -248,13 +303,19 @@
     if (endpoint && url) endpoint.textContent = url;
   }
 
-  function renderMessage(campaign, timerState, config) {
+  function renderMessage(campaign, timerState, config, icon) {
     var texts = campaign.texts || {};
     var message = document.createElement("div");
+    var copy = document.createElement("div");
+    var subheadline = document.createElement("span");
     var headline = texts.headline || "Limited-time offer";
     var detail = texts.subheadline || "";
+    var design = campaign.design || {};
+    var isInline = normalizeLayout(design.layout) === "inline";
 
     message.className = "pp-message";
+    copy.className = "pp-message-copy";
+    if (icon) message.appendChild(icon);
 
     if (campaign.type === "FREE_SHIPPING_GOAL") {
       detail = buildFreeShippingText(campaign, config) || detail;
@@ -264,13 +325,16 @@
       detail = texts.expiredText;
     }
 
-    message.appendChild(node("strong", "", headline));
-    if (detail) message.appendChild(node("span", "", detail));
-    if (timerState.isActive) {
-      message.appendChild(
-        renderCountdown(timerState.remainingMs, campaign.design || {}),
-      );
+    copy.appendChild(node("strong", "", headline));
+    if (detail) {
+      subheadline.textContent = detail;
+      copy.appendChild(subheadline);
     }
+    if (timerState.isActive && isInline) {
+      copy.appendChild(renderCountdown(timerState.remainingMs, design, true));
+    }
+
+    message.appendChild(copy);
 
     return message;
   }
@@ -281,6 +345,47 @@
       url && (url.charAt(0) === "/" || /^https?:\/\//i.test(url)) ? url : "#";
     cta.setAttribute("aria-label", text);
     return cta;
+  }
+
+  function renderCloseButton(card, design) {
+    var button = document.createElement("button");
+
+    button.className = "pp-close";
+    button.type = "button";
+    button.setAttribute("aria-label", "Close");
+    button.innerHTML = "&times;";
+    button.addEventListener("click", function () {
+      removeProductCard(card, design);
+    });
+
+    return button;
+  }
+
+  function removeProductCard(card, design) {
+    var duration = clamp((design || {}).animationDurationMs, 0, 1500, 220);
+
+    if (
+      !(design || {}).exitAnimation ||
+      (design || {}).exitAnimation === "NONE" ||
+      duration === 0
+    ) {
+      stopSingleProductTimer(card);
+      card.remove();
+      return;
+    }
+
+    card.classList.add("pp-bar--closing");
+    window.setTimeout(function () {
+      stopSingleProductTimer(card);
+      card.remove();
+    }, duration);
+  }
+
+  function stopSingleProductTimer(card) {
+    if (card && card.__promoPulseTimerInterval) {
+      window.clearInterval(card.__promoPulseTimerInterval);
+      card.__promoPulseTimerInterval = null;
+    }
   }
 
   function renderFreeShippingProgress(campaign, config) {
@@ -325,17 +430,109 @@
     return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";
   }
 
-  function renderCountdown(ms, design) {
-    var countdown = node(
-      "span",
-      "pp-countdown" + timerTickClass(design),
-      formatTime(ms, design),
+  function renderCountdown(ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var countdown = document.createElement(
+      compact && timerStyle === "PLAIN" ? "span" : "div",
     );
 
+    countdown.className =
+      "pp-countdown pp-countdown--" +
+      timerStyle.toLowerCase() +
+      " pp-countdown--" +
+      timerFormat.toLowerCase() +
+      (compact ? " pp-countdown--compact" : "") +
+      timerTickClass(design);
+    countdown.dataset.testid = "promo-timer";
+    updateCountdownElement(countdown, ms, design, compact);
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
 
     return countdown;
+  }
+
+  function updateCountdownElement(countdown, ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var parts = buildTimerParts(ms, design);
+    var visibleParts =
+      design.timerShowSeconds === false
+        ? parts.filter(function (part) {
+            return part.key !== "seconds";
+          })
+        : parts;
+    var nextText;
+    var previousUnitValues;
+    var tickAnimation;
+
+    if (!visibleParts.length) {
+      visibleParts = [parts[parts.length - 1]];
+    }
+
+    if (timerFormat === "COLON") {
+      nextText = formatTimerPartsAsColon(visibleParts);
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    nextText = visibleParts
+      .map(function (part) {
+        return design.timerShowLabels === false
+          ? part.value
+          : part.value + " " + part.shortLabel;
+      })
+      .join(" ");
+
+    if (timerStyle === "PLAIN" && compact) {
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    if (countdown.dataset.value === nextText) return;
+
+    previousUnitValues = readCountdownUnitValues(countdown);
+    tickAnimation = getCountdownTickAnimation(countdown);
+    countdown.dataset.value = nextText;
+    countdown.dataset.unitValues = JSON.stringify(
+      visibleParts.reduce(function (values, part) {
+        values[part.key] = part.value;
+        return values;
+      }, {}),
+    );
+    countdown.replaceChildren();
+    visibleParts.forEach(function (part) {
+      var unit = document.createElement("span");
+      var value = document.createElement("strong");
+      var label = document.createElement("small");
+
+      unit.className = "pp-countdown-unit";
+      value.textContent = part.value;
+      if (
+        tickAnimation &&
+        previousUnitValues[part.key] &&
+        previousUnitValues[part.key] !== part.value
+      ) {
+        value.classList.add(
+          "pp-countdown-tick-value",
+          "pp-countdown-tick-value--" + tickAnimation,
+        );
+      }
+      unit.appendChild(value);
+
+      if (design.timerShowLabels !== false) {
+        label.textContent = part.label;
+        unit.appendChild(label);
+      }
+
+      countdown.appendChild(unit);
+    });
   }
 
   function getExpiredBehavior(campaign) {
@@ -401,14 +598,15 @@
   function tick(card, campaign) {
     if (!card.querySelector(".pp-countdown")) return;
 
-    window.setInterval(function () {
+    card.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date());
       var countdown = card.querySelector(".pp-countdown");
       var subheadline = card.querySelector(
-        ".pp-message span:not(.pp-countdown)",
+        ".pp-message-copy > span:not(.pp-countdown)",
       );
       var expiredBehavior = getExpiredBehavior(campaign);
       var expiredText = (campaign.texts || {}).expiredText || "";
+      var previousValue;
 
       if (!countdown) return;
       if (state.isExpired) {
@@ -425,9 +623,14 @@
         return;
       }
 
-      var nextText = formatTime(state.remainingMs, campaign.design || {});
-      if (countdown.textContent !== nextText) {
-        countdown.textContent = nextText;
+      previousValue = countdown.dataset.value || "";
+      updateCountdownElement(
+        countdown,
+        state.remainingMs,
+        campaign.design || {},
+        countdown.classList.contains("pp-countdown--compact"),
+      );
+      if (countdown.dataset.value !== previousValue) {
         replayCountdownTick(countdown);
       }
     }, 1000);
@@ -585,12 +788,73 @@
       color(design.buttonTextColor, "#111827"),
     );
     element.style.setProperty(
+      "--pp-close",
+      color(design.closeButtonColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
+    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
     element.style.setProperty(
       "--pp-radius",
-      clamp(design.borderRadius, 0, 24, 4) + "px",
+      clamp(design.borderRadius, 0, 999, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-border-size",
+      clamp(design.borderSize, 0, 8, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-border-color",
+      color(design.borderColor, "transparent"),
+    );
+    element.style.setProperty(
+      "--pp-title-size",
+      clamp(design.titleFontSize, 12, 48, 18) + "px",
+    );
+    element.style.setProperty(
+      "--pp-title-color",
+      color(design.titleColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-subheading-size",
+      clamp(design.subheadingFontSize, 10, 32, 14) + "px",
+    );
+    element.style.setProperty(
+      "--pp-subheading-color",
+      color(design.subheadingColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-timer-size",
+      clamp(design.timerFontSize, 12, 72, 24) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-color",
+      color(design.timerColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-legend-size",
+      clamp(design.legendFontSize, 10, 24, 12) + "px",
+    );
+    element.style.setProperty(
+      "--pp-legend-color",
+      color(design.legendColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-timer-surface",
+      color(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border",
+      color(design.timerSurfaceBorderColor, "transparent"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border-size",
+      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-radius",
+      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
     );
     element.style.setProperty(
       "--pp-content-max-width",
@@ -613,9 +877,52 @@
       textAlign(alignment || design.alignment),
     );
     element.style.setProperty(
+      "--pp-gap",
+      clamp(design.contentGap, 4, 48, 10) + "px",
+    );
+    element.style.setProperty(
+      "--pp-icon-size",
+      clamp(design.iconSize, 12, 64, 20) + "px",
+    );
+    element.style.setProperty(
       "--pp-motion-duration",
       clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
     );
+  }
+
+  function normalizeLayout(value) {
+    var layout = String(value || "STANDARD").toLowerCase().replace(/_/g, "-");
+
+    if (
+      layout === "balanced" ||
+      layout === "inline" ||
+      layout === "cta-right" ||
+      layout === "cta-left" ||
+      layout === "cta-top"
+    ) {
+      return layout;
+    }
+
+    return "standard";
+  }
+
+  function fontFamily(value) {
+    if (value === "SERIF") return "Georgia, Times New Roman, serif";
+    if (value === "MONO")
+      return "ui-monospace, SFMono-Regular, Menlo, monospace";
+    if (value === "ROUNDED")
+      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
+    if (value === "GEOMETRIC")
+      return "Avenir Next, Montserrat, system-ui, sans-serif";
+    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
+    if (value === "CONDENSED")
+      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
+    if (value === "CASUAL")
+      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
+    if (value === "SYSTEM")
+      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+
+    return "inherit";
   }
 
   function applyMotionClasses(element, design) {
@@ -633,16 +940,31 @@
   }
 
   function replayCountdownTick(countdown) {
-    if (
-      !countdown ||
-      !/\bpp-countdown--tick-(fade|flip|pulse)\b/.test(countdown.className)
-    ) {
-      return;
-    }
+    if (!countdown) return;
 
-    countdown.classList.remove("pp-countdown--ticking");
-    void countdown.offsetWidth;
-    countdown.classList.add("pp-countdown--ticking");
+    [].slice
+      .call(countdown.querySelectorAll(".pp-countdown-tick-value"))
+      .forEach(function (value) {
+        value.classList.remove("pp-countdown-tick-value");
+        void value.offsetWidth;
+        value.classList.add("pp-countdown-tick-value");
+      });
+  }
+
+  function getCountdownTickAnimation(countdown) {
+    var match = String(countdown.className || "").match(
+      /\bpp-countdown--tick-(fade|flip|pulse)\b/,
+    );
+
+    return match ? match[1] : "";
+  }
+
+  function readCountdownUnitValues(countdown) {
+    try {
+      return JSON.parse(countdown.dataset.unitValues || "{}");
+    } catch {
+      return {};
+    }
   }
 
   function zonedParts(date, timezone) {
@@ -699,54 +1021,62 @@
     );
   }
 
-  function formatTime(ms, design) {
+  function buildTimerParts(ms, design) {
     var totalSeconds = Math.max(0, Math.floor(ms / 1000));
     var days = Math.floor(totalSeconds / 86400);
     var showDays = !design || design.timerHideZeroDays === false || days > 0;
     var hours = Math.floor((totalSeconds % 86400) / 3600);
     var minutes = Math.floor((totalSeconds % 3600) / 60);
     var seconds = totalSeconds % 60;
-    var units;
+    var parts = [];
 
-    if (design && design.timerFormat === "UNITS") {
-      units = [];
-      if (showDays) {
-        units.push(
-          formatTimerUnit(days, timerUnitLabel(design, "days"), design),
-        );
-      }
-      units.push(
-        formatTimerUnit(
-          showDays ? hours : Math.floor(totalSeconds / 3600),
-          timerUnitLabel(design, "hours"),
-          design,
-        ),
+    if (showDays) {
+      parts.push(
+        timerPart("days", days, timerUnitLabel(design, "days"), "Days"),
       );
-      units.push(
-        formatTimerUnit(minutes, timerUnitLabel(design, "minutes"), design),
-      );
-      if (!design || design.timerShowSeconds !== false) {
-        units.push(
-          formatTimerUnit(seconds, timerUnitLabel(design, "seconds"), design),
-        );
-      }
-      return units.join(" ");
     }
 
-    if (design && design.timerShowSeconds === false) {
-      return showDays
-        ? [pad(days), pad(hours), pad(minutes)].join(":")
-        : pad(hours) + ":" + pad(minutes);
-    }
+    parts.push(
+      timerPart(
+        "hours",
+        showDays ? hours : Math.floor(totalSeconds / 3600),
+        timerUnitLabel(design, "hours"),
+        "Hrs",
+      ),
+    );
+    parts.push(
+      timerPart("minutes", minutes, timerUnitLabel(design, "minutes"), "Mins"),
+    );
+    parts.push(
+      timerPart("seconds", seconds, timerUnitLabel(design, "seconds"), "Secs"),
+    );
 
-    return showDays
-      ? [pad(days), pad(hours), pad(minutes), pad(seconds)].join(":")
-      : pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+    return parts;
   }
 
-  function formatTimerUnit(value, label, design) {
-    if (design && design.timerShowLabels === false) return pad(value);
-    return pad(value) + " " + label;
+  function timerPart(key, value, label, shortLabel) {
+    return {
+      key: key,
+      value: pad(value),
+      label: label,
+      shortLabel: shortLabel,
+    };
+  }
+
+  function formatTimerPartsAsColon(parts) {
+    return parts
+      .map(function (part) {
+        return part.value;
+      })
+      .join(":");
+  }
+
+  function safeTimerStyle(value) {
+    return value === "GROUPED" || value === "BOXES" ? value : "PLAIN";
+  }
+
+  function safeTimerFormat(value) {
+    return value === "COLON" ? "COLON" : "UNITS";
   }
 
   function timerUnitLabel(design, unit) {

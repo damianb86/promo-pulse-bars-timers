@@ -44,6 +44,12 @@ test("PRODUCT_TIMER renders only for eligible product targeting", async ({
   await expect(
     page.locator(".pp-product-card .pp-countdown").first(),
   ).toBeVisible();
+  await expect(
+    page.locator(".pp-product-card").first().locator(":scope > .pp-countdown"),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".pp-product-card .pp-message-copy > .pp-countdown"),
+  ).toHaveCount(0);
 
   await page.goto(
     "/__test/storefront-product?productId=gid://shopify/Product/e2e-other&productTags=other",

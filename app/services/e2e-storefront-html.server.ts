@@ -45,9 +45,12 @@ export function buildE2EStorefrontHtml(
       body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #202223; }
       main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
       .e2e-product { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; }
+      .e2e-product media-gallery { display: block; position: relative; }
       .e2e-image { width: 100%; aspect-ratio: 1; background: #f1f2f4; border-radius: 8px; }
       .e2e-product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 32px 0; }
-      .e2e-product-card a { position: relative; display: grid; gap: 10px; color: inherit; text-decoration: none; }
+      .e2e-product-card a { color: inherit; text-decoration: none; }
+      .e2e-product-card .card__inner { position: relative; display: grid; gap: 10px; }
+      .e2e-product-card .card__media { position: relative; display: block; }
       .e2e-product-card img { width: 100%; display: block; border-radius: 10px; }
       .e2e-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); padding: 20px; background: #fff; border-left: 1px solid #d8d8d8; box-shadow: -20px 0 60px rgba(0,0,0,.12); transform: translateX(105%); transition: transform 120ms ease; z-index: 20; }
       .e2e-cart-drawer[data-open="true"] { transform: translateX(0); }
@@ -202,7 +205,9 @@ function bodyForKind(
   if (kind === "product") {
     return `<main>
       <div class="e2e-product">
-        <div class="e2e-image" data-product-media></div>
+        <media-gallery id="MediaGallery-e2e" data-product-media>
+          <div class="e2e-image"></div>
+        </media-gallery>
         <section>
           <h1>Everyday Hoodie</h1>
           <p>$78.00</p>
@@ -328,7 +333,7 @@ function productCard({
   collectionIds: string;
 }) {
   return `<article
-    class="e2e-product-card"
+    class="e2e-product-card card-wrapper"
     data-product-card
     data-product-id="${escapeHtml(id)}"
     data-product-tags="${escapeHtml(tags)}"
@@ -338,10 +343,20 @@ function productCard({
     data-compare-at-price="32"
     data-discount-active="true"
   >
-    <a href="/products/${escapeHtml(title.toLowerCase().replace(/\s+/g, "-"))}">
-      <img alt="${escapeHtml(title)}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23f1f5f9'/%3E%3C/svg%3E" />
-      <span>${escapeHtml(title)}</span>
-    </a>
+    <div class="card">
+      <div class="card__inner">
+        <div class="card__media">
+          <a href="/products/${escapeHtml(title.toLowerCase().replace(/\s+/g, "-"))}">
+            <img alt="${escapeHtml(title)}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23f1f5f9'/%3E%3C/svg%3E" />
+          </a>
+        </div>
+        <div class="card__content">
+          <a href="/products/${escapeHtml(title.toLowerCase().replace(/\s+/g, "-"))}">
+            <span>${escapeHtml(title)}</span>
+          </a>
+        </div>
+      </div>
+    </div>
   </article>`;
 }
 

@@ -186,6 +186,7 @@
     embed.dataset.productBadgeAutoInit = "true";
     initAutomaticProductPageBadge(embed);
     initAutomaticCollectionBadges(embed);
+    observeAutomaticCollectionBadges(embed);
   }
 
   function initAutomaticProductPageBadge(embed) {
@@ -221,6 +222,24 @@
       ensureBadgeMountTarget(target);
       target.appendChild(createAutoSlot(embed, card, "COLLECTION_CARD"));
     });
+  }
+
+  function observeAutomaticCollectionBadges(embed) {
+    var observer;
+
+    if (embed.dataset.productId || !window.MutationObserver) return;
+
+    observer = new MutationObserver(function () {
+      window.clearTimeout(observer._promoPulseTimer);
+      observer._promoPulseTimer = window.setTimeout(function () {
+        initAutomaticCollectionBadges(embed);
+      }, 120);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(function () {
+      observer.disconnect();
+    }, 15000);
   }
 
   function createAutoSlot(embed, source, placement) {
@@ -270,7 +289,7 @@
   function findProductPageTarget() {
     return (
       document.querySelector(
-        "[data-product-media], media-gallery, product-gallery, .product__media-wrapper, .product__media, .product-media-container, .product-gallery, .product__media-list",
+        "media-gallery, [id^='MediaGallery-'], [data-product-media], product-gallery, .product__media-wrapper, .product__media, .product-media-container, .product-gallery, .product__media-list",
       ) ||
       document.querySelector(
         "product-info, .product__info-container, .product-form, [data-product-information]",
@@ -283,13 +302,32 @@
     var seen = new Set();
 
     [].slice
-      .call(document.querySelectorAll('a[href*="/products/"]'))
+      .call(
+        document.querySelectorAll(
+          "[data-product-card], .card-wrapper, .product-card, .product-grid-item, .grid__item, li, a[href*='/products/']",
+        ),
+      )
       .forEach(function (link) {
-        var card = link.closest(
-          "[data-product-card], [data-product-id], .card-wrapper, .product-card, .product-grid-item, .grid__item, li",
-        );
+        var card = link.matches && link.matches('a[href*="/products/"]')
+          ? link.closest(
+              "[data-product-card], [data-product-id], .card-wrapper, .product-card, .product-grid-item, .grid__item, li",
+            )
+          : link;
+        var productLink =
+          card &&
+          (card.matches('a[href*="/products/"]')
+            ? card
+            : card.querySelector('a[href*="/products/"]'));
 
-        if (!card || card.closest(".pp-root") || seen.has(card)) return;
+        if (
+          !card ||
+          card.closest(".pp-root") ||
+          seen.has(card) ||
+          !productLink ||
+          !card.querySelector("img")
+        ) {
+          return;
+        }
 
         seen.add(card);
         cards.push(card);
@@ -304,9 +342,10 @@
 
     if (!image) return card;
 
-    target = image.closest(
-      "[data-product-card-media], .card__media, .product-card__media, .product-card__image-wrapper, .media, .card__inner, a[href*='/products/']",
-    );
+    target =
+      image.closest(
+        "[data-product-card-media], .card__media, .product-card__media, .product-card__image-wrapper, .product-card__image, .grid-product__image-wrapper, .media, .card__inner",
+      ) || card.querySelector(".card__media, .media, .card__inner");
 
     if (
       !target ||
@@ -403,9 +442,10 @@
     }
     element.dataset.campaignId = badgePayload.campaignId || badgePayload.id;
     if (badgePayload.ruleId) element.dataset.badgeRuleId = badgePayload.ruleId;
-    element.textContent = text;
+    element.appendChild(renderBadgeText(text));
+    appendBadgeTimer(element, badgePayload, design);
     element.setAttribute("role", "note");
-    element.setAttribute("aria-label", element.textContent);
+    element.setAttribute("aria-label", element.textContent || text);
     if (href) {
       element.href = href;
       element.addEventListener("click", function () {
@@ -415,6 +455,321 @@
     setDesign(element, design);
 
     return element;
+  }
+
+  function renderBadgeText(text) {
+    var span = document.createElement("span");
+
+    span.className = "pp-badge-text";
+    span.textContent = text;
+
+    return span;
+  }
+
+  function appendBadgeTimer(element, badgePayload, design) {
+    var timerState = calculateTimerState(badgePayload, new Date());
+    var countdown;
+
+    if (!timerState.isActive) return;
+
+    countdown = renderCountdown(timerState, design, true);
+    element.appendChild(countdown);
+    startBadgeCountdown(element, badgePayload, design);
+  }
+
+  function renderCountdown(timerState, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var countdown = document.createElement(
+      compact && timerStyle === "PLAIN" ? "span" : "div",
+    );
+    var tickClass =
+      design.timerTickAnimation && design.timerTickAnimation !== "NONE"
+        ? " pp-countdown--tick-" +
+          String(design.timerTickAnimation).toLowerCase()
+        : "";
+
+    countdown.className =
+      "pp-countdown pp-countdown--" +
+      timerStyle.toLowerCase() +
+      " pp-countdown--" +
+      timerFormat.toLowerCase() +
+      (compact ? " pp-countdown--compact" : "") +
+      tickClass;
+    countdown.dataset.testid = "promo-timer";
+    updateCountdownElement(countdown, timerState.remainingMs, design, compact);
+    countdown.setAttribute("aria-live", "polite");
+    countdown.setAttribute("aria-label", "Time remaining");
+
+    return countdown;
+  }
+
+  function updateCountdownElement(countdown, ms, design, compact) {
+    var timerStyle = safeTimerStyle(design.timerStyle);
+    var timerFormat = safeTimerFormat(design.timerFormat);
+    var parts = buildTimerParts(ms, design);
+    var visibleParts =
+      design.timerShowSeconds === false
+        ? parts.filter(function (part) {
+            return part.key !== "seconds";
+          })
+        : parts;
+    var nextText;
+
+    if (!visibleParts.length) {
+      visibleParts = [parts[parts.length - 1]];
+    }
+
+    if (timerFormat === "COLON") {
+      nextText = formatTimerPartsAsColon(visibleParts);
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    nextText = visibleParts
+      .map(function (part) {
+        return design.timerShowLabels === false
+          ? part.value
+          : part.value + " " + part.shortLabel;
+      })
+      .join(" ");
+
+    if (timerStyle === "PLAIN" && compact) {
+      if (countdown.dataset.value === nextText) return;
+
+      countdown.dataset.value = nextText;
+      countdown.textContent = nextText;
+      return;
+    }
+
+    if (countdown.dataset.value === nextText) return;
+
+    countdown.dataset.value = nextText;
+    countdown.replaceChildren();
+    visibleParts.forEach(function (part) {
+      var unit = document.createElement("span");
+      var value = document.createElement("strong");
+      var label = document.createElement("small");
+
+      unit.className = "pp-countdown-unit";
+      value.textContent = part.value;
+      unit.appendChild(value);
+
+      if (design.timerShowLabels !== false) {
+        label.textContent = part.label;
+        unit.appendChild(label);
+      }
+
+      countdown.appendChild(unit);
+    });
+  }
+
+  function startBadgeCountdown(element, badgePayload, design) {
+    if (!element.querySelector(".pp-countdown")) return;
+
+    window.setInterval(function () {
+      var timerState = calculateTimerState(badgePayload, new Date());
+      var countdown = element.querySelector(".pp-countdown");
+      var previousValue;
+
+      if (!countdown) return;
+
+      if (timerState.isExpired) {
+        countdown.remove();
+        if (shouldHideExpiredBadge(badgePayload)) element.remove();
+        return;
+      }
+
+      previousValue = countdown.dataset.value || "";
+      updateCountdownElement(
+        countdown,
+        timerState.remainingMs,
+        design,
+        countdown.classList.contains("pp-countdown--compact"),
+      );
+      if (countdown.dataset.value !== previousValue) {
+        replayCountdownTick(countdown);
+      }
+    }, 1000);
+  }
+
+  function calculateTimerState(badgePayload, now) {
+    var timer = badgePayload.timer || {};
+    var mode = timer.mode || "FIXED_DATE";
+
+    if (mode === "EVERGREEN_SESSION") {
+      return calculateEvergreenTimer(badgePayload, now);
+    }
+
+    return buildTimerState(now, parseDate(badgePayload.endsAt));
+  }
+
+  function calculateEvergreenTimer(badgePayload, now) {
+    var timer = badgePayload.timer || {};
+    var durationMinutes = Number(timer.durationMinutes);
+    var storage = getEvergreenStorage(timer.resetBehavior);
+    var key =
+      "promo_pulse_badge_deadline_" +
+      (badgePayload.campaignId || badgePayload.id);
+    var stored = readStorage(storage, key);
+    var endsAt = parseDate(stored && stored.endsAt);
+
+    if (
+      endsAt &&
+      (endsAt.getTime() > now.getTime() ||
+        timer.expiredBehavior !== "REPEAT_COUNTDOWN")
+    ) {
+      return buildTimerState(now, endsAt);
+    }
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      return buildTimerState(now, parseDate(badgePayload.endsAt));
+    }
+
+    endsAt = new Date(now.getTime() + Math.round(durationMinutes) * 60000);
+    writeStorage(storage, key, { endsAt: endsAt.toISOString() });
+
+    return buildTimerState(now, endsAt);
+  }
+
+  function buildTimerState(now, endsAt) {
+    var isExpired;
+
+    if (!endsAt) {
+      return { isActive: false, isExpired: false, remainingMs: 0 };
+    }
+
+    isExpired = endsAt.getTime() <= now.getTime();
+
+    return {
+      isActive: !isExpired,
+      isExpired: isExpired,
+      remainingMs: Math.max(0, endsAt.getTime() - now.getTime()),
+    };
+  }
+
+  function shouldHideExpiredBadge(badgePayload) {
+    var behavior =
+      (badgePayload.timer || {}).expiredBehavior || "UNPUBLISH_TIMER";
+
+    return behavior === "UNPUBLISH_TIMER" || behavior === "HIDE_TIMER";
+  }
+
+  function buildTimerParts(ms, design) {
+    var totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    var days = Math.floor(totalSeconds / 86400);
+    var showDays = !design || design.timerHideZeroDays === false || days > 0;
+    var hours = Math.floor((totalSeconds % 86400) / 3600);
+    var minutes = Math.floor((totalSeconds % 3600) / 60);
+    var seconds = totalSeconds % 60;
+    var parts = [];
+
+    if (showDays) {
+      parts.push(
+        timerPart("days", days, timerUnitLabel(design, "days"), "Days"),
+      );
+    }
+
+    parts.push(
+      timerPart(
+        "hours",
+        showDays ? hours : Math.floor(totalSeconds / 3600),
+        timerUnitLabel(design, "hours"),
+        "Hrs",
+      ),
+    );
+    parts.push(
+      timerPart("minutes", minutes, timerUnitLabel(design, "minutes"), "Mins"),
+    );
+    parts.push(
+      timerPart("seconds", seconds, timerUnitLabel(design, "seconds"), "Secs"),
+    );
+
+    return parts;
+  }
+
+  function timerPart(key, value, label, shortLabel) {
+    return {
+      key: key,
+      value: pad(value),
+      label: label,
+      shortLabel: shortLabel,
+    };
+  }
+
+  function formatTimerPartsAsColon(parts) {
+    return parts
+      .map(function (part) {
+        return part.value;
+      })
+      .join(":");
+  }
+
+  function safeTimerStyle(value) {
+    return value === "GROUPED" || value === "BOXES" ? value : "PLAIN";
+  }
+
+  function safeTimerFormat(value) {
+    return value === "COLON" ? "COLON" : "UNITS";
+  }
+
+  function timerUnitLabel(design, unit) {
+    if (unit === "days") return design.timerDaysLabel || "Days";
+    if (unit === "hours") return design.timerHoursLabel || "Hrs";
+    if (unit === "minutes") return design.timerMinutesLabel || "Mins";
+    return design.timerSecondsLabel || "Secs";
+  }
+
+  function replayCountdownTick(countdown) {
+    if (
+      !countdown ||
+      !/\bpp-countdown--tick-(fade|flip|pulse)\b/.test(countdown.className)
+    ) {
+      return;
+    }
+
+    countdown.classList.remove("pp-countdown--ticking");
+    void countdown.offsetWidth;
+    countdown.classList.add("pp-countdown--ticking");
+  }
+
+  function getEvergreenStorage(resetBehavior) {
+    return safeStorage(
+      resetBehavior === "ON_SESSION_END" ? "sessionStorage" : "localStorage",
+    );
+  }
+
+  function readStorage(storage, key) {
+    try {
+      return JSON.parse(storage.getItem(key) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStorage(storage, key, value) {
+    try {
+      storage.setItem(key, JSON.stringify(value));
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorage(storageName) {
+    try {
+      return window[storageName] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function parseDate(value) {
+    var date = value ? new Date(value) : null;
+
+    return date && !Number.isNaN(date.getTime()) ? date : null;
   }
 
   function updateDebug(root, message, url) {
@@ -464,6 +819,42 @@
     element.style.setProperty(
       "--pp-padding-inline",
       clamp(design.paddingInline, 8, 64, 9) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-size",
+      clamp(design.timerFontSize, 12, 72, 18) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-color",
+      color(design.timerColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-legend-size",
+      clamp(design.legendFontSize, 9, 24, 10) + "px",
+    );
+    element.style.setProperty(
+      "--pp-legend-color",
+      color(design.legendColor, color(design.textColor, "#ffffff")),
+    );
+    element.style.setProperty(
+      "--pp-timer-surface",
+      color(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border",
+      color(design.timerSurfaceBorderColor, "transparent"),
+    );
+    element.style.setProperty(
+      "--pp-timer-border-size",
+      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
+    );
+    element.style.setProperty(
+      "--pp-timer-radius",
+      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
+    );
+    element.style.setProperty(
+      "--pp-motion-duration",
+      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
     );
   }
 
@@ -589,6 +980,10 @@
     return Number.isFinite(number)
       ? Math.min(max, Math.max(min, Math.round(number)))
       : fallback;
+  }
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
   }
 
   function detectMarket() {

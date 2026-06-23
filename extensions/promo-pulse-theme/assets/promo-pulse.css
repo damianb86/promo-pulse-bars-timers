@@ -708,6 +708,7 @@
 }
 
 .pp-root.pp-product-badge--auto {
+  display: block;
   position: absolute;
   inset: 0;
   z-index: 5;
@@ -719,8 +720,10 @@
 
 .pp-badge {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   width: auto;
   height: auto;
   min-width: 0;
@@ -737,6 +740,13 @@
   line-height: 1.15;
   text-align: center;
   text-decoration: none;
+}
+
+.pp-badge-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .pp-root.pp-product-badge--auto .pp-badge {
@@ -761,6 +771,85 @@
   font-size: var(--pp-font-size, 13px) !important;
   line-height: 1.15 !important;
   text-decoration: none !important;
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--pp-timer-color, var(--pp-text, #ffffff));
+  font-family: var(--pp-font-family, inherit);
+  font-size: var(--pp-timer-size, 18px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown--compact {
+  font-size: max(11px, calc(var(--pp-timer-size, 18px) * 0.72));
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown--plain {
+  gap: 4px;
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown--grouped,
+.pp-root.pp-product-badge
+  .pp-badge
+  .pp-countdown--colon.pp-countdown--boxes {
+  padding: 4px 7px;
+  border: var(--pp-timer-border-size, 0) solid
+    var(--pp-timer-border, transparent);
+  border-radius: var(--pp-timer-radius, 8px);
+  background: var(--pp-timer-surface, rgba(255, 255, 255, 0.12));
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown--boxes {
+  gap: 5px;
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown-unit {
+  display: grid;
+  min-width: 28px;
+  justify-items: center;
+  gap: 2px;
+}
+
+.pp-root.pp-product-badge
+  .pp-badge
+  .pp-countdown--boxes
+  .pp-countdown-unit {
+  min-width: 34px;
+  padding: 4px 6px;
+  border: var(--pp-timer-border-size, 0) solid
+    var(--pp-timer-border, transparent);
+  border-radius: var(--pp-timer-radius, 8px);
+  background: var(--pp-timer-surface, rgba(255, 255, 255, 0.12));
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown-unit strong {
+  color: var(--pp-timer-color, var(--pp-text, #ffffff));
+  font-size: 1em;
+  font-weight: 900;
+  line-height: 0.95;
+}
+
+.pp-root.pp-product-badge .pp-badge .pp-countdown-unit small {
+  color: var(--pp-legend-color, var(--pp-text, #ffffff));
+  font-size: max(9px, var(--pp-legend-size, 10px));
+  font-weight: 500;
+  line-height: 1;
+}
+
+.pp-root.pp-product-badge
+  .pp-badge
+  .pp-countdown--ticking
+  .pp-countdown-unit
+  strong {
+  animation: pp-countdown-pulse var(--pp-motion-duration, 220ms) ease-out both;
 }
 
 .pp-badge--pill {

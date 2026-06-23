@@ -44,6 +44,7 @@ export type StorefrontBadge = {
   priority: number;
   placement: string;
   design: ReturnType<typeof serializeDesign>;
+  timer: StorefrontCampaignResponseItem["timer"];
   badge: {
     badgeText: string;
     badgeShape: string;
@@ -299,6 +300,7 @@ function toAdvancedStorefrontBadge(
     priority: badge.priority,
     placement: getCampaignPlacement(rule.campaign, context),
     design: mergeBadgeDesign(campaignDesign, ruleDesign),
+    timer: serializeStorefrontCampaign(rule.campaign, context)?.timer ?? null,
     badge: {
       badgeText: badge.text,
       badgeShape: readBadgeShape(ruleDesign.shape),
@@ -322,6 +324,7 @@ function toSimpleStorefrontBadge(
     priority: 0,
     placement: campaign.placement,
     design: campaign.design,
+    timer: campaign.timer,
     badge: {
       badgeText: campaign.badge?.badgeText || campaign.texts.badgeText,
       badgeShape: campaign.badge?.badgeShape ?? "PILL",

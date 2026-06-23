@@ -1517,6 +1517,9 @@ async function createLowStockCampaign(shopId: string) {
 }
 
 async function createProductBadgeCampaign(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
   return prisma.campaign.create({
     data: {
       shopId,
@@ -1524,6 +1527,8 @@ async function createProductBadgeCampaign(shopId: string) {
       status: CampaignStatus.ACTIVE,
       type: CampaignType.PRODUCT_BADGE,
       goal: CampaignGoal.PRODUCT_BADGE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
       timezone: "America/New_York",
       placements: {
         create: [
@@ -1543,7 +1548,22 @@ async function createProductBadgeCampaign(shopId: string) {
           paddingBlock: 7,
           paddingInline: 11,
           fontSize: 13,
+          timerStyle: DesignTimerStyle.BOXES,
+          timerFontSize: 22,
+          timerSurfaceColor: "#1F2937",
+          timerSurfaceBorderColor: "#A78BFA",
+          timerSurfaceBorderSize: 1,
+          timerSurfaceRadius: 8,
           icon: CampaignDesignIcon.NONE,
+        },
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+          expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
         },
       },
       badgeSettings: {

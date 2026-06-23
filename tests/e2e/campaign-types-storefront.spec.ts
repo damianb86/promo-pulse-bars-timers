@@ -189,13 +189,21 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
 
   await expect(page.locator(".e2e-product-card")).toHaveCount(3);
   await expect(page.locator(".pp-badge")).toHaveCount(3);
+  await expect(page.locator(".e2e-product-card .card__media .pp-badge")).toHaveCount(
+    3,
+  );
   await expect(
     page.locator(".e2e-product-card").first().locator(".pp-badge"),
-  ).toHaveText("Launch badge");
+  ).toContainText("Launch badge");
+  await expect(
+    page.locator(".e2e-product-card").first().locator(".pp-countdown"),
+  ).toBeVisible();
 
   await page.goto("/__test/storefront-product");
   await expect(page.locator(".pp-badge")).toHaveCount(1);
-  await expect(page.locator(".pp-badge")).toHaveText("Launch badge");
+  await expect(page.locator("media-gallery .pp-badge")).toHaveCount(1);
+  await expect(page.locator(".pp-badge")).toContainText("Launch badge");
+  await expect(page.locator(".pp-badge .pp-countdown")).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

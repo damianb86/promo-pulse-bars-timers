@@ -6,10 +6,15 @@ import {
   skipIfRealE2EDisabled,
   uniqueName,
 } from "./helpers/env";
-import { createCountdownCampaign } from "./helpers/admin-app";
+import {
+  createCampaignViaUI,
+  pauseAllPrefixedCampaigns,
+} from "./helpers/admin-app";
 import { getAppFrameOrPage, openPromoPulseApp } from "./helpers/auth";
-import { promoBarLocator } from "./helpers/assertions";
-import { expectStorefrontEmbedOrSkip, openStorefront } from "./helpers/storefront";
+import {
+  expectStorefrontEmbedOrSkip,
+  openStorefront,
+} from "./helpers/storefront";
 
 test.describe("real analytics and reports", () => {
   skipIfRealE2EDisabled(test);
@@ -18,15 +23,28 @@ test.describe("real analytics and reports", () => {
   test("records storefront engagement and exports report CSV", async ({
     page,
   }, testInfo) => {
-    const campaignName = await createCountdownCampaign(
-      page,
-      uniqueName("Analytics"),
-    );
+    await pauseAllPrefixedCampaigns(page);
+
+    const campaignName = uniqueName("Analytics");
+    const headline = `${campaignName} headline`;
+
+    await createCampaignViaUI(page, {
+      headline,
+      name: campaignName,
+      placement: "TOP_BAR",
+      status: "ACTIVE",
+      subheadline: "Analytics should record this storefront visit.",
+      type: "COUNTDOWN_BAR",
+    });
 
     await openStorefront(page);
     await expectStorefrontEmbedOrSkip(page, testInfo);
-    await expect(promoBarLocator(page)).toBeVisible({ timeout: 30_000 });
-    const cta = page.locator(".pp-cta").first();
+    const bar = page
+      .locator('[data-testid="promo-bar"], .pp-bar')
+      .filter({ hasText: headline })
+      .first();
+    await expect(bar).toBeVisible({ timeout: 30_000 });
+    const cta = bar.locator(".pp-cta").first();
     if (await cta.isVisible().catch(() => false)) {
       await cta.click();
     }
@@ -34,7 +52,12 @@ test.describe("real analytics and reports", () => {
     await openPromoPulseApp(page, "/app/analytics");
     const app = await getAppFrameOrPage(page);
 
-    if (await app.getByText(/analytics are locked/i).isVisible().catch(() => false)) {
+    if (
+      await app
+        .getByText(/analytics are locked/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       testInfo.skip(true, "Analytics require a plan that enables analytics.");
     }
 
@@ -46,13 +69,26 @@ test.describe("real analytics and reports", () => {
     await openPromoPulseApp(page, "/app/reports");
     const reports = await getAppFrameOrPage(page);
 
-    if (await reports.getByText(/advanced reporting is locked/i).isVisible().catch(() => false)) {
-      testInfo.skip(true, "Reports require a plan that enables advanced reporting.");
+    if (
+      await reports
+        .getByText(/advanced reporting is locked/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      testInfo.skip(
+        true,
+        "Reports require a plan that enables advanced reporting.",
+      );
     }
 
     const download = await Promise.all([
       page.waitForEvent("download"),
-      reports.locator('[data-testid="reports-export-csv"], a', { hasText: /export csv/i }).first().click(),
+      reports
+        .locator('[data-testid="reports-export-csv"], a', {
+          hasText: /export csv/i,
+        })
+        .first()
+        .click(),
     ]).then(([downloadResult]) => downloadResult);
 
     expect(path.extname(download.suggestedFilename())).toBe(".csv");

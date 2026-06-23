@@ -11,6 +11,7 @@ import {
   clickCampaignEditorTab,
   createUniqueCodeCampaign,
   openCampaignEditor,
+  pauseAllPrefixedCampaigns,
   publishCampaignDraft,
 } from "./helpers/admin-app";
 import { getAppFrameOrPage } from "./helpers/auth";
@@ -30,6 +31,8 @@ test.describe("real unique codes", () => {
     browser,
     page,
   }, testInfo) => {
+    await pauseAllPrefixedCampaigns(page);
+
     const campaignName = await createUniqueCodeCampaign(
       page,
       uniqueName("Unique Codes"),

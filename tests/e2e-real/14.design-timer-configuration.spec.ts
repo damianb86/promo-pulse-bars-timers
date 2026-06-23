@@ -10,6 +10,7 @@ import {
   clickCampaignBuilderTab,
   clickCampaignEditorTab,
   createCampaignViaUI,
+  pauseAllPrefixedCampaigns,
   publishCampaignDraft,
   saveCampaignDraft,
 } from "./helpers/admin-app";
@@ -26,6 +27,10 @@ import {
 test.describe("real design and timer configuration", () => {
   skipIfRealE2EDisabled(test);
   skipIfMissingRequiredEnv(test);
+
+  test.afterEach(async ({ page }) => {
+    await pauseAllPrefixedCampaigns(page);
+  });
 
   test("persists timer type, timer labels, layouts, presets, gradient styling, and publishes to the storefront", async ({
     page,
@@ -51,7 +56,9 @@ test.describe("real design and timer configuration", () => {
     let schedulePanel = app.getByRole("tabpanel", { name: "Schedule" });
 
     await selectTimerMode(app, "EVERGREEN_SESSION");
-    await schedulePanel.locator('input[name="timerDurationMinutes"]').fill("45");
+    await schedulePanel
+      .locator('input[name="timerDurationMinutes"]')
+      .fill("45");
     await schedulePanel
       .getByLabel("Once it ends")
       .selectOption("SHOW_CUSTOM_TITLE");
@@ -91,15 +98,13 @@ test.describe("real design and timer configuration", () => {
         'input[type="radio"][name="timerMode"][value="FIXED_DATE"]',
       ),
     ).toBeChecked();
-    await expect(
-      schedulePanel.getByLabel("End date"),
-    ).toHaveValue(endDate);
+    await expect(schedulePanel.getByLabel("End date")).toHaveValue(endDate);
     await expect(schedulePanel.getByLabel("Once it ends")).toHaveValue(
       "SHOW_CUSTOM_TITLE",
     );
-    await expect(schedulePanel.locator('input[name="expiredText"]')).toHaveValue(
-      "Timer finished for this buyer",
-    );
+    await expect(
+      schedulePanel.locator('input[name="expiredText"]'),
+    ).toHaveValue("Timer finished for this buyer");
 
     await clickCampaignEditorTab(app, "design");
     const controls = app.locator(".counterpulse-design-editor__controls");
@@ -126,7 +131,11 @@ test.describe("real design and timer configuration", () => {
       );
     }
 
-    await selectPreviewDropdownOption(controls, "Layout options", "Button left");
+    await selectPreviewDropdownOption(
+      controls,
+      "Layout options",
+      "Button left",
+    );
     await selectPreviewDropdownOption(controls, "Preset options", "Dawn");
     await expect(controls.locator('input[name="layout"]')).toHaveValue(
       "CTA_LEFT",
@@ -312,7 +321,9 @@ async function selectPreviewDropdownOption(
 ) {
   await container.getByRole("button", { name: dropdownLabel }).click();
   await container
-    .getByRole("option", { name: new RegExp(`^${escapeRegExp(optionLabel)}\\b`) })
+    .getByRole("option", {
+      name: new RegExp(`^${escapeRegExp(optionLabel)}\\b`),
+    })
     .click();
 }
 
@@ -332,7 +343,9 @@ function escapeRegExp(value: string) {
 }
 
 function toDateTimeLocalInputValue(date: Date) {
-  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  const localTime = new Date(
+    date.getTime() - date.getTimezoneOffset() * 60_000,
+  );
 
   return localTime.toISOString().slice(0, 16);
 }

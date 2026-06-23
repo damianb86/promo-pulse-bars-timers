@@ -593,11 +593,27 @@ async function openCampaignHrefInCurrentApp(
     const targetUrl = new URL(appPath, currentUrl.origin);
     targetUrl.search = currentUrl.search;
 
-    await app.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
+    try {
+      await app.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
+    } catch (error) {
+      if (!isEmbeddedNavigationAbort(error)) throw error;
+
+      await openPromoPulseApp(page, appPath);
+    }
+
     return;
   }
 
   await openPromoPulseAppDirect(page, appPath);
+}
+
+function isEmbeddedNavigationAbort(error: unknown) {
+  return (
+    error instanceof Error &&
+    /net::ERR_ABORTED|navigation interrupted|frame was detached/i.test(
+      error.message,
+    )
+  );
 }
 
 export function campaignEditorScope(scope: AppScope) {

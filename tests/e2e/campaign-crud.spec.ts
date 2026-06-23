@@ -217,3 +217,52 @@ test("campaign builder tabs preview and layout are interactive", async ({
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("campaign type keeps announcement selected and exposes timer basics", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app/campaigns/new");
+
+  const form = page.locator("[data-campaign-form]");
+
+  await selectCampaignTypeCard(form, "Announcement");
+  await expect(form.locator('input[name="goal"]')).toHaveValue("ANNOUNCEMENT");
+  await expect(form.locator('input[name="type"]')).toHaveValue("COUNTDOWN_BAR");
+  await expect(
+    form.locator(".counterpulse-campaign-type-current"),
+  ).toContainText("Announcement");
+  await expect(
+    form.locator(".counterpulse-campaign-type-current"),
+  ).not.toContainText("Flash sale");
+
+  const announcementTiming = form.locator(
+    ".counterpulse-campaign-quick-setup-card",
+  );
+  await expect(
+    announcementTiming.getByRole("heading", { name: "Announcement timing" }),
+  ).toBeVisible();
+  await expect(
+    announcementTiming.getByRole("combobox", { name: "Timer type" }),
+  ).toBeVisible();
+  await expect(
+    announcementTiming.getByRole("textbox", { name: "End date" }),
+  ).toBeVisible();
+  await expect(
+    announcementTiming.getByRole("combobox", { name: "Once it ends" }),
+  ).toBeVisible();
+
+  await selectCampaignTypeCard(form, "Product timer");
+  await expect(form.locator('input[name="goal"]')).toHaveValue("FLASH_SALE");
+  await expect(form.locator('input[name="type"]')).toHaveValue("PRODUCT_TIMER");
+  await expect(
+    form
+      .locator(".counterpulse-campaign-quick-setup-card")
+      .getByRole("heading", { name: "Product timer basics" }),
+  ).toBeVisible();
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});

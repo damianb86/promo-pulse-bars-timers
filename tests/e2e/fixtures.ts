@@ -135,7 +135,8 @@ export const test = base.extend<E2EFixtures>({
         await selectCampaignPlacement(form, placement);
       }
       await form.getByRole("tab", { name: "Schedule" }).click();
-      const endDate = form.getByLabel("End date");
+      const schedulePanel = form.getByRole("tabpanel", { name: "Schedule" });
+      const endDate = schedulePanel.getByLabel("End date");
       if ((await endDate.count()) > 0) {
         await endDate.fill(
           toDateTimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000)),
@@ -179,22 +180,22 @@ export async function selectCampaignTypeCard(
   scope: Locator | Page,
   label: string,
 ) {
+  const exactLabel = new RegExp(`^${escapeRegExp(label)}$`);
   const selectedType = scope
-    .locator(".counterpulse-campaign-type-current")
-    .filter({ hasText: label });
+    .locator(".counterpulse-campaign-type-current strong")
+    .filter({ hasText: exactLabel });
 
   if ((await selectedType.count()) > 0) {
     return;
   }
 
+  await scope.locator(".counterpulse-campaign-type-current").click();
+
   const radio = scope.getByRole("radio", {
     name: new RegExp(`^${escapeRegExp(label)}\\b`),
   });
 
-  if ((await radio.count()) === 0) {
-    await scope.locator(".counterpulse-campaign-type-current").click();
-  }
-
+  await expect(radio).toBeVisible();
   await radio.click();
 }
 

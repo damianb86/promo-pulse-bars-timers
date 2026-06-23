@@ -657,6 +657,20 @@ export function CampaignForm({
     formValues.type === "LOW_STOCK" || formValues.goal === "LOW_STOCK_URGENCY";
   const isBadgeCampaign =
     formValues.type === "PRODUCT_BADGE" || formValues.goal === "PRODUCT_BADGE";
+  const isSimpleCountdownCampaign =
+    formValues.type === "COUNTDOWN_BAR" || formValues.type === "PRODUCT_TIMER";
+  const quickCountdownTitle =
+    formValues.goal === "ANNOUNCEMENT"
+      ? "Announcement timing"
+      : formValues.type === "PRODUCT_TIMER"
+        ? "Product timer basics"
+        : "Countdown basics";
+  const quickCountdownDescription =
+    formValues.goal === "ANNOUNCEMENT"
+      ? "Set whether this announcement uses a deadline, a visitor-specific timer, or a daily recurring window."
+      : formValues.type === "PRODUCT_TIMER"
+        ? "Set the product-page countdown deadline or visitor-specific timer before refining schedule rules."
+        : "Set the campaign countdown deadline or timer length before refining schedule rules.";
   const activeCampaignTypeChoiceKey = getCampaignTypeChoiceKey(formValues);
   const activeCampaignTypeChoice =
     campaignTypeChoiceOptions.find(
@@ -1809,6 +1823,122 @@ export function CampaignForm({
                     )}
                   </div>
                 </FormGroup>
+
+                {isSimpleCountdownCampaign && (
+                  <section
+                    className="counterpulse-targeting-card counterpulse-free-shipping-setup-card counterpulse-campaign-quick-setup-card"
+                    aria-labelledby={scopedId("countdown-setup-heading")}
+                  >
+                    <div className="counterpulse-targeting-card__header">
+                      <h3 id={scopedId("countdown-setup-heading")}>
+                        {quickCountdownTitle}
+                      </h3>
+                      <p>{quickCountdownDescription}</p>
+                    </div>
+
+                    <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                      <FormField label="Timer type" error={errors.timerMode}>
+                        <select
+                          value={formValues.timerMode}
+                          onChange={(event) =>
+                            selectTimerMode(
+                              event.currentTarget
+                                .value as CampaignTimerModeValue,
+                            )
+                          }
+                        >
+                          {timerModeOptions.map((option) => (
+                            <option
+                              disabled={Boolean(
+                                option.disabledFeature === "recurringTimers" &&
+                                recurringTimersLocked,
+                              )}
+                              key={option.value}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+
+                      {formValues.timerMode === "FIXED_DATE" ? (
+                        <FormField label="End date" error={errors.endsAt}>
+                          <input
+                            type="datetime-local"
+                            value={formValues.endsAt}
+                            onChange={updateField("endsAt")}
+                          />
+                        </FormField>
+                      ) : formValues.timerMode === "EVERGREEN_SESSION" ? (
+                        <FormField
+                          label="Timer minutes"
+                          error={errors.timerDurationMinutes}
+                        >
+                          <input
+                            inputMode="numeric"
+                            max={10080}
+                            min={1}
+                            type="number"
+                            value={formValues.timerDurationMinutes}
+                            onChange={updateField("timerDurationMinutes")}
+                          />
+                        </FormField>
+                      ) : (
+                        <>
+                          <FormField
+                            label="Daily cutoff hour"
+                            error={errors.timerRecurringHour}
+                          >
+                            <input
+                              inputMode="numeric"
+                              max={23}
+                              min={0}
+                              type="number"
+                              value={formValues.timerRecurringHour}
+                              onChange={updateField("timerRecurringHour")}
+                            />
+                          </FormField>
+                          <FormField
+                            label="Daily cutoff minute"
+                            error={errors.timerRecurringMinute}
+                          >
+                            <input
+                              inputMode="numeric"
+                              max={59}
+                              min={0}
+                              type="number"
+                              value={formValues.timerRecurringMinute}
+                              onChange={updateField("timerRecurringMinute")}
+                            />
+                          </FormField>
+                        </>
+                      )}
+
+                      <FormField
+                        label="Once it ends"
+                        error={errors.timerExpiredBehavior}
+                      >
+                        <select
+                          value={formValues.timerExpiredBehavior}
+                          onChange={(event) =>
+                            setFormValues((currentValues) => ({
+                              ...currentValues,
+                              timerExpiredBehavior: event.currentTarget
+                                .value as CampaignTimerExpiredBehaviorValue,
+                            }))
+                          }
+                        >
+                          {timerExpiredBehaviorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+                  </section>
+                )}
 
                 {(formValues.type === "FREE_SHIPPING_GOAL" ||
                   formValues.goal === "FREE_SHIPPING") && (
@@ -3283,6 +3413,8 @@ function applySetupPreset(
 
   return {
     ...defaultCampaignFormValues,
+    goal: values.goal,
+    type: values.type,
     name: values.name,
     status: values.status,
     timezone: values.timezone,

@@ -65,6 +65,7 @@ export type E2ETestScenario =
   | "analytics"
   | "premium"
   | "ab-test"
+  | "experiment-metrics"
   | "auto-winner"
   | "unique-discount"
   | "unique-discount-expired"
@@ -427,6 +428,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
+  if (scenario === "experiment-metrics") {
+    await createExperimentMetricsScenario(shopId);
+    return;
+  }
+
   if (scenario === "auto-winner") {
     await createAutoWinnerScenario(shopId);
     return;
@@ -469,6 +475,8 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 async function createCountdownCampaign(
   shopId: string,
   options: {
+    id?: string;
+    name?: string;
     targeting?: {
       countries?: string[];
       locales?: string[];
@@ -491,8 +499,9 @@ async function createCountdownCampaign(
 
   return prisma.campaign.create({
     data: {
+      ...(options.id ? { id: options.id } : {}),
       shopId,
-      name: "E2E Flash Sale Countdown",
+      name: options.name ?? "E2E Flash Sale Countdown",
       status: CampaignStatus.ACTIVE,
       type: CampaignType.COUNTDOWN_BAR,
       goal: CampaignGoal.FLASH_SALE,
@@ -611,6 +620,233 @@ async function createAbTestCampaign(shopId: string) {
   });
 
   return campaign;
+}
+
+async function createExperimentMetricsScenario(shopId: string) {
+  const now = new Date();
+  const atcCampaign = await createCountdownCampaign(shopId, {
+    id: "e2e-atc-campaign",
+    name: "E2E ATC Experiment Campaign",
+    discountCode: "ATC10",
+    translations: [
+      {
+        ...englishTranslation("ATC experiment control"),
+        subheadline: "Control copy for add-to-cart testing.",
+        ctaText: "Shop control",
+      },
+    ],
+  });
+  const checkoutCampaign = await createCountdownCampaign(shopId, {
+    id: "e2e-checkout-campaign",
+    name: "E2E Checkout Experiment Campaign",
+    discountCode: "CHECKOUT10",
+    translations: [
+      {
+        ...englishTranslation("Checkout experiment control"),
+        subheadline: "Control copy for checkout testing.",
+        ctaText: "Shop checkout",
+      },
+    ],
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "e2e-atc-experiment",
+      shopId,
+      campaignId: atcCampaign.id,
+      name: "E2E Add-to-cart Test",
+      status: ExperimentStatus.RUNNING,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.ADD_TO_CART_RATE,
+      startsAt: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+      autoWinnerEnabled: true,
+      autoWinnerMinSampleSize: 20,
+      autoWinnerMinRuntimeHours: 1,
+      autoWinnerConfidenceThreshold: 0.7,
+      variants: {
+        create: [
+          {
+            id: "e2e-atc-control",
+            campaign: { connect: { id: atcCampaign.id } },
+            name: "Control",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "ATC experiment control",
+              ctaText: "Shop control",
+            },
+          },
+          {
+            id: "e2e-atc-treatment",
+            campaign: { connect: { id: atcCampaign.id } },
+            name: "Treatment",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "ATC treatment headline",
+              subheadline: "Higher intent treatment copy.",
+              ctaText: "Shop treatment",
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.experiment.create({
+    data: {
+      id: "e2e-checkout-experiment",
+      shopId,
+      campaignId: checkoutCampaign.id,
+      name: "E2E Checkout Test",
+      status: ExperimentStatus.RUNNING,
+      trafficSplitStrategy: "WEIGHTED",
+      primaryMetric: ExperimentPrimaryMetric.CHECKOUT_RATE,
+      startsAt: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+      autoWinnerEnabled: true,
+      autoWinnerMinSampleSize: 20,
+      autoWinnerMinRuntimeHours: 1,
+      autoWinnerConfidenceThreshold: 0.7,
+      variants: {
+        create: [
+          {
+            id: "e2e-checkout-control",
+            campaign: { connect: { id: checkoutCampaign.id } },
+            name: "Checkout Control",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Checkout experiment control",
+            },
+          },
+          {
+            id: "e2e-checkout-treatment",
+            campaign: { connect: { id: checkoutCampaign.id } },
+            name: "Checkout Treatment",
+            weight: 50,
+            status: ExperimentVariantStatus.ACTIVE,
+            textOverride: {
+              headline: "Checkout treatment headline",
+              subheadline: "Treatment improves checkout starts.",
+              ctaText: "Continue checkout",
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.attributionTouch.createMany({
+    data: [
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: atcCampaign.id,
+        experimentId: "e2e-atc-experiment",
+        variantId: "e2e-atc-control",
+        impressions: 40,
+        clicks: 4,
+        addToCart: 4,
+        checkoutStarted: 1,
+        visitorPrefix: "atc-control",
+        now,
+      }),
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: atcCampaign.id,
+        experimentId: "e2e-atc-experiment",
+        variantId: "e2e-atc-treatment",
+        impressions: 40,
+        clicks: 8,
+        addToCart: 20,
+        checkoutStarted: 8,
+        visitorPrefix: "atc-treatment",
+        now,
+      }),
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: checkoutCampaign.id,
+        experimentId: "e2e-checkout-experiment",
+        variantId: "e2e-checkout-control",
+        impressions: 40,
+        clicks: 6,
+        addToCart: 25,
+        checkoutStarted: 3,
+        visitorPrefix: "checkout-control",
+        now,
+      }),
+      ...buildExperimentTouches({
+        shopId,
+        campaignId: checkoutCampaign.id,
+        experimentId: "e2e-checkout-experiment",
+        variantId: "e2e-checkout-treatment",
+        impressions: 40,
+        clicks: 8,
+        addToCart: 14,
+        checkoutStarted: 18,
+        visitorPrefix: "checkout-treatment",
+        now,
+      }),
+    ],
+  });
+
+  await prisma.attributionConversion.createMany({
+    data: [
+      {
+        shopId,
+        campaignId: atcCampaign.id,
+        experimentId: "e2e-atc-experiment",
+        variantId: "e2e-atc-treatment",
+        visitorId: "atc-treatment-visitor-0",
+        sessionId: "atc-treatment-session-0",
+        orderId: "e2e-atc-order-1",
+        revenueAmount: new Prisma.Decimal(120),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+      {
+        shopId,
+        campaignId: atcCampaign.id,
+        experimentId: "e2e-atc-experiment",
+        variantId: "e2e-atc-treatment",
+        visitorId: "atc-treatment-visitor-1",
+        sessionId: "atc-treatment-session-1",
+        orderId: "e2e-atc-order-2",
+        revenueAmount: new Prisma.Decimal(120),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+      {
+        shopId,
+        campaignId: atcCampaign.id,
+        experimentId: "e2e-atc-experiment",
+        variantId: "e2e-atc-treatment",
+        visitorId: "atc-treatment-visitor-2",
+        sessionId: "atc-treatment-session-2",
+        orderId: "e2e-atc-order-3",
+        revenueAmount: new Prisma.Decimal(60),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+      {
+        shopId,
+        campaignId: checkoutCampaign.id,
+        experimentId: "e2e-checkout-experiment",
+        variantId: "e2e-checkout-treatment",
+        visitorId: "checkout-treatment-visitor-0",
+        sessionId: "checkout-treatment-session-0",
+        orderId: "e2e-checkout-order-1",
+        revenueAmount: new Prisma.Decimal(90),
+        currencyCode: "USD",
+        attributionModel: AttributionModel.LAST_TOUCH_7D,
+        occurredAt: now,
+      },
+    ],
+  });
+
+  return [atcCampaign, checkoutCampaign];
 }
 
 async function createUniqueDiscountCampaign(
@@ -823,6 +1059,8 @@ function buildExperimentTouches({
   variantId,
   impressions,
   clicks,
+  addToCart = 0,
+  checkoutStarted = 0,
   visitorPrefix,
   now,
 }: {
@@ -832,6 +1070,8 @@ function buildExperimentTouches({
   variantId: string;
   impressions: number;
   clicks: number;
+  addToCart?: number;
+  checkoutStarted?: number;
   visitorPrefix: string;
   now: Date;
 }) {
@@ -863,8 +1103,46 @@ function buildExperimentTouches({
     locale: "en",
     occurredAt: new Date(now.getTime() - (impressions + index) * 1000),
   }));
+  const addToCartTouches = Array.from({ length: addToCart }, (_, index) => ({
+    shopId,
+    campaignId,
+    experimentId,
+    variantId,
+    visitorId: `${visitorPrefix}-visitor-${index}`,
+    sessionId: `${visitorPrefix}-session-${index}`,
+    eventType: AnalyticsEventType.ADD_TO_CART,
+    placementType: PlacementType.TOP_BAR,
+    path: "/collections/sale",
+    country: "US",
+    locale: "en",
+    occurredAt: new Date(now.getTime() - (impressions + clicks + index) * 1000),
+  }));
+  const checkoutTouches = Array.from(
+    { length: checkoutStarted },
+    (_, index) => ({
+      shopId,
+      campaignId,
+      experimentId,
+      variantId,
+      visitorId: `${visitorPrefix}-visitor-${index}`,
+      sessionId: `${visitorPrefix}-session-${index}`,
+      eventType: AnalyticsEventType.CHECKOUT_STARTED,
+      placementType: PlacementType.TOP_BAR,
+      path: "/checkout",
+      country: "US",
+      locale: "en",
+      occurredAt: new Date(
+        now.getTime() - (impressions + clicks + addToCart + index) * 1000,
+      ),
+    }),
+  );
 
-  return [...impressionTouches, ...clickTouches];
+  return [
+    ...impressionTouches,
+    ...clickTouches,
+    ...addToCartTouches,
+    ...checkoutTouches,
+  ];
 }
 
 async function createReportsScenario(shopId: string) {

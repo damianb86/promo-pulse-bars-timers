@@ -274,6 +274,133 @@ describe("experiment service", () => {
     });
   });
 
+  it("calculates add-to-cart, checkout, order, and revenue metrics per variant", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture({
+        primaryMetric: ExperimentPrimaryMetric.ADD_TO_CART_RATE,
+        startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 50),
+        ...touches("variant-a", AnalyticsEventType.CLICK, 10),
+        ...touches("variant-a", AnalyticsEventType.ADD_TO_CART, 20),
+        ...touches("variant-a", AnalyticsEventType.CHECKOUT_STARTED, 8),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 50),
+        ...touches("variant-b", AnalyticsEventType.CLICK, 8),
+        ...touches("variant-b", AnalyticsEventType.ADD_TO_CART, 5),
+        ...touches("variant-b", AnalyticsEventType.CHECKOUT_STARTED, 2),
+      ],
+      conversions: [
+        conversion(
+          "variant-a",
+          "order-a",
+          "150.00",
+          "variant-a-visitor-0",
+          "variant-a-session-0",
+        ),
+        conversion(
+          "variant-a",
+          "order-b",
+          "50.00",
+          "variant-a-visitor-1",
+          "variant-a-session-1",
+        ),
+        conversion(
+          "variant-b",
+          "order-c",
+          "25.00",
+          "variant-b-visitor-0",
+          "variant-b-session-0",
+        ),
+      ],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+    const variantA = results.variants.find(
+      (variant) => variant.variantId === "variant-a",
+    );
+    const variantB = results.variants.find(
+      (variant) => variant.variantId === "variant-b",
+    );
+
+    expect(variantA).toMatchObject({
+      impressions: 50,
+      clicks: 10,
+      ctr: 0.2,
+      addToCart: 20,
+      addToCartRate: 0.4,
+      checkoutStarted: 8,
+      checkoutRate: 0.16,
+      orders: 2,
+      revenue: 200,
+      revenuePerVisitor: 4,
+      conversionRate: 0.04,
+      primaryMetricValue: 0.4,
+    });
+    expect(variantB).toMatchObject({
+      impressions: 50,
+      addToCart: 5,
+      checkoutStarted: 2,
+      orders: 1,
+      revenue: 25,
+      primaryMetricValue: 0.1,
+    });
+  });
+
+  it("detects an add-to-cart-rate winner", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture({
+        primaryMetric: ExperimentPrimaryMetric.ADD_TO_CART_RATE,
+        startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-a", AnalyticsEventType.ADD_TO_CART, 35),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-b", AnalyticsEventType.ADD_TO_CART, 10),
+      ],
+      conversions: [],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    expect(
+      detectWinningVariant(results, {
+        confidenceThreshold: 0.7,
+        minRuntimeHours: 1,
+        minSampleSize: 50,
+      })?.variantId,
+    ).toBe("variant-a");
+  });
+
+  it("detects a checkout-rate winner even when another variant has more add-to-carts", async () => {
+    const results = await calculateExperimentResults({
+      experiment: experimentFixture({
+        primaryMetric: ExperimentPrimaryMetric.CHECKOUT_RATE,
+        startsAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+      touches: [
+        ...touches("variant-a", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-a", AnalyticsEventType.ADD_TO_CART, 45),
+        ...touches("variant-a", AnalyticsEventType.CHECKOUT_STARTED, 5),
+        ...touches("variant-b", AnalyticsEventType.IMPRESSION, 100),
+        ...touches("variant-b", AnalyticsEventType.ADD_TO_CART, 20),
+        ...touches("variant-b", AnalyticsEventType.CHECKOUT_STARTED, 35),
+      ],
+      conversions: [],
+      now: new Date("2026-01-02T00:00:00.000Z"),
+    });
+
+    expect(
+      detectWinningVariant(results, {
+        confidenceThreshold: 0.7,
+        minRuntimeHours: 1,
+        minSampleSize: 50,
+      }),
+    ).toMatchObject({
+      variantId: "variant-b",
+      runnerUpVariantId: "variant-a",
+    });
+  });
+
   it("detects a revenue per visitor winner", async () => {
     const results = await calculateExperimentResults({
       experiment: experimentFixture({
@@ -442,11 +569,17 @@ function touches(
   }));
 }
 
-function conversion(variantId: string, orderId: string, revenueAmount: string) {
+function conversion(
+  variantId: string,
+  orderId: string,
+  revenueAmount: string,
+  visitorId = `${variantId}-buyer`,
+  sessionId = `${variantId}-buyer-session`,
+) {
   return {
     variantId,
-    visitorId: `${variantId}-buyer`,
-    sessionId: `${variantId}-buyer-session`,
+    visitorId,
+    sessionId,
     orderId,
     revenueAmount,
     currencyCode: "USD",

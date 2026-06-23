@@ -119,6 +119,48 @@ function hashAssignmentBucket(value: string) {
   return hash >>> 0;
 }
 
+async function recordExperimentEvent(
+  page: Page,
+  data: {
+    campaignId: string;
+    experimentId: string;
+    variantId: string;
+    eventType: "ADD_TO_CART" | "CHECKOUT_STARTED" | "ORDER_ATTRIBUTED";
+    visitorId: string;
+    sessionId: string;
+    orderId?: string;
+    revenueAmount?: string;
+  },
+) {
+  const response = await page.request.post("/api/analytics/event", {
+    data: {
+      shop: "demo-shop.myshopify.com",
+      campaignId: data.campaignId,
+      experimentId: data.experimentId,
+      variantId: data.variantId,
+      visitorId: data.visitorId,
+      sessionId: data.sessionId,
+      eventType: data.eventType,
+      placementType: "TOP_BAR",
+      orderId: data.orderId,
+      revenueAmount: data.revenueAmount,
+      currencyCode: data.revenueAmount ? "USD" : undefined,
+      country: "US",
+      locale: "en",
+      path:
+        data.eventType === "CHECKOUT_STARTED" ||
+        data.eventType === "ORDER_ATTRIBUTED"
+          ? "/checkout"
+          : "/products/e2e-product",
+      doNotTrack: false,
+      consentGranted: true,
+    },
+  });
+
+  expect(response.ok()).toBeTruthy();
+  expect(await response.json()).toMatchObject({ ok: true });
+}
+
 test("campaign experiments assign stable variants and can be paused", async ({
   createCampaignViaUI,
   loginAsDemoShop,
@@ -269,6 +311,115 @@ test("campaign experiments assign stable variants and can be paused", async ({
   await expect(page.locator(".pp-bar").first()).toContainText(
     "Experiment base headline",
   );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("experiment results aggregate commerce events across campaigns and choose winners by primary metric", async ({
+  loginAsDemoShop,
+  page,
+  resetDb,
+}) => {
+  await resetDb("experiment-metrics");
+  await loginAsDemoShop("/app/campaigns");
+  await expect(
+    page.getByRole("link", { name: "E2E ATC Experiment Campaign" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "E2E Checkout Experiment Campaign" }),
+  ).toBeVisible();
+
+  await page.goto("/app/campaigns/e2e-atc-campaign");
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  await expect(
+    page.getByRole("heading", { name: "E2E Add-to-cart Test" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: /Treatment 40 8 20\.0% 20 3 \$300\.00/,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /Control 40 4 10\.0% 4 0 \$0\.00/ }),
+  ).toBeVisible();
+
+  await recordExperimentEvent(page, {
+    campaignId: "e2e-atc-campaign",
+    experimentId: "e2e-atc-experiment",
+    variantId: "e2e-atc-control",
+    eventType: "ADD_TO_CART",
+    visitorId: "e2e-live-atc-visitor",
+    sessionId: "e2e-live-atc-session",
+  });
+  await recordExperimentEvent(page, {
+    campaignId: "e2e-atc-campaign",
+    experimentId: "e2e-atc-experiment",
+    variantId: "e2e-atc-control",
+    eventType: "CHECKOUT_STARTED",
+    visitorId: "e2e-live-atc-visitor",
+    sessionId: "e2e-live-atc-session",
+  });
+  await recordExperimentEvent(page, {
+    campaignId: "e2e-atc-campaign",
+    experimentId: "e2e-atc-experiment",
+    variantId: "e2e-atc-control",
+    eventType: "ORDER_ATTRIBUTED",
+    visitorId: "e2e-live-atc-visitor",
+    sessionId: "e2e-live-atc-session",
+    orderId: "e2e-live-atc-order",
+    revenueAmount: "45.00",
+  });
+
+  await expect
+    .poll(async () => readAnalyticsSummary(page))
+    .toMatchObject({ addToCart: 1, checkoutStarted: 1 });
+
+  await page.reload();
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  await expect(
+    page.getByRole("row", { name: /Control 40 4 10\.0% 5 1 \$45\.00/ }),
+  ).toBeVisible();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/e2e-atc-campaign") &&
+        response.request().method() === "POST",
+    ),
+    page.getByRole("button", { name: "Auto declare winner" }).click(),
+  ]);
+  await expect(
+    page.getByRole("cell", { name: "Treatment (winner)" }),
+  ).toBeVisible();
+
+  await page.goto("/app/campaigns/e2e-checkout-campaign");
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  await expect(
+    page.getByRole("heading", { name: "E2E Checkout Test" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: /Checkout Control 40 6 15\.0% 25 0 \$0\.00/,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: /Checkout Treatment 40 8 20\.0% 14 1 \$90\.00/,
+    }),
+  ).toBeVisible();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/app/campaigns/e2e-checkout-campaign") &&
+        response.request().method() === "POST",
+    ),
+    page.getByRole("button", { name: "Auto declare winner" }).click(),
+  ]);
+  await expect(
+    page.getByRole("cell", { name: "Checkout Treatment (winner)" }),
+  ).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

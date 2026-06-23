@@ -61,6 +61,7 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "analytics" ||
     value === "premium" ||
     value === "ab-test" ||
+    value === "experiment-metrics" ||
     value === "auto-winner" ||
     value === "unique-discount" ||
     value === "unique-discount-expired" ||

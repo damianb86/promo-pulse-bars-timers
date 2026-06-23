@@ -18,6 +18,8 @@ export const loader = async () => {
       impressions: 0,
       clicks: 0,
       copyCode: 0,
+      addToCart: 0,
+      checkoutStarted: 0,
       uniqueCodeAssigned: 0,
       applyCodeClicked: 0,
       attributedVariants: 0,
@@ -28,6 +30,8 @@ export const loader = async () => {
     impressions,
     clicks,
     copyCode,
+    addToCart,
+    checkoutStarted,
     uniqueCodeAssigned,
     applyCodeClicked,
     attributedVariants,
@@ -40,6 +44,15 @@ export const loader = async () => {
     }),
     prisma.analyticsEvent.count({
       where: { shopId: shop.id, eventType: AnalyticsEventType.COPY_CODE },
+    }),
+    prisma.analyticsEvent.count({
+      where: { shopId: shop.id, eventType: AnalyticsEventType.ADD_TO_CART },
+    }),
+    prisma.analyticsEvent.count({
+      where: {
+        shopId: shop.id,
+        eventType: AnalyticsEventType.CHECKOUT_STARTED,
+      },
     }),
     prisma.analyticsEvent.count({
       where: {
@@ -65,6 +78,8 @@ export const loader = async () => {
     impressions,
     clicks,
     copyCode,
+    addToCart,
+    checkoutStarted,
     uniqueCodeAssigned,
     applyCodeClicked,
     attributedVariants,

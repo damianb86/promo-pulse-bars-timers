@@ -53,6 +53,37 @@ export function parseCampaignTranslationsFormData(
   };
 }
 
+export type BaseCampaignTranslationValues = Pick<
+  CampaignTranslationValues,
+  "headline" | "subheadline" | "ctaText" | "ctaUrl" | "expiredText"
+>;
+
+export function syncBaseCampaignTranslationValues(
+  parsed: ParsedCampaignTranslationsForm,
+  baseValues: BaseCampaignTranslationValues,
+): ParsedCampaignTranslationsForm {
+  const values = {
+    ...parsed.values,
+    en: {
+      ...parsed.values.en,
+      ...baseValues,
+    },
+  };
+
+  return {
+    ...parsed,
+    values,
+    translations: parsed.translations.map((translation) =>
+      translation.locale === "en"
+        ? {
+            ...translation,
+            ...baseValues,
+          }
+        : translation,
+    ),
+  };
+}
+
 export function hasCampaignTranslationErrors(
   errors: CampaignTranslationFormErrors,
 ) {
@@ -65,7 +96,8 @@ export function hasCampaignTranslationErrors(
 }
 
 function readString(formData: FormData, key: string) {
-  const value = formData.get(key);
+  const values = formData.getAll(key);
+  const value = values.length > 0 ? values[values.length - 1] : "";
   return typeof value === "string" ? value.trim() : "";
 }
 

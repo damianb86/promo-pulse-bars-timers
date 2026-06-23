@@ -90,6 +90,7 @@ import { getShopSettingsOrDefaults } from "../services/shopSettings.server";
 import {
   hasCampaignTranslationErrors,
   parseCampaignTranslationsFormData,
+  syncBaseCampaignTranslationValues,
 } from "../services/campaign-translations-form.server";
 import {
   hasDiscountSettingsErrors,
@@ -928,6 +929,11 @@ export const action = async ({
         totalCodes: totalCodesToGenerate.value,
         admin,
       });
+      const campaign = await getCampaignForShop(id, shop.id);
+
+      if (campaign?.status === "ACTIVE") {
+        await publishCampaignForShop(id, shop.id);
+      }
 
       return {
         uniqueCodeNotice: `Generated ${result.codes.length} unique codes.`,
@@ -1278,7 +1284,16 @@ export const action = async ({
   );
   const shouldSaveTranslationsWithBasics = hasTranslationInputs(formData);
   const parsedTranslations = shouldSaveTranslationsWithBasics
-    ? parseCampaignTranslationsFormData(formData)
+    ? syncBaseCampaignTranslationValues(
+        parseCampaignTranslationsFormData(formData),
+        {
+          headline: parsed.values.headline,
+          subheadline: parsed.values.subheadline,
+          ctaText: parsed.values.ctaText,
+          ctaUrl: parsed.values.ctaUrl,
+          expiredText: parsed.values.expiredText,
+        },
+      )
     : null;
   const isPublishRequest = intent === "publishCampaign";
 
@@ -1313,7 +1328,6 @@ export const action = async ({
   const isBadgeCampaign =
     parsed.values.type === "PRODUCT_BADGE" ||
     parsed.values.goal === "PRODUCT_BADGE";
-  const baseTranslationValues = parsedTranslations?.values.en;
 
   try {
     const planErrors = await validateCampaignPlanAccess(
@@ -1383,13 +1397,11 @@ export const action = async ({
       customSelector: parsed.values.customSelector,
       customStyle: parsed.values.customStyle,
       targeting,
-      headline: baseTranslationValues?.headline ?? parsed.values.headline,
-      subheadline:
-        baseTranslationValues?.subheadline ?? parsed.values.subheadline,
-      ctaText: baseTranslationValues?.ctaText ?? parsed.values.ctaText,
-      ctaUrl: baseTranslationValues?.ctaUrl ?? parsed.values.ctaUrl,
-      expiredText:
-        baseTranslationValues?.expiredText ?? parsed.values.expiredText,
+      headline: parsed.values.headline,
+      subheadline: parsed.values.subheadline,
+      ctaText: parsed.values.ctaText,
+      ctaUrl: parsed.values.ctaUrl,
+      expiredText: parsed.values.expiredText,
       timerSettings,
     });
     if (parsedTranslations) {

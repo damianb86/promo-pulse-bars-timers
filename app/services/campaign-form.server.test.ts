@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseBadgeSettingsFormData } from "./badge-settings-form.server";
 import { parseCampaignDesignFormData } from "./campaign-design-form.server";
 import { parseCampaignFormData } from "./campaign-form.server";
-import { parseCampaignTranslationsFormData } from "./campaign-translations-form.server";
+import {
+  parseCampaignTranslationsFormData,
+  syncBaseCampaignTranslationValues,
+} from "./campaign-translations-form.server";
 import { parseDeliveryCutoffSettingsFormData } from "./delivery-cutoff-settings-form.server";
 import { parseDiscountSettingsFormData } from "./discount-settings-form.server";
 import { parseFreeShippingSettingsFormData } from "./free-shipping-settings-form.server";
@@ -276,6 +279,39 @@ describe("campaign form parsing and validation", () => {
     expect(parsed.errors.locales?.es?.headline).toBe(
       "Keep headline under 500 characters.",
     );
+  });
+
+  it("uses visible embedded translation values and syncs base campaign copy", () => {
+    const data = new FormData();
+    data.append("translation.en.headline", "Hidden English headline");
+    data.append("translation.en.headline", "Visible English headline");
+    data.set("translation.en.expiredText", "Old expired title");
+
+    const parsed = parseCampaignTranslationsFormData(data);
+
+    expect(parsed.values.en.headline).toBe("Visible English headline");
+
+    const synced = syncBaseCampaignTranslationValues(parsed, {
+      headline: "Current headline",
+      subheadline: "Current subheadline",
+      ctaText: "Current CTA",
+      ctaUrl: "/collections/all",
+      expiredText: "Timer finished for this buyer",
+    });
+
+    expect(synced.values.en).toMatchObject({
+      headline: "Current headline",
+      subheadline: "Current subheadline",
+      ctaText: "Current CTA",
+      ctaUrl: "/collections/all",
+      expiredText: "Timer finished for this buyer",
+    });
+    expect(
+      synced.translations.find((translation) => translation.locale === "en"),
+    ).toMatchObject({
+      headline: "Current headline",
+      expiredText: "Timer finished for this buyer",
+    });
   });
 });
 

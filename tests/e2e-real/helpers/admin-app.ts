@@ -54,10 +54,19 @@ export async function createCampaignViaUI(
     .selectOption(values.status);
 
   await clickCampaignBuilderTab(app, "message");
-  await app.locator('input[name="headline"]').fill(values.headline);
-  await app.locator('textarea[name="subheadline"]').fill(values.subheadline);
-  await app.getByLabel("CTA text").fill(values.ctaText);
-  await app.getByLabel("CTA URL").fill(values.ctaUrl);
+  const messagePanel = app.getByRole("tabpanel", { name: "Message" });
+  await messagePanel
+    .getByRole("textbox", { name: "Headline", exact: true })
+    .fill(values.headline);
+  await messagePanel
+    .getByRole("textbox", { name: "Subheadline", exact: true })
+    .fill(values.subheadline);
+  await messagePanel
+    .getByRole("textbox", { name: "CTA text", exact: true })
+    .fill(values.ctaText);
+  await messagePanel
+    .getByRole("textbox", { name: "CTA URL", exact: true })
+    .fill(values.ctaUrl);
 
   await clickCampaignBuilderTab(app, "placement");
   await selectOnlyCampaignPlacement(app, values.placement);

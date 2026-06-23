@@ -44,6 +44,7 @@ import type {
 } from "../types/campaign-form";
 import {
   buildCampaignBadgeSettingsValues,
+  buildCampaignCartRescueSettingsValues,
   buildCampaignDeliveryCutoffSettingsValues,
   buildCampaignFreeShippingSettingsValues,
   buildCampaignLowStockSettingsValues,
@@ -56,6 +57,12 @@ import {
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
 import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
+import {
+  cartRescueReasonCopyDefaults,
+  cartRescueReasonOptions,
+  isCartRescueFreeShippingReason,
+  type CartRescueReasonValue,
+} from "../types/cart-rescue";
 import type {
   CampaignTranslationFormErrors,
   CampaignTranslationsByLocale,
@@ -357,8 +364,15 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
     },
     CART_TIMER: {
       form: {
+        cartRescueReason: "CART_RESERVED",
+        cartRescueShowButton: true,
+        cartRescueShowTimer: true,
         cartTimerDurationMinutes: "120",
         cartTimerResetBehavior: "ON_SESSION_END",
+        ctaText: cartRescueReasonCopyDefaults.CART_RESERVED.ctaText,
+        ctaUrl: cartRescueReasonCopyDefaults.CART_RESERVED.ctaUrl,
+        headline: cartRescueReasonCopyDefaults.CART_RESERVED.headline,
+        subheadline: cartRescueReasonCopyDefaults.CART_RESERVED.subheadline,
         timerDurationMinutes: "120",
         timerExpiredBehavior: "HIDE_TIMER",
         timerMode: "EVERGREEN_SESSION",
@@ -655,6 +669,8 @@ export function CampaignForm({
   const isFreeShippingCampaign =
     formValues.type === "FREE_SHIPPING_GOAL" ||
     formValues.goal === "FREE_SHIPPING";
+  const usesFreeShippingSettings =
+    isFreeShippingCampaign || isCartRescueFreeShippingReason(formValues);
   const isLowStockCampaign =
     formValues.type === "LOW_STOCK" || formValues.goal === "LOW_STOCK_URGENCY";
   const isBadgeCampaign =
@@ -812,7 +828,10 @@ export function CampaignForm({
         ],
         design: effectiveDesign,
         timerSettings: buildCampaignTimerSettingsValues(formValues),
-        freeShippingSettings: isFreeShippingCampaign
+        cartRescueSettings: isCartRescueCampaign
+          ? buildCampaignCartRescueSettingsValues(formValues)
+          : null,
+        freeShippingSettings: usesFreeShippingSettings
           ? buildCampaignFreeShippingSettingsValues(formValues)
           : null,
         deliveryCutoffSettings: isDeliveryCutoffCampaign
@@ -836,9 +855,10 @@ export function CampaignForm({
       effectiveDesign,
       formValues,
       isBadgeCampaign,
+      isCartRescueCampaign,
       isDeliveryCutoffCampaign,
-      isFreeShippingCampaign,
       isLowStockCampaign,
+      usesFreeShippingSettings,
     ],
   );
   const summaryRows = useMemo(
@@ -951,6 +971,44 @@ export function CampaignForm({
         fullWidth: true,
       });
     }
+  };
+
+  const selectCartRescueReason = (reason: CartRescueReasonValue) => {
+    const option = cartRescueReasonOptions.find(
+      (item) => item.value === reason,
+    );
+
+    if (!option?.supported) return;
+
+    const copy = cartRescueReasonCopyDefaults[reason];
+    const cartPlacements = Array.from(
+      new Set([
+        ...formValues.placementTypes.filter(
+          (placement) =>
+            placement !== "TOP_BAR" &&
+            placement !== "BOTTOM_BAR" &&
+            placement !== "PRODUCT_PAGE",
+        ),
+        "CART_DRAWER" as PlacementTypeValue,
+        "CART_PAGE" as PlacementTypeValue,
+      ]),
+    );
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      cartRescueReason: reason,
+      cartRescueShowButton: copy.showButton,
+      cartRescueShowTimer: copy.showTimer,
+      ctaText: copy.ctaText,
+      ctaUrl: copy.ctaUrl,
+      headline: copy.headline,
+      placementType: cartPlacements[0] ?? "CART_DRAWER",
+      placementTypes: cartPlacements,
+      subheadline: copy.subheadline,
+      timerExpiredBehavior:
+        reason === "CART_RESERVED" ? "HIDE_TIMER" : "DO_NOTHING",
+      timerMode: "EVERGREEN_SESSION",
+    }));
   };
 
   const selectProductSelection = (productSelection: ProductSelectionValue) => {
@@ -2147,47 +2205,374 @@ export function CampaignForm({
                   >
                     <div className="counterpulse-targeting-card__header">
                       <h3 id={scopedId("cart-rescue-setup-heading")}>
-                        Cart rescue timer
+                        Cart rescue logic
                       </h3>
                       <p>
-                        Configure the per-cart reservation window used in the
-                        cart page and drawer.
+                        Choose the safe reason behind this cart message. Promo
+                        Pulse only enables reasons backed by current storefront
+                        data, so it will not claim real inventory, price, or
+                        discount expiry unless that connection exists.
                       </p>
                     </div>
 
+                    <input
+                      name="cartRescueReason"
+                      type="hidden"
+                      value={formValues.cartRescueReason}
+                    />
+
+                    <div
+                      className="counterpulse-goal-list counterpulse-goal-list--compact"
+                      role="radiogroup"
+                      aria-label="Cart rescue reason"
+                    >
+                      {cartRescueReasonOptions.map((option) => {
+                        const isSelected =
+                          formValues.cartRescueReason === option.value;
+
+                        return (
+                          <button
+                            aria-checked={isSelected}
+                            aria-disabled={!option.supported}
+                            className={[
+                              "counterpulse-goal-card",
+                              isSelected ? "is-selected" : "",
+                              !option.supported ? "is-disabled" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            key={option.value}
+                            role="radio"
+                            type="button"
+                            onClick={() => selectCartRescueReason(option.value)}
+                          >
+                            <input
+                              checked={isSelected}
+                              disabled={!option.supported}
+                              name="cartRescueReasonOption"
+                              type="radio"
+                              value={option.value}
+                              onChange={() =>
+                                selectCartRescueReason(option.value)
+                              }
+                            />
+                            <span
+                              className="counterpulse-goal-card__icon"
+                              aria-hidden="true"
+                            >
+                              <CartRescueReasonIcon reason={option.value} />
+                            </span>
+                            <span>
+                              <strong>{option.label}</strong>
+                              <small>{option.description}</small>
+                              {!option.supported && (
+                                <em>Requires deeper Shopify data</em>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-                      <FormField
-                        label="Reservation minutes"
-                        error={errors.cartTimerDurationMinutes}
-                      >
+                      <FormField label="Headline" error={errors.headline}>
                         <input
-                          inputMode="numeric"
-                          max={10080}
-                          min={1}
-                          name="cartTimerDurationMinutes"
-                          type="number"
-                          value={formValues.cartTimerDurationMinutes}
-                          onChange={updateField("cartTimerDurationMinutes")}
+                          name="headline"
+                          value={formValues.headline}
+                          onChange={updateField("headline")}
                         />
                       </FormField>
 
-                      <FormField
-                        label="Reset behavior"
-                        error={errors.cartTimerResetBehavior}
-                      >
-                        <select
-                          name="cartTimerResetBehavior"
-                          value={formValues.cartTimerResetBehavior}
-                          onChange={updateField("cartTimerResetBehavior")}
-                        >
-                          {cartTimerResetBehaviorOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
+                      <FormField label="Subheadline" error={errors.subheadline}>
+                        <input
+                          name="subheadline"
+                          value={formValues.subheadline}
+                          onChange={updateField("subheadline")}
+                        />
                       </FormField>
+
+                      <FormField label="CTA text" error={errors.ctaText}>
+                        <input
+                          name="ctaText"
+                          value={formValues.ctaText}
+                          onChange={updateField("ctaText")}
+                        />
+                      </FormField>
+
+                      <FormField label="CTA URL" error={errors.ctaUrl}>
+                        <input
+                          name="ctaUrl"
+                          value={formValues.ctaUrl}
+                          onChange={updateField("ctaUrl")}
+                        />
+                      </FormField>
+
+                      <div className="counterpulse-toggle">
+                        <label className="counterpulse-toggle-label">
+                          <input
+                            checked={formValues.cartRescueShowButton}
+                            name="cartRescueShowButton"
+                            type="checkbox"
+                            onChange={updateCheckboxField(
+                              "cartRescueShowButton",
+                            )}
+                          />
+                          <input
+                            name="cartRescueShowButton"
+                            type="hidden"
+                            value="false"
+                          />
+                          <span>Show checkout button</span>
+                        </label>
+                      </div>
+
+                      <div className="counterpulse-toggle">
+                        <label className="counterpulse-toggle-label">
+                          <input
+                            checked={formValues.cartRescueShowTimer}
+                            name="cartRescueShowTimer"
+                            type="checkbox"
+                            onChange={updateCheckboxField(
+                              "cartRescueShowTimer",
+                            )}
+                          />
+                          <input
+                            name="cartRescueShowTimer"
+                            type="hidden"
+                            value="false"
+                          />
+                          <span>Show session timer</span>
+                        </label>
+                      </div>
+
+                      {formValues.cartRescueShowTimer && (
+                        <>
+                          <FormField
+                            label="Timer minutes"
+                            error={errors.cartTimerDurationMinutes}
+                          >
+                            <input
+                              inputMode="numeric"
+                              max={10080}
+                              min={1}
+                              name="cartTimerDurationMinutes"
+                              type="number"
+                              value={formValues.cartTimerDurationMinutes}
+                              onChange={updateField("cartTimerDurationMinutes")}
+                            />
+                          </FormField>
+
+                          <FormField
+                            label="Reset behavior"
+                            error={errors.cartTimerResetBehavior}
+                          >
+                            <select
+                              name="cartTimerResetBehavior"
+                              value={formValues.cartTimerResetBehavior}
+                              onChange={updateField("cartTimerResetBehavior")}
+                            >
+                              {cartTimerResetBehaviorOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormField>
+
+                          <FormField
+                            label="Once it ends"
+                            error={errors.timerExpiredBehavior}
+                          >
+                            <select
+                              name="timerExpiredBehavior"
+                              value={formValues.timerExpiredBehavior}
+                              onChange={(event) =>
+                                setFormValues((currentValues) => ({
+                                  ...currentValues,
+                                  timerExpiredBehavior: event.currentTarget
+                                    .value as CampaignTimerExpiredBehaviorValue,
+                                }))
+                              }
+                            >
+                              {timerExpiredBehaviorOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormField>
+                        </>
+                      )}
+
+                      {formValues.cartRescueReason === "FREE_SHIPPING_GOAL" && (
+                        <>
+                          <FormField
+                            label="Threshold amount"
+                            error={errors.freeShippingThresholdAmount}
+                          >
+                            <input
+                              inputMode="decimal"
+                              min="0.01"
+                              name="freeShippingThresholdAmount"
+                              step="0.01"
+                              type="number"
+                              value={formValues.freeShippingThresholdAmount}
+                              onChange={updateField(
+                                "freeShippingThresholdAmount",
+                              )}
+                            />
+                          </FormField>
+
+                          <FormField
+                            label="Currency code"
+                            error={errors.freeShippingCurrencyCode}
+                          >
+                            <input
+                              maxLength={3}
+                              name="freeShippingCurrencyCode"
+                              value={formValues.freeShippingCurrencyCode}
+                              onChange={updateField("freeShippingCurrencyCode")}
+                            />
+                          </FormField>
+
+                          <FormField
+                            label="Progress style"
+                            error={errors.freeShippingProgressStyle}
+                          >
+                            <select
+                              name="freeShippingProgressStyle"
+                              value={formValues.freeShippingProgressStyle}
+                              onChange={updateField(
+                                "freeShippingProgressStyle",
+                              )}
+                            >
+                              {freeShippingProgressStyleOptions.map(
+                                (option) => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </FormField>
+
+                          <div className="counterpulse-toggle">
+                            <label className="counterpulse-toggle-label">
+                              <input
+                                checked={
+                                  formValues.freeShippingIncludeDiscountedSubtotal
+                                }
+                                name="freeShippingIncludeDiscountedSubtotal"
+                                type="checkbox"
+                                onChange={updateCheckboxField(
+                                  "freeShippingIncludeDiscountedSubtotal",
+                                )}
+                              />
+                              <span>
+                                Use discounted subtotal when available
+                              </span>
+                            </label>
+                          </div>
+
+                          <FormField
+                            label="Empty cart message"
+                            error={errors.freeShippingEmptyCartMessage}
+                            fullWidth
+                          >
+                            <textarea
+                              name="freeShippingEmptyCartMessage"
+                              rows={2}
+                              value={formValues.freeShippingEmptyCartMessage}
+                              onChange={updateField(
+                                "freeShippingEmptyCartMessage",
+                              )}
+                            />
+                          </FormField>
+
+                          <FormField
+                            label="Unlocked message"
+                            error={errors.freeShippingSuccessMessage}
+                            fullWidth
+                          >
+                            <textarea
+                              name="freeShippingSuccessMessage"
+                              rows={2}
+                              value={formValues.freeShippingSuccessMessage}
+                              onChange={updateField(
+                                "freeShippingSuccessMessage",
+                              )}
+                            />
+                          </FormField>
+
+                          <div className="counterpulse-toggle">
+                            <label className="counterpulse-toggle-label">
+                              <input
+                                checked={formValues.freeShippingAutoDiscount}
+                                name="freeShippingAutoDiscount"
+                                type="checkbox"
+                                onChange={toggleFreeShippingAutoDiscount}
+                              />
+                              <span>
+                                Create Shopify automatic free shipping
+                              </span>
+                            </label>
+                          </div>
+                        </>
+                      )}
                     </div>
+
+                    <div className="counterpulse-placement-grid counterpulse-placement-grid--compact">
+                      {(["CART_DRAWER", "CART_PAGE"] as const).map(
+                        (placementType) => {
+                          const option = placementTypeOptions.find(
+                            (item) => item.value === placementType,
+                          );
+                          const isSelected =
+                            formValues.placementTypes.includes(placementType);
+
+                          return (
+                            <button
+                              aria-pressed={isSelected}
+                              className={
+                                isSelected
+                                  ? "counterpulse-placement-tile is-selected"
+                                  : "counterpulse-placement-tile"
+                              }
+                              key={placementType}
+                              type="button"
+                              onClick={() => togglePlacement(placementType)}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="counterpulse-placement-tile__initial"
+                              >
+                                {placementInitial(
+                                  option?.label ?? placementType,
+                                )}
+                              </span>
+                              <span className="counterpulse-placement-tile__body">
+                                <strong>
+                                  {option?.label ?? placementType}
+                                </strong>
+                                <small>
+                                  {option?.description ??
+                                    "Cart rescue storefront surface."}
+                                </small>
+                              </span>
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    <p className="counterpulse-field-hint">
+                      Cart rescue can render on the cart drawer, cart page, or
+                      both. The Placement tab remains the full source of truth
+                      for every selected storefront surface.
+                    </p>
                   </section>
                 )}
 
@@ -4118,6 +4503,96 @@ function GoalIcon({ goal }: { goal: CampaignFormValues["goal"] }) {
   );
 }
 
+function CartRescueReasonIcon({ reason }: { reason: CartRescueReasonValue }) {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="22"
+      viewBox="0 0 24 24"
+      width="22"
+    >
+      {reason === "CART_RESERVED" && (
+        <>
+          <path
+            d="M5 5h2l2 10h8l2-7H8"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M9 19h8m-4-6v-3m0 0-1.5 1.5M13 10l1.5 1.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {reason === "CHECKOUT_REMINDER" && (
+        <>
+          <path
+            d="M5 5h14v14H5V5Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="m8 12 2.5 2.5L16 9"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {reason === "FREE_SHIPPING_GOAL" && (
+        <>
+          <path
+            d="M3 7h11v9H3V7Zm11 3h4l3 3v3h-7v-6Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {reason === "OFFER_EXPIRES" && (
+        <path
+          d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Zm12.5-4.7h.01M12 9v4m0 3h.01"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {reason === "SHIPPING_CUTOFF" && (
+        <>
+          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 7v5l3 2"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {reason === "LOW_STOCK_RISK" && (
+        <path
+          d="M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
+  );
+}
+
 function CampaignTypeIcon({ type }: { type: CampaignTypeValue }) {
   const title =
     campaignTypeOptions.find((option) => option.value === type)?.label ?? type;
@@ -4316,6 +4791,9 @@ const campaignErrorFieldLabels: Partial<
   badgePosition: "Badge position",
   badgeShape: "Badge shape",
   badgeText: "Badge text",
+  cartRescueReason: "Cart rescue reason",
+  cartRescueShowButton: "Cart rescue button",
+  cartRescueShowTimer: "Cart rescue timer",
   cartTimerDurationMinutes: "Cart timer minutes",
   collectionIds: "Collections",
   countries: "Countries",

@@ -4,6 +4,7 @@ import {
 } from "../types/campaign-design";
 import type { BadgePositionValue, BadgeShapeValue } from "../types/badge";
 import { toBadgePosition, toBadgeShape } from "../types/badge";
+import type { CartRescueReasonValue } from "../types/cart-rescue";
 import type {
   AfterCutoffBehavior,
   DeliveryPromiseSettings,
@@ -38,6 +39,11 @@ export type CampaignViewModelInput = {
     expiredBehavior?: string | null;
     recurringDays?: unknown;
     resetBehavior?: string | null;
+  } | null;
+  cartRescueSettings?: {
+    rescueReason?: string | null;
+    showButton?: boolean | null;
+    showTimer?: boolean | null;
   } | null;
   deliveryCutoffSettings?: {
     cutoffHour: number;
@@ -95,10 +101,17 @@ export type CampaignViewModel = {
   placements: string[];
   design: CampaignDesignValues;
   timer: TimerSettingsInput | null;
+  cartRescue: CartRescueViewModel | null;
   deliveryCutoff: DeliveryPromiseSettings | null;
   freeShipping: FreeShippingViewModel | null;
   lowStock: LowStockViewModel | null;
   badge: BadgeViewModel | null;
+};
+
+export type CartRescueViewModel = {
+  rescueReason: CartRescueReasonValue;
+  showTimer: boolean;
+  showButton: boolean;
 };
 
 export type FreeShippingViewModel = {
@@ -188,6 +201,7 @@ export function buildCampaignViewModel(
       .map((placement) => placement.placementType),
     design,
     timer: buildTimerViewModel(campaign),
+    cartRescue: buildCartRescueViewModel(campaign),
     deliveryCutoff: buildDeliveryCutoffViewModel(campaign),
     freeShipping: buildFreeShippingViewModel(campaign),
     lowStock: buildLowStockViewModel(campaign),
@@ -198,6 +212,13 @@ export function buildCampaignViewModel(
 function buildTimerViewModel(
   campaign: CampaignViewModelInput,
 ): TimerSettingsInput | null {
+  if (
+    (campaign.type === "CART_TIMER" || campaign.cartRescueSettings) &&
+    campaign.cartRescueSettings?.showTimer === false
+  ) {
+    return null;
+  }
+
   const timerMode = toTimerMode(campaign.timerSettings?.mode);
   const endsAt = toIsoDate(campaign.endsAt);
 
@@ -212,6 +233,20 @@ function buildTimerViewModel(
     expiredBehavior: toTimerExpiredBehavior(
       campaign.timerSettings?.expiredBehavior,
     ),
+  };
+}
+
+function buildCartRescueViewModel(
+  campaign: CampaignViewModelInput,
+): CartRescueViewModel | null {
+  if (campaign.type !== "CART_TIMER" && !campaign.cartRescueSettings) {
+    return null;
+  }
+
+  return {
+    rescueReason: toCartRescueReason(campaign.cartRescueSettings?.rescueReason),
+    showButton: campaign.cartRescueSettings?.showButton !== false,
+    showTimer: campaign.cartRescueSettings?.showTimer !== false,
   };
 }
 
@@ -340,6 +375,22 @@ function toAfterCutoffBehavior(
   }
 
   return "SHOW_NEXT_WINDOW";
+}
+
+function toCartRescueReason(
+  value: string | null | undefined,
+): CartRescueReasonValue {
+  if (
+    value === "CHECKOUT_REMINDER" ||
+    value === "FREE_SHIPPING_GOAL" ||
+    value === "OFFER_EXPIRES" ||
+    value === "SHIPPING_CUTOFF" ||
+    value === "LOW_STOCK_RISK"
+  ) {
+    return value;
+  }
+
+  return "CART_RESERVED";
 }
 
 function toIsoDate(value: Date | string | null | undefined) {

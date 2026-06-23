@@ -162,6 +162,33 @@ describe("storefront campaign serialization", () => {
     expect(JSON.stringify(serialized)).not.toContain("FREESHIP");
   });
 
+  it("serializes cart rescue settings without fake stock or discount data", () => {
+    const serialized = serializeStorefrontCampaign(
+      buildCampaign({
+        type: "CART_TIMER",
+        goal: "CART_RESCUE",
+        placements: [{ placementType: "CART_DRAWER", enabled: true }],
+        cartRescueSettings: {
+          rescueReason: "CHECKOUT_REMINDER",
+          showButton: true,
+          showTimer: false,
+        },
+      }),
+      {
+        ...baseContext(),
+        placement: "CART_DRAWER",
+      },
+    );
+
+    expect(serialized?.cartRescue).toEqual({
+      rescueReason: "CHECKOUT_REMINDER",
+      showButton: true,
+      showTimer: false,
+    });
+    expect(serialized?.discount).toBeNull();
+    expect(serialized?.lowStock).toBeNull();
+  });
+
   it("filters by placement", () => {
     const campaigns = [
       buildCampaign({
@@ -812,6 +839,11 @@ function buildCampaign(
       showCodeOnStorefront?: boolean;
       value?: string | null;
     };
+    cartRescueSettings?: {
+      rescueReason: string;
+      showButton: boolean;
+      showTimer: boolean;
+    };
     freeShippingSettings?: {
       thresholdAmount: string;
       currencyCode: string;
@@ -880,6 +912,14 @@ function buildCampaign(
         } as StorefrontCampaignSource["design"])
       : null,
     timerSettings: null,
+    cartRescueSettings: overrides.cartRescueSettings
+      ? ({
+          campaignId: overrides.id ?? "campaign-1",
+          rescueReason: overrides.cartRescueSettings.rescueReason,
+          showButton: overrides.cartRescueSettings.showButton,
+          showTimer: overrides.cartRescueSettings.showTimer,
+        } as StorefrontCampaignSource["cartRescueSettings"])
+      : null,
     freeShippingSettings: overrides.freeShippingSettings
       ? ({
           campaignId: overrides.id ?? "campaign-1",

@@ -3437,6 +3437,32 @@ s-page::part(page) {
   color: #ffffff;
 }
 
+.counterpulse-goal-list--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.counterpulse-goal-card.is-disabled,
+.counterpulse-goal-card[aria-disabled="true"] {
+  cursor: not-allowed;
+  background: #fafbfb;
+  color: #8c9196;
+}
+
+.counterpulse-goal-card.is-disabled .counterpulse-goal-card__icon,
+.counterpulse-goal-card[aria-disabled="true"] .counterpulse-goal-card__icon {
+  background: #f1f2f3;
+  color: #8c9196;
+}
+
+.counterpulse-goal-card em {
+  color: #8c9196;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 15px;
+}
+
 .counterpulse-campaign-type-picker {
   display: grid;
   gap: 10px;

@@ -206,4 +206,64 @@ describe("buildCampaignViewModel", () => {
     });
     expect(viewModel.freeShippingProgressText).toBe("You're {{amount}} away.");
   });
+
+  it("builds cart rescue settings without enabling unsupported urgency", () => {
+    const reminder = buildCampaignViewModel({
+      name: "Cart reminder",
+      type: "CART_TIMER",
+      placements: [{ placementType: "CART_DRAWER", enabled: true }],
+      translations: [
+        {
+          locale: "en",
+          headline: "Your cart is ready",
+          subheadline: "Complete your order when you are ready.",
+          ctaText: "Checkout",
+          ctaUrl: "/checkout",
+        },
+      ],
+      design: null,
+      cartRescueSettings: {
+        rescueReason: "CHECKOUT_REMINDER",
+        showButton: true,
+        showTimer: false,
+      },
+      timerSettings: {
+        mode: "EVERGREEN_SESSION",
+        durationMinutes: 10,
+        expiredBehavior: "HIDE_TIMER",
+        resetBehavior: "ON_SESSION_END",
+      },
+    });
+
+    expect(reminder.cartRescue).toEqual({
+      rescueReason: "CHECKOUT_REMINDER",
+      showButton: true,
+      showTimer: false,
+    });
+    expect(reminder.timer).toBeNull();
+    expect(reminder.lowStock).toBeNull();
+
+    const freeShipping = buildCampaignViewModel({
+      name: "Cart free shipping",
+      type: "CART_TIMER",
+      placements: [{ placementType: "CART_PAGE", enabled: true }],
+      translations: [{ locale: "en", headline: "Free shipping" }],
+      design: null,
+      cartRescueSettings: {
+        rescueReason: "FREE_SHIPPING_GOAL",
+        showButton: true,
+        showTimer: false,
+      },
+      freeShippingSettings: {
+        thresholdAmount: "75.00",
+        currencyCode: "USD",
+      },
+    });
+
+    expect(freeShipping.cartRescue?.rescueReason).toBe("FREE_SHIPPING_GOAL");
+    expect(freeShipping.freeShipping).toMatchObject({
+      thresholdAmount: 75,
+      currencyCode: "USD",
+    });
+  });
 });

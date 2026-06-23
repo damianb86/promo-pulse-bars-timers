@@ -47,6 +47,49 @@ test("free shipping settings persist from the campaign editor", async ({
   expectNoFailedRequests(page);
 });
 
+test("cart rescue reason and settings persist from the campaign editor", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb("empty");
+  await loginAsDemoShop("/app/campaigns/new");
+
+  await createCampaignViaUI({
+    name: "E2E Cart Rescue Reason",
+    goal: "Cart rescue",
+    placements: ["CART_DRAWER", "CART_PAGE"],
+    headline: "Your cart is ready",
+    subheadline: "Complete your order when you are ready.",
+    ctaText: "Checkout",
+    ctaUrl: "/checkout",
+  });
+
+  const form = page.locator("#campaign-basics-form");
+  await form.getByRole("radio", { name: /^Free shipping goal\b/ }).click();
+  await form.getByLabel("Threshold amount").fill("95");
+  await form.getByLabel("Currency code").fill("usd");
+  await form.getByLabel("Progress style").selectOption("COMPACT");
+  await expect(form.getByLabel("Show session timer")).not.toBeChecked();
+  await expect(form.getByLabel("Show checkout button")).toBeChecked();
+
+  await saveCurrentCampaignDraft(page);
+  await page.reload();
+
+  await expect(
+    form.getByRole("radio", { name: /^Free shipping goal\b/ }),
+  ).toBeChecked();
+  await expect(form.getByLabel("Threshold amount")).toHaveValue("95");
+  await expect(form.getByLabel("Currency code")).toHaveValue("USD");
+  await expect(form.getByLabel("Progress style")).toHaveValue("COMPACT");
+  await expect(form.getByLabel("Show session timer")).not.toBeChecked();
+  await expect(form.getByLabel("Show checkout button")).toBeChecked();
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("delivery cutoff settings persist from the campaign editor", async ({
   page,
   resetDb,
@@ -155,7 +198,12 @@ test("URL page type targeting persists from the campaign editor", async ({
   await expect(
     urlRegion.getByRole("group", { name: "Included page types" }),
   ).toHaveCount(0);
-  await excludeGroup.getByLabel("Cart page").check();
+  const excludedCartPage = excludeGroup.getByLabel("Cart page");
+  await excludedCartPage.click();
+  await expect(excludedCartPage).toBeChecked();
+  await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
+    "page:cart",
+  );
   await urlRegion.getByLabel("Custom URLs to exclude").fill("/pages/wholesale");
   await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
     "page:cart\n/pages/wholesale",

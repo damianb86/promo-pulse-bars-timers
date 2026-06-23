@@ -1,6 +1,7 @@
 import type {
   BadgeSettings,
   Campaign,
+  CartRescueSettings,
   CampaignDesign,
   CampaignPlacement,
   CampaignTargeting,
@@ -71,6 +72,7 @@ export type StorefrontCampaignSource = Omit<
   targeting: CampaignTargeting | null;
   design: CampaignDesign | null;
   timerSettings: TimerSettings | null;
+  cartRescueSettings?: CartRescueSettings | null;
   freeShippingSettings: FreeShippingSettings | null;
   deliveryCutoffSettings: DeliveryCutoffSettings | null;
   lowStockSettings: LowStockSettings | null;
@@ -90,6 +92,7 @@ export type StorefrontCampaignResponseItem = {
   placementStyle: string;
   design: ReturnType<typeof serializeDesign>;
   timer: ReturnType<typeof serializeTimer>;
+  cartRescue?: ReturnType<typeof serializeCartRescue>;
   freeShipping: ReturnType<typeof serializeFreeShipping>;
   deliveryCutoff: ReturnType<typeof serializeDeliveryCutoff>;
   lowStock: ReturnType<typeof serializeLowStock>;
@@ -178,6 +181,7 @@ function serializeStorefrontCampaignForPlacement(
     placementStyle: placement.customStyle ?? "",
     design: serializeDesign(campaign.design, context.device),
     timer: serializeTimer(campaign.timerSettings),
+    cartRescue: serializeCartRescue(campaign.cartRescueSettings ?? null),
     freeShipping: serializeFreeShipping(campaign.freeShippingSettings, context),
     deliveryCutoff: serializeDeliveryCutoff(
       campaign.deliveryCutoffSettings,
@@ -399,6 +403,16 @@ function serializeTimer(timerSettings: TimerSettings | null) {
     recurringDays: timerSettings.recurringDays,
     resetBehavior: timerSettings.resetBehavior,
     expiredBehavior: timerSettings.expiredBehavior,
+  };
+}
+
+function serializeCartRescue(settings: CartRescueSettings | null) {
+  if (!settings) return null;
+
+  return {
+    rescueReason: settings.rescueReason,
+    showTimer: settings.showTimer,
+    showButton: settings.showButton,
   };
 }
 

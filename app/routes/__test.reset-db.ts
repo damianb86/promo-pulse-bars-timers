@@ -43,6 +43,8 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "campaign-type-countdown" ||
     value === "campaign-type-product-timer" ||
     value === "campaign-type-cart-timer" ||
+    value === "campaign-type-cart-rescue-reminder" ||
+    value === "campaign-type-cart-rescue-free-shipping" ||
     value === "campaign-type-free-shipping" ||
     value === "campaign-type-free-shipping-circular" ||
     value === "campaign-type-delivery-cutoff" ||

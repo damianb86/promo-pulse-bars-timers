@@ -26,6 +26,10 @@ import {
   type ProductSelectionValue,
 } from "../types/campaign-form";
 import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
+import {
+  defaultCartRescueSettingsValues,
+  supportedCartRescueReasons,
+} from "../types/cart-rescue";
 import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 
@@ -74,6 +78,7 @@ const timerExpiredBehaviors = new Set<string>([
 const freeShippingProgressStyles = new Set<string>(
   freeShippingProgressStyleOptions.map((option) => option.value),
 );
+const cartRescueReasons = supportedCartRescueReasons;
 const deliveryAfterCutoffBehaviors = new Set<string>(
   afterCutoffBehaviorOptions.map((option) => option.value),
 );
@@ -213,6 +218,22 @@ export function parseCampaignFormData(
     freeShippingShowDiscountCode: readBoolean(
       formData,
       "freeShippingShowDiscountCode",
+    ),
+    cartRescueReason: readOption(
+      formData,
+      "cartRescueReason",
+      cartRescueReasons,
+      defaultCartRescueSettingsValues.rescueReason,
+    ) as CampaignFormValues["cartRescueReason"],
+    cartRescueShowTimer: readBooleanWithDefault(
+      formData,
+      "cartRescueShowTimer",
+      defaultCartRescueSettingsValues.showTimer,
+    ),
+    cartRescueShowButton: readBooleanWithDefault(
+      formData,
+      "cartRescueShowButton",
+      defaultCartRescueSettingsValues.showButton,
     ),
     cartTimerDurationMinutes:
       readString(formData, "cartTimerDurationMinutes") ||
@@ -367,7 +388,11 @@ export function parseCampaignFormData(
     errors.customStyle = "Keep the custom style under 500 characters.";
   }
 
-  if (values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING") {
+  if (
+    values.type === "FREE_SHIPPING_GOAL" ||
+    values.goal === "FREE_SHIPPING" ||
+    values.cartRescueReason === "FREE_SHIPPING_GOAL"
+  ) {
     const freeShippingThreshold = Number(values.freeShippingThresholdAmount);
 
     if (!Number.isFinite(freeShippingThreshold) || freeShippingThreshold <= 0) {
@@ -408,7 +433,10 @@ export function parseCampaignFormData(
     }
   }
 
-  if (values.type === "CART_TIMER" || values.goal === "CART_RESCUE") {
+  if (
+    (values.type === "CART_TIMER" || values.goal === "CART_RESCUE") &&
+    values.cartRescueShowTimer
+  ) {
     if (!isIntegerInRange(values.cartTimerDurationMinutes, 1, 10080)) {
       errors.cartTimerDurationMinutes =
         "Enter cart reservation minutes between 1 and 10080.";
@@ -505,6 +533,14 @@ function readLastString(formData: FormData, key: keyof CampaignFormValues) {
 
 function readBoolean(formData: FormData, key: keyof CampaignFormValues) {
   return formData.get(key) === "on" || formData.get(key) === "true";
+}
+
+function readBooleanWithDefault(
+  formData: FormData,
+  key: keyof CampaignFormValues,
+  fallback: boolean,
+) {
+  return formData.has(key) ? readBoolean(formData, key) : fallback;
 }
 
 function readOption(

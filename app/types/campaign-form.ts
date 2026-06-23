@@ -24,6 +24,10 @@ import {
   type FreeShippingProgressStyleValue,
 } from "./free-shipping";
 import { defaultLowStockSettingsValues } from "./low-stock";
+import {
+  defaultCartRescueSettingsValues,
+  type CartRescueReasonValue,
+} from "./cart-rescue";
 
 export const productSelectionOptions = [
   "ALL_PRODUCTS",
@@ -110,6 +114,9 @@ export type CampaignFormValues = {
   freeShippingDiscountTitle: string;
   freeShippingDiscountAppliesOncePerCustomer: boolean;
   freeShippingShowDiscountCode: boolean;
+  cartRescueReason: CartRescueReasonValue;
+  cartRescueShowTimer: boolean;
+  cartRescueShowButton: boolean;
   cartTimerDurationMinutes: string;
   cartTimerResetBehavior: CampaignTimerResetBehaviorValue;
   deliveryCutoffHour: string;
@@ -180,6 +187,9 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   freeShippingDiscountTitle: "Promo Pulse free shipping",
   freeShippingDiscountAppliesOncePerCustomer: false,
   freeShippingShowDiscountCode: false,
+  cartRescueReason: defaultCartRescueSettingsValues.rescueReason,
+  cartRescueShowTimer: defaultCartRescueSettingsValues.showTimer,
+  cartRescueShowButton: defaultCartRescueSettingsValues.showButton,
   cartTimerDurationMinutes: "120",
   cartTimerResetBehavior: "ON_SESSION_END",
   deliveryCutoffHour: defaultDeliveryCutoffSettingsValues.cutoffHour,
@@ -199,15 +209,18 @@ export const defaultCampaignFormValues: CampaignFormValues = {
 };
 
 export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
-  const mode = values.timerMode;
-  const durationSource =
-    values.type === "CART_TIMER" || values.goal === "CART_RESCUE"
-      ? values.cartTimerDurationMinutes
-      : values.timerDurationMinutes;
-  const resetBehaviorSource =
-    values.type === "CART_TIMER" || values.goal === "CART_RESCUE"
-      ? values.cartTimerResetBehavior
-      : values.timerResetBehavior;
+  const isCartRescue =
+    values.type === "CART_TIMER" || values.goal === "CART_RESCUE";
+  const mode =
+    isCartRescue && values.cartRescueShowTimer
+      ? "EVERGREEN_SESSION"
+      : values.timerMode;
+  const durationSource = isCartRescue
+    ? values.cartTimerDurationMinutes
+    : values.timerDurationMinutes;
+  const resetBehaviorSource = isCartRescue
+    ? values.cartTimerResetBehavior
+    : values.timerResetBehavior;
   const durationMinutes =
     mode === "EVERGREEN_SESSION"
       ? clampInteger(Number(durationSource), 1, 10080, 120)
@@ -237,6 +250,16 @@ export function buildCampaignTimerSettingsValues(values: CampaignFormValues) {
         ? "ON_SESSION_END"
         : resetBehaviorSource,
     expiredBehavior: values.timerExpiredBehavior,
+  };
+}
+
+export function buildCampaignCartRescueSettingsValues(
+  values: CampaignFormValues,
+) {
+  return {
+    rescueReason: values.cartRescueReason,
+    showTimer: values.cartRescueShowTimer,
+    showButton: values.cartRescueShowButton,
   };
 }
 

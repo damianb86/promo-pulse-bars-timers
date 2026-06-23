@@ -1,4 +1,5 @@
 import {
+  CartRescueReason,
   CampaignStatus,
   CampaignType,
   Prisma,
@@ -323,6 +324,17 @@ export async function createDraftCampaignFromTemplate(
             },
           }
         : {}),
+      ...(template.type === CampaignType.CART_TIMER
+        ? {
+            cartRescueSettings: {
+              create: {
+                rescueReason: CartRescueReason.CART_RESERVED,
+                showButton: true,
+                showTimer: true,
+              },
+            },
+          }
+        : {}),
       ...(template.type === CampaignType.FREE_SHIPPING_GOAL
         ? {
             freeShippingSettings: {
@@ -435,6 +447,17 @@ export function buildCampaignFormDefaultsFromTemplate(
     subheadline: texts.subheadline ?? "",
     ctaText: texts.ctaText ?? "",
     ctaUrl: texts.ctaUrl ?? "/collections/all",
+    ...(template.type === "CART_TIMER"
+      ? {
+          cartRescueReason: "CART_RESERVED" as const,
+          cartRescueShowButton: true,
+          cartRescueShowTimer: true,
+          cartTimerDurationMinutes: String(
+            (settings.suggestedDurationHours ?? 2) * 60,
+          ),
+          cartTimerResetBehavior: "ON_SESSION_END" as const,
+        }
+      : {}),
     ...(template.type === "FREE_SHIPPING_GOAL"
       ? {
           freeShippingAutoDiscount: true,

@@ -117,6 +117,7 @@ model Campaign {
   targeting              CampaignTargeting?
   design                 CampaignDesign?
   timerSettings          TimerSettings?
+  cartRescueSettings     CartRescueSettings?
   freeShippingSettings   FreeShippingSettings?
   deliveryCutoffSettings DeliveryCutoffSettings?
   lowStockSettings       LowStockSettings?
@@ -252,6 +253,15 @@ model TimerSettings {
   recurringDays   Json
   resetBehavior   TimerResetBehavior   @default(NEVER)
   expiredBehavior TimerExpiredBehavior @default(UNPUBLISH_TIMER)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model CartRescueSettings {
+  campaignId   String           @id
+  rescueReason CartRescueReason @default(CART_RESERVED)
+  showTimer    Boolean          @default(true)
+  showButton   Boolean          @default(true)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -779,6 +789,15 @@ enum CampaignGoal {
   ANNOUNCEMENT
   LAUNCH
   PREORDER
+}
+
+enum CartRescueReason {
+  CART_RESERVED
+  CHECKOUT_REMINDER
+  FREE_SHIPPING_GOAL
+  OFFER_EXPIRES
+  SHIPPING_CUTOFF
+  LOW_STOCK_RISK
 }
 
 enum PlacementType {

@@ -62,6 +62,7 @@ import {
   buildCampaignFormDefaultsFromTemplate,
   getCampaignTemplateByKey,
 } from "../services/templates/templateLibrary.server";
+import { isCartRescueFreeShippingReason } from "../types/cart-rescue";
 import type {
   CampaignAiFormErrors,
   CampaignAiFollowUpQuestion,
@@ -70,6 +71,7 @@ import type {
 } from "../types/ai-campaign";
 import {
   buildCampaignBadgeSettingsValues,
+  buildCampaignCartRescueSettingsValues,
   buildCampaignDeliveryCutoffSettingsValues,
   buildCampaignTimerSettingsValues,
   buildCampaignTargetingValues,
@@ -269,9 +271,14 @@ export const action = async ({
   );
   const targeting = buildCampaignTargetingValues(parsed.values);
   const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
+  const cartRescueSettings = buildCampaignCartRescueSettingsValues(
+    parsed.values,
+  );
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
+  const usesFreeShippingSettings =
+    isFreeShippingCampaign || isCartRescueFreeShippingReason(parsed.values);
   const isDeliveryCutoffCampaign =
     parsed.values.type === "DELIVERY_CUTOFF" ||
     parsed.values.goal === "DELIVERY_CUTOFF";
@@ -330,7 +337,7 @@ export const action = async ({
       };
     }
 
-    if (isFreeShippingCampaign && parsed.values.freeShippingAutoDiscount) {
+    if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
       const discountGate = canUseFeature(shop, "discount_sync");
 
       if (!discountGate.allowed) {
@@ -393,7 +400,19 @@ export const action = async ({
           expiredBehavior: timerSettings.expiredBehavior,
         },
       },
-      ...(isFreeShippingCampaign
+      ...(parsed.values.type === "CART_TIMER" ||
+      parsed.values.goal === "CART_RESCUE"
+        ? {
+            cartRescueSettings: {
+              create: {
+                rescueReason: cartRescueSettings.rescueReason,
+                showTimer: cartRescueSettings.showTimer,
+                showButton: cartRescueSettings.showButton,
+              },
+            },
+          }
+        : {}),
+      ...(usesFreeShippingSettings
         ? {
             freeShippingSettings: {
               create: {
@@ -460,7 +479,7 @@ export const action = async ({
       });
     }
 
-    if (isFreeShippingCampaign && parsed.values.freeShippingAutoDiscount) {
+    if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
       await createOrLinkFreeShippingDiscountForCampaign({
         admin,
         campaignId: campaign.id,

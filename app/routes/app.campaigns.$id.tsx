@@ -6,7 +6,7 @@ import {
   useNavigation,
   useRouteError,
 } from "react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AdvancedDiscountRuleStatus,
   AdvancedDiscountRuleType,
@@ -204,6 +204,7 @@ import {
 } from "../types/campaign-options";
 import {
   buildCampaignBadgeSettingsValues,
+  buildCampaignCartRescueSettingsValues,
   buildCampaignDeliveryCutoffSettingsValues,
   buildCampaignLowStockSettingsValues,
   defaultCampaignFormValues,
@@ -217,6 +218,11 @@ import {
   type CountrySelectionValue,
   type ProductSelectionValue,
 } from "../types/campaign-form";
+import {
+  defaultCartRescueSettingsValues,
+  isCartRescueFreeShippingReason,
+  isSupportedCartRescueReason,
+} from "../types/cart-rescue";
 import {
   defaultDeliveryCutoffSettingsValues,
   toAfterCutoffBehavior,
@@ -456,8 +462,19 @@ export const loader = async ({
       expiredText: translation?.expiredText ?? "This offer has ended.",
       ...toCampaignTimerFormValues(campaign.timerSettings),
       cartTimerDurationMinutes:
-        defaultCampaignFormValues.cartTimerDurationMinutes,
-      cartTimerResetBehavior: defaultCampaignFormValues.cartTimerResetBehavior,
+        campaign.timerSettings?.mode === "EVERGREEN_SESSION"
+          ? String(
+              campaign.timerSettings.durationMinutes ??
+                defaultCampaignFormValues.cartTimerDurationMinutes,
+            )
+          : defaultCampaignFormValues.cartTimerDurationMinutes,
+      cartTimerResetBehavior:
+        campaign.timerSettings?.resetBehavior === "NEVER" ||
+        campaign.timerSettings?.resetBehavior === "DAILY" ||
+        campaign.timerSettings?.resetBehavior === "WEEKLY"
+          ? campaign.timerSettings.resetBehavior
+          : defaultCampaignFormValues.cartTimerResetBehavior,
+      ...toCampaignCartRescueFormValues(campaign.cartRescueSettings),
       productSelection,
       productIds: targetingListText(campaign.targeting?.productIds),
       excludeProductIds: targetingListText(
@@ -497,6 +514,7 @@ export const loader = async ({
       translations: campaign.translations,
       design: designValues,
       timerSettings: campaign.timerSettings,
+      cartRescueSettings: campaign.cartRescueSettings,
       deliveryCutoffSettings: campaign.deliveryCutoffSettings,
       freeShippingSettings: campaign.freeShippingSettings,
       lowStockSettings: campaign.lowStockSettings,
@@ -650,10 +668,7 @@ export const action = async ({
     const parsedVariantAi = parseExperimentVariantAiFormData(formData);
 
     if (!aiGate.allowed) {
-      return Response.json(
-        { aiVariantError: aiGate.reason },
-        { status: 403 },
-      );
+      return Response.json({ aiVariantError: aiGate.reason }, { status: 403 });
     }
 
     if (parsedVariantAi.errors.form) {
@@ -1421,9 +1436,14 @@ export const action = async ({
 
   const targeting = buildCampaignTargetingValues(parsed.values);
   const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
+  const cartRescueSettings = buildCampaignCartRescueSettingsValues(
+    parsed.values,
+  );
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
+  const usesFreeShippingSettings =
+    isFreeShippingCampaign || isCartRescueFreeShippingReason(parsed.values);
   const isDeliveryCutoffCampaign =
     parsed.values.type === "DELIVERY_CUTOFF" ||
     parsed.values.goal === "DELIVERY_CUTOFF";
@@ -1458,7 +1478,7 @@ export const action = async ({
       };
     }
 
-    if (isFreeShippingCampaign && parsed.values.freeShippingAutoDiscount) {
+    if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
       const discountGate = canUseFeature(shop, "discount_sync");
 
       if (!discountGate.allowed) {
@@ -1507,6 +1527,11 @@ export const action = async ({
       ctaText: parsed.values.ctaText,
       ctaUrl: parsed.values.ctaUrl,
       expiredText: parsed.values.expiredText,
+      cartRescueSettings:
+        parsed.values.type === "CART_TIMER" ||
+        parsed.values.goal === "CART_RESCUE"
+          ? cartRescueSettings
+          : null,
       timerSettings,
     });
     if (parsedTranslations) {
@@ -1523,7 +1548,7 @@ export const action = async ({
       parsedDesign.mobileValues,
     );
 
-    if (isFreeShippingCampaign) {
+    if (usesFreeShippingSettings) {
       const freeShippingSettings = buildCampaignFreeShippingSettingsValues(
         parsed.values,
       );
@@ -1658,11 +1683,13 @@ export default function EditCampaignPage() {
   const [draftMobileDesignValues, setDraftMobileDesignValues] = useState(
     activeMobileDesignValues,
   );
-  const [experimentAutoWinnerSaveBarState, setExperimentAutoWinnerSaveBarState] =
-    useState({
-      dirty: false,
-      saving: false,
-    });
+  const [
+    experimentAutoWinnerSaveBarState,
+    setExperimentAutoWinnerSaveBarState,
+  ] = useState({
+    dirty: false,
+    saving: false,
+  });
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
@@ -1696,6 +1723,22 @@ export default function EditCampaignPage() {
       freeShippingProgressStyle: progressStyle,
     }));
   };
+  const updateCampaignDraftValues = useCallback(
+    (nextValues: CampaignFormValues) => {
+      setDraftCampaignValues((currentValues) =>
+        mergeCampaignDraftNonTargetingValues(currentValues, nextValues),
+      );
+    },
+    [],
+  );
+  const updateTargetingDraftValues = useCallback(
+    (nextValues: CampaignFormValues) => {
+      setDraftCampaignValues((currentValues) =>
+        mergeCampaignDraftTargetingValues(currentValues, nextValues),
+      );
+    },
+    [],
+  );
   const draftPreviewViewModel = useMemo(
     () => ({
       ...designViewModel,
@@ -1760,10 +1803,12 @@ export default function EditCampaignPage() {
 
   useEffect(() => {
     const handleExperimentAutoWinnerState = (event: Event) => {
-      const detail = (event as CustomEvent<{
-        dirty?: boolean;
-        saving?: boolean;
-      }>).detail;
+      const detail = (
+        event as CustomEvent<{
+          dirty?: boolean;
+          saving?: boolean;
+        }>
+      ).detail;
 
       setExperimentAutoWinnerSaveBarState({
         dirty: Boolean(detail?.dirty),
@@ -1812,6 +1857,10 @@ export default function EditCampaignPage() {
         onDiscard={discardDraft}
         onSave={() => {
           if (hasCampaignDraftUnsavedChanges) {
+            if (requestCampaignDraftSubmitFromActiveForm("saveDraft")) {
+              return;
+            }
+
             window.dispatchEvent(new CustomEvent("promo-pulse:campaign-save"));
             return;
           }
@@ -1831,6 +1880,10 @@ export default function EditCampaignPage() {
             isSubmitting: navigation.state === "submitting",
             isPublishing,
             onPublish: () => {
+              if (requestCampaignDraftSubmitFromActiveForm("publishCampaign")) {
+                return;
+              }
+
               window.dispatchEvent(
                 new CustomEvent("promo-pulse:campaign-publish"),
               );
@@ -1899,7 +1952,7 @@ export default function EditCampaignPage() {
                   errors={actionData?.errors}
                   onDesignChange={setDraftDesignValues}
                   onMobileDesignChange={setDraftMobileDesignValues}
-                  onValuesChange={setDraftCampaignValues}
+                  onValuesChange={updateCampaignDraftValues}
                 />
               ),
             },
@@ -2051,7 +2104,7 @@ export default function EditCampaignPage() {
                     errors={actionData?.errors}
                     onDesignChange={setDraftDesignValues}
                     onMobileDesignChange={setDraftMobileDesignValues}
-                    onValuesChange={setDraftCampaignValues}
+                    onValuesChange={updateTargetingDraftValues}
                   />
                   <BehaviorTargetingEditor
                     errors={actionData?.behaviorTargetingErrors}
@@ -2114,6 +2167,75 @@ export default function EditCampaignPage() {
 }
 
 const campaignDraftSaveBarId = "counterpulse-campaign-draft-save-bar";
+
+const campaignTargetingDraftFields = [
+  "productSelection",
+  "productIds",
+  "excludeProductIds",
+  "collectionIds",
+  "productTags",
+  "urlContains",
+  "excludedUrlContains",
+  "countrySelection",
+  "countries",
+] as const satisfies ReadonlyArray<keyof CampaignFormValues>;
+
+function mergeCampaignDraftNonTargetingValues(
+  currentValues: CampaignFormValues,
+  nextValues: CampaignFormValues,
+) {
+  const mergedValues: CampaignFormValues = { ...nextValues };
+
+  for (const field of campaignTargetingDraftFields) {
+    mergedValues[field] = currentValues[field] as never;
+  }
+
+  return areCampaignFormValuesEqual(currentValues, mergedValues)
+    ? currentValues
+    : mergedValues;
+}
+
+function mergeCampaignDraftTargetingValues(
+  currentValues: CampaignFormValues,
+  nextValues: CampaignFormValues,
+) {
+  const mergedValues: CampaignFormValues = { ...currentValues };
+
+  for (const field of campaignTargetingDraftFields) {
+    mergedValues[field] = nextValues[field] as never;
+  }
+
+  return areCampaignFormValuesEqual(currentValues, mergedValues)
+    ? currentValues
+    : mergedValues;
+}
+
+function areCampaignFormValuesEqual(
+  currentValues: CampaignFormValues,
+  nextValues: CampaignFormValues,
+) {
+  return JSON.stringify(currentValues) === JSON.stringify(nextValues);
+}
+
+function requestCampaignDraftSubmitFromActiveForm(
+  action: "saveDraft" | "publishCampaign",
+) {
+  const activeForm =
+    document.querySelector<HTMLFormElement>(
+      ".counterpulse-editor-panel:not([hidden]) form[data-campaign-form]",
+    ) ?? document.querySelector<HTMLFormElement>("form[data-campaign-form]");
+
+  if (!activeForm) return false;
+
+  const actionInput = activeForm.elements.namedItem("_action");
+
+  if (actionInput instanceof HTMLInputElement) {
+    actionInput.value = action;
+  }
+
+  activeForm.requestSubmit();
+  return true;
+}
 
 function CampaignDraftSaveBar({
   disabled,
@@ -2310,6 +2432,8 @@ function formatUnifiedCampaignTypeLabel(values: CampaignFormValues) {
 
 function shouldClearDiscountSyncForCampaignType(values: CampaignFormValues) {
   return (
+    (values.goal === "CART_RESCUE" &&
+      values.cartRescueReason !== "FREE_SHIPPING_GOAL") ||
     values.goal === "ANNOUNCEMENT" ||
     values.goal === "DELIVERY_CUTOFF" ||
     values.goal === "LOW_STOCK_URGENCY" ||
@@ -2374,6 +2498,29 @@ function toCampaignTimerFormValues(
         : "UNPUBLISH_TIMER",
     timerRecurringHour: String(recurringCutoff.hour),
     timerRecurringMinute: String(recurringCutoff.minute),
+  };
+}
+
+function toCampaignCartRescueFormValues(
+  settings: {
+    rescueReason?: string | null;
+    showButton?: boolean | null;
+    showTimer?: boolean | null;
+  } | null,
+): Pick<
+  CampaignFormValues,
+  "cartRescueReason" | "cartRescueShowButton" | "cartRescueShowTimer"
+> {
+  const reason = settings?.rescueReason ?? "";
+
+  return {
+    cartRescueReason: isSupportedCartRescueReason(reason)
+      ? reason
+      : defaultCartRescueSettingsValues.rescueReason,
+    cartRescueShowButton:
+      settings?.showButton ?? defaultCartRescueSettingsValues.showButton,
+    cartRescueShowTimer:
+      settings?.showTimer ?? defaultCartRescueSettingsValues.showTimer,
   };
 }
 

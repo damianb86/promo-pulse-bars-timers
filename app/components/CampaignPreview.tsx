@@ -564,18 +564,23 @@ function PromoSurface({
         />
       ) : null}
 
-      {(viewModel.discountCode || (design.showButton && viewModel.ctaText)) && (
+      {(viewModel.discountCode ||
+        (design.showButton &&
+          viewModel.cartRescue?.showButton !== false &&
+          viewModel.ctaText)) && (
         <div className="counterpulse-preview-actions">
           {viewModel.discountCode && (
             <span className="counterpulse-preview-code">
               {viewModel.discountCode}
             </span>
           )}
-          {design.showButton && viewModel.ctaText && (
-            <span className="counterpulse-preview-cta">
-              {viewModel.ctaText}
-            </span>
-          )}
+          {design.showButton &&
+            viewModel.cartRescue?.showButton !== false &&
+            viewModel.ctaText && (
+              <span className="counterpulse-preview-cta">
+                {viewModel.ctaText}
+              </span>
+            )}
         </div>
       )}
 
@@ -942,7 +947,11 @@ function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
 }
 
 function buildFreeShippingPreview(viewModel: CampaignViewModel) {
-  if (viewModel.type !== "FREE_SHIPPING_GOAL" || !viewModel.freeShipping) {
+  if (
+    !viewModel.freeShipping ||
+    (viewModel.type !== "FREE_SHIPPING_GOAL" &&
+      viewModel.cartRescue?.rescueReason !== "FREE_SHIPPING_GOAL")
+  ) {
     return null;
   }
 

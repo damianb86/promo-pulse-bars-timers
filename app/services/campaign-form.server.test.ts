@@ -12,6 +12,7 @@ import { parseDeliveryCutoffSettingsFormData } from "./delivery-cutoff-settings-
 import { parseDiscountSettingsFormData } from "./discount-settings-form.server";
 import { parseFreeShippingSettingsFormData } from "./free-shipping-settings-form.server";
 import {
+  buildCampaignCartRescueSettingsValues,
   buildCampaignFreeShippingSettingsValues,
   buildCampaignTargetingValues,
   buildCampaignTimerSettingsValues,
@@ -405,6 +406,50 @@ describe("advanced campaign settings form parsing", () => {
     });
   });
 
+  it("parses cart rescue reason, timer, button, placements, and free shipping threshold", () => {
+    const parsed = parseCampaignFormData(
+      formData({
+        goal: "CART_RESCUE",
+        type: "CART_TIMER",
+        name: "Cart rescue free shipping",
+        headline: "You are close to free shipping",
+        subheadline: "Add a little more to unlock shipping benefits.",
+        ctaText: "Checkout",
+        ctaUrl: "/checkout",
+        placementTypes: ["CART_DRAWER", "CART_PAGE"],
+        cartRescueReason: "FREE_SHIPPING_GOAL",
+        cartRescueShowButton: "on",
+        cartRescueShowTimer: "false",
+        cartTimerDurationMinutes: "45",
+        cartTimerResetBehavior: "ON_SESSION_END",
+        freeShippingThresholdAmount: "80",
+        freeShippingCurrencyCode: "usd",
+        freeShippingProgressStyle: "COMPACT",
+      }),
+    );
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values).toMatchObject({
+      goal: "CART_RESCUE",
+      type: "CART_TIMER",
+      placementTypes: ["CART_DRAWER", "CART_PAGE"],
+      cartRescueReason: "FREE_SHIPPING_GOAL",
+      cartRescueShowButton: true,
+      cartRescueShowTimer: false,
+      freeShippingCurrencyCode: "USD",
+      freeShippingProgressStyle: "COMPACT",
+    });
+    expect(buildCampaignCartRescueSettingsValues(parsed.values)).toEqual({
+      rescueReason: "FREE_SHIPPING_GOAL",
+      showButton: true,
+      showTimer: false,
+    });
+    expect(buildCampaignTimerSettingsValues(parsed.values)).toMatchObject({
+      mode: "FIXED_DATE",
+      durationMinutes: null,
+    });
+  });
+
   it("validates goal-specific campaign settings", () => {
     expect(
       parseCampaignFormData(
@@ -675,11 +720,15 @@ describe("advanced campaign settings form parsing", () => {
   });
 });
 
-function formData(values: Record<string, string>) {
+function formData(values: Record<string, string | string[]>) {
   const data = new FormData();
 
   for (const [key, value] of Object.entries(values)) {
-    data.set(key, value);
+    if (Array.isArray(value)) {
+      value.forEach((item) => data.append(key, item));
+    } else {
+      data.set(key, value);
+    }
   }
 
   return data;

@@ -1,4 +1,5 @@
 import {
+  CartRescueReason,
   CampaignStatus,
   PlacementType,
   Prisma,
@@ -64,6 +65,7 @@ type CampaignBasicsInput = {
   ctaText: string;
   ctaUrl: string;
   expiredText: string;
+  cartRescueSettings: CartRescueSettingsInput | null;
   timerSettings: {
     mode: TimerMode;
     durationMinutes: number | null;
@@ -104,6 +106,12 @@ type LowStockSettingsInput = {
   threshold: number;
   showExactQuantity: boolean;
   fallbackMessage: string;
+};
+
+type CartRescueSettingsInput = {
+  rescueReason: CartRescueReason;
+  showTimer: boolean;
+  showButton: boolean;
 };
 
 type BadgeSettingsInput = BadgeSettingsValues;
@@ -318,6 +326,29 @@ export async function updateCampaignBasicsForShop(
         expiredBehavior: input.timerSettings.expiredBehavior,
       },
     });
+
+    if (input.type === "CART_TIMER" || input.goal === "CART_RESCUE") {
+      const settings = input.cartRescueSettings ?? {
+        rescueReason: CartRescueReason.CART_RESERVED,
+        showTimer: true,
+        showButton: true,
+      };
+
+      await tx.cartRescueSettings.upsert({
+        where: { campaignId: id },
+        create: {
+          campaignId: id,
+          rescueReason: settings.rescueReason,
+          showTimer: settings.showTimer,
+          showButton: settings.showButton,
+        },
+        update: {
+          rescueReason: settings.rescueReason,
+          showTimer: settings.showTimer,
+          showButton: settings.showButton,
+        },
+      });
+    }
 
     if (input.type === "FREE_SHIPPING_GOAL" || input.goal === "FREE_SHIPPING") {
       await tx.freeShippingSettings.upsert({
@@ -989,6 +1020,17 @@ export async function duplicateCampaign(id: string, shopId: string) {
             },
           }
         : {}),
+      ...(campaign.cartRescueSettings
+        ? {
+            cartRescueSettings: {
+              create: {
+                rescueReason: campaign.cartRescueSettings.rescueReason,
+                showTimer: campaign.cartRescueSettings.showTimer,
+                showButton: campaign.cartRescueSettings.showButton,
+              },
+            },
+          }
+        : {}),
       ...(campaign.freeShippingSettings
         ? {
             freeShippingSettings: {
@@ -1245,6 +1287,10 @@ function hydratePublishedCampaignSnapshot(
     timerSettings: readNullableObject(
       snapshot.timerSettings,
       campaign.timerSettings,
+    ),
+    cartRescueSettings: readNullableObject(
+      snapshot.cartRescueSettings,
+      campaign.cartRescueSettings,
     ),
     freeShippingSettings: readNullableObject(
       snapshot.freeShippingSettings,

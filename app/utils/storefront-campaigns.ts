@@ -779,15 +779,22 @@ function matchesPathContains(allowedValues: string[], path: string) {
 
   const normalizedPath = normalizePathTarget(path);
 
-  return allowedValues.some((allowedValue) =>
-    normalizedPath.includes(normalizePathTarget(allowedValue)),
-  );
+  return allowedValues.some((allowedValue) => {
+    const normalizedTarget = normalizePathTarget(allowedValue);
+
+    if (normalizedTarget.startsWith("page:")) {
+      return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
+    }
+
+    return normalizedPath.includes(normalizedTarget);
+  });
 }
 
 function normalizePathTarget(value: string) {
   const trimmedValue = value.trim();
 
   if (!trimmedValue) return "";
+  if (/^page:[a-z]+$/i.test(trimmedValue)) return trimmedValue.toLowerCase();
 
   try {
     const url = new URL(trimmedValue);
@@ -795,6 +802,28 @@ function normalizePathTarget(value: string) {
   } catch {
     return trimmedValue.toLowerCase();
   }
+}
+
+function matchesStorefrontPageTarget(target: string, normalizedPath: string) {
+  const pathname = normalizedPath.split("?")[0]?.replace(/\/+$/, "") || "/";
+
+  if (target === "page:home") return pathname === "/";
+  if (target === "page:product") {
+    return (
+      pathname.startsWith("/products/") ||
+      /^\/collections\/[^/]+\/products\//.test(pathname)
+    );
+  }
+  if (target === "page:collection") {
+    return /^\/collections\/[^/]+$/.test(pathname);
+  }
+  if (target === "page:collections") return pathname === "/collections";
+  if (target === "page:page") return pathname.startsWith("/pages/");
+  if (target === "page:cart") return pathname === "/cart";
+  if (target === "page:search") return pathname === "/search";
+  if (target === "page:blog") return pathname.startsWith("/blogs/");
+
+  return false;
 }
 
 function matchesAny(allowedValues: string[], actualValues: string[]) {

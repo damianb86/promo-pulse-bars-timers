@@ -571,6 +571,98 @@ describe("storefront campaign serialization", () => {
     ).toEqual(["eligible"]);
   });
 
+  it("matches common Shopify page type URL targeting tokens", () => {
+    const campaigns = [
+      buildCampaign({
+        id: "home-only",
+        targeting: { urlContains: ["page:home"] },
+      }),
+      buildCampaign({
+        id: "product-only",
+        targeting: { urlContains: ["page:product"] },
+      }),
+      buildCampaign({
+        id: "collection-only",
+        targeting: { urlContains: ["page:collection"] },
+      }),
+      buildCampaign({
+        id: "pages-only",
+        targeting: { urlContains: ["page:page"] },
+      }),
+      buildCampaign({
+        id: "collections-index-only",
+        targeting: { urlContains: ["page:collections"] },
+      }),
+      buildCampaign({
+        id: "search-only",
+        targeting: { urlContains: ["page:search"] },
+      }),
+      buildCampaign({
+        id: "blog-only",
+        targeting: { urlContains: ["page:blog"] },
+      }),
+      buildCampaign({
+        id: "not-cart",
+        targeting: { excludedUrlContains: ["page:cart"] },
+      }),
+    ];
+
+    expect(
+      serializeStorefrontCampaigns(campaigns, baseContext({ path: "/" })).map(
+        (campaign) => campaign.id,
+      ),
+    ).toEqual(["home-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/collections/sale/products/hat" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["product-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/collections/sale" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["collection-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/collections" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["collections-index-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/pages/about" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["pages-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/cart" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual([]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/search?q=hat" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["search-only", "not-cart"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        campaigns,
+        baseContext({ path: "/blogs/news/launch" }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["blog-only", "not-cart"]);
+  });
+
   it("applies behavior targeting only when the visitor profile matches", () => {
     const campaign = buildCampaign({
       id: "new-visitor-offer",

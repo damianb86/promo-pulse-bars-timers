@@ -96,6 +96,68 @@ test("delivery cutoff settings persist from the campaign editor", async ({
   expectNoFailedRequests(page);
 });
 
+test("URL page type targeting persists from the campaign editor", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app");
+
+  await createCampaignViaUI({
+    headline: "Page targeting",
+    name: "E2E URL Page Targeting",
+    placement: "TOP_BAR",
+    status: "ACTIVE",
+    type: "COUNTDOWN_BAR",
+  });
+
+  await page.getByRole("tab", { name: "Targeting" }).click();
+  const form = page.locator("#campaign-targeting-form");
+  const urlRegion = form.getByRole("region", { name: "URL eligibility" });
+  const includeGroup = urlRegion.getByRole("group", {
+    name: "Show only on page types",
+  });
+  const excludeGroup = urlRegion.getByRole("group", {
+    name: "Exclude page types",
+  });
+
+  await includeGroup.getByLabel("Product pages").check();
+  await includeGroup.getByLabel("Store pages").check();
+  await excludeGroup.getByLabel("Cart page").check();
+  await urlRegion
+    .getByLabel("Show only on custom URLs containing")
+    .fill("/products/special");
+  await urlRegion
+    .getByLabel("Exclude custom URLs containing")
+    .fill("/pages/wholesale");
+
+  await expect(form.locator('input[name="urlContains"]')).toHaveValue(
+    "page:product\npage:page\n/products/special",
+  );
+  await expect(form.locator('input[name="excludedUrlContains"]')).toHaveValue(
+    "page:cart\n/pages/wholesale",
+  );
+
+  await saveCurrentCampaignDraft(page);
+  await page.reload();
+  await page.getByRole("tab", { name: "Targeting" }).click();
+
+  await expect(includeGroup.getByLabel("Product pages")).toBeChecked();
+  await expect(includeGroup.getByLabel("Store pages")).toBeChecked();
+  await expect(excludeGroup.getByLabel("Cart page")).toBeChecked();
+  await expect(
+    urlRegion.getByLabel("Show only on custom URLs containing"),
+  ).toHaveValue("/products/special");
+  await expect(
+    urlRegion.getByLabel("Exclude custom URLs containing"),
+  ).toHaveValue("/pages/wholesale");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("low stock, badge, and manual discount settings can be saved", async ({
   page,
   resetDb,

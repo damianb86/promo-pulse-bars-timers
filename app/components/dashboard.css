@@ -1961,6 +1961,101 @@ s-page::part(page) {
   gap: 14px;
 }
 
+.counterpulse-url-page-targeting-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  border-top: 1px solid #edf0f2;
+  padding: 14px 14px 0;
+}
+
+.counterpulse-url-page-targeting {
+  display: grid;
+  gap: 10px;
+}
+
+.counterpulse-url-page-targeting__header {
+  display: grid;
+  gap: 2px;
+}
+
+.counterpulse-url-page-targeting__header strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 18px;
+}
+
+.counterpulse-url-page-targeting__header span {
+  color: #616161;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-url-page-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.counterpulse-url-page-option {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 9px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.counterpulse-url-page-option.is-selected {
+  border-color: #008060;
+  background: #f4faf7;
+  box-shadow: 0 0 0 1px #008060;
+}
+
+.counterpulse-url-page-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 2px 0 0;
+  accent-color: #008060;
+}
+
+.counterpulse-url-page-option span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.counterpulse-url-page-option strong {
+  color: #202223;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 16px;
+}
+
+.counterpulse-url-page-option small {
+  color: #616161;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.counterpulse-url-page-option code {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 5px;
+  padding: 2px 5px;
+  background: #f1f2f4;
+  color: #5c5f62;
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .counterpulse-product-eligibility-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6083,6 +6178,7 @@ s-page::part(page) {
   .counterpulse-toggle-grid,
   .counterpulse-panel-grid,
   .counterpulse-url-targeting-grid,
+  .counterpulse-url-page-targeting-grid,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,
   .counterpulse-email-timer-card,
@@ -6169,6 +6265,8 @@ s-page::part(page) {
   .counterpulse-editor-actionbar,
   .counterpulse-panel-grid,
   .counterpulse-url-targeting-grid,
+  .counterpulse-url-page-targeting-grid,
+  .counterpulse-url-page-options,
   .counterpulse-product-eligibility-options,
   .counterpulse-email-style-presets,
   .counterpulse-email-unit-grid,

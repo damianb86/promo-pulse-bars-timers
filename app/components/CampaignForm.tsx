@@ -115,6 +115,7 @@ type TextListFieldName =
   | "countries"
   | "urlContains"
   | "excludedUrlContains";
+type UrlTargetingFieldName = "urlContains" | "excludedUrlContains";
 type AiApplyValuesEventDetail = {
   design?: CampaignDesignValues;
   values?: Partial<CampaignFormValues>;
@@ -197,6 +198,63 @@ const builderTabs: Array<{
       "Check the important settings before confirming changes that can affect the storefront.",
   },
 ];
+
+const urlPageTargetingOptions = [
+  {
+    token: "page:home",
+    label: "Home page",
+    description: "Only the storefront root URL.",
+    example: "/",
+  },
+  {
+    token: "page:product",
+    label: "Product pages",
+    description: "Product detail pages, including collection product URLs.",
+    example: "/products/...",
+  },
+  {
+    token: "page:collection",
+    label: "Collection pages",
+    description: "Individual collection listing pages.",
+    example: "/collections/summer",
+  },
+  {
+    token: "page:collections",
+    label: "All collections page",
+    description: "The storefront collections index.",
+    example: "/collections",
+  },
+  {
+    token: "page:page",
+    label: "Store pages",
+    description: "About, contact, FAQ, and other Shopify pages.",
+    example: "/pages/about",
+  },
+  {
+    token: "page:cart",
+    label: "Cart page",
+    description: "The standard cart page.",
+    example: "/cart",
+  },
+  {
+    token: "page:search",
+    label: "Search page",
+    description: "Search results pages.",
+    example: "/search",
+  },
+  {
+    token: "page:blog",
+    label: "Blogs and articles",
+    description: "Blog index and article pages.",
+    example: "/blogs/news",
+  },
+] as const;
+
+type UrlPageTargetingToken = (typeof urlPageTargetingOptions)[number]["token"];
+
+const urlPageTargetingTokenSet = new Set<string>(
+  urlPageTargetingOptions.map((option) => option.token),
+);
 
 const timerModeOptions: Array<{
   description: string;
@@ -944,6 +1002,55 @@ export function CampaignForm({
       [field]: items.join("\n"),
     }));
   };
+
+  const selectedIncludedUrlPageTokens = useMemo(
+    () => selectedUrlPageTargetingTokens(formValues.urlContains),
+    [formValues.urlContains],
+  );
+  const selectedExcludedUrlPageTokens = useMemo(
+    () => selectedUrlPageTargetingTokens(formValues.excludedUrlContains),
+    [formValues.excludedUrlContains],
+  );
+  const manualIncludedUrlText = useMemo(
+    () => manualUrlTargetingText(formValues.urlContains),
+    [formValues.urlContains],
+  );
+  const manualExcludedUrlText = useMemo(
+    () => manualUrlTargetingText(formValues.excludedUrlContains),
+    [formValues.excludedUrlContains],
+  );
+
+  const setUrlPageTargetingToken = (
+    field: UrlTargetingFieldName,
+    token: UrlPageTargetingToken,
+    checked: boolean,
+  ) => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      [field]: mergeUrlTargetingValue(
+        toggleUrlPageTargetingToken(
+          selectedUrlPageTargetingTokens(currentValues[field]),
+          token,
+          checked,
+        ),
+        manualUrlTargetingItems(currentValues[field]),
+      ),
+    }));
+  };
+
+  const setManualUrlTargetingField =
+    (field: UrlTargetingFieldName) =>
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const manualItems = splitCampaignList(event.currentTarget.value);
+
+      setFormValues((currentValues) => ({
+        ...currentValues,
+        [field]: mergeUrlTargetingValue(
+          selectedUrlPageTargetingTokens(currentValues[field]),
+          manualItems,
+        ),
+      }));
+    };
 
   const setManualListField =
     (field: TextListFieldName) => (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -2554,34 +2661,70 @@ export function CampaignForm({
                       URL eligibility
                     </h3>
                     <p>
-                      Limit this campaign to storefront paths or exclude paths
-                      where it should never render. Add one path or full URL per
-                      line.
+                      Select common Shopify page types or add custom storefront
+                      paths. Include rules limit where the campaign can render;
+                      exclude rules always prevent rendering.
                     </p>
+                  </div>
+                  <input
+                    name="urlContains"
+                    type="hidden"
+                    value={formValues.urlContains ?? ""}
+                  />
+                  <input
+                    name="excludedUrlContains"
+                    type="hidden"
+                    value={formValues.excludedUrlContains ?? ""}
+                  />
+                  <div className="counterpulse-url-page-targeting-grid">
+                    <UrlPageTargetingPicker
+                      selectedTokens={selectedIncludedUrlPageTokens}
+                      title="Show only on page types"
+                      description="Leave empty to keep the campaign eligible on any page that matches the rest of targeting."
+                      onToggle={(token, checked) =>
+                        setUrlPageTargetingToken(
+                          "urlContains",
+                          token,
+                          checked,
+                        )
+                      }
+                    />
+                    <UrlPageTargetingPicker
+                      selectedTokens={selectedExcludedUrlPageTokens}
+                      title="Exclude page types"
+                      description="Use this when a campaign should never render on specific page groups."
+                      onToggle={(token, checked) =>
+                        setUrlPageTargetingToken(
+                          "excludedUrlContains",
+                          token,
+                          checked,
+                        )
+                      }
+                    />
                   </div>
                   <div className="counterpulse-url-targeting-grid">
                     <FormField
-                      label="Show only on URLs containing"
+                      label="Show only on custom URLs containing"
                       error={errors.urlContains}
                     >
                       <textarea
-                        name="urlContains"
                         rows={4}
                         placeholder={"/products/summer-hat\n/collections/sale"}
-                        value={formValues.urlContains ?? ""}
-                        onChange={setManualListField("urlContains")}
+                        value={manualIncludedUrlText}
+                        onChange={setManualUrlTargetingField("urlContains")}
                       />
                     </FormField>
                     <FormField
-                      label="Exclude URLs containing"
+                      label="Exclude custom URLs containing"
                       error={errors.excludedUrlContains}
                     >
                       <textarea
-                        name="excludedUrlContains"
                         rows={4}
                         placeholder={"/pages/wholesale\n?preview_theme_id="}
-                        value={formValues.excludedUrlContains ?? ""}
-                        onChange={setManualListField("excludedUrlContains")}
+                        value={manualExcludedUrlText}
+                        onChange={setManualUrlTargetingField(
+                          "excludedUrlContains",
+                        )}
                       />
                     </FormField>
                   </div>
@@ -3171,6 +3314,110 @@ function TabSummaryGrid({ rows }: { rows: string[][] }) {
       ))}
     </dl>
   );
+}
+
+function UrlPageTargetingPicker({
+  description,
+  selectedTokens,
+  title,
+  onToggle,
+}: {
+  description: string;
+  selectedTokens: UrlPageTargetingToken[];
+  title: string;
+  onToggle: (token: UrlPageTargetingToken, checked: boolean) => void;
+}) {
+  return (
+    <div className="counterpulse-url-page-targeting">
+      <div
+        className="counterpulse-url-page-targeting__header"
+        aria-label={title}
+        role="group"
+      >
+        <strong>{title}</strong>
+        <span>{description}</span>
+        <div className="counterpulse-url-page-options">
+          {urlPageTargetingOptions.map((option) => {
+            const checked = selectedTokens.includes(option.token);
+
+            return (
+              <label
+                className={
+                  checked
+                    ? "counterpulse-url-page-option is-selected"
+                    : "counterpulse-url-page-option"
+                }
+                key={option.token}
+              >
+                <input
+                  aria-label={option.label}
+                  checked={checked}
+                  type="checkbox"
+                  onChange={(event) =>
+                    onToggle(option.token, event.currentTarget.checked)
+                  }
+                />
+                <span>
+                  <strong>{option.label}</strong>
+                  <small>{option.description}</small>
+                  <code>{option.example}</code>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function selectedUrlPageTargetingTokens(
+  value: string | undefined,
+): UrlPageTargetingToken[] {
+  const selected = new Set(
+    splitCampaignList(value ?? "")
+      .map((item) => item.toLowerCase())
+      .filter((item) => urlPageTargetingTokenSet.has(item)),
+  );
+
+  return urlPageTargetingOptions
+    .map((option) => option.token)
+    .filter((token) => selected.has(token));
+}
+
+function manualUrlTargetingItems(value: string | undefined) {
+  return splitCampaignList(value ?? "").filter(
+    (item) => !urlPageTargetingTokenSet.has(item.toLowerCase()),
+  );
+}
+
+function manualUrlTargetingText(value: string | undefined) {
+  return manualUrlTargetingItems(value).join("\n");
+}
+
+function toggleUrlPageTargetingToken(
+  currentTokens: UrlPageTargetingToken[],
+  token: UrlPageTargetingToken,
+  checked: boolean,
+) {
+  const nextTokens = new Set(currentTokens);
+
+  if (checked) {
+    nextTokens.add(token);
+  } else {
+    nextTokens.delete(token);
+  }
+
+  return urlPageTargetingOptions
+    .map((option) => option.token)
+    .filter((optionToken) => nextTokens.has(optionToken));
+}
+
+function mergeUrlTargetingValue(
+  pageTokens: UrlPageTargetingToken[],
+  manualItems: string[],
+) {
+  return [...pageTokens, ...manualItems].join("\n");
 }
 
 function TargetingRadioOption({

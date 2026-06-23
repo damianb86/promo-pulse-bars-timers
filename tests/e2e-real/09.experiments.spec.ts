@@ -26,15 +26,23 @@ test.describe("real experiments", () => {
     await openCampaignEditor(page, campaignName);
     const app = await getAppFrameOrPage(page);
 
-    if (await app.getByText(/experiments are locked/i).isVisible().catch(() => false)) {
-      testInfo.skip(true, "Experiments require a plan that enables AB testing.");
+    if (
+      await app
+        .getByText(/experiments are locked/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      testInfo.skip(
+        true,
+        "Experiments require a plan that enables AB testing.",
+      );
     }
 
     const experimentName = await createExperimentViaUI(page, campaignName);
     const refreshedApp = await getAppFrameOrPage(page);
 
     await expect(
-      refreshedApp.locator("table", { hasText: experimentName }).first(),
+      refreshedApp.getByRole("heading", { name: experimentName }).first(),
     ).toBeVisible();
     await expectNoConsoleErrors(page);
   });

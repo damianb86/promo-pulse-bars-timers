@@ -66,6 +66,19 @@ describe("campaign form parsing and validation", () => {
     ).toBe("PAUSED");
   });
 
+  it("uses the visible expired title value when hidden message fields are duplicated", () => {
+    const data = new FormData();
+
+    data.set("name", "Expired title");
+    data.set("timerExpiredBehavior", "SHOW_CUSTOM_TITLE");
+    data.append("expiredText", "Hidden default title");
+    data.append("expiredText", "Buyer-specific finished title");
+
+    expect(parseCampaignFormData(data).values.expiredText).toBe(
+      "Buyer-specific finished title",
+    );
+  });
+
   it("validates design colors, ranges, contrast, and Pro-only custom CSS", () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");

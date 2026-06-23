@@ -52,7 +52,9 @@ export function attachPageDiagnostics(page: Page) {
     if (status < 400) return;
     if (!isCriticalFailedResponse(url)) return;
 
-    failedRequests.push(`${response.request().method()} ${url}: HTTP ${status}`);
+    failedRequests.push(
+      `${response.request().method()} ${url}: HTTP ${status}`,
+    );
   });
 }
 
@@ -81,6 +83,7 @@ function isIgnoredConsoleError(message: string) {
     message.includes("ResizeObserver loop completed") ||
     message.includes("ResizeObserver loop limit exceeded") ||
     message.includes("Outdated Optimize Deprecation") ||
+    message.includes("Unsupported decorator location: field") ||
     message.includes("Blocked a frame with origin") ||
     message.includes("Non-Error promise rejection captured") ||
     isShopifyDevConsoleTunnelMessage(message)

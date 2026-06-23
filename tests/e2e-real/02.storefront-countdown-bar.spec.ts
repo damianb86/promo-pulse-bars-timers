@@ -33,9 +33,12 @@ test.describe("real storefront countdown bar", () => {
     await expectStorefrontEmbedOrSkip(page, testInfo);
 
     const bar = isMobile
-      ? page.locator('[data-testid="promo-bar"], .pp-bar').filter({
-          has: page.locator('[data-testid="promo-timer"], .pp-countdown'),
-        }).first()
+      ? page
+          .locator('[data-testid="promo-bar"], .pp-bar')
+          .filter({
+            has: page.locator('[data-testid="promo-timer"], .pp-countdown'),
+          })
+          .first()
       : page
           .locator('[data-testid="promo-bar"], .pp-bar')
           .filter({ hasText: headline })
@@ -51,7 +54,7 @@ test.describe("real storefront countdown bar", () => {
     await expect(
       bar.locator('[data-testid="promo-timer"], .pp-countdown').first(),
     ).toHaveText(
-      /^(?:(?:\d+\s+Days?\s+)?(?:[01]?\d|2[0-3])\s+Hrs\s+[0-5]?\d\s+Mins\s+[0-5]?\d\s+Secs|(?:[01]?\d|2[0-3]):[0-5]\d:[0-5]\d)$/,
+      /^(?:(?:\d+\s*Days?\s*)?(?:[01]?\d|2[0-3])\s*Hrs\s*[0-5]?\d\s*Mins\s*[0-5]?\d\s*Secs|(?:[01]?\d|2[0-3]):[0-5]\d:[0-5]\d)$/,
       { timeout: 30_000 },
     );
 

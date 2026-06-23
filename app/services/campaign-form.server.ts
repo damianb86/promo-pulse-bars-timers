@@ -129,7 +129,7 @@ export function parseCampaignFormData(
     subheadline: readString(formData, "subheadline"),
     ctaText: readString(formData, "ctaText"),
     ctaUrl: readString(formData, "ctaUrl"),
-    expiredText: readString(formData, "expiredText"),
+    expiredText: readLastString(formData, "expiredText"),
     timerMode: readOption(
       formData,
       "timerMode",
@@ -494,6 +494,12 @@ export function hasCampaignFormErrors(errors: CampaignFormErrors) {
 
 function readString(formData: FormData, key: keyof CampaignFormValues) {
   const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readLastString(formData: FormData, key: keyof CampaignFormValues) {
+  const values = formData.getAll(key);
+  const value = values.at(-1);
   return typeof value === "string" ? value.trim() : "";
 }
 

@@ -51,10 +51,8 @@ test.describe("real admin campaign CRUD", () => {
     await expect(
       app
         .getByRole("tabpanel", { name: "Message" })
-        .locator('input[name="headline"]'),
-    ).toHaveValue(
-      updatedHeadline,
-    );
+        .getByRole("textbox", { name: "Headline", exact: true }),
+    ).toHaveValue(updatedHeadline);
 
     await activateCampaign(page, campaignName);
     await pauseCampaign(page, campaignName);

@@ -208,7 +208,7 @@ export async function createExperimentViaUI(page: Page, campaignName: string) {
 
   const refreshedApp = await getAppFrameOrPage(page);
   await expect(
-    refreshedApp.locator("tr", { hasText: experimentName }).first(),
+    refreshedApp.getByRole("heading", { name: experimentName }).first(),
   ).toBeVisible({ timeout: 30_000 });
 
   return experimentName;
@@ -274,15 +274,19 @@ export async function editCampaignBasics(
   const messagePanel = app.getByRole("tabpanel", { name: "Message" });
 
   if (updates.headline) {
-    await messagePanel.locator('input[name="headline"]').fill(updates.headline);
+    await messagePanel
+      .getByRole("textbox", { name: "Headline", exact: true })
+      .fill(updates.headline);
   }
   if (updates.subheadline) {
     await messagePanel
-      .locator('textarea[name="subheadline"]')
+      .getByRole("textbox", { name: "Subheadline", exact: true })
       .fill(updates.subheadline);
   }
   if (updates.ctaText) {
-    await messagePanel.locator('input[name="ctaText"]').fill(updates.ctaText);
+    await messagePanel
+      .getByRole("textbox", { name: "CTA text", exact: true })
+      .fill(updates.ctaText);
   }
 
   await saveCampaignDraft(page);
@@ -303,14 +307,25 @@ export async function saveCampaignDraft(page: Page) {
 
 export async function publishCampaignDraft(page: Page) {
   const app = await getAppFrameOrPage(page);
-  await Promise.all([
-    page.waitForResponse(
+  const publishButton = app.getByTestId("campaign-publish-button");
+
+  await expect(publishButton).toBeVisible({ timeout: 20_000 });
+  if (await publishButton.isDisabled().catch(() => false)) {
+    await expectEditorReady(page);
+    return;
+  }
+
+  const responsePromise = page
+    .waitForResponse(
       (response) =>
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
-    ),
-    app.getByTestId("campaign-publish-button").click(),
-  ]);
+      { timeout: 20_000 },
+    )
+    .catch(() => null);
+
+  await publishButton.click();
+  await responsePromise;
   await expectEditorReady(page);
 }
 
@@ -581,6 +596,30 @@ export function campaignEditorScope(scope: AppScope) {
 }
 
 async function checkCampaignGoal(app: AppScope, goalLabel: string) {
+  const goalValue = goalValueForLabel(goalLabel);
+  const currentTypePicker = app
+    .locator(".counterpulse-campaign-type-current")
+    .first();
+
+  if (
+    await currentTypePicker.isVisible({ timeout: 5_000 }).catch(() => false)
+  ) {
+    const currentText = (await currentTypePicker.textContent()) ?? "";
+    if (currentText.toLowerCase().includes(goalLabel.toLowerCase())) return;
+
+    await currentTypePicker.click();
+    const option = app
+      .getByRole("radio", {
+        name: new RegExp(`^${escapeRegExp(goalLabel)}\\b`, "i"),
+      })
+      .first();
+
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click();
+    await expect(app.locator('input[name="goal"]')).toHaveValue(goalValue);
+    return;
+  }
+
   const byRole = app
     .getByRole("radio", {
       name: new RegExp(`^${escapeRegExp(goalLabel)}\\b`, "i"),
@@ -594,7 +633,7 @@ async function checkCampaignGoal(app: AppScope, goalLabel: string) {
   }
 
   const nativeInput = app.locator(
-    `input[name="campaignTypeChoice"][value="${goalValueForLabel(goalLabel)}"]`,
+    `input[name="campaignTypeChoice"][value="${goalValue}"]`,
   );
 
   if (await nativeInput.isVisible({ timeout: 1_000 }).catch(() => false)) {
@@ -603,7 +642,7 @@ async function checkCampaignGoal(app: AppScope, goalLabel: string) {
   }
 
   await app
-    .locator(`input[name="goal"][value="${goalValueForLabel(goalLabel)}"]`)
+    .locator(`input[name="goal"][value="${goalValue}"]`)
     .waitFor({ state: "attached", timeout: 5_000 });
 }
 

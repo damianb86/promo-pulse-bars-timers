@@ -85,6 +85,14 @@ export type DiscountCodeReport = {
   };
 };
 
+export type TrendReport = {
+  rows: Array<{
+    date: string;
+    impressions: number;
+    clicks: number;
+  }>;
+};
+
 export type WeeklyReport = {
   title: string;
   summary: string;
@@ -99,6 +107,7 @@ export type AdvancedReports = {
   market: MarketReport;
   experiment: ExperimentReport;
   discountCodes: DiscountCodeReport;
+  trend: TrendReport;
   weekly: WeeklyReport;
 };
 
@@ -151,13 +160,14 @@ export async function getAdvancedReports(
   shopId: string,
   filters: AdvancedReportFilters,
 ): Promise<AdvancedReports> {
-  const [revenue, placement, market, experiment, discountCodes] =
+  const [revenue, placement, market, experiment, discountCodes, trend] =
     await Promise.all([
       getRevenueReport(shopId, filters),
       getPlacementReport(shopId, filters),
       getMarketReport(shopId, filters),
       getExperimentReport(shopId, filters),
       getDiscountCodeReport(shopId, filters),
+      getTrendReport(shopId, filters),
     ]);
 
   return {
@@ -167,8 +177,37 @@ export async function getAdvancedReports(
     market,
     experiment,
     discountCodes,
+    trend,
     weekly: buildWeeklyReport(revenue, placement, market, discountCodes),
   };
+}
+
+export async function getTrendReport(
+  shopId: string,
+  filters: AdvancedReportFilters,
+): Promise<TrendReport> {
+  const [events, marketRules] = await Promise.all([
+    loadAnalyticsEvents(shopId, filters),
+    loadMarketRules(shopId),
+  ]);
+  const filteredEvents = applyDerivedEventFilters(events, marketRules, filters);
+  const rows = buildTrendBuckets(filters);
+
+  for (const event of filteredEvents) {
+    const key = toDateKey(event.occurredAt);
+    const row = rows.get(key);
+    if (!row) continue;
+
+    if (impressionEvents.has(event.eventType)) {
+      row.impressions += 1;
+    }
+
+    if (clickEvents.has(event.eventType)) {
+      row.clicks += 1;
+    }
+  }
+
+  return { rows: Array.from(rows.values()) };
 }
 
 export async function getRevenueReport(
@@ -182,7 +221,11 @@ export async function getRevenueReport(
     loadMarketRules(shopId),
   ]);
   const filteredEvents = applyDerivedEventFilters(events, marketRules, filters);
-  const filteredTouches = applyDerivedTouchFilters(touches, marketRules, filters);
+  const filteredTouches = applyDerivedTouchFilters(
+    touches,
+    marketRules,
+    filters,
+  );
   const revenueRecords = buildRevenueRecords(
     filteredEvents,
     selectConversionsForReport(conversions, filteredTouches, filters),
@@ -249,10 +292,14 @@ export async function getPlacementReport(
   );
 
   return {
-    rows: buildDimensionRows(events, (event) => event.placementType ?? "Unknown", {
-      label: formatEnum,
-      revenueRecordsByKey: revenueByPlacement,
-    }),
+    rows: buildDimensionRows(
+      events,
+      (event) => event.placementType ?? "Unknown",
+      {
+        label: formatEnum,
+        revenueRecordsByKey: revenueByPlacement,
+      },
+    ),
   };
 }
 
@@ -267,7 +314,11 @@ export async function getMarketReport(
     loadMarketRules(shopId),
   ]);
   const filteredEvents = applyDerivedEventFilters(events, marketRules, filters);
-  const filteredTouches = applyDerivedTouchFilters(touches, marketRules, filters);
+  const filteredTouches = applyDerivedTouchFilters(
+    touches,
+    marketRules,
+    filters,
+  );
 
   return {
     byCountry: buildDimensionRows(
@@ -318,7 +369,11 @@ export async function getExperimentReport(
     loadAttributionConversions(shopId, filters),
     loadMarketRules(shopId),
   ]);
-  const filteredTouches = applyDerivedTouchFilters(touches, marketRules, filters);
+  const filteredTouches = applyDerivedTouchFilters(
+    touches,
+    marketRules,
+    filters,
+  );
   const filteredConversions = selectConversionsForReport(
     conversions,
     filteredTouches,
@@ -560,6 +615,39 @@ function buildWeeklyReport(
     highlights,
     emailPrepared: false,
   };
+}
+
+function buildTrendBuckets(filters: AdvancedReportFilters) {
+  const rows = new Map<
+    string,
+    { date: string; impressions: number; clicks: number }
+  >();
+  const current = new Date(
+    Date.UTC(
+      filters.start.getUTCFullYear(),
+      filters.start.getUTCMonth(),
+      filters.start.getUTCDate(),
+    ),
+  );
+  const end = new Date(
+    Date.UTC(
+      filters.end.getUTCFullYear(),
+      filters.end.getUTCMonth(),
+      filters.end.getUTCDate(),
+    ),
+  );
+
+  while (current <= end) {
+    const date = toDateKey(current);
+    rows.set(date, { date, impressions: 0, clicks: 0 });
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return rows;
+}
+
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function buildDimensionRows(
@@ -878,7 +966,10 @@ function groupRevenueRecordsByTouchDimension(
     if (!touch) continue;
 
     const key = getKey(touch);
-    records.set(key, [...(records.get(key) ?? []), toRevenueRecord(conversion)]);
+    records.set(key, [
+      ...(records.get(key) ?? []),
+      toRevenueRecord(conversion),
+    ]);
   }
 
   return records;

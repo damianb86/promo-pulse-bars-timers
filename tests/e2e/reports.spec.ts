@@ -13,8 +13,15 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   await resetDb("reports");
   await loginAsDemoShop("/app/reports");
   await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
-  await expect(page.getByText("Revenue overview")).toBeVisible();
-  await expect(page.getByText("Performance by placement")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Advanced reporting" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Performance trend" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Performance by placement" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("row", { name: /US 30 6 20\.0%/ }).first(),
   ).toBeVisible();

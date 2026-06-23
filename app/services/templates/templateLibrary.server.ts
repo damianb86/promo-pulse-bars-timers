@@ -16,6 +16,7 @@ import { defaultBadgeSettingsValues } from "../../types/badge";
 import type { CampaignAiInput, CampaignAiShape } from "../../types/ai-campaign";
 import {
   defaultCampaignDesignValues,
+  findCampaignDesignTemplate,
   type CampaignDesignValues,
 } from "../../types/campaign-design";
 import {
@@ -720,9 +721,11 @@ function readTemplateTexts(value: Prisma.JsonValue): TemplateTexts {
 
 function readTemplateDesign(value: Prisma.JsonValue) {
   const input = readObject(value);
+  const templateKey = readString(input.templateKey) || "clean-minimal";
+  const baseDesign = findCampaignDesignTemplate(templateKey);
   const design: CampaignDesignValues = {
     ...defaultCampaignDesignValues,
-    templateKey: readString(input.templateKey) || "clean-minimal",
+    templateKey,
     layout:
       readEnum(input.layout, [
         "STANDARD",
@@ -927,6 +930,19 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     iconSize: readInteger(input.iconSize, defaultCampaignDesignValues.iconSize),
     customIconUrl: readString(input.customIconUrl),
   };
+
+  for (const key of Object.keys(baseDesign) as Array<
+    keyof CampaignDesignValues
+  >) {
+    const rawValue = input[key];
+
+    if (rawValue === undefined || rawValue === null || rawValue === "") {
+      (design as Record<keyof CampaignDesignValues, unknown>)[key] =
+        baseDesign[key];
+    }
+  }
+  design.templateKey = templateKey;
+  design.showIcon = design.icon !== "NONE";
 
   return design;
 }

@@ -500,7 +500,9 @@ export default function CampaignsPage() {
                       />
                     </td>
                     <td data-label="Experiment">
-                      <CampaignExperimentBadge experiment={campaign.experiment} />
+                      <CampaignExperimentBadge
+                        experiment={campaign.experiment}
+                      />
                     </td>
                     <td data-label="Performance">
                       <CampaignPerformanceSummaryView
@@ -515,10 +517,11 @@ export default function CampaignsPage() {
                     <td data-label="Actions">
                       <div className="counterpulse-row-actions">
                         <Link
-                          className="counterpulse-button-secondary"
+                          className="counterpulse-row-action-button counterpulse-row-action-button--neutral"
                           data-testid="campaign-edit-button"
                           to={`/app/campaigns/${campaign.id}`}
                         >
+                          <CampaignActionIcon action="edit" />
                           Edit
                         </Link>
                         <CampaignActionButton
@@ -689,14 +692,15 @@ function CampaignActionButton({
         <button
           className={
             destructive
-              ? "counterpulse-button-danger"
-              : "counterpulse-button-secondary"
+              ? "counterpulse-row-action-button counterpulse-row-action-button--danger"
+              : "counterpulse-row-action-button counterpulse-row-action-button--neutral"
           }
           data-testid={`campaign-${action}-button`}
           disabled={disabled}
           type="button"
           onClick={() => setIsConfirmOpen(true)}
         >
+          <CampaignActionIcon action={action} />
           {children}
         </button>
       </Form>
@@ -715,6 +719,89 @@ function CampaignActionButton({
         <p>{confirmation.description}</p>
       </ConfirmModal>
     </>
+  );
+}
+
+function CampaignActionIcon({
+  action,
+}: {
+  action: "edit" | "duplicate" | "pause" | "activate" | "delete";
+}) {
+  const paths: Record<typeof action, ReactNode> = {
+    activate: (
+      <path
+        d="M7 5.5v13l10-6.5-10-6.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    ),
+    delete: (
+      <>
+        <path
+          d="M5 7h14M9 7V5h6v2M8 10v8M12 10v8M16 10v8"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <path
+          d="M7 7l1 13h8l1-13"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </>
+    ),
+    duplicate: (
+      <>
+        <rect
+          x="8"
+          y="8"
+          width="10"
+          height="10"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="M6 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </>
+    ),
+    edit: (
+      <path
+        d="M5 17.5V20h2.5L18.7 8.8l-2.5-2.5L5 17.5ZM15.3 5.4l1.1-1.1a1.4 1.4 0 0 1 2 0l1.3 1.3a1.4 1.4 0 0 1 0 2l-1.1 1.1"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    ),
+    pause: (
+      <path
+        d="M8 5h3v14H8V5Zm5 0h3v14h-3V5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    ),
+  };
+
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      {paths[action]}
+    </svg>
   );
 }
 

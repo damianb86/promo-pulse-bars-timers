@@ -114,7 +114,10 @@ describe("template library", () => {
           design: {
             create: expect.objectContaining({
               templateKey: "free-shipping",
+              backgroundColor: "#ECFDF5",
               icon: "TRUCK",
+              timerStyle: "BOXES",
+              timerSurfaceBorderSize: 1,
             }),
           },
           freeShippingSettings: {

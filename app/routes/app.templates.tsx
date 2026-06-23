@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { CampaignPreview } from "../components/CampaignPreview";
 import { AppAlert } from "../components/Notifications";
 import {
   Form,
@@ -11,6 +11,7 @@ import {
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
+import type { PreviewPlacement } from "../components/CampaignPreviewPanel";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
 import { canUsePremiumFeature } from "../services/premiumFeatures.server";
@@ -25,7 +26,15 @@ import {
   type TemplateFilterOptions,
   type TemplateLibraryFilters,
 } from "../services/templates/templateLibrary.server";
+import {
+  findCampaignDesignTemplate,
+  type CampaignDesignValues,
+} from "../types/campaign-design";
 import { formatCampaignOption } from "../types/campaign-options";
+import {
+  buildCampaignViewModel,
+  type CampaignViewModel,
+} from "../utils/campaign-view-model";
 
 type TemplateRow = {
   key: string;
@@ -38,7 +47,9 @@ type TemplateRow = {
   headline: string;
   isSystem: boolean;
   placementType: string;
-  preview: TemplatePreviewData;
+  previewDesign: CampaignDesignValues;
+  previewPlacement: PreviewPlacement;
+  previewViewModel: CampaignViewModel;
   sourceLabel: string;
   subheadline: string;
   aiUrl: string;
@@ -64,21 +75,6 @@ type SourceCampaignRow = {
   status: string;
   type: string;
   updatedAt: string;
-};
-
-type TemplatePreviewData = {
-  accentColor: string;
-  background: string;
-  buttonColor: string;
-  buttonTextColor: string;
-  layout: string;
-  showButton: boolean;
-  showIcon: boolean;
-  showProgressBar: boolean;
-  templateKey: string;
-  textColor: string;
-  timerColor: string;
-  timerStyle: string;
 };
 
 export const loader = async ({
@@ -116,6 +112,10 @@ export const loader = async ({
     shopifyDomain: shop.shopifyDomain,
     templates: templates.map((template) => {
       const texts = readTexts(template.defaultTexts);
+      const settings = readTemplateSettings(template.defaultSettings);
+      const previewDesign = readTemplateDesign(template.defaultDesign);
+      const placementType = readRecommendedPlacement(template.defaultSettings);
+      const previewPlacement = toPreviewPlacement(placementType, template.type);
 
       return {
         key: template.key,
@@ -127,8 +127,18 @@ export const loader = async ({
         type: template.type,
         headline: texts.headline || template.eventName,
         isSystem: template.isSystem,
-        placementType: readRecommendedPlacement(template.defaultSettings),
-        preview: readPreviewData(template.defaultDesign),
+        placementType,
+        previewDesign,
+        previewPlacement,
+        previewViewModel: buildTemplatePreviewViewModel({
+          design: previewDesign,
+          eventName: template.eventName,
+          locale: template.locale,
+          placementType,
+          settings,
+          texts,
+          type: template.type,
+        }),
         sourceLabel: template.isSystem
           ? "System library"
           : "Saved from campaign",
@@ -503,45 +513,18 @@ function CreateTemplateFromCampaign({
 }
 
 function TemplateCard({ template }: { template: TemplateRow }) {
-  const previewStyle = {
-    "--cp-template-accent": template.preview.accentColor,
-    "--cp-template-button": template.preview.buttonColor,
-    "--cp-template-button-text": template.preview.buttonTextColor,
-    "--cp-template-timer": template.preview.timerColor,
-    background: template.preview.background,
-    color: template.preview.textColor,
-  } as CSSProperties;
-
   return (
     <article className="counterpulse-template-card">
-      <div className="counterpulse-template-card__preview" style={previewStyle}>
-        <button aria-label={`Preview ${template.eventName}`} type="button" />
-        <div className="counterpulse-template-card__preview-copy">
-          <span>{template.subheadline || template.sourceLabel}</span>
-          <strong>{template.headline}</strong>
-        </div>
-        {template.type === "PRODUCT_BADGE" ? (
-          <div className="counterpulse-template-card__badge-preview">
-            {template.headline}
-          </div>
-        ) : (
-          <div
-            className={`counterpulse-template-card__timer counterpulse-template-card__timer--${template.preview.timerStyle.toLowerCase()}`}
-          >
-            <span>02</span>
-            <span>14</span>
-            <span>32</span>
-            <span>45</span>
-          </div>
-        )}
-        {template.preview.showButton && (
-          <span className="counterpulse-template-card__cta">Shop now</span>
-        )}
-        {template.preview.showProgressBar && (
-          <div className="counterpulse-template-card__progress">
-            <span />
-          </div>
-        )}
+      <div
+        aria-label={`Preview ${template.eventName}`}
+        className="counterpulse-template-card__preview counterpulse-template-card__preview--real"
+      >
+        <CampaignPreview
+          design={template.previewDesign}
+          device="desktop"
+          placement={template.previewPlacement}
+          viewModel={template.previewViewModel}
+        />
       </div>
 
       <div className="counterpulse-template-card__body">
@@ -616,7 +599,17 @@ function readTexts(value: unknown) {
       : {};
 
   return {
+    badgeText: readString(input.badgeText),
+    ctaText: readString(input.ctaText),
+    ctaUrl: readString(input.ctaUrl),
+    deliveryAfterCutoffText: readString(input.deliveryAfterCutoffText),
+    deliveryBeforeCutoffText: readString(input.deliveryBeforeCutoffText),
+    expiredText: readString(input.expiredText),
+    freeShippingEmptyText: readString(input.freeShippingEmptyText),
+    freeShippingProgressText: readString(input.freeShippingProgressText),
+    freeShippingSuccessText: readString(input.freeShippingSuccessText),
     headline: typeof input.headline === "string" ? input.headline : "",
+    lowStockText: readString(input.lowStockText),
     subheadline: typeof input.subheadline === "string" ? input.subheadline : "",
   };
 }
@@ -630,32 +623,190 @@ function readRecommendedPlacement(value: unknown) {
     : "TOP_BAR";
 }
 
-function readPreviewData(value: unknown): TemplatePreviewData {
+type TemplateSettings = {
+  badgePosition: string;
+  badgeShape: string;
+  cutoffHour: number;
+  cutoffMinute: number;
+  currencyCode: string;
+  maxDeliveryDays: number;
+  minDeliveryDays: number;
+  processingDays: number;
+  recommendedPlacement: string;
+  suggestedDurationHours: number;
+  thresholdAmount: string;
+  timezone: string;
+};
+
+function readTemplateSettings(value: unknown): TemplateSettings {
   const input = readObject(value);
-  const backgroundType = readString(input.backgroundType) || "SOLID";
-  const gradientStartColor = readString(input.gradientStartColor) || "#111827";
-  const gradientEndColor = readString(input.gradientEndColor) || "#312E81";
-  const gradientAngle = readNumber(input.gradientAngle, 135);
-  const backgroundColor = readString(input.backgroundColor) || "#FFFFFF";
 
   return {
-    accentColor: readString(input.accentColor) || "#008060",
-    background:
-      backgroundType === "GRADIENT"
-        ? `linear-gradient(${gradientAngle}deg, ${gradientStartColor}, ${gradientEndColor})`
-        : backgroundColor,
-    buttonColor: readString(input.buttonColor) || "#008060",
-    buttonTextColor: readString(input.buttonTextColor) || "#FFFFFF",
-    layout: readString(input.layout) || "STANDARD",
-    showButton: readBoolean(input.showButton, true),
-    showIcon: readBoolean(input.showIcon, false),
-    showProgressBar: readBoolean(input.showProgressBar, true),
-    templateKey: readString(input.templateKey) || "clean-minimal",
-    textColor:
-      readString(input.titleColor) || readString(input.textColor) || "#111827",
-    timerColor: readString(input.timerColor) || "#111827",
-    timerStyle: readString(input.timerStyle) || "PLAIN",
+    badgePosition: readString(input.badgePosition) || "TOP_RIGHT",
+    badgeShape: readString(input.badgeShape) || "PILL",
+    cutoffHour: readNumber(input.cutoffHour, 14),
+    cutoffMinute: readNumber(input.cutoffMinute, 0),
+    currencyCode: readString(input.currencyCode) || "USD",
+    maxDeliveryDays: readNumber(input.maxDeliveryDays, 5),
+    minDeliveryDays: readNumber(input.minDeliveryDays, 2),
+    processingDays: readNumber(input.processingDays, 0),
+    recommendedPlacement: readString(input.recommendedPlacement) || "TOP_BAR",
+    suggestedDurationHours: readNumber(input.suggestedDurationHours, 48),
+    thresholdAmount: readString(input.thresholdAmount) || "75",
+    timezone: readString(input.timezone) || "America/New_York",
   };
+}
+
+function readTemplateDesign(value: unknown): CampaignDesignValues {
+  const input = readObject(value);
+  const templateKey = readString(input.templateKey) || "clean-minimal";
+  const preset = findCampaignDesignTemplate(templateKey);
+  const design = { ...preset } as CampaignDesignValues;
+
+  for (const key of Object.keys(preset) as Array<keyof CampaignDesignValues>) {
+    const value = input[key];
+
+    if (value !== undefined && value !== null && value !== "") {
+      (design as Record<keyof CampaignDesignValues, unknown>)[key] = value;
+    }
+  }
+
+  design.templateKey = templateKey;
+  design.showIcon = design.icon !== "NONE";
+
+  return design;
+}
+
+function buildTemplatePreviewViewModel({
+  design,
+  eventName,
+  locale,
+  placementType,
+  settings,
+  texts,
+  type,
+}: {
+  design: CampaignDesignValues;
+  eventName: string;
+  locale: string;
+  placementType: string;
+  settings: TemplateSettings;
+  texts: ReturnType<typeof readTexts>;
+  type: string;
+}) {
+  const hasTimer =
+    type === "COUNTDOWN_BAR" ||
+    type === "CART_TIMER" ||
+    type === "PRODUCT_TIMER";
+
+  return buildCampaignViewModel({
+    name: eventName,
+    type,
+    timezone: settings.timezone,
+    placements: [{ placementType, enabled: true }],
+    translations: [
+      {
+        badgeText: texts.badgeText || eventName,
+        ctaText: texts.ctaText || "Shop now",
+        ctaUrl: texts.ctaUrl || "/collections/all",
+        deliveryAfterCutoffText: texts.deliveryAfterCutoffText,
+        deliveryBeforeCutoffText: texts.deliveryBeforeCutoffText,
+        expiredText: texts.expiredText,
+        freeShippingEmptyText: texts.freeShippingEmptyText,
+        freeShippingProgressText: texts.freeShippingProgressText,
+        freeShippingSuccessText: texts.freeShippingSuccessText,
+        headline: texts.headline || eventName,
+        locale: locale || "en",
+        lowStockText: texts.lowStockText,
+        subheadline: texts.subheadline,
+      },
+    ],
+    design,
+    timerSettings: hasTimer
+      ? {
+          durationMinutes: settings.suggestedDurationHours * 60,
+          expiredBehavior: "UNPUBLISH_TIMER",
+          mode: "EVERGREEN_SESSION",
+          resetBehavior: "NEVER",
+        }
+      : null,
+    deliveryCutoffSettings:
+      type === "DELIVERY_CUTOFF"
+        ? {
+            cutoffHour: settings.cutoffHour,
+            cutoffMinute: settings.cutoffMinute,
+            maxDeliveryDays: settings.maxDeliveryDays,
+            minDeliveryDays: settings.minDeliveryDays,
+            processingDays: settings.processingDays,
+          }
+        : null,
+    freeShippingSettings:
+      type === "FREE_SHIPPING_GOAL"
+        ? {
+            currencyCode: settings.currencyCode,
+            emptyCartMessage: texts.freeShippingEmptyText,
+            includeDiscountedSubtotal: true,
+            progressStyle: "BAR",
+            successMessage: texts.freeShippingSuccessText,
+            thresholdAmount: settings.thresholdAmount,
+          }
+        : null,
+    lowStockSettings:
+      type === "LOW_STOCK"
+        ? {
+            fallbackMessage: texts.lowStockText,
+            showExactQuantity: true,
+            threshold: 5,
+          }
+        : null,
+    badgeSettings:
+      type === "PRODUCT_BADGE"
+        ? {
+            badgePosition: settings.badgePosition,
+            badgeShape: settings.badgeShape,
+            badgeText: texts.badgeText || texts.headline || eventName,
+          }
+        : null,
+    discountSync: null,
+  });
+}
+
+function toPreviewPlacement(
+  placementType: string,
+  type: string,
+): PreviewPlacement {
+  if (type === "PRODUCT_BADGE") return "PRODUCT_BADGE";
+
+  if (
+    placementType === "PRODUCT_PAGE_BADGE" ||
+    placementType === "COLLECTION_CARD"
+  ) {
+    return "PRODUCT_BADGE";
+  }
+
+  if (
+    placementType === "TOP_BAR" ||
+    placementType === "BOTTOM_BAR" ||
+    placementType === "PRODUCT_PAGE" ||
+    placementType === "CART_PAGE" ||
+    placementType === "CART_DRAWER"
+  ) {
+    return placementType;
+  }
+
+  if (type === "CART_TIMER" || type === "FREE_SHIPPING_GOAL") {
+    return "CART_DRAWER";
+  }
+
+  if (
+    type === "PRODUCT_TIMER" ||
+    type === "DELIVERY_CUTOFF" ||
+    type === "LOW_STOCK"
+  ) {
+    return "PRODUCT_PAGE";
+  }
+
+  return "TOP_BAR";
 }
 
 function countCategory(templates: TemplateRow[], category: string) {
@@ -698,8 +849,4 @@ function readNumber(value: unknown, fallback: number) {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function readBoolean(value: unknown, fallback: boolean) {
-  return typeof value === "boolean" ? value : fallback;
 }

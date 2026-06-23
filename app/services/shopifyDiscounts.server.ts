@@ -41,8 +41,6 @@ export type AutomaticFreeShippingDiscountInput = {
   minimumSubtotal?: number | null;
   destinationCountries?: string[];
   maximumShippingPrice?: number | null;
-  appliesOnOneTimePurchase?: boolean;
-  appliesOnSubscription?: boolean;
   combinesWith?: {
     orderDiscounts?: boolean;
     productDiscounts?: boolean;
@@ -593,8 +591,6 @@ function buildAutomaticFreeShippingDiscountInput(
     destination: input.destinationCountries?.length
       ? { countries: { add: input.destinationCountries } }
       : { all: true },
-    appliesOnOneTimePurchase: input.appliesOnOneTimePurchase ?? true,
-    appliesOnSubscription: input.appliesOnSubscription ?? false,
     combinesWith: {
       orderDiscounts: input.combinesWith?.orderDiscounts ?? true,
       productDiscounts: input.combinesWith?.productDiscounts ?? true,

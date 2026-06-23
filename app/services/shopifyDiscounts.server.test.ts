@@ -228,6 +228,10 @@ describe("shopifyDiscounts service", () => {
         }),
       }),
     );
+    const input = firstGraphqlVariables(admin).input as Record<string, unknown>;
+
+    expect(input).not.toHaveProperty("appliesOnOneTimePurchase");
+    expect(input).not.toHaveProperty("appliesOnSubscription");
     expect(firstGraphqlQuery(admin)).not.toContain("DiscountCodeBasic");
     expect(firstGraphqlQuery(admin)).toContain("DiscountAutomaticFreeShipping");
   });
@@ -354,4 +358,8 @@ function automaticFreeShippingNode({ title }: { title: string }) {
 
 function firstGraphqlQuery(admin: ShopifyGraphqlClient) {
   return vi.mocked(admin.graphql).mock.calls[0]?.[0] ?? "";
+}
+
+function firstGraphqlVariables(admin: ShopifyGraphqlClient) {
+  return vi.mocked(admin.graphql).mock.calls[0]?.[1]?.variables ?? {};
 }

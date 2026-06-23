@@ -113,6 +113,7 @@ import {
 } from "../services/discounts/uniqueCodes.server";
 import {
   applyWinningVariantToCampaign,
+  archiveExperimentVariant,
   autoDeclareWinningVariant,
   calculateExperimentResults,
   createExperiment,
@@ -1148,6 +1149,7 @@ export const action = async ({
     intent === "stopExperiment" ||
     intent === "saveExperimentAutoWinner" ||
     intent === "declareExperimentWinner" ||
+    intent === "archiveExperimentVariant" ||
     intent === "detectExperimentWinner" ||
     intent === "applyExperimentWinner" ||
     intent === "duplicateExperiment"
@@ -1225,6 +1227,22 @@ export const action = async ({
         }
 
         await declareWinningVariant({
+          shopId: shop.id,
+          experimentId,
+          variantId,
+        });
+      } else if (intent === "archiveExperimentVariant") {
+        const variantId = String(formData.get("variantId") ?? "").trim();
+
+        if (!variantId) {
+          return {
+            experimentErrors: {
+              form: "Variant id is required.",
+            },
+          };
+        }
+
+        await archiveExperimentVariant({
           shopId: shop.id,
           experimentId,
           variantId,

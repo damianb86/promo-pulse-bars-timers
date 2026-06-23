@@ -1,4 +1,10 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Form, useNavigation } from "react-router";
 
 import { DesignControls } from "./DesignControls";
@@ -113,6 +119,10 @@ type VariantDraft = {
 };
 
 type DrawerTab = "copy" | "placement" | "design" | "settings";
+type VariantEditRequest = {
+  requestId: number;
+  variantId: string;
+};
 type LifecycleActionValue =
   | "startExperiment"
   | "pauseExperiment"
@@ -434,7 +444,21 @@ function ExistingExperiment({
   isProPlan: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [variantEditRequest, setVariantEditRequest] =
+    useState<VariantEditRequest | null>(null);
   const canEditExperiment = experiment.status !== "COMPLETED";
+  const openVariantEditor = (variantId: string) => {
+    setVariantEditRequest({ variantId, requestId: Date.now() });
+    setIsEditing(true);
+  };
+  const closeExperimentEditor = () => {
+    setVariantEditRequest(null);
+    setIsEditing(false);
+  };
+  const openExperimentEditor = () => {
+    setVariantEditRequest(null);
+    setIsEditing(true);
+  };
 
   return (
     <section className="counterpulse-experiment-shell">
@@ -445,18 +469,24 @@ function ExistingExperiment({
           designMediaOptions={designMediaOptions}
           experiment={experiment}
           isProPlan={isProPlan}
-          onClose={() => setIsEditing(false)}
+          key={variantEditRequest?.requestId ?? "experiment-editor"}
+          variantEditRequest={variantEditRequest}
+          onClose={closeExperimentEditor}
         />
       ) : (
         <ExperimentSummary
           canEdit={canEditExperiment}
           experiment={experiment}
           isEditing={isEditing}
-          onEdit={() => setIsEditing(true)}
+          onEdit={openExperimentEditor}
         />
       )}
 
-      <ExperimentResultsTable experiment={experiment} />
+      <ExperimentResultsTable
+        canEdit={canEditExperiment}
+        experiment={experiment}
+        onEditVariant={openVariantEditor}
+      />
       <ExperimentAutoWinnerForm experiment={experiment} />
       <ExperimentLifecycleActions
         canDuplicateCompletedExperiment={canDuplicateCompletedExperiment}
@@ -574,6 +604,7 @@ function ExperimentComposer({
   designMediaOptions,
   experiment,
   isProPlan,
+  variantEditRequest,
   onClose,
 }: {
   baseDesign: CampaignDesignValues;
@@ -581,6 +612,7 @@ function ExperimentComposer({
   designMediaOptions: CampaignDesignMediaOptions;
   experiment?: ExperimentRow;
   isProPlan: boolean;
+  variantEditRequest?: VariantEditRequest | null;
   onClose?: () => void;
 }) {
   const navigation = useNavigation();
@@ -596,7 +628,18 @@ function ExperimentComposer({
   );
   const [variants, setVariants] = useState<VariantDraft[]>(initialVariants);
   const [archivedVariants, setArchivedVariants] = useState<VariantDraft[]>([]);
-  const [activeVariantIndex, setActiveVariantIndex] = useState(-1);
+  const initialActiveVariantIndex = useMemo(() => {
+    if (!variantEditRequest?.variantId) return -1;
+
+    const variantIndex = initialVariants.findIndex(
+      (variant) => variant.id === variantEditRequest.variantId,
+    );
+
+    return variantIndex > 0 ? variantIndex : -1;
+  }, [initialVariants, variantEditRequest]);
+  const [activeVariantIndex, setActiveVariantIndex] = useState(
+    initialActiveVariantIndex,
+  );
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
     null,
   );
@@ -607,6 +650,7 @@ function ExperimentComposer({
   const [primaryMetric, setPrimaryMetric] = useState(
     experiment?.primaryMetric || "CLICK_RATE",
   );
+
   const activeVariant =
     activeVariantIndex >= 0 ? (variants[activeVariantIndex] ?? null) : null;
   const pendingDeleteVariant =
@@ -1016,14 +1060,30 @@ function VariantDrawer({
   onWeightChange: (weight: number) => void;
 }) {
   const preview = buildVariantPreviewModel(baseViewModel, variant);
+  const [isClosing, setIsClosing] = useState(false);
+  const requestClose = () => setIsClosing(true);
+
+  useEffect(() => {
+    if (!isClosing) return;
+
+    const timeout = window.setTimeout(onClose, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [isClosing, onClose]);
 
   return (
-    <div className="counterpulse-variant-drawer-shell">
+    <div
+      className={
+        isClosing
+          ? "counterpulse-variant-drawer-shell is-closing"
+          : "counterpulse-variant-drawer-shell"
+      }
+    >
       <button
         aria-label="Close variant editor"
         className="counterpulse-variant-drawer-backdrop"
         type="button"
-        onClick={onClose}
+        onClick={requestClose}
       />
       <aside className="counterpulse-variant-drawer" aria-label="Edit variant">
         <header className="counterpulse-variant-drawer__header">
@@ -1035,7 +1095,7 @@ function VariantDrawer({
             aria-label="Close variant editor"
             className="counterpulse-icon-button"
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
           >
             x
           </button>
@@ -1226,7 +1286,7 @@ function VariantDrawer({
           <button
             className="counterpulse-button"
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
           >
             Done
           </button>
@@ -1392,9 +1452,33 @@ function VariantHiddenInputs({
   );
 }
 
-function ExperimentResultsTable({ experiment }: { experiment: ExperimentRow }) {
+function ExperimentResultsTable({
+  canEdit = false,
+  experiment,
+  onEditVariant,
+}: {
+  canEdit?: boolean;
+  experiment: ExperimentRow;
+  onEditVariant?: (variantId: string) => void;
+}) {
   const isCompleted = experiment.status === "COMPLETED";
-  const recommendedVariantId = getRecommendedVariantId(experiment);
+  const [openMenuVariantId, setOpenMenuVariantId] = useState("");
+  const [pendingArchiveVariant, setPendingArchiveVariant] =
+    useState<ExperimentVariantResultRow | null>(null);
+  const recommendedCandidateVariantId = getRecommendedVariantId(experiment);
+  const recommendedVariantId = isRecommendedSampleReady(
+    experiment,
+    recommendedCandidateVariantId,
+  )
+    ? recommendedCandidateVariantId
+    : "";
+  const visibleExperimentVariants = experiment.variants.filter(
+    (variant) => variant.status !== "ARCHIVED",
+  );
+  const visibleVariantIds = new Set(
+    visibleExperimentVariants.map((variant) => variant.id),
+  );
+  const controlVariantId = visibleExperimentVariants[0]?.id ?? "";
   const sortedVariants = [...experiment.results.variants].sort(
     (left, right) => {
       const leftIsRecommended = left.variantId === recommendedVariantId ? 1 : 0;
@@ -1441,10 +1525,16 @@ function ExperimentResultsTable({ experiment }: { experiment: ExperimentRow }) {
             </tr>
           </thead>
           <tbody>
-            {sortedVariants.map((variant) => {
+            {sortedVariants.map((variant, sortedIndex) => {
               const isWinner = variant.variantId === experiment.winnerVariantId;
               const isRecommended =
                 !isCompleted && variant.variantId === recommendedVariantId;
+              const canManageVariant =
+                canEdit &&
+                visibleVariantIds.has(variant.variantId) &&
+                variant.variantId !== controlVariantId;
+              const opensMenuAbove =
+                sortedIndex >= Math.max(1, sortedVariants.length - 2);
               const originalIndex = experiment.results.variants.findIndex(
                 (result) => result.variantId === variant.variantId,
               );
@@ -1497,55 +1587,32 @@ function ExperimentResultsTable({ experiment }: { experiment: ExperimentRow }) {
                   </td>
                   <td>{formatPercent(variant.conversionRate)}</td>
                   <td>
-                    <div className="counterpulse-result-actions">
-                      {isRecommended ? (
-                        <span className="counterpulse-result-recommended">
-                          <span aria-hidden="true">✧</span>
-                          Recommended
-                        </span>
-                      ) : null}
-                      {isCompleted ? (
-                        isWinner ? (
-                          <span className="counterpulse-result-winner">
-                            Winner
-                          </span>
-                        ) : (
-                          <span className="counterpulse-muted">Finished</span>
+                    <ExperimentResultActions
+                      canManageVariant={canManageVariant}
+                      experimentId={experiment.id}
+                      isCompleted={isCompleted}
+                      isMenuOpen={openMenuVariantId === variant.variantId}
+                      isRecommended={isRecommended}
+                      isWinner={isWinner}
+                      opensMenuAbove={opensMenuAbove}
+                      variant={variant}
+                      onCloseMenu={() => setOpenMenuVariantId("")}
+                      onDeleteVariant={() => {
+                        setOpenMenuVariantId("");
+                        setPendingArchiveVariant(variant);
+                      }}
+                      onEditVariant={() => {
+                        setOpenMenuVariantId("");
+                        onEditVariant?.(variant.variantId);
+                      }}
+                      onToggleMenu={() =>
+                        setOpenMenuVariantId((currentVariantId) =>
+                          currentVariantId === variant.variantId
+                            ? ""
+                            : variant.variantId,
                         )
-                      ) : isWinner ? (
-                        <span className="counterpulse-result-winner">
-                          Winner
-                        </span>
-                      ) : (
-                        <Form method="post">
-                          <input
-                            name="experimentId"
-                            type="hidden"
-                            value={experiment.id}
-                          />
-                          <input
-                            name="variantId"
-                            type="hidden"
-                            value={variant.variantId}
-                          />
-                          <button
-                            className="counterpulse-button-secondary counterpulse-button-secondary--small"
-                            name="_action"
-                            type="submit"
-                            value="declareExperimentWinner"
-                          >
-                            Set winner
-                          </button>
-                        </Form>
-                      )}
-                      <button
-                        aria-label={`Open actions for ${variant.variantName}`}
-                        className="counterpulse-result-menu-button"
-                        type="button"
-                      >
-                        ⋮
-                      </button>
-                    </div>
+                      }
+                    />
                   </td>
                 </tr>
               );
@@ -1556,7 +1623,191 @@ function ExperimentResultsTable({ experiment }: { experiment: ExperimentRow }) {
       <p className="counterpulse-experiment-results__footnote">
         Metrics refresh automatically. All values are up to the minute.
       </p>
+      {pendingArchiveVariant ? (
+        <ArchiveExperimentVariantModal
+          experimentId={experiment.id}
+          variant={pendingArchiveVariant}
+          onCancel={() => setPendingArchiveVariant(null)}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function ExperimentResultActions({
+  canManageVariant,
+  experimentId,
+  isCompleted,
+  isMenuOpen,
+  isRecommended,
+  isWinner,
+  opensMenuAbove,
+  variant,
+  onCloseMenu,
+  onDeleteVariant,
+  onEditVariant,
+  onToggleMenu,
+}: {
+  canManageVariant: boolean;
+  experimentId: string;
+  isCompleted: boolean;
+  isMenuOpen: boolean;
+  isRecommended: boolean;
+  isWinner: boolean;
+  opensMenuAbove: boolean;
+  variant: ExperimentVariantResultRow;
+  onCloseMenu: () => void;
+  onDeleteVariant: () => void;
+  onEditVariant: () => void;
+  onToggleMenu: () => void;
+}) {
+  return (
+    <div className="counterpulse-result-actions">
+      {isRecommended ? (
+        <span className="counterpulse-result-recommended">
+          <span aria-hidden="true">✧</span>
+          Recommended
+        </span>
+      ) : null}
+      {isCompleted ? (
+        isWinner ? (
+          <span className="counterpulse-result-winner">Winner</span>
+        ) : (
+          <span className="counterpulse-muted">Finished</span>
+        )
+      ) : isWinner ? (
+        <span className="counterpulse-result-winner">Winner</span>
+      ) : (
+        <Form method="post">
+          <input name="experimentId" type="hidden" value={experimentId} />
+          <input name="variantId" type="hidden" value={variant.variantId} />
+          <button
+            className="counterpulse-button-secondary counterpulse-button-secondary--small"
+            name="_action"
+            type="submit"
+            value="declareExperimentWinner"
+          >
+            Set winner
+          </button>
+        </Form>
+      )}
+      <div
+        className="counterpulse-result-menu"
+        onBlur={(event) => {
+          const nextTarget = event.relatedTarget;
+
+          if (
+            !(nextTarget instanceof Node) ||
+            !event.currentTarget.contains(nextTarget)
+          ) {
+            onCloseMenu();
+          }
+        }}
+      >
+        <button
+          aria-expanded={isMenuOpen}
+          aria-haspopup="menu"
+          aria-label={`Open actions for ${variant.variantName}`}
+          className="counterpulse-result-menu-button"
+          type="button"
+          onClick={onToggleMenu}
+        >
+          ⋮
+        </button>
+        {isMenuOpen ? (
+          <div
+            className={
+              opensMenuAbove
+                ? "counterpulse-result-menu__dropdown counterpulse-result-menu__dropdown--above"
+                : "counterpulse-result-menu__dropdown"
+            }
+            role="menu"
+          >
+            <button
+              disabled={!canManageVariant}
+              role="menuitem"
+              type="button"
+              onClick={onEditVariant}
+            >
+              Edit variant
+            </button>
+            <button
+              className="counterpulse-result-menu__delete"
+              disabled={!canManageVariant}
+              role="menuitem"
+              type="button"
+              onClick={onDeleteVariant}
+            >
+              Delete variant
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ArchiveExperimentVariantModal({
+  experimentId,
+  variant,
+  onCancel,
+}: {
+  experimentId: string;
+  variant: ExperimentVariantResultRow;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="counterpulse-modal-backdrop" role="presentation">
+      <button
+        aria-label="Cancel variant deletion"
+        className="counterpulse-modal-backdrop__dismiss"
+        type="button"
+        onClick={onCancel}
+      />
+      <section
+        aria-labelledby="counterpulse-archive-result-variant-title"
+        aria-modal="true"
+        className="counterpulse-modal"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <span
+            aria-hidden="true"
+            className="counterpulse-modal__icon counterpulse-modal__icon--critical"
+          >
+            !
+          </span>
+          <div>
+            <h2 id="counterpulse-archive-result-variant-title">
+              Delete variant?
+            </h2>
+            <p className="counterpulse-modal__body">
+              {variant.variantName} will be removed from this experiment and
+              stop receiving traffic. Historical results remain available.
+            </p>
+          </div>
+        </div>
+        <Form method="post" className="counterpulse-modal__actions">
+          <input name="experimentId" type="hidden" value={experimentId} />
+          <input name="variantId" type="hidden" value={variant.variantId} />
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="counterpulse-button-danger"
+            name="_action"
+            type="submit"
+            value="archiveExperimentVariant"
+          >
+            Delete variant
+          </button>
+        </Form>
+      </section>
+    </div>
   );
 }
 
@@ -2830,6 +3081,25 @@ function getRecommendedVariantId(experiment: ExperimentRow) {
   );
 
   return recommendedVariant?.variantId ?? "";
+}
+
+function isRecommendedSampleReady(
+  experiment: ExperimentRow,
+  variantId: string,
+) {
+  if (!variantId) return false;
+  if (experiment.winnerVariantId === variantId) return true;
+
+  const minimumSampleSize = Math.max(
+    1,
+    Math.round(experiment.autoWinnerMinSampleSize || 0),
+  );
+  const requiredImpressions = Math.ceil(minimumSampleSize / 2);
+  const variant = experiment.results.variants.find(
+    (result) => result.variantId === variantId,
+  );
+
+  return (variant?.impressions ?? 0) >= requiredImpressions;
 }
 
 function formatVariantLetter(index: number) {

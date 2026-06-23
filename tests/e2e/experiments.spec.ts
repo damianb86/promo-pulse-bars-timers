@@ -262,6 +262,41 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
       'form:has(input[name="_action"][value="updateExperiment"])',
     ),
   ).toHaveCount(0);
+  await expect(savedExperiment.getByText("Recommended")).toHaveCount(0);
+
+  const variantBResultActions = savedExperiment.getByRole("button", {
+    name: "Open actions for Variant B",
+  });
+  await variantBResultActions.click();
+  const variantBMenu = savedExperiment.getByRole("menu");
+  await expect(variantBMenu).toBeVisible();
+  await variantBMenu.getByRole("menuitem", { name: "Edit variant" }).click();
+  const resultVariantDrawer = page.getByRole("complementary", {
+    name: "Edit variant",
+  });
+  await expect(resultVariantDrawer).toBeVisible();
+  await expect(
+    resultVariantDrawer.getByRole("textbox", { name: /^Headline / }),
+  ).toHaveValue("Variant headline");
+  await resultVariantDrawer.getByRole("button", { name: "Done" }).click();
+  await expect(resultVariantDrawer).toHaveCount(0);
+  await savedExperiment.getByRole("button", { name: "Close editor" }).click();
+  await expect(
+    savedExperiment.locator(
+      'form:has(input[name="_action"][value="updateExperiment"])',
+    ),
+  ).toHaveCount(0);
+
+  await variantBResultActions.click();
+  await expect(variantBMenu).toBeVisible();
+  await variantBMenu.getByRole("menuitem", { name: "Delete variant" }).click();
+  const deleteVariantDialog = page.getByRole("dialog", {
+    name: "Delete variant?",
+  });
+  await expect(deleteVariantDialog).toBeVisible();
+  await expect(deleteVariantDialog).toContainText("Variant B");
+  await deleteVariantDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(deleteVariantDialog).toHaveCount(0);
 
   await savedExperiment
     .getByRole("button", { name: "Start experiment" })
@@ -383,9 +418,17 @@ test("experiment results aggregate commerce events across campaigns and choose w
       name: /Treatment 40 8 20\.0% 20 3 \$300\.00/,
     }),
   ).toBeVisible();
+  const atcTreatmentRow = page.locator("tr", {
+    has: page.getByRole("cell", { name: "Treatment" }),
+  });
+  await expect(atcTreatmentRow.getByText("Recommended")).toBeVisible();
   await expect(
     page.getByRole("row", { name: /Control 40 4 10\.0% 4 0 \$0\.00/ }),
   ).toBeVisible();
+  const atcControlRow = page.locator("tr", {
+    has: page.getByRole("cell", { name: "Control" }),
+  });
+  await expect(atcControlRow.getByText("Recommended")).toHaveCount(0);
 
   await recordExperimentEvent(page, {
     campaignId: "e2e-atc-campaign",

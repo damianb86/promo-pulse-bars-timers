@@ -291,6 +291,74 @@ export async function updateExperiment(input: UpdateExperimentInput) {
   return getExperimentForShop(input.experimentId, input.shopId);
 }
 
+export async function archiveExperimentVariant({
+  experimentId,
+  shopId,
+  variantId,
+}: {
+  experimentId: string;
+  shopId: string;
+  variantId: string;
+}) {
+  const experiment = await prisma.experiment.findFirst({
+    where: { id: experimentId, shopId },
+    include: experimentInclude,
+  });
+
+  if (!experiment) {
+    throw new Error("Experiment not found.");
+  }
+
+  if (experiment.status === ExperimentStatus.COMPLETED) {
+    throw new Error("Completed experiments cannot be edited.");
+  }
+
+  const activeVariants = experiment.variants.filter(
+    (variant) => variant.status !== ExperimentVariantStatus.ARCHIVED,
+  );
+  const variantIndex = activeVariants.findIndex(
+    (variant) => variant.id === variantId,
+  );
+  const variant = activeVariants[variantIndex];
+
+  if (!variant) {
+    throw new Error("Experiment variant not found.");
+  }
+
+  if (variantIndex === 0) {
+    throw new Error("The control variant cannot be deleted.");
+  }
+
+  if (experiment.winnerVariantId === variantId) {
+    throw new Error("The winning variant cannot be deleted.");
+  }
+
+  const remainingVariants = normalizeExperimentVariantWeights(
+    activeVariants.filter((activeVariant) => activeVariant.id !== variantId),
+  );
+
+  await prisma.$transaction(async (tx) => {
+    await tx.experimentVariant.update({
+      where: { id: variantId },
+      data: {
+        status: ExperimentVariantStatus.ARCHIVED,
+        weight: 0,
+      },
+    });
+
+    for (const remainingVariant of remainingVariants) {
+      await tx.experimentVariant.update({
+        where: { id: remainingVariant.id },
+        data: { weight: remainingVariant.weight },
+      });
+    }
+  });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return getExperimentForShop(experimentId, shopId);
+}
+
 export async function updateExperimentAutoWinner({
   experimentId,
   shopId,
@@ -775,6 +843,76 @@ async function getExperimentForShop(experimentId: string, shopId: string) {
     where: { id: experimentId, shopId },
     include: experimentInclude,
   });
+}
+
+function normalizeExperimentVariantWeights<Variant extends { weight: number }>(
+  variants: Variant[],
+) {
+  if (variants.length === 0) return variants;
+  if (variants.length === 1) {
+    return [{ ...variants[0], weight: 100 }];
+  }
+
+  const roundedWeights = variants.map((variant) =>
+    Math.max(0, Math.round(variant.weight)),
+  );
+  const totalWeight = roundedWeights.reduce(
+    (total, weight) => total + weight,
+    0,
+  );
+  const sourceWeights =
+    totalWeight > 0 ? roundedWeights : variants.map(() => 1);
+  const normalizedWeights = distributeIntegerTotal(100, sourceWeights);
+
+  return variants.map((variant, index) => ({
+    ...variant,
+    weight: normalizedWeights[index] ?? 0,
+  }));
+}
+
+function distributeIntegerTotal(total: number, weights: number[]) {
+  if (weights.length === 0) return [];
+
+  const normalizedTotal = Math.max(0, Math.round(total));
+  const weightSum = weights.reduce(
+    (sum, weight) => sum + Math.max(0, weight),
+    0,
+  );
+
+  if (weightSum <= 0) {
+    const base = Math.floor(normalizedTotal / weights.length);
+    let remainder = normalizedTotal - base * weights.length;
+
+    return weights.map(() => {
+      const value = base + (remainder > 0 ? 1 : 0);
+      remainder -= 1;
+
+      return value;
+    });
+  }
+
+  const rawWeights = weights.map(
+    (weight) => (Math.max(0, weight) / weightSum) * normalizedTotal,
+  );
+  const roundedWeights = rawWeights.map(Math.floor);
+  let remainder =
+    normalizedTotal -
+    roundedWeights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
+  const sortedRemainders = rawWeights
+    .map((weight, index) => ({
+      index,
+      remainder: weight - Math.floor(weight),
+    }))
+    .sort((left, right) => right.remainder - left.remainder);
+
+  for (const item of sortedRemainders) {
+    if (remainder <= 0) break;
+
+    roundedWeights[item.index] += 1;
+    remainder -= 1;
+  }
+
+  return roundedWeights;
 }
 
 async function assertCampaignBelongsToShop(campaignId: string, shopId: string) {

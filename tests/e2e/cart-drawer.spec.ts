@@ -32,6 +32,18 @@ test("cart drawer support inserts one widget without duplicates", async ({
 
   await page.getByRole("button", { name: "Open cart drawer" }).click();
   await expect(page.locator(".pp-cart-card--drawer")).toHaveCount(1);
+  await expect(
+    page.locator(".pp-cart-card--drawer .pp-message-copy"),
+  ).toContainText("Complete checkout before the timer ends.");
+  await expect(
+    page.locator(".pp-cart-card--drawer").locator(":scope > .pp-countdown"),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".pp-cart-card--drawer .pp-message-copy > .pp-countdown"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".pp-cart-card--drawer .pp-countdown"),
+  ).toHaveAttribute("data-value", /\d{2} Hrs \d{2} Mins \d{2} Secs/);
 
   drawerAppProxyRequests = 0;
   cartJsonRequests = 0;

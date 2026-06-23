@@ -32,6 +32,10 @@ import {
   type CampaignTextField,
 } from "../types/localization";
 import {
+  defaultCartRescueSettingsValues,
+  isSupportedCartRescueReason,
+} from "../types/cart-rescue";
+import {
   getCampaignText,
   normalizeStorefrontLocale,
   type CampaignTranslationRecord,
@@ -182,7 +186,11 @@ function serializeStorefrontCampaignForPlacement(
     design: serializeDesign(campaign.design, context.device),
     timer: serializeTimer(campaign.timerSettings),
     cartRescue: serializeCartRescue(campaign.cartRescueSettings ?? null),
-    freeShipping: serializeFreeShipping(campaign.freeShippingSettings, context),
+    freeShipping:
+      campaign.type === "FREE_SHIPPING_GOAL" ||
+      campaign.goal === "FREE_SHIPPING"
+        ? serializeFreeShipping(campaign.freeShippingSettings, context)
+        : null,
     deliveryCutoff: serializeDeliveryCutoff(
       campaign.deliveryCutoffSettings,
       context,
@@ -410,7 +418,9 @@ function serializeCartRescue(settings: CartRescueSettings | null) {
   if (!settings) return null;
 
   return {
-    rescueReason: settings.rescueReason,
+    rescueReason: isSupportedCartRescueReason(settings.rescueReason)
+      ? settings.rescueReason
+      : defaultCartRescueSettingsValues.rescueReason,
     showTimer: settings.showTimer,
     showButton: settings.showButton,
   };

@@ -220,7 +220,6 @@ import {
 } from "../types/campaign-form";
 import {
   defaultCartRescueSettingsValues,
-  isCartRescueFreeShippingReason,
   isSupportedCartRescueReason,
 } from "../types/cart-rescue";
 import {
@@ -1442,8 +1441,7 @@ export const action = async ({
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
-  const usesFreeShippingSettings =
-    isFreeShippingCampaign || isCartRescueFreeShippingReason(parsed.values);
+  const usesFreeShippingSettings = isFreeShippingCampaign;
   const isDeliveryCutoffCampaign =
     parsed.values.type === "DELIVERY_CUTOFF" ||
     parsed.values.goal === "DELIVERY_CUTOFF";
@@ -2432,8 +2430,7 @@ function formatUnifiedCampaignTypeLabel(values: CampaignFormValues) {
 
 function shouldClearDiscountSyncForCampaignType(values: CampaignFormValues) {
   return (
-    (values.goal === "CART_RESCUE" &&
-      values.cartRescueReason !== "FREE_SHIPPING_GOAL") ||
+    values.goal === "CART_RESCUE" ||
     values.goal === "ANNOUNCEMENT" ||
     values.goal === "DELIVERY_CUTOFF" ||
     values.goal === "LOW_STOCK_URGENCY" ||

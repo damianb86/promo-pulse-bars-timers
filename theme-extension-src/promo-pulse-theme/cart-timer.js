@@ -28,13 +28,21 @@
   init();
   document.addEventListener("shopify:section:load", init);
   document.addEventListener("cart:updated", function () {
+    invalidateCachedCartState();
     scheduleCartPageRefresh(true);
     scheduleDrawerRender(true, false);
   });
   document.addEventListener("promo-pulse:cart-changed", function () {
+    invalidateCachedCartState();
     scheduleCartPageRefresh(true);
     scheduleDrawerRender(true, false);
   });
+
+  function invalidateCachedCartState() {
+    if (window.PromoPulseCartState) {
+      window.PromoPulseCartState.updatedAt = 0;
+    }
+  }
 
   function init() {
     initCartPageBlocks();
@@ -497,7 +505,7 @@
       renderMessage(campaign, timerState, config, renderCampaignIcon(campaign)),
     );
 
-    if (timerState.isActive && !isInline) {
+    if (isTimerEnabled(campaign) && timerState.isActive && !isInline) {
       card.appendChild(renderCountdown(timerState.remainingMs, design, false));
     }
 
@@ -517,7 +525,11 @@
       card.appendChild(window.CPcb(campaign.discount.discountCode, campaign));
     }
 
-    if (!timerState.isExpired && (campaign.design || {}).showButton !== false) {
+    if (
+      !timerState.isExpired &&
+      isButtonEnabled(campaign) &&
+      (campaign.design || {}).showButton !== false
+    ) {
       renderCta(campaign).forEach(function (cta) {
         card.appendChild(cta);
       });
@@ -646,7 +658,7 @@
       subheadline.textContent = detail;
       copy.appendChild(subheadline);
     }
-    if (timerState.isActive && isInline) {
+    if (isTimerEnabled(campaign) && timerState.isActive && isInline) {
       copy.appendChild(renderCountdown(timerState.remainingMs, design, true));
     }
 
@@ -927,6 +939,10 @@
   function calculateTimerState(campaign, now, config) {
     var timer = campaign.timer || {};
 
+    if (!isTimerEnabled(campaign)) {
+      return buildTimerState(now, null);
+    }
+
     if (timer.mode === "EVERGREEN_SESSION" || campaign.type === "CART_TIMER") {
       return calculateCartReserveTimer(campaign, now, config);
     }
@@ -1170,7 +1186,10 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
-    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
+    element.style.setProperty(
+      "--pp-font-family",
+      fontFamily(design.fontFamily),
+    );
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 999, 0) + "px",
@@ -1266,7 +1285,9 @@
   }
 
   function normalizeLayout(value) {
-    var layout = String(value || "STANDARD").toLowerCase().replace(/_/g, "-");
+    var layout = String(value || "STANDARD")
+      .toLowerCase()
+      .replace(/_/g, "-");
 
     if (
       layout === "balanced" ||
@@ -1400,7 +1421,7 @@
 
   function defaultHeadline(campaign) {
     if (campaign.type === "FREE_SHIPPING_GOAL") return "Free shipping";
-    if (campaign.type === "CART_TIMER") return "Your cart is reserved";
+    if (campaign.type === "CART_TIMER") return "Your cart is ready";
     return campaign.name || "Cart offer";
   }
 
@@ -1497,6 +1518,14 @@
     } catch {
       return null;
     }
+  }
+
+  function isTimerEnabled(campaign) {
+    return !(campaign.cartRescue && campaign.cartRescue.showTimer === false);
+  }
+
+  function isButtonEnabled(campaign) {
+    return !(campaign.cartRescue && campaign.cartRescue.showButton === false);
   }
 
   function node(tag, className, text) {

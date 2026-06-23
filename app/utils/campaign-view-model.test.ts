@@ -243,8 +243,8 @@ describe("buildCampaignViewModel", () => {
     expect(reminder.timer).toBeNull();
     expect(reminder.lowStock).toBeNull();
 
-    const freeShipping = buildCampaignViewModel({
-      name: "Cart free shipping",
+    const retiredReason = buildCampaignViewModel({
+      name: "Retired cart rescue reason",
       type: "CART_TIMER",
       placements: [{ placementType: "CART_PAGE", enabled: true }],
       translations: [{ locale: "en", headline: "Free shipping" }],
@@ -260,10 +260,7 @@ describe("buildCampaignViewModel", () => {
       },
     });
 
-    expect(freeShipping.cartRescue?.rescueReason).toBe("FREE_SHIPPING_GOAL");
-    expect(freeShipping.freeShipping).toMatchObject({
-      thresholdAmount: 75,
-      currencyCode: "USD",
-    });
+    expect(retiredReason.cartRescue?.rescueReason).toBe("CART_RESERVED");
+    expect(retiredReason.freeShipping).toBeNull();
   });
 });

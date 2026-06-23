@@ -60,7 +60,6 @@ import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 import {
   cartRescueReasonCopyDefaults,
   cartRescueReasonOptions,
-  isCartRescueFreeShippingReason,
   type CartRescueReasonValue,
 } from "../types/cart-rescue";
 import type {
@@ -669,8 +668,7 @@ export function CampaignForm({
   const isFreeShippingCampaign =
     formValues.type === "FREE_SHIPPING_GOAL" ||
     formValues.goal === "FREE_SHIPPING";
-  const usesFreeShippingSettings =
-    isFreeShippingCampaign || isCartRescueFreeShippingReason(formValues);
+  const usesFreeShippingSettings = isFreeShippingCampaign;
   const isLowStockCampaign =
     formValues.type === "LOW_STOCK" || formValues.goal === "LOW_STOCK_URGENCY";
   const isBadgeCampaign =
@@ -2401,125 +2399,6 @@ export function CampaignForm({
                               ))}
                             </select>
                           </FormField>
-                        </>
-                      )}
-
-                      {formValues.cartRescueReason === "FREE_SHIPPING_GOAL" && (
-                        <>
-                          <FormField
-                            label="Threshold amount"
-                            error={errors.freeShippingThresholdAmount}
-                          >
-                            <input
-                              inputMode="decimal"
-                              min="0.01"
-                              name="freeShippingThresholdAmount"
-                              step="0.01"
-                              type="number"
-                              value={formValues.freeShippingThresholdAmount}
-                              onChange={updateField(
-                                "freeShippingThresholdAmount",
-                              )}
-                            />
-                          </FormField>
-
-                          <FormField
-                            label="Currency code"
-                            error={errors.freeShippingCurrencyCode}
-                          >
-                            <input
-                              maxLength={3}
-                              name="freeShippingCurrencyCode"
-                              value={formValues.freeShippingCurrencyCode}
-                              onChange={updateField("freeShippingCurrencyCode")}
-                            />
-                          </FormField>
-
-                          <FormField
-                            label="Progress style"
-                            error={errors.freeShippingProgressStyle}
-                          >
-                            <select
-                              name="freeShippingProgressStyle"
-                              value={formValues.freeShippingProgressStyle}
-                              onChange={updateField(
-                                "freeShippingProgressStyle",
-                              )}
-                            >
-                              {freeShippingProgressStyleOptions.map(
-                                (option) => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </option>
-                                ),
-                              )}
-                            </select>
-                          </FormField>
-
-                          <div className="counterpulse-toggle">
-                            <label className="counterpulse-toggle-label">
-                              <input
-                                checked={
-                                  formValues.freeShippingIncludeDiscountedSubtotal
-                                }
-                                name="freeShippingIncludeDiscountedSubtotal"
-                                type="checkbox"
-                                onChange={updateCheckboxField(
-                                  "freeShippingIncludeDiscountedSubtotal",
-                                )}
-                              />
-                              <span>
-                                Use discounted subtotal when available
-                              </span>
-                            </label>
-                          </div>
-
-                          <FormField
-                            label="Empty cart message"
-                            error={errors.freeShippingEmptyCartMessage}
-                            fullWidth
-                          >
-                            <textarea
-                              name="freeShippingEmptyCartMessage"
-                              rows={2}
-                              value={formValues.freeShippingEmptyCartMessage}
-                              onChange={updateField(
-                                "freeShippingEmptyCartMessage",
-                              )}
-                            />
-                          </FormField>
-
-                          <FormField
-                            label="Unlocked message"
-                            error={errors.freeShippingSuccessMessage}
-                            fullWidth
-                          >
-                            <textarea
-                              name="freeShippingSuccessMessage"
-                              rows={2}
-                              value={formValues.freeShippingSuccessMessage}
-                              onChange={updateField(
-                                "freeShippingSuccessMessage",
-                              )}
-                            />
-                          </FormField>
-
-                          <div className="counterpulse-toggle">
-                            <label className="counterpulse-toggle-label">
-                              <input
-                                checked={formValues.freeShippingAutoDiscount}
-                                name="freeShippingAutoDiscount"
-                                type="checkbox"
-                                onChange={toggleFreeShippingAutoDiscount}
-                              />
-                              <span>
-                                Create Shopify automatic free shipping
-                              </span>
-                            </label>
-                          </div>
                         </>
                       )}
                     </div>
@@ -4544,50 +4423,6 @@ function CartRescueReasonIcon({ reason }: { reason: CartRescueReasonValue }) {
             strokeWidth="2"
           />
         </>
-      )}
-      {reason === "FREE_SHIPPING_GOAL" && (
-        <>
-          <path
-            d="M3 7h11v9H3V7Zm11 3h4l3 3v3h-7v-6Z"
-            stroke="currentColor"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-          <path
-            d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-        </>
-      )}
-      {reason === "OFFER_EXPIRES" && (
-        <path
-          d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Zm12.5-4.7h.01M12 9v4m0 3h.01"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      )}
-      {reason === "SHIPPING_CUTOFF" && (
-        <>
-          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M12 7v5l3 2"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </>
-      )}
-      {reason === "LOW_STOCK_RISK" && (
-        <path
-          d="M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
       )}
     </svg>
   );

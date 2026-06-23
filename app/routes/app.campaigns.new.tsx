@@ -62,7 +62,6 @@ import {
   buildCampaignFormDefaultsFromTemplate,
   getCampaignTemplateByKey,
 } from "../services/templates/templateLibrary.server";
-import { isCartRescueFreeShippingReason } from "../types/cart-rescue";
 import type {
   CampaignAiFormErrors,
   CampaignAiFollowUpQuestion,
@@ -277,8 +276,7 @@ export const action = async ({
   const isFreeShippingCampaign =
     parsed.values.type === "FREE_SHIPPING_GOAL" ||
     parsed.values.goal === "FREE_SHIPPING";
-  const usesFreeShippingSettings =
-    isFreeShippingCampaign || isCartRescueFreeShippingReason(parsed.values);
+  const usesFreeShippingSettings = isFreeShippingCampaign;
   const isDeliveryCutoffCampaign =
     parsed.values.type === "DELIVERY_CUTOFF" ||
     parsed.values.goal === "DELIVERY_CUTOFF";

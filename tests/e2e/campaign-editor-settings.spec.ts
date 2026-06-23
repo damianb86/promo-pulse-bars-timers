@@ -67,10 +67,17 @@ test("cart rescue reason and settings persist from the campaign editor", async (
   });
 
   const form = page.locator("#campaign-basics-form");
-  await form.getByRole("radio", { name: /^Free shipping goal\b/ }).click();
-  await form.getByLabel("Threshold amount").fill("95");
-  await form.getByLabel("Currency code").fill("usd");
-  await form.getByLabel("Progress style").selectOption("COMPACT");
+  await expect(
+    form.getByRole("radio", { name: /^Offer reserved\b/ }),
+  ).toBeChecked();
+  await expect(
+    form.getByRole("radio", { name: /^Checkout reminder\b/ }),
+  ).toBeVisible();
+  await expect(
+    form.getByRole("radio", { name: /^Free shipping goal\b/ }),
+  ).toHaveCount(0);
+
+  await form.getByRole("radio", { name: /^Checkout reminder\b/ }).click();
   await expect(form.getByLabel("Show session timer")).not.toBeChecked();
   await expect(form.getByLabel("Show checkout button")).toBeChecked();
 
@@ -78,11 +85,11 @@ test("cart rescue reason and settings persist from the campaign editor", async (
   await page.reload();
 
   await expect(
-    form.getByRole("radio", { name: /^Free shipping goal\b/ }),
+    form.getByRole("radio", { name: /^Checkout reminder\b/ }),
   ).toBeChecked();
-  await expect(form.getByLabel("Threshold amount")).toHaveValue("95");
-  await expect(form.getByLabel("Currency code")).toHaveValue("USD");
-  await expect(form.getByLabel("Progress style")).toHaveValue("COMPACT");
+  await expect(
+    form.getByRole("radio", { name: /^Free shipping goal\b/ }),
+  ).toHaveCount(0);
   await expect(form.getByLabel("Show session timer")).not.toBeChecked();
   await expect(form.getByLabel("Show checkout button")).toBeChecked();
 

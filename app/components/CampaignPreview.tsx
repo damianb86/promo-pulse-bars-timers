@@ -947,11 +947,7 @@ function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
 }
 
 function buildFreeShippingPreview(viewModel: CampaignViewModel) {
-  if (
-    !viewModel.freeShipping ||
-    (viewModel.type !== "FREE_SHIPPING_GOAL" &&
-      viewModel.cartRescue?.rescueReason !== "FREE_SHIPPING_GOAL")
-  ) {
+  if (!viewModel.freeShipping || viewModel.type !== "FREE_SHIPPING_GOAL") {
     return null;
   }
 

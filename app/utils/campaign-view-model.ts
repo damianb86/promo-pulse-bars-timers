@@ -255,6 +255,7 @@ function buildFreeShippingViewModel(
 ): FreeShippingViewModel | null {
   const settings = campaign.freeShippingSettings;
 
+  if (campaign.type !== "FREE_SHIPPING_GOAL") return null;
   if (!settings) return null;
 
   return {
@@ -380,13 +381,7 @@ function toAfterCutoffBehavior(
 function toCartRescueReason(
   value: string | null | undefined,
 ): CartRescueReasonValue {
-  if (
-    value === "CHECKOUT_REMINDER" ||
-    value === "FREE_SHIPPING_GOAL" ||
-    value === "OFFER_EXPIRES" ||
-    value === "SHIPPING_CUTOFF" ||
-    value === "LOW_STOCK_RISK"
-  ) {
+  if (value === "CHECKOUT_REMINDER") {
     return value;
   }
 

@@ -406,25 +406,22 @@ describe("advanced campaign settings form parsing", () => {
     });
   });
 
-  it("parses cart rescue reason, timer, button, placements, and free shipping threshold", () => {
+  it("parses cart rescue reason, timer, button, and placements", () => {
     const parsed = parseCampaignFormData(
       formData({
         goal: "CART_RESCUE",
         type: "CART_TIMER",
-        name: "Cart rescue free shipping",
-        headline: "You are close to free shipping",
-        subheadline: "Add a little more to unlock shipping benefits.",
+        name: "Cart rescue reminder",
+        headline: "Your cart is ready",
+        subheadline: "Complete your order when you are ready.",
         ctaText: "Checkout",
         ctaUrl: "/checkout",
         placementTypes: ["CART_DRAWER", "CART_PAGE"],
-        cartRescueReason: "FREE_SHIPPING_GOAL",
+        cartRescueReason: "CHECKOUT_REMINDER",
         cartRescueShowButton: "on",
         cartRescueShowTimer: "false",
         cartTimerDurationMinutes: "45",
         cartTimerResetBehavior: "ON_SESSION_END",
-        freeShippingThresholdAmount: "80",
-        freeShippingCurrencyCode: "usd",
-        freeShippingProgressStyle: "COMPACT",
       }),
     );
 
@@ -433,20 +430,39 @@ describe("advanced campaign settings form parsing", () => {
       goal: "CART_RESCUE",
       type: "CART_TIMER",
       placementTypes: ["CART_DRAWER", "CART_PAGE"],
-      cartRescueReason: "FREE_SHIPPING_GOAL",
+      cartRescueReason: "CHECKOUT_REMINDER",
       cartRescueShowButton: true,
       cartRescueShowTimer: false,
-      freeShippingCurrencyCode: "USD",
-      freeShippingProgressStyle: "COMPACT",
     });
     expect(buildCampaignCartRescueSettingsValues(parsed.values)).toEqual({
-      rescueReason: "FREE_SHIPPING_GOAL",
+      rescueReason: "CHECKOUT_REMINDER",
       showButton: true,
       showTimer: false,
     });
     expect(buildCampaignTimerSettingsValues(parsed.values)).toMatchObject({
       mode: "FIXED_DATE",
       durationMinutes: null,
+    });
+  });
+
+  it("falls back when cart rescue receives a retired free shipping reason", () => {
+    const parsed = parseCampaignFormData(
+      formData({
+        goal: "CART_RESCUE",
+        type: "CART_TIMER",
+        name: "Cart rescue",
+        headline: "Your cart is ready",
+        placementTypes: ["CART_DRAWER"],
+        cartRescueReason: "FREE_SHIPPING_GOAL",
+      }),
+    );
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values.cartRescueReason).toBe("CART_RESERVED");
+    expect(buildCampaignCartRescueSettingsValues(parsed.values)).toEqual({
+      rescueReason: "CART_RESERVED",
+      showButton: true,
+      showTimer: true,
     });
   });
 

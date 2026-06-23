@@ -48,7 +48,6 @@ export type E2ETestScenario =
   | "campaign-type-product-timer"
   | "campaign-type-cart-timer"
   | "campaign-type-cart-rescue-reminder"
-  | "campaign-type-cart-rescue-free-shipping"
   | "campaign-type-free-shipping"
   | "campaign-type-free-shipping-circular"
   | "campaign-type-delivery-cutoff"
@@ -278,11 +277,6 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "campaign-type-cart-rescue-reminder") {
     await createCartRescueReminderCampaign(shopId);
-    return;
-  }
-
-  if (scenario === "campaign-type-cart-rescue-free-shipping") {
-    await createCartRescueFreeShippingCampaign(shopId);
     return;
   }
 
@@ -2342,80 +2336,6 @@ async function createCartRescueReminderCampaign(shopId: string) {
             subheadline: "Complete your order when you are ready.",
             ctaText: "Checkout",
             ctaUrl: "/checkout",
-          },
-        ],
-      },
-    },
-  });
-}
-
-async function createCartRescueFreeShippingCampaign(shopId: string) {
-  return prisma.campaign.create({
-    data: {
-      shopId,
-      name: "E2E Cart Rescue Free Shipping",
-      status: CampaignStatus.ACTIVE,
-      type: CampaignType.CART_TIMER,
-      goal: CampaignGoal.CART_RESCUE,
-      timezone: "America/New_York",
-      placements: {
-        create: [PlacementType.CART_PAGE, PlacementType.CART_DRAWER].map(
-          (placementType) => ({
-            placementType,
-            enabled: true,
-          }),
-        ),
-      },
-      design: {
-        create: {
-          ...flashSaleDesign(),
-          templateKey: "cart-rescue-free-shipping",
-          backgroundColor: "#ECFDF5",
-          gradientStartColor: "#ECFDF5",
-          gradientEndColor: "#D1FAE5",
-          textColor: "#064E3B",
-          accentColor: "#10B981",
-          buttonColor: "#047857",
-          buttonTextColor: "#FFFFFF",
-          icon: CampaignDesignIcon.TRUCK,
-        },
-      },
-      cartRescueSettings: {
-        create: {
-          rescueReason: CartRescueReason.FREE_SHIPPING_GOAL,
-          showButton: true,
-          showTimer: false,
-        },
-      },
-      timerSettings: {
-        create: {
-          mode: TimerMode.EVERGREEN_SESSION,
-          durationMinutes: 30,
-          recurringDays: [],
-          resetBehavior: TimerResetBehavior.ON_SESSION_END,
-          expiredBehavior: TimerExpiredBehavior.HIDE_TIMER,
-        },
-      },
-      freeShippingSettings: {
-        create: {
-          thresholdAmount: new Prisma.Decimal(80),
-          currencyCode: "USD",
-          includeDiscountedSubtotal: true,
-          emptyCartMessage: "Add items to unlock free shipping",
-          progressStyle: "BAR",
-          successMessage: "You've unlocked free shipping!",
-        },
-      },
-      translations: {
-        create: [
-          {
-            ...englishTranslation("You are close to free shipping"),
-            subheadline: "Add a little more to unlock shipping benefits.",
-            ctaText: "Checkout",
-            ctaUrl: "/checkout",
-            freeShippingProgressText:
-              "You're {{amount}} away from free shipping",
-            freeShippingSuccessText: "You've unlocked free shipping!",
           },
         ],
       },

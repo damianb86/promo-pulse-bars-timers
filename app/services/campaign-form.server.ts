@@ -388,11 +388,7 @@ export function parseCampaignFormData(
     errors.customStyle = "Keep the custom style under 500 characters.";
   }
 
-  if (
-    values.type === "FREE_SHIPPING_GOAL" ||
-    values.goal === "FREE_SHIPPING" ||
-    values.cartRescueReason === "FREE_SHIPPING_GOAL"
-  ) {
+  if (values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING") {
     const freeShippingThreshold = Number(values.freeShippingThresholdAmount);
 
     if (!Number.isFinite(freeShippingThreshold) || freeShippingThreshold <= 0) {

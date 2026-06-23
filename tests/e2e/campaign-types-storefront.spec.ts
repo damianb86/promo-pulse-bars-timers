@@ -139,52 +139,6 @@ test("Cart Rescue checkout reminder renders on cart page and drawer without fake
   expectNoFailedRequests(page);
 });
 
-test("Cart Rescue free shipping reason uses real cart subtotal on page and drawer", async ({
-  page,
-  resetDb,
-}) => {
-  await resetDb("campaign-type-cart-rescue-free-shipping");
-  await page.goto("/__test/storefront-cart?subtotal=50");
-
-  const cartPageCard = page.locator(".pp-cart-timer .pp-cart-card");
-  await expect(cartPageCard).toContainText("You are close to free shipping");
-  await expect(cartPageCard).toContainText(
-    "You're $30.00 away from free shipping",
-  );
-  await expect(cartPageCard.locator(".pp-countdown")).toHaveCount(0);
-  await expect(cartPageCard.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "63",
-  );
-
-  await page.getByRole("button", { name: "Open cart drawer" }).click();
-  const drawerCard = page.locator(".pp-cart-card--drawer");
-  await expect(drawerCard).toContainText(
-    "You're $30.00 away from free shipping",
-  );
-  await expect(drawerCard.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "63",
-  );
-
-  await page.evaluate(() => {
-    (
-      window as Window & {
-        __setPromoPulseSubtotal?: (amount: number) => void;
-      }
-    ).__setPromoPulseSubtotal?.(90);
-  });
-
-  await expect(cartPageCard).toContainText("You've unlocked free shipping!");
-  await expect(cartPageCard.getByRole("progressbar")).toHaveAttribute(
-    "aria-valuenow",
-    "100",
-  );
-
-  expectNoConsoleErrors(page);
-  expectNoFailedRequests(page);
-});
-
 test("FREE_SHIPPING_GOAL updates threshold progress after cart changes without refetching the campaign", async ({
   page,
   resetDb,

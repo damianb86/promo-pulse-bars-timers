@@ -1,8 +1,15 @@
 import {
   AnalyticsEventType,
   CampaignDesignIcon,
+  DesignBackgroundType,
+  DesignBannerAnimation,
   DesignAlignment,
+  DesignFontFamily,
+  DesignLayout,
   DesignPositionMode,
+  DesignTimerFormat,
+  DesignTimerStyle,
+  DesignTimerTickAnimation,
   DiscountCodeValueType,
   DiscountSyncMethod,
   ExperimentPrimaryMetric,
@@ -1026,21 +1033,64 @@ async function applyDesignOverride(
 ) {
   const override = jsonObject(variant.designOverride);
   const alignment = readDesignAlignment(override.alignment);
+  const backgroundType = readDesignBackgroundType(override.backgroundType);
+  const entranceAnimation = readDesignBannerAnimation(
+    override.entranceAnimation,
+  );
+  const exitAnimation = readDesignBannerAnimation(override.exitAnimation);
+  const fontFamily = readDesignFontFamily(override.fontFamily);
   const icon = readCampaignDesignIcon(override.icon);
+  const layout = readDesignLayout(override.layout);
   const positionMode = readDesignPositionMode(override.positionMode);
+  const timerFormat = readDesignTimerFormat(override.timerFormat);
+  const timerStyle = readDesignTimerStyle(override.timerStyle);
+  const timerTickAnimation = readDesignTimerTickAnimation(
+    override.timerTickAnimation,
+  );
   const data: Omit<Prisma.CampaignDesignUncheckedCreateInput, "campaignId"> = {
     ...pickStringFields(override, [
       "templateKey",
       "backgroundColor",
+      "backgroundImageUrl",
+      "gradientStartColor",
+      "gradientEndColor",
       "textColor",
       "accentColor",
       "buttonColor",
       "buttonTextColor",
       "closeButtonColor",
+      "borderColor",
+      "titleColor",
+      "subheadingColor",
+      "timerColor",
+      "legendColor",
+      "timerDaysLabel",
+      "timerHoursLabel",
+      "timerMinutesLabel",
+      "timerSecondsLabel",
+      "timerSurfaceColor",
+      "timerSurfaceBorderColor",
       "customCss",
       "customIconUrl",
     ]),
-    ...pickIntegerFields(override, ["fontSize", "borderRadius"]),
+    ...pickIntegerFields(override, [
+      "gradientAngle",
+      "fontSize",
+      "borderRadius",
+      "borderSize",
+      "titleFontSize",
+      "subheadingFontSize",
+      "timerFontSize",
+      "legendFontSize",
+      "timerSurfaceBorderSize",
+      "timerSurfaceRadius",
+      "paddingBlock",
+      "paddingInline",
+      "contentGap",
+      "contentMaxWidth",
+      "animationDurationMs",
+      "iconSize",
+    ]),
     ...pickBooleanFields(override, [
       "fullWidth",
       "positionSticky",
@@ -1049,10 +1099,21 @@ async function applyDesignOverride(
       "showButton",
       "showProgressBar",
       "showIcon",
+      "timerShowLabels",
+      "timerShowSeconds",
+      "timerHideZeroDays",
     ]),
     ...(alignment ? { alignment } : {}),
+    ...(backgroundType ? { backgroundType } : {}),
+    ...(entranceAnimation ? { entranceAnimation } : {}),
+    ...(exitAnimation ? { exitAnimation } : {}),
+    ...(fontFamily ? { fontFamily } : {}),
     ...(icon ? { icon } : {}),
+    ...(layout ? { layout } : {}),
     ...(positionMode ? { positionMode } : {}),
+    ...(timerFormat ? { timerFormat } : {}),
+    ...(timerStyle ? { timerStyle } : {}),
+    ...(timerTickAnimation ? { timerTickAnimation } : {}),
   };
 
   if (Object.keys(data).length === 0) return;
@@ -1190,9 +1251,57 @@ function readDesignAlignment(value: unknown) {
     : null;
 }
 
+function readDesignBackgroundType(value: unknown) {
+  return Object.values(DesignBackgroundType).includes(
+    value as DesignBackgroundType,
+  )
+    ? (value as DesignBackgroundType)
+    : null;
+}
+
+function readDesignBannerAnimation(value: unknown) {
+  return Object.values(DesignBannerAnimation).includes(
+    value as DesignBannerAnimation,
+  )
+    ? (value as DesignBannerAnimation)
+    : null;
+}
+
+function readDesignFontFamily(value: unknown) {
+  return Object.values(DesignFontFamily).includes(value as DesignFontFamily)
+    ? (value as DesignFontFamily)
+    : null;
+}
+
+function readDesignLayout(value: unknown) {
+  return Object.values(DesignLayout).includes(value as DesignLayout)
+    ? (value as DesignLayout)
+    : null;
+}
+
 function readDesignPositionMode(value: unknown) {
   return Object.values(DesignPositionMode).includes(value as DesignPositionMode)
     ? (value as DesignPositionMode)
+    : null;
+}
+
+function readDesignTimerFormat(value: unknown) {
+  return Object.values(DesignTimerFormat).includes(value as DesignTimerFormat)
+    ? (value as DesignTimerFormat)
+    : null;
+}
+
+function readDesignTimerStyle(value: unknown) {
+  return Object.values(DesignTimerStyle).includes(value as DesignTimerStyle)
+    ? (value as DesignTimerStyle)
+    : null;
+}
+
+function readDesignTimerTickAnimation(value: unknown) {
+  return Object.values(DesignTimerTickAnimation).includes(
+    value as DesignTimerTickAnimation,
+  )
+    ? (value as DesignTimerTickAnimation)
     : null;
 }
 

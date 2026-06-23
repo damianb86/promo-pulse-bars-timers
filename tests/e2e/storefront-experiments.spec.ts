@@ -18,7 +18,7 @@ test("storefront assigns a stable experiment variant and tracks variant attribut
   const bar = page.locator(".pp-bar").first();
   await expect(bar).toContainText("Variant headline");
   await expect(bar).toContainText("A/B treatment copy.");
-  await expect(bar.locator(".pp-code")).toHaveText("VARIANT20");
+  await expect(bar.locator(".pp-code")).toHaveText("CONTROL10");
 
   await expect
     .poll(async () =>

@@ -23,7 +23,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
   });
 
   await page.goto(`/app/campaigns/${campaignId}`);
-  await page.getByRole("tab", { name: "A/B testing" }).click();
+  await page.getByRole("tab", { name: "Experiments" }).click();
   const createExperimentForm = page.locator(
     'form:has(input[name="_action"][value="createExperiment"])',
   );
@@ -35,16 +35,16 @@ test("campaign experiments assign stable variants and can be paused", async ({
     .selectOption("CLICK_RATE");
   await createExperimentForm.getByLabel("Variant 1 weight").fill("1");
   await createExperimentForm.getByLabel("Variant 2 weight").fill("100");
-  await createExperimentForm.getByLabel("Variant 2 text override JSON").fill(
-    JSON.stringify({
-      headline: "Variant headline",
-      subheadline: "A/B treatment copy.",
-      ctaText: "Shop variant",
-    }),
-  );
   await createExperimentForm
-    .getByLabel("Variant 2 discount override JSON")
-    .fill(JSON.stringify({ discountCode: "VARIANT20" }));
+    .getByRole("button", { name: "Edit Variant B" })
+    .click();
+  await createExperimentForm
+    .getByRole("textbox", { name: /^Headline / })
+    .fill("Variant headline");
+  await createExperimentForm
+    .getByLabel("Subheadline")
+    .fill("A/B treatment copy.");
+  await createExperimentForm.getByLabel("CTA text").fill("Shop variant");
 
   await Promise.all([
     page.waitForResponse(
@@ -56,8 +56,11 @@ test("campaign experiments assign stable variants and can be paused", async ({
       .getByRole("button", { name: "Create experiment" })
       .click(),
   ]);
+  const savedExperiment = page
+    .locator(".counterpulse-experiment-shell")
+    .filter({ hasText: "E2E A/B Experiment" });
   await expect(
-    page.getByRole("row", { name: /E2E A\/B Experiment/ }),
+    savedExperiment.getByRole("heading", { name: "E2E A/B Experiment" }),
   ).toBeVisible();
 
   await Promise.all([
@@ -66,11 +69,9 @@ test("campaign experiments assign stable variants and can be paused", async ({
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Start" }).click(),
+    savedExperiment.getByRole("button", { name: "Start" }).click(),
   ]);
-  await expect(
-    page.getByRole("row", { name: /E2E A\/B Experiment Running/ }),
-  ).toBeVisible();
+  await expect(savedExperiment.getByText("Running")).toBeVisible();
   await publishCurrentCampaign(page);
 
   await page.goto(
@@ -79,7 +80,7 @@ test("campaign experiments assign stable variants and can be paused", async ({
   const bar = page.locator(".pp-bar").first();
   await expect(bar).toContainText("Variant headline");
   await expect(bar).toContainText("A/B treatment copy.");
-  await expect(bar.locator(".pp-code")).toHaveText("VARIANT20");
+  await expect(bar.locator(".pp-code")).toHaveCount(0);
 
   await page.reload();
   await expect(page.locator(".pp-bar").first()).toContainText(
@@ -90,18 +91,16 @@ test("campaign experiments assign stable variants and can be paused", async ({
     .toMatchObject({ attributedVariants: 1 });
 
   await loginAsDemoShop(`/app/campaigns/${campaignId}`);
-  await page.getByRole("tab", { name: "A/B testing" }).click();
+  await page.getByRole("tab", { name: "Experiments" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Pause" }).click(),
+    savedExperiment.getByRole("button", { name: "Pause" }).click(),
   ]);
-  await expect(
-    page.getByRole("row", { name: /E2E A\/B Experiment Paused/ }),
-  ).toBeVisible();
+  await expect(savedExperiment.getByText("Paused")).toBeVisible();
   await publishCurrentCampaign(page);
 
   await page.goto(

@@ -1813,13 +1813,17 @@ export default function EditCampaignPage() {
             },
             {
               key: "experiments",
-              label: "A/B testing",
+              label: "Experiments",
               description:
                 "Create variants, define traffic split and the primary metric, review performance, and apply a winner when the result is clear enough to replace the live campaign.",
               content: (
                 <ExperimentsEditor
+                  baseDesign={activeDesignValues}
+                  baseViewModel={draftPreviewViewModel}
+                  designMediaOptions={designMediaOptions}
                   errors={actionData?.experimentErrors}
                   experiments={experiments}
+                  isProPlan={isProPlan}
                   lockedReason={lockedFeatures.experiments}
                   notice={actionData?.experimentNotice}
                 />
@@ -2834,7 +2838,6 @@ function parseExperimentFormData(formData: FormData): {
     .map((value) => String(value));
   const textOverrides = formData.getAll("textOverride");
   const designOverrides = formData.getAll("designOverride");
-  const discountOverrides = formData.getAll("discountOverride");
   const placementOverrides = formData.getAll("placementOverride");
   const variantCount = Math.max(names.length, weights.length);
 
@@ -2879,11 +2882,7 @@ function parseExperimentFormData(formData: FormData): {
         "Design override",
         errors,
       ),
-      discountOverride: parseJsonOverride(
-        discountOverrides[index],
-        "Discount override",
-        errors,
-      ),
+      discountOverride: null,
       placementOverride: parseJsonOverride(
         placementOverrides[index],
         "Placement override",
@@ -3018,7 +3017,7 @@ function toExperimentRow(
     autoWinnerMinSampleSize: experiment.autoWinnerMinSampleSize,
     autoWinnerMinRuntimeHours: experiment.autoWinnerMinRuntimeHours,
     autoWinnerConfidenceThreshold: experiment.autoWinnerConfidenceThreshold,
-    variants: experiment.variants.map((variant) => ({
+    variants: sortExperimentVariants(experiment.variants).map((variant) => ({
       id: variant.id,
       name: variant.name,
       weight: variant.weight,
@@ -3080,7 +3079,7 @@ function emptyExperimentResults(experiment: {
       minRuntimeHours: experiment.autoWinnerMinRuntimeHours,
       confidenceThreshold: experiment.autoWinnerConfidenceThreshold,
     },
-    variants: experiment.variants.map((variant) => ({
+    variants: sortExperimentVariants(experiment.variants).map((variant) => ({
       variantId: variant.id,
       variantName: variant.name,
       status: variant.status as ExperimentVariantStatus,
@@ -3099,6 +3098,31 @@ function emptyExperimentResults(experiment: {
       primaryMetricValue: 0,
     })),
   };
+}
+
+function sortExperimentVariants<T extends { name: string }>(variants: T[]) {
+  return [...variants].sort((left, right) => {
+    const leftRank = experimentVariantSortRank(left.name);
+    const rightRank = experimentVariantSortRank(right.name);
+
+    if (leftRank !== rightRank) return leftRank - rightRank;
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function experimentVariantSortRank(name: string) {
+  const normalized = name.trim().toLowerCase();
+
+  if (normalized === "control") return 0;
+
+  const variantLetter = normalized.match(/^variant\s+([a-z])$/);
+
+  if (variantLetter?.[1]) {
+    return 10 + variantLetter[1].charCodeAt(0) - "a".charCodeAt(0);
+  }
+
+  return 100;
 }
 
 function jsonTextareaValue(value: unknown) {

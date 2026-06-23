@@ -594,7 +594,6 @@ async function applyAiSuggestionToCampaign({
         ctaText: variant.ctaText,
       },
       designOverride: variant.designOverride,
-      discountOverride: variant.discountOverride,
       placementOverride: variant.placementOverride,
     })),
   });

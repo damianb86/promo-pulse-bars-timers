@@ -13,7 +13,7 @@ test("experiment results can auto-detect and apply a winning variant", async ({
   await resetDb("auto-winner");
   await loginAsDemoShop("/app/campaigns");
   await page.getByRole("link", { name: "E2E Auto Winner Campaign" }).click();
-  await page.getByRole("tab", { name: "A/B testing" }).click();
+  await page.getByRole("tab", { name: "Experiments" }).click();
 
   await expect(page.getByText("Experiment Results")).toBeVisible();
   await expect(
@@ -58,7 +58,7 @@ test("experiment results can auto-detect and apply a winning variant", async ({
   ).toHaveValue("Winning treatment copy.");
   await page.getByRole("tab", { name: "Offers" }).click();
   await expect(page.getByLabel("Existing discount code or ID")).toHaveValue(
-    "WINNER20",
+    "CONTROL10",
   );
 
   expectNoConsoleErrors(page);

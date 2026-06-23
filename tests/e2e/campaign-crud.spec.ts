@@ -202,11 +202,12 @@ test("campaign builder tabs preview and layout are interactive", async ({
   await infoDialog.getByRole("button", { name: "Close" }).click();
   await expect(page.getByRole("tab", { name: "Unique codes" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "A/B testing" }).click();
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  const experimentsPanel = page.locator("#campaign-editor-panel-experiments");
   await expect(
-    page.getByRole("heading", { name: "Experiments" }),
+    experimentsPanel.getByRole("heading", { name: "Campaign experiments" }),
   ).toBeVisible();
-  await page.getByTitle("About Primary metric").click();
+  await experimentsPanel.getByTitle("About Primary metric").click();
   infoDialog = page.getByRole("dialog", {
     name: "Experiment primary metric",
   });

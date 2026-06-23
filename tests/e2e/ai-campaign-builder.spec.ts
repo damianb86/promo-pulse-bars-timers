@@ -65,11 +65,16 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   await expect(campaignNameInput).toHaveValue(
     /Summer launch - trail running shoes/,
   );
-  await page.getByRole("tab", { name: "A/B testing" }).click();
-  await expect(page.getByText("AI suggested variants")).toBeVisible();
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  const experimentsPanel = page.locator("#campaign-editor-panel-experiments");
   await expect(
-    page.getByRole("row", { name: /AI suggested variants/ }),
-  ).toContainText("Draft");
+    experimentsPanel.getByText("AI suggested variants"),
+  ).toBeVisible();
+  await expect(
+    experimentsPanel
+      .locator(".counterpulse-experiment-status")
+      .filter({ hasText: "Draft" }),
+  ).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

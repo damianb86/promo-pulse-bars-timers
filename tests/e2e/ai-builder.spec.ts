@@ -67,11 +67,16 @@ test("mock AI builder generates a reviewed draft without auto-publishing", async
   await confirmAction(page, "Save campaign");
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
   await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
-  await page.getByRole("tab", { name: "A/B testing" }).click();
-  await expect(page.getByText("AI suggested variants")).toBeVisible();
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  const experimentsPanel = page.locator("#campaign-editor-panel-experiments");
   await expect(
-    page.getByRole("row", { name: /AI suggested variants/ }),
-  ).toContainText("Draft");
+    experimentsPanel.getByText("AI suggested variants"),
+  ).toBeVisible();
+  await expect(
+    experimentsPanel
+      .locator(".counterpulse-experiment-status")
+      .filter({ hasText: "Draft" }),
+  ).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

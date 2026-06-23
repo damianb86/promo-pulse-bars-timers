@@ -604,9 +604,6 @@ async function createAbTestCampaign(shopId: string) {
               backgroundColor: "#064E3B",
               accentColor: "#34D399",
             },
-            discountOverride: {
-              discountCode: "VARIANT20",
-            },
           },
         ],
       },
@@ -766,9 +763,6 @@ async function createAutoWinnerScenario(shopId: string) {
               headline: "Winning headline",
               subheadline: "Winning treatment copy.",
               ctaText: "Shop winner",
-            },
-            discountOverride: {
-              discountCode: "WINNER20",
             },
           },
         ],

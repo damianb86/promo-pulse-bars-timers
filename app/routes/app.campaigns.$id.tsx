@@ -77,6 +77,10 @@ import {
   parseCampaignTranslationAiFormData,
 } from "../services/ai/campaignTranslationGenerator.server";
 import {
+  generateExperimentVariantSuggestion,
+  parseExperimentVariantAiFormData,
+} from "../services/ai/experimentVariantGenerator.server";
+import {
   hasCampaignDesignErrors,
   parseResponsiveCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
@@ -635,6 +639,43 @@ export const action = async ({
         {
           aiTranslationError:
             "Translations could not be generated. Check the source copy and try again.",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (intent === "generateExperimentVariantWithAi") {
+    const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
+    const parsedVariantAi = parseExperimentVariantAiFormData(formData);
+
+    if (!aiGate.allowed) {
+      return Response.json(
+        { aiVariantError: aiGate.reason },
+        { status: 403 },
+      );
+    }
+
+    if (parsedVariantAi.errors.form) {
+      return Response.json(
+        { aiVariantError: parsedVariantAi.errors.form },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const aiVariant = await generateExperimentVariantSuggestion(
+        parsedVariantAi.input,
+      );
+
+      return Response.json({ aiVariant });
+    } catch (error) {
+      console.error("Failed to generate experiment variant", error);
+
+      return Response.json(
+        {
+          aiVariantError:
+            "The AI variant could not be generated. Review the campaign copy and try again.",
         },
         { status: 500 },
       );

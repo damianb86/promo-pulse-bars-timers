@@ -652,3 +652,74 @@ test("experiment variant copy is prefilled and design preview updates live", asy
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("AI variant drawer generates a reviewable experiment variant", async ({
+  createCampaignViaUI,
+  loginAsDemoShop,
+  page,
+  resetDb,
+}) => {
+  await resetDb("premium");
+  await loginAsDemoShop();
+  const campaignId = await createCampaignViaUI({
+    name: "E2E AI Experiment Variant",
+    headline: "Save 20% today",
+    subheadline: "Offer ends tonight.",
+    ctaText: "Shop sale",
+    ctaUrl: "/collections/sale",
+  });
+
+  await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Experiments" }).click();
+
+  const createExperimentForm = page.locator(
+    'form:has(input[name="_action"][value="createExperiment"])',
+  );
+
+  await createExperimentForm
+    .getByRole("button", { name: "Generate with AI" })
+    .click();
+
+  const aiDrawer = page.getByRole("complementary", {
+    name: "Generate AI variant",
+  });
+  await expect(aiDrawer).toBeVisible();
+  await aiDrawer.getByRole("button", { name: /Trust and proof/ }).click();
+  await aiDrawer.getByRole("button", { name: /Bold creative/ }).click();
+  await aiDrawer
+    .getByRole("textbox", { name: /^Guidance / })
+    .fill("Make it feel credible without inventing reviews.");
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes(`/app/campaigns/${campaignId}`) &&
+        response.request().method() === "POST",
+    ),
+    aiDrawer.getByRole("button", { name: "Generate variant" }).click(),
+  ]);
+
+  await expect(aiDrawer.getByText("Suggested variant")).toBeVisible();
+  await expect(aiDrawer.getByText("Hypothesis", { exact: true })).toBeVisible();
+  await expect(aiDrawer.getByText("Trust proof")).toBeVisible();
+  await expect(aiDrawer.getByTestId("variant-preview-surface")).toBeVisible();
+
+  await aiDrawer.getByRole("button", { name: "Accept variant" }).click();
+  await expect(aiDrawer).toHaveCount(0);
+
+  const generatedVariantCard = createExperimentForm
+    .locator(".counterpulse-variant-card")
+    .filter({ hasText: "Trust proof" });
+
+  await expect(generatedVariantCard).toBeVisible();
+  await expect(generatedVariantCard).toContainText("Trusted choice");
+  await expect(
+    createExperimentForm.locator(".counterpulse-variant-card"),
+  ).toHaveCount(2);
+  await expect(
+    createExperimentForm.getByRole("button", { name: "Create experiment" }),
+  ).toBeEnabled();
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});

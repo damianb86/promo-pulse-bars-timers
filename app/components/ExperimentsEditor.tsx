@@ -5,7 +5,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Form, useNavigation } from "react-router";
+import { Form, useFetcher, useNavigation } from "react-router";
 
 import { DesignControls } from "./DesignControls";
 import { AppAlert, FieldInfoButton } from "./Notifications";
@@ -119,6 +119,36 @@ type VariantDraft = {
 };
 
 type DrawerTab = "copy" | "placement" | "design" | "settings";
+type AiVariantStrategy =
+  | "urgency"
+  | "benefit"
+  | "trust"
+  | "gentle"
+  | "premium"
+  | "visual";
+type AiVariantDesignIntensity = "copy_only" | "balanced" | "bold";
+type AiVariantPlacementIntent = "inherit" | "engagement" | "product" | "cart";
+type AiVariantRequestDraft = {
+  strategy: AiVariantStrategy;
+  designIntensity: AiVariantDesignIntensity;
+  placementIntent: AiVariantPlacementIntent;
+  notes: string;
+};
+type AiVariantSuggestion = {
+  name: string;
+  rationale: string;
+  hypothesis: string;
+  text: Partial<VariantTextDraft>;
+  design: Partial<CampaignDesignValues>;
+  placement: Partial<VariantPlacementDraft>;
+};
+type AiVariantFetcherData = {
+  aiVariant?: {
+    source: "mock" | "provider";
+    variant: AiVariantSuggestion;
+  };
+  aiVariantError?: string;
+};
 type VariantEditRequest = {
   requestId: number;
   variantId: string;
@@ -134,6 +164,106 @@ const metricOptions = [
   { label: "Checkout rate", value: "CHECKOUT_RATE" },
   { label: "Revenue per visitor", value: "REVENUE_PER_VISITOR" },
 ];
+
+const aiVariantStrategyOptions: Array<{
+  value: AiVariantStrategy;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "benefit",
+    label: "Benefit-led clarity",
+    description:
+      "Make the value proposition easier to scan and pair it with a clearer CTA.",
+  },
+  {
+    value: "urgency",
+    label: "Urgency push",
+    description:
+      "Sharper deadline language, stronger contrast, and a more immediate CTA.",
+  },
+  {
+    value: "trust",
+    label: "Trust and proof",
+    description:
+      "Reduce hesitation with calmer copy, confidence cues, and cleaner styling.",
+  },
+  {
+    value: "gentle",
+    label: "Soft reminder",
+    description:
+      "Lower-pressure language for shoppers who respond poorly to hard urgency.",
+  },
+  {
+    value: "premium",
+    label: "Premium polish",
+    description:
+      "More refined copy and restrained styling for high-intent audiences.",
+  },
+  {
+    value: "visual",
+    label: "Visual contrast",
+    description:
+      "Keep the offer close to control while testing layout, color, timer, and icon emphasis.",
+  },
+];
+
+const aiVariantDesignIntensityOptions: Array<{
+  value: AiVariantDesignIntensity;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "balanced",
+    label: "Balanced copy + design",
+    description: "Adjust copy and design enough to create a meaningful test.",
+  },
+  {
+    value: "copy_only",
+    label: "Copy only",
+    description: "Change text and CTA while keeping the campaign design stable.",
+  },
+  {
+    value: "bold",
+    label: "Bold creative",
+    description:
+      "Allow larger layout, color, typography, motion, and timer changes.",
+  },
+];
+
+const aiVariantPlacementIntentOptions: Array<{
+  value: AiVariantPlacementIntent;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "inherit",
+    label: "Keep campaign placement",
+    description: "Use the same placement as the control for a cleaner test.",
+  },
+  {
+    value: "engagement",
+    label: "Optimize for engagement",
+    description: "Let AI decide only if a placement change is useful.",
+  },
+  {
+    value: "product",
+    label: "Product-page focus",
+    description: "Bias the variant toward product detail page decision moments.",
+  },
+  {
+    value: "cart",
+    label: "Cart intent focus",
+    description: "Bias the variant toward cart drawer or cart-page shoppers.",
+  },
+];
+
+const defaultAiVariantRequest: AiVariantRequestDraft = {
+  strategy: "benefit",
+  designIntensity: "balanced",
+  placementIntent: "inherit",
+  notes: "",
+};
 
 const variantStatuses = [
   "DRAFT",
@@ -616,7 +746,9 @@ function ExperimentComposer({
   onClose?: () => void;
 }) {
   const navigation = useNavigation();
+  const aiVariantFetcher = useFetcher<AiVariantFetcherData>();
   const isSubmitting = navigation.state === "submitting";
+  const isAiVariantGenerating = aiVariantFetcher.state !== "idle";
   const initialVariants = useMemo(
     () =>
       normalizeVariantWeights(
@@ -643,6 +775,15 @@ function ExperimentComposer({
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
     null,
   );
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [aiVariantRequest, setAiVariantRequest] =
+    useState<AiVariantRequestDraft>(defaultAiVariantRequest);
+  const [aiVariantSuggestion, setAiVariantSuggestion] =
+    useState<AiVariantSuggestion | null>(null);
+  const [aiVariantNotice, setAiVariantNotice] = useState<{
+    tone: "success" | "critical";
+    message: string;
+  } | null>(null);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>("copy");
   const [name, setName] = useState(
     experiment?.name || `${baseViewModel.name} experiment`,
@@ -661,6 +802,32 @@ function ExperimentComposer({
   const canSubmitExperiment = experiment
     ? variants.length > 0
     : variants.length >= 2 && positiveVariantCount >= 2;
+
+  useEffect(() => {
+    const data = aiVariantFetcher.data;
+
+    if (!data) return;
+
+    const syncAiVariant = window.setTimeout(() => {
+      if (data.aiVariant?.variant) {
+        setAiVariantSuggestion(data.aiVariant.variant);
+        setAiVariantNotice({
+          tone: "success",
+          message:
+            data.aiVariant.source === "mock"
+              ? "Local AI draft generated for review."
+              : "AI variant generated for review.",
+        });
+      } else if (data.aiVariantError) {
+        setAiVariantNotice({
+          tone: "critical",
+          message: data.aiVariantError,
+        });
+      }
+    }, 0);
+
+    return () => window.clearTimeout(syncAiVariant);
+  }, [aiVariantFetcher.data]);
 
   const updateVariant = (
     index: number,
@@ -695,6 +862,54 @@ function ExperimentComposer({
 
       return nextVariants;
     });
+  };
+
+  const openAiDrawer = () => {
+    setAiVariantSuggestion(null);
+    setAiVariantNotice(null);
+    setIsAiDrawerOpen(true);
+  };
+
+  const requestAiVariant = () => {
+    setAiVariantSuggestion(null);
+    setAiVariantNotice(null);
+    aiVariantFetcher.submit(
+      buildAiVariantFormData({
+        baseDesign,
+        baseViewModel,
+        request: aiVariantRequest,
+        variants,
+      }),
+      { method: "post" },
+    );
+  };
+
+  const acceptAiVariant = () => {
+    if (!aiVariantSuggestion) return;
+
+    setVariants((currentVariants) => {
+      const nextVariant = createVariantDraft(
+        currentVariants.length,
+        baseDesign,
+        baseViewModel,
+      );
+      const acceptedVariant = applyAiVariantSuggestion(
+        nextVariant,
+        aiVariantSuggestion,
+      );
+      const nextVariants = rebalanceVariantWeightsEvenly([
+        ...currentVariants,
+        acceptedVariant,
+      ]);
+
+      setActiveVariantIndex(nextVariants.length - 1);
+      setDrawerTab("copy");
+
+      return nextVariants;
+    });
+    setAiVariantSuggestion(null);
+    setAiVariantNotice(null);
+    setIsAiDrawerOpen(false);
   };
 
   const requestDeleteVariant = (index: number) => {
@@ -853,13 +1068,22 @@ function ExperimentComposer({
             is adjusted from the slider.
           </p>
         </div>
-        <button
-          className="counterpulse-button-secondary"
-          type="button"
-          onClick={addVariant}
-        >
-          Add variant
-        </button>
+        <div className="counterpulse-experiment-board-header__actions">
+          <button
+            className="counterpulse-ai-variant-button"
+            type="button"
+            onClick={openAiDrawer}
+          >
+            Generate with AI
+          </button>
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={addVariant}
+          >
+            Add variant
+          </button>
+        </div>
       </div>
 
       <div className="counterpulse-experiment-board">
@@ -902,6 +1126,21 @@ function ExperimentComposer({
           onWeightChange={(weight) =>
             updateVariantWeight(activeVariantIndex, weight)
           }
+        />
+      )}
+
+      {isAiDrawerOpen && (
+        <AiVariantDrawer
+          baseDesign={baseDesign}
+          baseViewModel={baseViewModel}
+          isGenerating={isAiVariantGenerating}
+          notice={aiVariantNotice}
+          request={aiVariantRequest}
+          suggestion={aiVariantSuggestion}
+          onAccept={acceptAiVariant}
+          onChangeRequest={setAiVariantRequest}
+          onClose={() => setIsAiDrawerOpen(false)}
+          onGenerate={requestAiVariant}
         />
       )}
 
@@ -1365,6 +1604,259 @@ function VariantDrawer({
           </footer>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function AiVariantDrawer({
+  baseDesign,
+  baseViewModel,
+  isGenerating,
+  notice,
+  request,
+  suggestion,
+  onAccept,
+  onChangeRequest,
+  onClose,
+  onGenerate,
+}: {
+  baseDesign: CampaignDesignValues;
+  baseViewModel: CampaignViewModel;
+  isGenerating: boolean;
+  notice: { tone: "success" | "critical"; message: string } | null;
+  request: AiVariantRequestDraft;
+  suggestion: AiVariantSuggestion | null;
+  onAccept: () => void;
+  onChangeRequest: (request: AiVariantRequestDraft) => void;
+  onClose: () => void;
+  onGenerate: () => void;
+}) {
+  const [isClosing, setIsClosing] = useState(false);
+  const requestClose = () => setIsClosing(true);
+  const previewVariant = useMemo(() => {
+    if (!suggestion) return null;
+
+    return applyAiVariantSuggestion(
+      createVariantDraft(1, baseDesign, baseViewModel),
+      suggestion,
+    );
+  }, [baseDesign, baseViewModel, suggestion]);
+  const previewViewModel = previewVariant
+    ? buildVariantPreviewModel(baseViewModel, previewVariant)
+    : null;
+  const previewChanges = previewVariant
+    ? describeVariantChanges(previewVariant, baseDesign, baseViewModel, false)
+    : [];
+
+  useEffect(() => {
+    if (!isClosing) return;
+
+    const timeout = window.setTimeout(onClose, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [isClosing, onClose]);
+
+  return (
+    <div
+      className={
+        isClosing
+          ? "counterpulse-variant-drawer-shell counterpulse-ai-variant-drawer-shell is-closing"
+          : "counterpulse-variant-drawer-shell counterpulse-ai-variant-drawer-shell"
+      }
+    >
+      <button
+        aria-label="Close AI variant generator"
+        className="counterpulse-variant-drawer-backdrop"
+        type="button"
+        onClick={requestClose}
+      />
+      <aside
+        aria-label="Generate AI variant"
+        className="counterpulse-ai-variant-drawer"
+      >
+        <header className="counterpulse-variant-drawer__header">
+          <div>
+            <p className="counterpulse-kicker">AI variant generator</p>
+            <h3>Generate experiment variant</h3>
+          </div>
+          <button
+            aria-label="Close AI variant generator"
+            className="counterpulse-icon-button"
+            type="button"
+            onClick={requestClose}
+          >
+            x
+          </button>
+        </header>
+
+        <div className="counterpulse-ai-variant-drawer__body">
+          <section className="counterpulse-ai-variant-section">
+            <div>
+              <h4>Testing direction</h4>
+              <p>
+                Choose the hypothesis you want to explore. AI will keep the
+                same offer, targeting, market, and schedule.
+              </p>
+            </div>
+            <div className="counterpulse-ai-variant-option-grid">
+              {aiVariantStrategyOptions.map((option) => (
+                <button
+                  aria-pressed={request.strategy === option.value}
+                  className="counterpulse-ai-variant-option"
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    onChangeRequest({
+                      ...request,
+                      strategy: option.value,
+                    })
+                  }
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="counterpulse-ai-variant-section">
+            <div>
+              <h4>Creative scope</h4>
+              <p>
+                Control how far AI can move the variant away from the control.
+              </p>
+            </div>
+            <div className="counterpulse-ai-variant-choice-row">
+              {aiVariantDesignIntensityOptions.map((option) => (
+                <button
+                  aria-pressed={request.designIntensity === option.value}
+                  className="counterpulse-ai-variant-chip"
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    onChangeRequest({
+                      ...request,
+                      designIntensity: option.value,
+                    })
+                  }
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="counterpulse-ai-variant-section">
+            <div>
+              <h4>Placement intent</h4>
+              <p>
+                Prefer the base placement for cleaner experiments, or test a
+                shopper moment when placement itself is part of the hypothesis.
+              </p>
+            </div>
+            <div className="counterpulse-ai-variant-choice-row">
+              {aiVariantPlacementIntentOptions.map((option) => (
+                <button
+                  aria-pressed={request.placementIntent === option.value}
+                  className="counterpulse-ai-variant-chip"
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    onChangeRequest({
+                      ...request,
+                      placementIntent: option.value,
+                    })
+                  }
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="counterpulse-ai-variant-section">
+            <VariantDrawerField
+              description="Optional context for AI: audience, product angle, objections, brand tone, or what you want to avoid."
+              label="Guidance"
+            >
+              <textarea
+                maxLength={800}
+                placeholder="Example: make the message feel more premium without adding false urgency."
+                value={request.notes}
+                onChange={(event) =>
+                  onChangeRequest({
+                    ...request,
+                    notes: event.target.value,
+                  })
+                }
+              />
+            </VariantDrawerField>
+            {notice && (
+              <div
+                className={`counterpulse-ai-variant-notice counterpulse-ai-variant-notice--${notice.tone}`}
+              >
+                {notice.message}
+              </div>
+            )}
+            <button
+              className="counterpulse-button"
+              disabled={isGenerating}
+              type="button"
+              onClick={onGenerate}
+            >
+              {isGenerating ? "Generating..." : "Generate variant"}
+            </button>
+          </section>
+
+          {suggestion && previewVariant && previewViewModel && (
+            <section className="counterpulse-ai-variant-suggestion">
+              <div>
+                <p className="counterpulse-kicker">Suggested variant</p>
+                <h4>{suggestion.name}</h4>
+              </div>
+              <div className="counterpulse-ai-variant-suggestion__grid">
+                <div className="counterpulse-ai-variant-suggestion__copy">
+                  <strong>Hypothesis</strong>
+                  <p>{suggestion.hypothesis}</p>
+                  <strong>Why this variant</strong>
+                  <p>{suggestion.rationale}</p>
+                  <VariantChangesList
+                    changes={previewChanges}
+                    title="What AI changed"
+                  />
+                </div>
+                <div className="counterpulse-ai-variant-suggestion__preview">
+                  <span>Preview</span>
+                  <VariantMiniPreview
+                    design={previewVariant.design}
+                    viewModel={previewViewModel}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+
+        <footer className="counterpulse-variant-drawer__footer counterpulse-ai-variant-drawer__footer">
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={requestClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="counterpulse-button"
+            disabled={!suggestion || isGenerating}
+            type="button"
+            onClick={onAccept}
+          >
+            Accept variant
+          </button>
+        </footer>
+      </aside>
     </div>
   );
 }
@@ -2627,6 +3119,101 @@ function toVariantDraft(
         readString(placementOverride.placementSelector),
     },
   };
+}
+
+function buildAiVariantFormData({
+  baseDesign,
+  baseViewModel,
+  request,
+  variants,
+}: {
+  baseDesign: CampaignDesignValues;
+  baseViewModel: CampaignViewModel;
+  request: AiVariantRequestDraft;
+  variants: VariantDraft[];
+}) {
+  const formData = new FormData();
+
+  formData.set("_action", "generateExperimentVariantWithAi");
+  formData.set("strategy", request.strategy);
+  formData.set("designIntensity", request.designIntensity);
+  formData.set("placementIntent", request.placementIntent);
+  formData.set("notes", request.notes);
+  formData.set(
+    "campaignJson",
+    JSON.stringify({
+      name: baseViewModel.name,
+      type: baseViewModel.type,
+      goal: baseViewModel.type,
+      status: "DRAFT",
+      placements: baseViewModel.placements,
+      basePlacement: baseViewModel.placements[0] || "",
+      text: textDraftFromViewModel(baseViewModel),
+      design: normalizeDesign(baseDesign),
+    }),
+  );
+  formData.set(
+    "variantsJson",
+    JSON.stringify(
+      variants.map((variant) => ({
+        name: variant.name,
+        weight: variant.weight,
+        text: buildTextOverride(variant.text, baseViewModel) ?? variant.text,
+        design: buildDesignOverride(variant, baseDesign) ?? {},
+        placement: buildPlacementOverride(variant.placement) ?? {},
+      })),
+    ),
+  );
+
+  return formData;
+}
+
+function applyAiVariantSuggestion(
+  variant: VariantDraft,
+  suggestion: AiVariantSuggestion,
+): VariantDraft {
+  const placement = suggestion.placement ?? {};
+  const placementType = readAiPlacementType(placement.placementType);
+
+  return {
+    ...variant,
+    name: suggestion.name || variant.name,
+    text: {
+      ...variant.text,
+      ...readAiTextSuggestion(suggestion.text),
+    },
+    design: normalizeDesign({
+      ...variant.design,
+      ...suggestion.design,
+    }),
+    placement: {
+      placementType,
+      customSelector:
+        placementType === "CUSTOM_SELECTOR"
+          ? readString(placement.customSelector).slice(0, 120)
+          : "",
+    },
+  };
+}
+
+function readAiTextSuggestion(
+  text: Partial<VariantTextDraft>,
+): Partial<VariantTextDraft> {
+  return textFields.reduce((draft, field) => {
+    const value = text[field.key];
+
+    if (typeof value === "string") {
+      draft[field.key] = value;
+    }
+
+    return draft;
+  }, {} as Partial<VariantTextDraft>);
+}
+
+function readAiPlacementType(value: unknown): PlacementTypeValue | "" {
+  return placementTypeOptions.some((option) => option.value === value)
+    ? (value as PlacementTypeValue)
+    : "";
 }
 
 function createVariantDraft(

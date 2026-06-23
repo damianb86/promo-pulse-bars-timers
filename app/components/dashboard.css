@@ -449,7 +449,8 @@ s-page::part(page) {
   line-height: 16px;
 }
 
-.counterpulse-placement-chips--has-popover:hover .counterpulse-placement-popover {
+.counterpulse-placement-chips--has-popover:hover
+  .counterpulse-placement-popover {
   opacity: 1;
   transform: translateY(0);
 }
@@ -672,13 +673,18 @@ s-page::part(page) {
   color: #4b5563;
 }
 
+.counterpulse-experiment-shell {
+  gap: 22px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .counterpulse-experiment-summary {
   display: grid;
-  gap: 14px;
-  border: 1px solid #dfe3e8;
-  border-radius: 8px;
-  padding: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%);
+  gap: 18px;
+  padding: 4px 6px 0;
+  background: transparent;
 }
 
 .counterpulse-experiment-summary__main,
@@ -687,6 +693,22 @@ s-page::part(page) {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
+}
+
+.counterpulse-experiment-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.counterpulse-experiment-summary h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 780;
+  line-height: 42px;
 }
 
 .counterpulse-experiment-summary h3,
@@ -703,6 +725,18 @@ s-page::part(page) {
   color: #4b5563;
   font-size: 13px;
   line-height: 19px;
+}
+
+.counterpulse-experiment-summary__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(320px, 1.15fr);
+  gap: 18px;
+  align-items: start;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.04);
 }
 
 .counterpulse-experiment-summary__stats {
@@ -760,6 +794,30 @@ s-page::part(page) {
   color: #6d7175;
   font-size: 12px;
   font-weight: 650;
+}
+
+.counterpulse-experiment-runtime {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.counterpulse-experiment-runtime span {
+  color: #6b7280;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.counterpulse-experiment-summary__details-button {
+  min-height: 44px;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 15px;
 }
 
 .counterpulse-experiment-edit-panel {
@@ -832,7 +890,7 @@ s-page::part(page) {
 }
 
 .counterpulse-experiment-settings,
-.counterpulse-experiment-auto-winner {
+.counterpulse-experiment-auto-winner__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(160px, 1fr));
   gap: 12px;
@@ -840,8 +898,37 @@ s-page::part(page) {
 }
 
 .counterpulse-experiment-auto-winner {
-  border-top: 1px solid #ebebeb;
-  padding-top: 14px;
+  display: grid;
+  gap: 24px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 26px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.04);
+}
+
+.counterpulse-experiment-auto-winner__header h3,
+.counterpulse-experiment-controls__header h3 {
+  margin: 0;
+  color: #202223;
+  font-size: 20px;
+  font-weight: 760;
+  line-height: 26px;
+}
+
+.counterpulse-experiment-auto-winner__header p,
+.counterpulse-experiment-controls__header p {
+  margin: 5px 0 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.counterpulse-experiment-auto-winner__toggle {
+  min-height: 38px;
+  align-self: center;
+  font-size: 15px;
+  font-weight: 650;
 }
 
 .counterpulse-experiment-board {
@@ -1286,7 +1373,110 @@ s-page::part(page) {
 }
 
 .counterpulse-experiment-results {
+  overflow: hidden;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.04);
+}
+
+.counterpulse-experiment-results__header {
+  padding: 24px 26px;
+  border-bottom: 1px solid #dfe3e8;
+}
+
+.counterpulse-experiment-results__header h3 {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.counterpulse-experiment-results__table-wrap {
   overflow-x: auto;
+}
+
+.counterpulse-experiment-results__table {
+  min-width: 1040px;
+}
+
+.counterpulse-experiment-results__table th {
+  padding: 18px 26px;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 20px;
+}
+
+.counterpulse-experiment-results__table td {
+  padding: 22px 26px;
+  color: #202223;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.counterpulse-experiment-results__row {
+  background: #ffffff;
+}
+
+.counterpulse-experiment-results__row--recommended {
+  background: #f3fbf7;
+}
+
+.counterpulse-result-variant,
+.counterpulse-result-actions {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.counterpulse-result-variant__name {
+  color: #202223;
+  font-weight: 760;
+}
+
+.counterpulse-result-avatar {
+  display: inline-grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid #dfe3e8;
+  border-radius: 999px;
+  background: #f4f6f8;
+  color: #202223;
+  font-size: 20px;
+  font-weight: 780;
+  line-height: 1;
+}
+
+.counterpulse-result-avatar--0 {
+  border-color: #dfe3e8;
+  background: #f4f6f8;
+}
+
+.counterpulse-result-avatar--1 {
+  border-color: #cfe6fa;
+  background: #eef7ff;
+}
+
+.counterpulse-result-avatar--2 {
+  border-color: #b8ead2;
+  background: #dff8eb;
+}
+
+.counterpulse-result-avatar--3 {
+  border-color: #ead9ff;
+  background: #f4ebff;
+}
+
+.counterpulse-result-avatar--4 {
+  border-color: #fde5b9;
+  background: #fff6df;
+}
+
+.counterpulse-result-avatar--5 {
+  border-color: #ffd5d2;
+  background: #fff0ef;
 }
 
 .counterpulse-result-winner {
@@ -1301,6 +1491,80 @@ s-page::part(page) {
   font-size: 12px;
   font-weight: 750;
   line-height: 16px;
+}
+
+.counterpulse-result-recommended {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #b8ead2;
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: #e3fcef;
+  color: #008060;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 18px;
+}
+
+.counterpulse-result-menu-button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #111827;
+  cursor: pointer;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.counterpulse-result-menu-button:hover,
+.counterpulse-result-menu-button:focus-visible {
+  background: #f4f6f8;
+  outline: none;
+}
+
+.counterpulse-experiment-results__footnote {
+  margin: 0;
+  border-top: 1px solid #dfe3e8;
+  padding: 16px 26px;
+  color: #6d7175;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 18px;
+}
+
+.counterpulse-experiment-controls {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.34fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 26px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.04);
+}
+
+.counterpulse-experiment-controls__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.counterpulse-experiment-control-button {
+  min-height: 52px;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 760;
 }
 
 .counterpulse-stack {
@@ -7410,8 +7674,15 @@ s-page::part(page) {
   .counterpulse-experiment-header,
   .counterpulse-experiment-board-header,
   .counterpulse-experiment-summary__main,
-  .counterpulse-experiment-edit-panel__header {
+  .counterpulse-experiment-summary__overview,
+  .counterpulse-experiment-edit-panel__header,
+  .counterpulse-experiment-controls {
     grid-template-columns: 1fr;
+  }
+
+  .counterpulse-experiment-summary__actions,
+  .counterpulse-experiment-controls__actions {
+    justify-content: flex-start;
   }
 
   .counterpulse-experiment-metrics,
@@ -7420,7 +7691,7 @@ s-page::part(page) {
   }
 
   .counterpulse-experiment-settings,
-  .counterpulse-experiment-auto-winner {
+  .counterpulse-experiment-auto-winner__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -7429,7 +7700,7 @@ s-page::part(page) {
   .counterpulse-experiment-metrics,
   .counterpulse-experiment-summary__stats,
   .counterpulse-experiment-settings,
-  .counterpulse-experiment-auto-winner,
+  .counterpulse-experiment-auto-winner__grid,
   .counterpulse-variant-drawer__design .counterpulse-form-grid,
   .counterpulse-variant-drawer__design .counterpulse-form-grid--wide,
   .counterpulse-variant-drawer__design .counterpulse-typography-grid {
@@ -7441,8 +7712,21 @@ s-page::part(page) {
   .counterpulse-experiment-empty,
   .counterpulse-experiment-hero,
   .counterpulse-experiment-summary,
-  .counterpulse-experiment-edit-panel {
+  .counterpulse-experiment-edit-panel,
+  .counterpulse-experiment-summary__overview,
+  .counterpulse-experiment-results__header,
+  .counterpulse-experiment-auto-winner,
+  .counterpulse-experiment-controls {
     padding: 12px;
+  }
+
+  .counterpulse-experiment-summary h2 {
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .counterpulse-experiment-control-button {
+    width: 100%;
   }
 
   .counterpulse-variant-grid {

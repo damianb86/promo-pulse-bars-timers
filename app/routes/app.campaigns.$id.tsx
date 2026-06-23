@@ -1223,11 +1223,6 @@ export const action = async ({
           experimentId,
           variantId,
         });
-        await applyWinningVariantToCampaign({
-          shopId: shop.id,
-          experimentId,
-          variantId,
-        });
       } else if (intent === "detectExperimentWinner") {
         const result = await autoDeclareWinningVariant({
           shopId: shop.id,
@@ -1241,11 +1236,6 @@ export const action = async ({
             },
           };
         }
-        await applyWinningVariantToCampaign({
-          shopId: shop.id,
-          experimentId,
-          variantId: result.winner.variantId,
-        });
       } else if (intent === "applyExperimentWinner") {
         await applyWinningVariantToCampaign({
           shopId: shop.id,

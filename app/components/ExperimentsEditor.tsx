@@ -461,11 +461,11 @@ function ExistingExperiment({
             experiment={experiment}
             isProPlan={isProPlan}
           />
-          <ExperimentAutoWinnerForm experiment={experiment} />
         </div>
       )}
 
       <ExperimentResultsTable experiment={experiment} />
+      <ExperimentAutoWinnerForm experiment={experiment} />
       <ExperimentLifecycleActions
         canDuplicateCompletedExperiment={canDuplicateCompletedExperiment}
         experiment={experiment}
@@ -496,42 +496,59 @@ function ExperimentSummary({
     <header className="counterpulse-experiment-summary">
       <div className="counterpulse-experiment-summary__main">
         <div>
-          <p className="counterpulse-kicker">Saved experiment</p>
-          <div className="counterpulse-experiment-title-row">
-            <h3>{experiment.name}</h3>
-            <ExperimentStatusBadge status={experiment.status} />
-          </div>
-          <p>{getExperimentStatusDescription(experiment)}</p>
+          <h2>Experiments</h2>
+          <p>Run and analyze A/B tests to find what converts best.</p>
         </div>
-        {canEdit && !isEditing && (
-          <button
-            className="counterpulse-button-secondary"
-            type="button"
-            onClick={onEdit}
-          >
-            Edit experiment
-          </button>
-        )}
+        <div className="counterpulse-experiment-summary__actions">
+          <ExperimentStatusBadge status={experiment.status} />
+          <span className="counterpulse-experiment-runtime">
+            <span aria-hidden="true">◷</span>
+            {experiment.results.runtimeHours.toFixed(1)} runtime hours
+          </span>
+          {canEdit && !isEditing && (
+            <button
+              aria-label="Edit experiment"
+              className="counterpulse-button-secondary counterpulse-experiment-summary__details-button"
+              type="button"
+              onClick={onEdit}
+            >
+              <span aria-hidden="true">☰</span>
+              View experiment details
+            </button>
+          )}
+        </div>
       </div>
 
-      <dl className="counterpulse-experiment-summary__stats">
+      <div className="counterpulse-experiment-summary__overview">
         <div>
-          <dt>Primary metric</dt>
-          <dd>{formatMetric(experiment.primaryMetric)}</dd>
+          <p className="counterpulse-kicker">A/B Testing</p>
+          <h3>{experiment.name}</h3>
+          <p>{getExperimentStatusDescription(experiment)}</p>
         </div>
-        <div>
-          <dt>Variants</dt>
-          <dd>{visibleVariants.length}</dd>
-        </div>
-        <div>
-          <dt>Runtime</dt>
-          <dd>{experiment.results.runtimeHours.toFixed(1)} hours</dd>
-        </div>
-        <div>
-          <dt>Winner</dt>
-          <dd>{winnerVariant?.name || "Not declared"}</dd>
-        </div>
-      </dl>
+
+        <dl className="counterpulse-experiment-summary__stats">
+          <div>
+            <dt>Primary metric</dt>
+            <dd>{formatMetric(experiment.primaryMetric)}</dd>
+          </div>
+          <div>
+            <dt>Variants</dt>
+            <dd>{visibleVariants.length}</dd>
+          </div>
+          <div>
+            <dt>Traffic split</dt>
+            <dd>
+              {visibleVariants
+                .map((variant) => `${variant.weight}%`)
+                .join(" / ")}
+            </dd>
+          </div>
+          <div>
+            <dt>Winner</dt>
+            <dd>{winnerVariant?.name || "Not declared"}</dd>
+          </div>
+        </dl>
+      </div>
 
       <div className="counterpulse-experiment-summary__variants">
         {visibleVariants.map((variant, index) => (
@@ -1322,89 +1339,168 @@ function VariantHiddenInputs({
 
 function ExperimentResultsTable({ experiment }: { experiment: ExperimentRow }) {
   const isCompleted = experiment.status === "COMPLETED";
+  const recommendedVariantId = getRecommendedVariantId(experiment);
+  const sortedVariants = [...experiment.results.variants].sort(
+    (left, right) => {
+      const leftIsRecommended = left.variantId === recommendedVariantId ? 1 : 0;
+      const rightIsRecommended =
+        right.variantId === recommendedVariantId ? 1 : 0;
+
+      if (leftIsRecommended !== rightIsRecommended) {
+        return rightIsRecommended - leftIsRecommended;
+      }
+
+      return (
+        right.primaryMetricValue - left.primaryMetricValue ||
+        right.conversionRate - left.conversionRate ||
+        right.ctr - left.ctr ||
+        right.orders - left.orders ||
+        right.clicks - left.clicks ||
+        right.impressions - left.impressions
+      );
+    },
+  );
 
   return (
     <section className="counterpulse-experiment-results">
       <div className="counterpulse-experiment-results__header">
         <h3>Experiment Results</h3>
-        <span>{experiment.results.runtimeHours.toFixed(1)} runtime hours</span>
+        <span>
+          Metrics refresh automatically. All values are up to the minute.
+        </span>
       </div>
-      <table className="counterpulse-table">
-        <thead>
-          <tr>
-            <th>Variant</th>
-            <th>Impressions</th>
-            <th>Clicks</th>
-            <th>CTR</th>
-            <th>Add-to-cart</th>
-            <th>Orders</th>
-            <th>Revenue</th>
-            <th>RPV</th>
-            <th>Conversion</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {experiment.results.variants.map((variant) => (
-            <tr key={variant.variantId}>
-              <td>
-                {variant.variantName}
-                {variant.variantId === experiment.winnerVariantId
-                  ? " (winner)"
-                  : ""}
-              </td>
-              <td>{variant.impressions}</td>
-              <td>{variant.clicks}</td>
-              <td>{formatPercent(variant.ctr)}</td>
-              <td>{variant.addToCart}</td>
-              <td>{variant.orders}</td>
-              <td>
-                {formatCurrency(
-                  variant.revenue,
-                  experiment.results.currencyCode,
-                )}
-              </td>
-              <td>
-                {formatCurrency(
-                  variant.revenuePerVisitor,
-                  experiment.results.currencyCode,
-                )}
-              </td>
-              <td>{formatPercent(variant.conversionRate)}</td>
-              <td>
-                {isCompleted ? (
-                  variant.variantId === experiment.winnerVariantId ? (
-                    <span className="counterpulse-result-winner">Winner</span>
-                  ) : (
-                    <span className="counterpulse-muted">Finished</span>
-                  )
-                ) : (
-                  <Form method="post">
-                    <input
-                      name="experimentId"
-                      type="hidden"
-                      value={experiment.id}
-                    />
-                    <input
-                      name="variantId"
-                      type="hidden"
-                      value={variant.variantId}
-                    />
-                    <button
-                      className="counterpulse-button-secondary"
-                      name="_action"
-                      type="submit"
-                      value="declareExperimentWinner"
-                    >
-                      Declare and apply winner
-                    </button>
-                  </Form>
-                )}
-              </td>
+      <div className="counterpulse-experiment-results__table-wrap">
+        <table className="counterpulse-table counterpulse-experiment-results__table">
+          <thead>
+            <tr>
+              <th>Variant</th>
+              <th>Impressions</th>
+              <th>Clicks</th>
+              <th>CTR</th>
+              <th>Add-to-cart</th>
+              <th>Orders</th>
+              <th>Revenue</th>
+              <th>RPV</th>
+              <th>Conversion</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sortedVariants.map((variant) => {
+              const isWinner = variant.variantId === experiment.winnerVariantId;
+              const isRecommended =
+                !isCompleted && variant.variantId === recommendedVariantId;
+              const originalIndex = experiment.results.variants.findIndex(
+                (result) => result.variantId === variant.variantId,
+              );
+
+              return (
+                <tr
+                  className={
+                    isRecommended
+                      ? "counterpulse-experiment-results__row counterpulse-experiment-results__row--recommended"
+                      : "counterpulse-experiment-results__row"
+                  }
+                  key={variant.variantId}
+                >
+                  <td
+                    aria-label={`${variant.variantName}${isWinner ? " (winner)" : ""}`}
+                  >
+                    <div className="counterpulse-result-variant">
+                      <span
+                        aria-hidden="true"
+                        className={`counterpulse-result-avatar counterpulse-result-avatar--${Math.max(originalIndex, 0) % 6}`}
+                      >
+                        {formatVariantLetter(Math.max(originalIndex, 0))}
+                      </span>
+                      <span className="counterpulse-result-variant__name">
+                        {variant.variantName}
+                      </span>
+                      {isWinner ? (
+                        <span className="counterpulse-result-winner">
+                          Winner
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td>{variant.impressions}</td>
+                  <td>{variant.clicks}</td>
+                  <td>{formatPercent(variant.ctr)}</td>
+                  <td>{variant.addToCart}</td>
+                  <td>{variant.orders}</td>
+                  <td>
+                    {formatCurrency(
+                      variant.revenue,
+                      experiment.results.currencyCode,
+                    )}
+                  </td>
+                  <td>
+                    {formatCurrency(
+                      variant.revenuePerVisitor,
+                      experiment.results.currencyCode,
+                    )}
+                  </td>
+                  <td>{formatPercent(variant.conversionRate)}</td>
+                  <td>
+                    <div className="counterpulse-result-actions">
+                      {isRecommended ? (
+                        <span className="counterpulse-result-recommended">
+                          <span aria-hidden="true">✧</span>
+                          Recommended
+                        </span>
+                      ) : null}
+                      {isCompleted ? (
+                        isWinner ? (
+                          <span className="counterpulse-result-winner">
+                            Winner
+                          </span>
+                        ) : (
+                          <span className="counterpulse-muted">Finished</span>
+                        )
+                      ) : isWinner ? (
+                        <span className="counterpulse-result-winner">
+                          Winner
+                        </span>
+                      ) : (
+                        <Form method="post">
+                          <input
+                            name="experimentId"
+                            type="hidden"
+                            value={experiment.id}
+                          />
+                          <input
+                            name="variantId"
+                            type="hidden"
+                            value={variant.variantId}
+                          />
+                          <button
+                            className="counterpulse-button-secondary counterpulse-button-secondary--small"
+                            name="_action"
+                            type="submit"
+                            value="declareExperimentWinner"
+                          >
+                            Set winner
+                          </button>
+                        </Form>
+                      )}
+                      <button
+                        aria-label={`Open actions for ${variant.variantName}`}
+                        className="counterpulse-result-menu-button"
+                        type="button"
+                      >
+                        ⋮
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="counterpulse-experiment-results__footnote">
+        Metrics refresh automatically. All values are up to the minute.
+      </p>
     </section>
   );
 }
@@ -1418,63 +1514,73 @@ function ExperimentAutoWinnerForm({
     <Form method="post" className="counterpulse-experiment-auto-winner">
       <input name="_action" type="hidden" value="saveExperimentAutoWinner" />
       <input name="experimentId" type="hidden" value={experiment.id} />
-      <div className="counterpulse-toggle">
-        <label className="counterpulse-toggle-label">
-          <input
-            defaultChecked={experiment.autoWinnerEnabled}
-            name="autoWinnerEnabled"
-            type="checkbox"
-            onChange={(event) => event.currentTarget.form?.requestSubmit()}
-          />
-          <span>Enable auto-winner</span>
-        </label>
-        <FieldInfoButton label="Enable auto-winner" title="Auto-winner">
-          <ExperimentInfoContent
-            intro="Auto-winner can detect a likely winning variant using conservative thresholds."
-            items={[
-              [
-                "Sample and runtime",
-                "Minimum sample size and runtime prevent early, noisy winners.",
-              ],
-              [
-                "Confidence",
-                "The threshold is a conservative guard for winner detection.",
-              ],
-            ]}
-          />
-        </FieldInfoButton>
+      <div className="counterpulse-experiment-auto-winner__header">
+        <div>
+          <h3>Auto-winner settings</h3>
+          <p>
+            Configure when the system should automatically declare a winner.
+          </p>
+        </div>
       </div>
-      <FormField label="Minimum sample size">
-        <input
-          defaultValue={experiment.autoWinnerMinSampleSize}
-          min="1"
-          name="autoWinnerMinSampleSize"
-          step="1"
-          type="number"
-          onBlur={(event) => event.currentTarget.form?.requestSubmit()}
-        />
-      </FormField>
-      <FormField label="Minimum runtime hours">
-        <input
-          defaultValue={experiment.autoWinnerMinRuntimeHours}
-          min="0"
-          name="autoWinnerMinRuntimeHours"
-          step="1"
-          type="number"
-          onBlur={(event) => event.currentTarget.form?.requestSubmit()}
-        />
-      </FormField>
-      <FormField label="Confidence threshold">
-        <input
-          defaultValue={experiment.autoWinnerConfidenceThreshold}
-          max="0.99"
-          min="0.5"
-          name="autoWinnerConfidenceThreshold"
-          step="0.01"
-          type="number"
-          onBlur={(event) => event.currentTarget.form?.requestSubmit()}
-        />
-      </FormField>
+      <div className="counterpulse-experiment-auto-winner__grid">
+        <div className="counterpulse-toggle counterpulse-experiment-auto-winner__toggle">
+          <label className="counterpulse-toggle-label">
+            <input
+              defaultChecked={experiment.autoWinnerEnabled}
+              name="autoWinnerEnabled"
+              type="checkbox"
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            />
+            <span>Enable auto-winner</span>
+          </label>
+          <FieldInfoButton label="Enable auto-winner" title="Auto-winner">
+            <ExperimentInfoContent
+              intro="Auto-winner can detect a likely winning variant using conservative thresholds."
+              items={[
+                [
+                  "Sample and runtime",
+                  "Minimum sample size and runtime prevent early, noisy winners.",
+                ],
+                [
+                  "Confidence",
+                  "The threshold is a conservative guard for winner detection.",
+                ],
+              ]}
+            />
+          </FieldInfoButton>
+        </div>
+        <FormField label="Minimum sample size">
+          <input
+            defaultValue={experiment.autoWinnerMinSampleSize}
+            min="1"
+            name="autoWinnerMinSampleSize"
+            step="1"
+            type="number"
+            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+          />
+        </FormField>
+        <FormField label="Minimum runtime hours">
+          <input
+            defaultValue={experiment.autoWinnerMinRuntimeHours}
+            min="0"
+            name="autoWinnerMinRuntimeHours"
+            step="1"
+            type="number"
+            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+          />
+        </FormField>
+        <FormField label="Confidence threshold">
+          <input
+            defaultValue={experiment.autoWinnerConfidenceThreshold}
+            max="0.99"
+            min="0.5"
+            name="autoWinnerConfidenceThreshold"
+            step="0.01"
+            type="number"
+            onBlur={(event) => event.currentTarget.form?.requestSubmit()}
+          />
+        </FormField>
+      </div>
     </Form>
   );
 }
@@ -1487,69 +1593,96 @@ function ExperimentLifecycleActions({
   experiment: ExperimentRow;
 }) {
   const isCompleted = experiment.status === "COMPLETED";
+  const hasDeclaredWinner = Boolean(experiment.winnerVariantId);
 
   return (
-    <Form method="post" className="counterpulse-actions">
-      <input name="experimentId" type="hidden" value={experiment.id} />
-      {isCompleted ? (
-        <button
-          className="counterpulse-button"
-          disabled={!canDuplicateCompletedExperiment}
-          name="_action"
-          title={
-            canDuplicateCompletedExperiment
-              ? undefined
-              : "Finish the current draft experiment before duplicating another."
-          }
-          type="submit"
-          value="duplicateExperiment"
-        >
-          Duplicate experiment
-        </button>
-      ) : null}
-      {experiment.status !== "RUNNING" && !isCompleted && (
-        <button
-          className="counterpulse-experiment-start-button"
-          name="_action"
-          type="submit"
-          value="startExperiment"
-        >
-          Start experiment
-        </button>
-      )}
-      {experiment.status === "RUNNING" && !isCompleted && (
-        <button
-          className="counterpulse-button-secondary"
-          name="_action"
-          type="submit"
-          value="pauseExperiment"
-        >
-          Pause
-        </button>
-      )}
-      {(experiment.status === "RUNNING" || experiment.status === "PAUSED") && (
-        <button
-          className="counterpulse-button-secondary"
-          name="_action"
-          type="submit"
-          value="stopExperiment"
-        >
-          Stop experiment
-        </button>
-      )}
-      {!isCompleted && (
-        <>
+    <section className="counterpulse-experiment-controls">
+      <div className="counterpulse-experiment-controls__header">
+        <h3>Experiment controls</h3>
+        <p>Manage the status of this experiment.</p>
+      </div>
+      <Form method="post" className="counterpulse-experiment-controls__actions">
+        <input name="experimentId" type="hidden" value={experiment.id} />
+        {isCompleted ? (
           <button
-            className="counterpulse-button-secondary"
+            className="counterpulse-button counterpulse-experiment-control-button"
+            disabled={!canDuplicateCompletedExperiment}
+            name="_action"
+            title={
+              canDuplicateCompletedExperiment
+                ? undefined
+                : "Finish the current draft experiment before duplicating another."
+            }
+            type="submit"
+            value="duplicateExperiment"
+          >
+            Duplicate experiment
+          </button>
+        ) : null}
+        {experiment.status !== "RUNNING" && !isCompleted && (
+          <button
+            className="counterpulse-experiment-start-button counterpulse-experiment-control-button"
             name="_action"
             type="submit"
-            value="detectExperimentWinner"
+            value="startExperiment"
           >
-            Auto declare and apply winner
+            <span aria-hidden="true">▷</span>
+            Start experiment
           </button>
-        </>
-      )}
-    </Form>
+        )}
+        {experiment.status === "RUNNING" && !isCompleted && (
+          <button
+            className="counterpulse-button-secondary counterpulse-experiment-control-button"
+            name="_action"
+            type="submit"
+            value="pauseExperiment"
+          >
+            <span aria-hidden="true">Ⅱ</span>
+            Pause
+          </button>
+        )}
+        {(experiment.status === "RUNNING" ||
+          experiment.status === "PAUSED") && (
+          <button
+            className="counterpulse-button-danger counterpulse-experiment-control-button"
+            name="_action"
+            type="submit"
+            value="stopExperiment"
+          >
+            <span aria-hidden="true">□</span>
+            Stop experiment
+          </button>
+        )}
+        {!isCompleted && (
+          <>
+            <button
+              className="counterpulse-button-secondary counterpulse-experiment-control-button"
+              name="_action"
+              type="submit"
+              value="detectExperimentWinner"
+            >
+              <span aria-hidden="true">♕</span>
+              Auto declare winner
+            </button>
+            <button
+              className="counterpulse-button counterpulse-experiment-control-button"
+              disabled={!hasDeclaredWinner}
+              name="_action"
+              title={
+                hasDeclaredWinner
+                  ? undefined
+                  : "Declare a winning variant before applying it."
+              }
+              type="submit"
+              value="applyExperimentWinner"
+            >
+              <span aria-hidden="true">♕</span>
+              Apply winner
+            </button>
+          </>
+        )}
+      </Form>
+    </section>
   );
 }
 
@@ -2507,6 +2640,28 @@ function getExperimentStatusDescription(experiment: ExperimentRow) {
   }
 
   return "Saved experiment.";
+}
+
+function getRecommendedVariantId(experiment: ExperimentRow) {
+  if (experiment.winnerVariantId) return experiment.winnerVariantId;
+
+  const [recommendedVariant] = [...experiment.results.variants].sort(
+    (left, right) =>
+      right.primaryMetricValue - left.primaryMetricValue ||
+      right.conversionRate - left.conversionRate ||
+      right.ctr - left.ctr ||
+      right.orders - left.orders ||
+      right.clicks - left.clicks ||
+      right.impressions - left.impressions,
+  );
+
+  return recommendedVariant?.variantId ?? "";
+}
+
+function formatVariantLetter(index: number) {
+  const normalizedIndex = Number.isFinite(index) && index >= 0 ? index : 0;
+
+  return String.fromCharCode(65 + (normalizedIndex % 26));
 }
 
 function formatPercent(value: number) {

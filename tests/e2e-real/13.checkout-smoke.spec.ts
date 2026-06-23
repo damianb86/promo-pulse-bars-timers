@@ -29,10 +29,6 @@ test.describe("real checkout smoke", () => {
       !config.allowCheckout,
       "Set REAL_E2E_ALLOW_CHECKOUT=true to run checkout smoke against a real store.",
     );
-    test.skip(
-      config.allowOrder,
-      "This smoke spec does not complete orders. Keep REAL_E2E_ALLOW_ORDER=false unless using a dedicated order spec.",
-    );
 
     const productHandle = await ensureTestProductHandle(request);
     test.skip(
@@ -43,7 +39,10 @@ test.describe("real checkout smoke", () => {
     await openStorefront(page);
     await clearCart(page);
     const added = await addProductToCart(page, productHandle);
-    test.skip(!added, "The test product page needs an accessible Add to cart button.");
+    test.skip(
+      !added,
+      "The test product page needs an accessible Add to cart button.",
+    );
 
     await goToCheckout(page, testInfo);
     await expect(page).toHaveURL(/checkout|checkouts/i);

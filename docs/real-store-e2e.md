@@ -2,15 +2,15 @@
 
 This suite runs Playwright against a real Shopify dev store for Promo Pulse: Bars & Timers. It is separate from the local mocked E2E suite and is disabled unless `REAL_E2E_ENABLED=true`.
 
-Use it to smoke real admin, storefront, theme app embed, theme blocks, cart behavior, checkout loading, analytics, reports, templates, settings, billing, and cleanup flows.
+Use it to smoke real admin, storefront, theme app embed, theme blocks, placement rendering, cart behavior, checkout loading, optional order creation, analytics, reports, templates, settings, billing, and cleanup flows.
 
 ## Safety Model
 
 - Tests only run when explicitly enabled with `REAL_E2E_ENABLED=true`.
 - The suite uses `[PP-E2E]` for campaign/product/collection names and `PPE2E` for discount codes.
 - Cleanup only runs with `REAL_E2E_CLEANUP=true`.
-- Checkout only runs with `REAL_E2E_ALLOW_CHECKOUT=true`.
-- The suite does not complete orders. Keep `REAL_E2E_ALLOW_ORDER=false` unless a future dedicated order spec is added.
+- Checkout navigation only runs with `REAL_E2E_ALLOW_CHECKOUT=true`.
+- Real order creation only runs with `REAL_E2E_ALLOW_ORDER=true` and a `SHOPIFY_ADMIN_ACCESS_TOKEN` that has `write_orders` scope.
 - Helpers never delete non-prefixed resources.
 - Missing required environment variables skip tests with actionable messages instead of failing with unclear setup errors.
 
@@ -70,7 +70,7 @@ PROMOPULSE_REAL_E2E_PLAN=PRO
 REAL_E2E_TIMEOUT_MS=90000
 ```
 
-If `SHOPIFY_ADMIN_ACCESS_TOKEN` is set, helper code can create and clean up prefixed Shopify resources where the token has scope. If it is not set, product/cart specs require `REAL_E2E_PRODUCT_HANDLE`.
+If `SHOPIFY_ADMIN_ACCESS_TOKEN` is set, helper code can create and clean up prefixed Shopify resources where the token has scope. If it is not set, product/cart specs require `REAL_E2E_PRODUCT_HANDLE`, and order creation specs skip.
 
 For local `shopify app dev` runs, Shopify can occasionally leave the active
 theme pointing at a stale `dev-...` theme extension asset URL. If storefront
@@ -154,6 +154,9 @@ Trace files are under `test-results/real-e2e`.
 - `11.templates-ai.spec.ts`: template draft flow and AI draft guard.
 - `12.settings-billing.spec.ts`: safe settings persistence and billing visibility.
 - `13.checkout-smoke.spec.ts`: checkout load only when explicitly allowed.
+- `14.design-timer-configuration.spec.ts`: timer design controls and published storefront styling.
+- `15.order-create.spec.ts`: prefixed order creation through Shopify Admin API when explicitly allowed.
+- `16.placement-matrix.spec.ts`: top, bottom, custom selector, product, collection, cart, thank-you, and order-status placement coverage.
 - `99.cleanup.spec.ts`: prefixed cleanup only when `REAL_E2E_CLEANUP=true`.
 
 ## Theme Editor Setup Required
@@ -165,6 +168,7 @@ Some specs skip if the store is not prepared:
 - Cart drawer missing: configure a drawer trigger in the theme or set the app `customCartDrawerSelector` setting.
 - Markets/locales missing: configure Shopify Markets/locales or localized URLs.
 - Unique codes, analytics, reports, experiments, templates: use a plan/dev config that enables those features.
+- Thank-you and order-status placements: enable the checkout/customer-account extensions and use a plan/dev config that enables checkout extensions.
 
 ## Cleanup
 
@@ -180,7 +184,7 @@ Cleanup only targets resources prefixed with `[PP-E2E]` or `PPE2E`. It does not 
 
 - Shopify login sessions expire; rerun `npm run test:e2e:real:auth` when storageState stops working.
 - Theme editor setup is intentionally manual because editing merchant themes via tests is brittle.
-- Checkout completion and real orders do not run by default.
+- Real orders do not run by default and require both `REAL_E2E_ALLOW_ORDER=true` and `SHOPIFY_ADMIN_ACCESS_TOKEN`.
 - Analytics, Web Pixel, and app proxy events can be delayed.
 - Storefront selectors vary by theme. Specs prefer roles/labels and use `data-testid` or stable Promo Pulse classes for widgets.
 - Admin API setup depends on token scopes and Shopify API availability. Without a token, set `REAL_E2E_PRODUCT_HANDLE`.

@@ -171,6 +171,7 @@ export async function createE2EOrder(request: APIRequestContext) {
         order {
           id
           email
+          statusPageUrl
           displayFinancialStatus
           lineItems(first: 5) {
             nodes {
@@ -198,6 +199,7 @@ export async function createE2EOrder(request: APIRequestContext) {
         displayFinancialStatus: string;
         email: string | null;
         id: string;
+        statusPageUrl: string | null;
         lineItems: { nodes: Array<{ quantity: number; title: string }> };
         totalPriceSet: {
           shopMoney: { amount: string; currencyCode: string };

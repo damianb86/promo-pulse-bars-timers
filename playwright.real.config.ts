@@ -78,6 +78,7 @@ export default defineConfig({
         "**/07.targeting-localization-markets.spec.ts",
         "**/08.unique-codes.spec.ts",
         "**/13.checkout-smoke.spec.ts",
+        "**/16.placement-matrix.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],

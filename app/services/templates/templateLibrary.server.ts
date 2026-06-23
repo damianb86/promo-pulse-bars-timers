@@ -42,10 +42,13 @@ import {
 } from "./systemTemplates.js";
 
 export type TemplateLibraryFilters = {
+  category?: string;
   goal?: string;
   country?: string;
   locale?: string;
   eventName?: string;
+  query?: string;
+  sort?: string;
   type?: string;
 };
 
@@ -62,6 +65,23 @@ export type TemplateLibraryRow = CampaignTemplate & {
   aiUrl: string;
 };
 
+type CampaignTemplateSource = Prisma.CampaignGetPayload<{
+  include: {
+    badgeSettings: true;
+    deliveryCutoffSettings: true;
+    design: true;
+    freeShippingSettings: true;
+    lowStockSettings: true;
+    placements: true;
+    targeting: true;
+    timerSettings: true;
+    translations: true;
+  };
+}>;
+
+type CampaignTemplateSourceTranslation =
+  CampaignTemplateSource["translations"][number];
+
 export class TemplateLibraryError extends Error {
   constructor(message: string) {
     super(message);
@@ -75,6 +95,14 @@ export function getSystemCampaignTemplateInputs() {
 
 export async function syncSystemCampaignTemplates() {
   const templates = getSystemCampaignTemplateInputs();
+  const templateKeys = templates.map((template) => template.key);
+
+  await prisma.campaignTemplate.deleteMany({
+    where: {
+      isSystem: true,
+      key: { notIn: templateKeys },
+    },
+  });
 
   for (const template of templates) {
     await prisma.campaignTemplate.upsert({
@@ -88,27 +116,17 @@ export async function syncSystemCampaignTemplates() {
 }
 
 export async function ensureSystemCampaignTemplates() {
-  const existingCount = await prisma.campaignTemplate.count({
-    where: { isSystem: true },
-  });
-
-  if (existingCount > 0) return existingCount;
-
   return syncSystemCampaignTemplates();
 }
 
 export async function listTemplateLibrary(
+  shopId: string,
   filters: TemplateLibraryFilters = {},
 ) {
   const normalized = normalizeTemplateFilters(filters);
   const templates = await prisma.campaignTemplate.findMany({
-    where: buildTemplateWhere(normalized),
-    orderBy: [
-      { category: "asc" },
-      { eventName: "asc" },
-      { countryCode: "asc" },
-      { locale: "asc" },
-    ],
+    where: scopeTemplateWhere(shopId, buildTemplateWhere(normalized)),
+    orderBy: getTemplateOrderBy(normalized.sort),
   });
 
   return templates.map((template) => ({
@@ -120,8 +138,11 @@ export async function listTemplateLibrary(
   }));
 }
 
-export async function getTemplateFilterOptions(): Promise<TemplateFilterOptions> {
+export async function getTemplateFilterOptions(
+  shopId: string,
+): Promise<TemplateFilterOptions> {
   const templates = await prisma.campaignTemplate.findMany({
+    where: scopeTemplateWhere(shopId),
     select: {
       countryCode: true,
       eventName: true,
@@ -143,9 +164,92 @@ export async function getTemplateFilterOptions(): Promise<TemplateFilterOptions>
   };
 }
 
-export async function getCampaignTemplateByKey(key: string) {
-  return prisma.campaignTemplate.findUnique({
-    where: { key },
+export async function getCampaignTemplateByKey(key: string, shopId?: string) {
+  return prisma.campaignTemplate.findFirst({
+    where: {
+      key,
+      ...(shopId
+        ? { OR: [{ isSystem: true }, { shopId }] }
+        : { isSystem: true }),
+    },
+  });
+}
+
+export async function listTemplateSourceCampaigns(shopId: string) {
+  const campaigns = await prisma.campaign.findMany({
+    where: { shopId },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      type: true,
+      updatedAt: true,
+      placements: {
+        select: { placementType: true },
+        where: { enabled: true },
+      },
+    },
+    orderBy: [{ updatedAt: "desc" }],
+    take: 24,
+  });
+
+  return campaigns.map((campaign) => ({
+    id: campaign.id,
+    name: campaign.name,
+    placementTypes: campaign.placements.map(
+      (placement) => placement.placementType,
+    ),
+    status: campaign.status,
+    type: campaign.type,
+    updatedAt: campaign.updatedAt,
+  }));
+}
+
+export async function createTemplateFromCampaign(
+  shopId: string,
+  campaignId: string,
+  options: { name?: string } = {},
+) {
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, shopId },
+    include: {
+      badgeSettings: true,
+      deliveryCutoffSettings: true,
+      design: true,
+      freeShippingSettings: true,
+      lowStockSettings: true,
+      placements: true,
+      targeting: true,
+      timerSettings: true,
+      translations: true,
+    },
+  });
+
+  if (!campaign) {
+    throw new TemplateLibraryError("Campaign was not found.");
+  }
+
+  const name = options.name?.trim() || campaign.name;
+  const translation =
+    campaign.translations.find((candidate) => candidate.locale === "en") ??
+    campaign.translations[0];
+
+  return prisma.campaignTemplate.create({
+    data: {
+      shopId,
+      key: buildCustomTemplateKey(shopId, name),
+      category: readTemplateCategory(campaign.goal, campaign.type),
+      countryCode: "US",
+      locale: "en",
+      eventName: name,
+      goal: campaign.goal,
+      type: campaign.type,
+      defaultTexts: buildTemplateTextsFromCampaign(campaign, translation),
+      defaultDesign: buildTemplateDesignFromCampaign(campaign.design),
+      defaultSettings: buildTemplateSettingsFromCampaign(campaign),
+      isSystem: false,
+    },
+    select: { key: true },
   });
 }
 
@@ -153,7 +257,7 @@ export async function createDraftCampaignFromTemplate(
   shopId: string,
   templateKey: string,
 ) {
-  const template = await getCampaignTemplateByKey(templateKey);
+  const template = await getCampaignTemplateByKey(templateKey, shopId);
 
   if (!template) {
     throw new TemplateLibraryError("Template was not found.");
@@ -384,6 +488,11 @@ export function getTemplateLocaleFallbacks(locale: string | null | undefined) {
 
 function buildTemplateWhere(filters: TemplateLibraryFilters) {
   const where: Prisma.CampaignTemplateWhereInput = {};
+  const and: Prisma.CampaignTemplateWhereInput[] = [];
+
+  if (filters.category) {
+    where.category = filters.category as CampaignTemplateCategory;
+  }
 
   if (filters.goal) {
     where.goal = filters.goal as CampaignGoal;
@@ -394,11 +503,9 @@ function buildTemplateWhere(filters: TemplateLibraryFilters) {
   }
 
   if (filters.country) {
-    where.OR = [
-      ...(where.OR ?? []),
-      { countryCode: filters.country },
-      { countryCode: null },
-    ];
+    and.push({
+      OR: [{ countryCode: filters.country }, { countryCode: null }],
+    });
   }
 
   if (filters.locale) {
@@ -409,17 +516,173 @@ function buildTemplateWhere(filters: TemplateLibraryFilters) {
     where.eventName = { contains: filters.eventName };
   }
 
+  if (filters.query) {
+    and.push({
+      OR: [
+        { eventName: { contains: filters.query } },
+        { key: { contains: filters.query } },
+      ],
+    });
+  }
+
+  if (and.length > 0) {
+    where.AND = and;
+  }
+
   return where;
 }
 
 function normalizeTemplateFilters(filters: TemplateLibraryFilters) {
   return {
+    category: filters.category?.trim() || "",
     goal: filters.goal?.trim() || "",
     country: filters.country?.trim().toUpperCase() || "",
     locale: filters.locale?.trim() || "",
     eventName: filters.eventName?.trim() || "",
+    query: filters.query?.trim() || "",
+    sort: filters.sort?.trim() || "",
     type: filters.type?.trim() || "",
   };
+}
+
+function scopeTemplateWhere(
+  shopId: string,
+  where: Prisma.CampaignTemplateWhereInput = {},
+): Prisma.CampaignTemplateWhereInput {
+  return {
+    AND: [where, { OR: [{ isSystem: true }, { shopId }] }],
+  };
+}
+
+function getTemplateOrderBy(sort: string | undefined) {
+  if (sort === "name") {
+    return [{ eventName: "asc" as const }, { category: "asc" as const }];
+  }
+
+  if (sort === "newest") {
+    return [{ updatedAt: "desc" as const }, { eventName: "asc" as const }];
+  }
+
+  return [
+    { isSystem: "asc" as const },
+    { category: "asc" as const },
+    { eventName: "asc" as const },
+    { countryCode: "asc" as const },
+    { locale: "asc" as const },
+  ];
+}
+
+function buildTemplateTextsFromCampaign(
+  campaign: CampaignTemplateSource,
+  translation: CampaignTemplateSourceTranslation | undefined,
+) {
+  return {
+    headline: translation?.headline || campaign?.name || "Campaign template",
+    subheadline: translation?.subheadline || "",
+    ctaText: translation?.ctaText || "Shop now",
+    ctaUrl: translation?.ctaUrl || "/collections/all",
+    expiredText: translation?.expiredText || "This campaign has ended.",
+    freeShippingEmptyText:
+      translation?.freeShippingEmptyText ||
+      campaign?.freeShippingSettings?.emptyCartMessage ||
+      "Add items to unlock free shipping.",
+    freeShippingProgressText:
+      translation?.freeShippingProgressText ||
+      "You're {{amount}} away from free shipping.",
+    freeShippingSuccessText:
+      translation?.freeShippingSuccessText ||
+      campaign?.freeShippingSettings?.successMessage ||
+      "You've unlocked free shipping.",
+    deliveryBeforeCutoffText:
+      translation?.deliveryBeforeCutoffText ||
+      "Order before {{cutoff}} for faster delivery.",
+    deliveryAfterCutoffText:
+      translation?.deliveryAfterCutoffText ||
+      "Orders now ship in the next delivery window.",
+    lowStockText:
+      translation?.lowStockText ||
+      campaign?.lowStockSettings?.fallbackMessage ||
+      "Only {{quantity}} left in stock.",
+    badgeText:
+      translation?.badgeText ||
+      campaign?.badgeSettings?.badgeText ||
+      campaign?.name ||
+      "Promo",
+  };
+}
+
+function buildTemplateDesignFromCampaign(
+  design: CampaignTemplateSource["design"],
+) {
+  if (!design) return defaultCampaignDesignValues;
+
+  const templateDesign = { ...design };
+  delete (templateDesign as { campaignId?: string }).campaignId;
+
+  return templateDesign;
+}
+
+function buildTemplateSettingsFromCampaign(campaign: CampaignTemplateSource) {
+  const placement = campaign.placements.find((candidate) => candidate.enabled);
+
+  return {
+    badgePosition: campaign.badgeSettings?.badgePosition,
+    badgeShape: campaign.badgeSettings?.badgeShape,
+    currencyCode: campaign.freeShippingSettings?.currencyCode,
+    cutoffHour: campaign.deliveryCutoffSettings?.cutoffHour,
+    cutoffMinute: campaign.deliveryCutoffSettings?.cutoffMinute,
+    knownOffer: campaign.name,
+    maxDeliveryDays: campaign.deliveryCutoffSettings?.maxDeliveryDays,
+    minDeliveryDays: campaign.deliveryCutoffSettings?.minDeliveryDays,
+    processingDays: campaign.deliveryCutoffSettings?.processingDays,
+    productContext: "settings copied from an existing campaign",
+    recommendedPlacement:
+      placement?.placementType ??
+      getDefaultPlacementForCampaignType(campaign.type),
+    suggestedDurationHours: campaign.timerSettings?.durationMinutes
+      ? Math.max(1, Math.round(campaign.timerSettings.durationMinutes / 60))
+      : 48,
+    thresholdAmount: campaign.freeShippingSettings?.thresholdAmount?.toString(),
+    timezone: campaign.timezone,
+  };
+}
+
+function readTemplateCategory(
+  goal: CampaignGoal,
+  type: CampaignType,
+): CampaignTemplateCategory {
+  if (goal === "FREE_SHIPPING" || type === "FREE_SHIPPING_GOAL") {
+    return "FREE_SHIPPING";
+  }
+
+  if (goal === "CART_RESCUE" || type === "CART_TIMER") {
+    return "CART_RECOVERY";
+  }
+
+  if (goal === "PRODUCT_BADGE" || goal === "LAUNCH" || goal === "PREORDER") {
+    return "PRODUCT_LAUNCH";
+  }
+
+  if (goal === "FLASH_SALE" || goal === "LOW_STOCK_URGENCY") {
+    return "FLASH_SALE";
+  }
+
+  return "SEASONAL";
+}
+
+function buildCustomTemplateKey(shopId: string, name: string) {
+  const slug = slugify(name) || "campaign-template";
+  const shopPart = shopId.replace(/[^a-zA-Z0-9]/g, "").slice(-8) || "shop";
+
+  return `custom-${shopPart}-${slug}-${Date.now().toString(36)}`;
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
 }
 
 function buildTemplateTranslations(

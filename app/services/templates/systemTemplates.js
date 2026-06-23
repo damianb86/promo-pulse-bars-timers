@@ -1,34 +1,69 @@
 export const templateMarkets = [
   { countryCode: "US", locale: "en", currencyCode: "USD", threshold: 75 },
-  { countryCode: "UK", locale: "en", currencyCode: "GBP", threshold: 60 },
-  { countryCode: "ES", locale: "es", currencyCode: "EUR", threshold: 70 },
-  { countryCode: "MX", locale: "es", currencyCode: "MXN", threshold: 1200 },
-  { countryCode: "AR", locale: "es", currencyCode: "ARS", threshold: 50000 },
-  { countryCode: "BR", locale: "pt-BR", currencyCode: "BRL", threshold: 350 },
-  { countryCode: "FR", locale: "fr", currencyCode: "EUR", threshold: 70 },
-  { countryCode: "DE", locale: "de", currencyCode: "EUR", threshold: 70 },
 ];
 
 const eventDefinitions = [
   event("black-friday", "Black Friday", "BFCM", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "black-friday",
+    badgeText: "Black Friday",
+    ctaText: "Shop Black Friday",
+    discountText: "Up to 40% off sitewide",
     icon: "TAG",
+    knownOffer: "Sitewide Black Friday sale",
+    productContext: "all storefront traffic",
     suggestedDurationHours: 48,
+    templateKey: "black-friday",
+    design: {
+      alignment: "CENTER",
+      fontFamily: "CONDENSED",
+      layout: "INLINE",
+      timerFormat: "COLON",
+      timerShowLabels: false,
+      timerTickAnimation: "PULSE",
+    },
   }),
   event("cyber-monday", "Cyber Monday", "BFCM", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "black-friday",
+    badgeText: "Cyber Monday",
+    ctaText: "Shop Cyber Monday",
+    discountText: "Online deals end tonight",
     icon: "TAG",
+    knownOffer: "Cyber Monday limited-time sale",
     suggestedDurationHours: 24,
+    templateKey: "premium-dark",
+    design: {
+      fontFamily: "GEOMETRIC",
+      layout: "CTA_RIGHT",
+      timerStyle: "GROUPED",
+      timerTickAnimation: "FLIP",
+    },
   }),
   event("christmas", "Christmas", "HOLIDAY", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "holiday",
+    badgeText: "Holiday sale",
+    ctaText: "Shop gifts",
+    discountText: "Save on gifts before Christmas",
     icon: "GIFT",
+    knownOffer: "Holiday gift sale",
     suggestedDurationHours: 72,
+    templateKey: "holiday",
+    design: {
+      fontFamily: "ROUNDED",
+      layout: "BALANCED",
+      timerStyle: "BOXES",
+      timerTickAnimation: "PULSE",
+    },
   }),
   event("new-year", "New Year", "SEASONAL", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "premium-dark",
+    badgeText: "New Year",
+    ctaText: "Start saving",
+    discountText: "New year savings are live",
     icon: "GIFT",
+    knownOffer: "New Year sitewide promotion",
     suggestedDurationHours: 48,
+    templateKey: "premium-dark",
+    design: {
+      fontFamily: "SERIF",
+      layout: "CTA_RIGHT",
+      timerStyle: "GROUPED",
+    },
   }),
   event(
     "valentines-day",
@@ -37,70 +72,100 @@ const eventDefinitions = [
     "FLASH_SALE",
     "COUNTDOWN_BAR",
     {
-      templateKey: "holiday",
+      badgeText: "Valentine's Day",
+      ctaText: "Shop gifts",
+      discountText: "15% off gifts for a limited time",
       icon: "GIFT",
+      knownOffer: "Valentine's Day gift sale",
       suggestedDurationHours: 48,
+      templateKey: "love",
+      design: {
+        fontFamily: "SERIF",
+        layout: "INLINE",
+        timerFormat: "COLON",
+        timerShowLabels: false,
+      },
     },
   ),
-  event("mothers-day", "Mother's Day", "HOLIDAY", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "holiday",
-    icon: "GIFT",
-    suggestedDurationHours: 48,
-  }),
-  event("fathers-day", "Father's Day", "HOLIDAY", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "premium-dark",
-    icon: "GIFT",
-    suggestedDurationHours: 48,
-  }),
-  event("hot-sale", "Hot Sale", "COUNTRY_EVENT", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "flash-sale",
-    icon: "FIRE",
-    suggestedDurationHours: 72,
-  }),
-  event("buen-fin", "Buen Fin", "COUNTRY_EVENT", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "black-friday",
-    icon: "TAG",
-    suggestedDurationHours: 72,
-  }),
-  event("flash-sale", "Flash Sale", "FLASH_SALE", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "flash-sale",
-    icon: "FIRE",
-    suggestedDurationHours: 12,
-  }),
   event(
-    "product-launch",
-    "Product Launch",
-    "PRODUCT_LAUNCH",
-    "PRODUCT_BADGE",
-    "PRODUCT_BADGE",
+    "mothers-day",
+    "Mother's Day",
+    "HOLIDAY",
+    "FLASH_SALE",
+    "COUNTDOWN_BAR",
     {
-      templateKey: "clean-minimal",
-      icon: "TAG",
-      recommendedPlacement: "COLLECTION_CARD",
+      badgeText: "Mother's Day",
+      ctaText: "Shop Mother's Day",
+      discountText: "Thoughtful gifts, limited-time savings",
+      icon: "GIFT",
+      knownOffer: "Mother's Day gift promotion",
+      suggestedDurationHours: 48,
+      templateKey: "dawn",
+      design: {
+        fontFamily: "HUMANIST",
+        layout: "BALANCED",
+        timerStyle: "GROUPED",
+      },
     },
   ),
-  event("pre-order", "Pre-order", "PRODUCT_LAUNCH", "LAUNCH", "PRODUCT_TIMER", {
-    templateKey: "premium-dark",
-    icon: "CLOCK",
-    recommendedPlacement: "PRODUCT_PAGE",
-    suggestedDurationHours: 168,
-  }),
   event(
-    "free-shipping-weekend",
-    "Free Shipping Weekend",
-    "FREE_SHIPPING",
-    "FREE_SHIPPING",
-    "FREE_SHIPPING_GOAL",
+    "fathers-day",
+    "Father's Day",
+    "HOLIDAY",
+    "FLASH_SALE",
+    "COUNTDOWN_BAR",
     {
-      templateKey: "free-shipping",
-      icon: "TRUCK",
-      recommendedPlacement: "CART_DRAWER",
+      badgeText: "Father's Day",
+      ctaText: "Shop Father's Day",
+      discountText: "20% off gifts for Dad",
+      icon: "GIFT",
+      knownOffer: "Father's Day gift promotion",
+      suggestedDurationHours: 48,
+      templateKey: "fifty-shades",
+      design: {
+        fontFamily: "GEOMETRIC",
+        layout: "CTA_RIGHT",
+        timerStyle: "PLAIN",
+      },
+    },
+  ),
+  event(
+    "flash-sale",
+    "Flash Sale",
+    "FLASH_SALE",
+    "FLASH_SALE",
+    "COUNTDOWN_BAR",
+    {
+      badgeText: "Flash sale",
+      ctaText: "Shop now",
+      discountText: "Limited-time offer ends soon",
+      icon: "FIRE",
+      knownOffer: "Short flash sale",
+      suggestedDurationHours: 12,
+      templateKey: "flash-sale",
+      design: {
+        fontFamily: "SYSTEM",
+        layout: "INLINE",
+        timerFormat: "COLON",
+        timerShowLabels: false,
+        timerTickAnimation: "PULSE",
+      },
     },
   ),
   event("clearance", "Clearance", "FLASH_SALE", "FLASH_SALE", "COUNTDOWN_BAR", {
-    templateKey: "low-stock",
+    badgeText: "Clearance",
+    ctaText: "Shop clearance",
+    discountText: "Final markdowns while inventory lasts",
     icon: "TAG",
+    knownOffer: "Clearance markdown sale",
     suggestedDurationHours: 72,
+    templateKey: "low-stock",
+    design: {
+      alignment: "LEFT",
+      fontFamily: "CONDENSED",
+      layout: "CTA_RIGHT",
+      timerStyle: "BOXES",
+    },
   }),
   event(
     "last-chance",
@@ -109,9 +174,212 @@ const eventDefinitions = [
     "FLASH_SALE",
     "COUNTDOWN_BAR",
     {
-      templateKey: "flash-sale",
+      badgeText: "Last chance",
+      ctaText: "Grab the deal",
+      discountText: "Offer ends tonight",
       icon: "FIRE",
+      knownOffer: "Last chance limited-time offer",
       suggestedDurationHours: 24,
+      templateKey: "flash-sale",
+      design: {
+        fontFamily: "SYSTEM",
+        layout: "CTA_LEFT",
+        timerStyle: "GROUPED",
+        timerTickAnimation: "PULSE",
+      },
+    },
+  ),
+  event(
+    "cart-rescue",
+    "Cart Rescue",
+    "CART_RECOVERY",
+    "CART_RESCUE",
+    "CART_TIMER",
+    {
+      badgeText: "Cart offer",
+      ctaText: "Checkout now",
+      ctaUrl: "/checkout",
+      discountText: "Your cart offer expires soon",
+      icon: "CLOCK",
+      knownOffer: "Cart recovery discount",
+      recommendedPlacement: "CART_DRAWER",
+      suggestedDurationHours: 2,
+      templateKey: "premium-dark",
+      design: {
+        fontFamily: "SYSTEM",
+        layout: "CTA_TOP",
+        timerFormat: "COLON",
+        timerShowLabels: false,
+      },
+    },
+  ),
+  event(
+    "free-shipping-weekend",
+    "Free Shipping Weekend",
+    "FREE_SHIPPING",
+    "FREE_SHIPPING",
+    "FREE_SHIPPING_GOAL",
+    {
+      badgeText: "Free shipping",
+      ctaText: "Continue shopping",
+      discountText: "Unlock free shipping at $75",
+      icon: "TRUCK",
+      knownOffer: "Free shipping threshold",
+      recommendedPlacement: "CART_DRAWER",
+      templateKey: "free-shipping",
+      design: {
+        alignment: "LEFT",
+        fontFamily: "HUMANIST",
+        layout: "BALANCED",
+        showProgressBar: true,
+        timerStyle: "BOXES",
+      },
+    },
+  ),
+  event(
+    "shipping-cutoff",
+    "Shipping Cutoff",
+    "SEASONAL",
+    "DELIVERY_CUTOFF",
+    "DELIVERY_CUTOFF",
+    {
+      badgeText: "Delivery cutoff",
+      ctaText: "Shop eligible items",
+      cutoffHour: 14,
+      cutoffMinute: 0,
+      discountText: "Order by 2 PM for faster delivery",
+      icon: "CLOCK",
+      knownOffer: "Same-day shipping cutoff message",
+      maxDeliveryDays: 3,
+      minDeliveryDays: 1,
+      processingDays: 0,
+      recommendedPlacement: "PRODUCT_PAGE",
+      templateKey: "delivery-cutoff",
+      design: {
+        fontFamily: "SYSTEM",
+        layout: "BALANCED",
+        timerStyle: "GROUPED",
+        timerTickAnimation: "FADE",
+      },
+    },
+  ),
+  event(
+    "product-launch",
+    "Product Launch",
+    "PRODUCT_LAUNCH",
+    "PRODUCT_BADGE",
+    "PRODUCT_BADGE",
+    {
+      badgeShape: "ROUNDED",
+      badgeText: "New",
+      ctaText: "View new arrivals",
+      ctaUrl: "/collections/new-arrivals",
+      discountText: "New arrivals are live",
+      icon: "TAG",
+      knownOffer: "New product launch announcement",
+      productContext: "new arrivals and featured collections",
+      recommendedPlacement: "COLLECTION_CARD",
+      templateKey: "clean-minimal",
+      design: {
+        alignment: "LEFT",
+        fontFamily: "GEOMETRIC",
+        layout: "STANDARD",
+        showButton: false,
+        showProgressBar: false,
+      },
+    },
+  ),
+  event(
+    "pre-order",
+    "Pre-order",
+    "PRODUCT_LAUNCH",
+    "PREORDER",
+    "PRODUCT_TIMER",
+    {
+      badgeText: "Pre-order",
+      ctaText: "View details",
+      discountText: "Pre-order window is open",
+      icon: "CLOCK",
+      knownOffer: "Pre-order availability window",
+      productContext: "pre-order products",
+      recommendedPlacement: "PRODUCT_PAGE",
+      suggestedDurationHours: 168,
+      templateKey: "premium-dark",
+      design: {
+        fontFamily: "SERIF",
+        layout: "BALANCED",
+        timerStyle: "GROUPED",
+        timerTickAnimation: "FLIP",
+      },
+    },
+  ),
+  event(
+    "low-stock",
+    "Low Stock Alert",
+    "FLASH_SALE",
+    "LOW_STOCK_URGENCY",
+    "LOW_STOCK",
+    {
+      badgeText: "Low stock",
+      ctaText: "Buy before it sells out",
+      discountText: "Only a few left",
+      icon: "TAG",
+      knownOffer: "Low stock urgency message",
+      productContext: "low inventory products",
+      recommendedPlacement: "PRODUCT_PAGE",
+      templateKey: "low-stock",
+      design: {
+        alignment: "LEFT",
+        fontFamily: "HUMANIST",
+        layout: "CTA_RIGHT",
+        showProgressBar: false,
+      },
+    },
+  ),
+  event(
+    "vip-early-access",
+    "VIP Early Access",
+    "PRODUCT_LAUNCH",
+    "LAUNCH",
+    "COUNTDOWN_BAR",
+    {
+      badgeText: "Early access",
+      ctaText: "Enter early access",
+      ctaUrl: "/collections/early-access",
+      discountText: "Members get first access",
+      icon: "TAG",
+      knownOffer: "VIP early access launch",
+      productContext: "VIP and launch traffic",
+      suggestedDurationHours: 36,
+      templateKey: "dawn",
+      design: {
+        fontFamily: "GEOMETRIC",
+        layout: "CTA_RIGHT",
+        timerStyle: "GROUPED",
+      },
+    },
+  ),
+  event(
+    "site-announcement",
+    "Site Announcement",
+    "SEASONAL",
+    "ANNOUNCEMENT",
+    "COUNTDOWN_BAR",
+    {
+      badgeText: "Announcement",
+      ctaText: "Learn more",
+      ctaUrl: "/pages/announcements",
+      discountText: "Important storefront update",
+      icon: "TAG",
+      knownOffer: "General announcement",
+      suggestedDurationHours: 72,
+      templateKey: "clean-minimal",
+      design: {
+        fontFamily: "SYSTEM",
+        layout: "CTA_RIGHT",
+        timerShowSeconds: false,
+        timerStyle: "PLAIN",
+      },
     },
   ),
 ];
@@ -123,6 +391,7 @@ export function buildSystemCampaignTemplates() {
 
       return {
         key: `${market.countryCode.toLowerCase()}-${definition.slug}`,
+        shopId: null,
         category: definition.category,
         countryCode: market.countryCode,
         locale: market.locale,
@@ -142,53 +411,89 @@ function event(slug, eventName, category, goal, type, settings) {
   return { slug, eventName, category, goal, type, settings };
 }
 
-function buildTexts(definition, market) {
-  const copy = copyForLocale(market.locale);
-  const eventName = localEventName(definition.eventName, market.locale);
+function buildTexts(definition) {
+  const settings = definition.settings;
+  const headline = settings.discountText;
 
   if (definition.type === "FREE_SHIPPING_GOAL") {
     return {
-      headline: copy.freeShippingHeadline,
-      subheadline: copy.freeShippingSubheadline,
-      ctaText: copy.continueShopping,
-      ctaUrl: "/collections/all",
-      expiredText: copy.expired,
-      freeShippingEmptyText: copy.freeShippingEmpty,
-      freeShippingProgressText: copy.freeShippingProgress,
-      freeShippingSuccessText: copy.freeShippingSuccess,
-      badgeText: copy.freeShippingBadge,
+      headline,
+      subheadline: "Add eligible items to your cart to unlock the reward.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/collections/all",
+      expiredText: "This free shipping offer has ended.",
+      freeShippingEmptyText: "Add items to unlock free shipping.",
+      freeShippingProgressText: "You're {{amount}} away from free shipping.",
+      freeShippingSuccessText: "You've unlocked free shipping.",
+      badgeText: settings.badgeText,
+    };
+  }
+
+  if (definition.type === "DELIVERY_CUTOFF") {
+    return {
+      headline,
+      subheadline: "Set the real cutoff window before publishing.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/collections/all",
+      expiredText: "Today's delivery cutoff has passed.",
+      deliveryBeforeCutoffText: "Order before {{cutoff}} for faster delivery.",
+      deliveryAfterCutoffText: "Orders now ship in the next delivery window.",
+      badgeText: settings.badgeText,
+    };
+  }
+
+  if (definition.type === "LOW_STOCK") {
+    return {
+      headline,
+      subheadline: "Use this on products with real inventory pressure.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/collections/all",
+      expiredText: "This inventory message is no longer active.",
+      lowStockText: "Only {{quantity}} left in stock.",
+      badgeText: settings.badgeText,
     };
   }
 
   if (definition.type === "PRODUCT_BADGE") {
     return {
-      headline: copy.productLaunchHeadline(eventName),
-      subheadline: copy.productLaunchSubheadline,
-      ctaText: copy.viewCollection,
-      ctaUrl: "/collections/new-arrivals",
-      expiredText: copy.expired,
-      badgeText: copy.productLaunchBadge,
+      headline,
+      subheadline: "Highlight new or featured products in collection grids.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/collections/new-arrivals",
+      expiredText: "This product badge is no longer active.",
+      badgeText: settings.badgeText,
     };
   }
 
   if (definition.type === "PRODUCT_TIMER") {
     return {
-      headline: copy.preorderHeadline(eventName),
-      subheadline: copy.preorderSubheadline,
-      ctaText: copy.viewDetails,
-      ctaUrl: "/collections/all",
-      expiredText: copy.expired,
-      badgeText: copy.preorderBadge,
+      headline,
+      subheadline: "Show the real launch or pre-order window.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/collections/all",
+      expiredText: "This pre-order window has ended.",
+      badgeText: settings.badgeText,
+    };
+  }
+
+  if (definition.type === "CART_TIMER") {
+    return {
+      headline,
+      subheadline: "Keep urgency close to checkout without changing the offer.",
+      ctaText: settings.ctaText,
+      ctaUrl: settings.ctaUrl || "/checkout",
+      expiredText: "This cart offer has ended.",
+      badgeText: settings.badgeText,
     };
   }
 
   return {
-    headline: copy.saleHeadline(eventName),
-    subheadline: copy.saleSubheadline,
-    ctaText: copy.shopEvent(eventName),
-    ctaUrl: "/collections/sale",
-    expiredText: copy.expired,
-    badgeText: eventName,
+    headline,
+    subheadline: `Use this ${definition.eventName} template with a real offer before publishing.`,
+    ctaText: settings.ctaText,
+    ctaUrl: settings.ctaUrl || "/collections/sale",
+    expiredText: "This campaign has ended.",
+    badgeText: settings.badgeText,
   };
 }
 
@@ -198,220 +503,38 @@ function buildDesign(definition) {
     icon: definition.settings.icon,
     showIcon: true,
     positionSticky: definition.type === "COUNTDOWN_BAR",
+    ...definition.settings.design,
   };
 }
 
 function buildSettings(definition, market) {
+  const settings = definition.settings;
+
   return {
+    badgePosition: settings.badgePosition || "TOP_RIGHT",
+    badgeShape: settings.badgeShape || "PILL",
+    cutoffHour: settings.cutoffHour || 14,
+    cutoffMinute: settings.cutoffMinute || 0,
+    knownOffer: settings.knownOffer || settings.discountText,
+    maxDeliveryDays: settings.maxDeliveryDays || 5,
+    minDeliveryDays: settings.minDeliveryDays || 2,
+    processingDays: settings.processingDays || 0,
+    productContext: settings.productContext || "selected products",
     recommendedPlacement:
-      definition.settings.recommendedPlacement || defaultPlacement(definition.type),
-    suggestedDurationHours: definition.settings.suggestedDurationHours || 48,
+      settings.recommendedPlacement || defaultPlacement(definition.type),
+    suggestedDurationHours: settings.suggestedDurationHours || 48,
     thresholdAmount: market.threshold,
     currencyCode: market.currencyCode,
-    cutoffHour: 14,
-    cutoffMinute: 0,
-    timezone: defaultTimezone(market.countryCode),
-    productContext: "selected products",
+    timezone: "America/New_York",
   };
 }
 
 function defaultPlacement(type) {
+  if (type === "CART_TIMER") return "CART_DRAWER";
   if (type === "FREE_SHIPPING_GOAL") return "CART_DRAWER";
   if (type === "PRODUCT_BADGE") return "COLLECTION_CARD";
   if (type === "PRODUCT_TIMER") return "PRODUCT_PAGE";
+  if (type === "DELIVERY_CUTOFF") return "PRODUCT_PAGE";
+  if (type === "LOW_STOCK") return "PRODUCT_PAGE";
   return "TOP_BAR";
-}
-
-function defaultTimezone(countryCode) {
-  return (
-    {
-      US: "America/New_York",
-      UK: "Europe/London",
-      ES: "Europe/Madrid",
-      MX: "America/Mexico_City",
-      AR: "America/Argentina/Cordoba",
-      BR: "America/Sao_Paulo",
-      FR: "Europe/Paris",
-      DE: "Europe/Berlin",
-    }[countryCode] || "UTC"
-  );
-}
-
-function localEventName(eventName, locale) {
-  const names = {
-    es: {
-      Christmas: "Navidad",
-      "New Year": "Ano Nuevo",
-      "Valentine's Day": "San Valentin",
-      "Mother's Day": "Dia de la Madre",
-      "Father's Day": "Dia del Padre",
-      "Flash Sale": "Oferta relampago",
-      "Product Launch": "Lanzamiento",
-      "Pre-order": "Preventa",
-      Clearance: "Liquidacion",
-      "Last Chance": "Ultima oportunidad",
-      "Free Shipping Weekend": "Fin de semana con envio gratis",
-    },
-    "pt-BR": {
-      Christmas: "Natal",
-      "New Year": "Ano Novo",
-      "Valentine's Day": "Dia dos Namorados",
-      "Mother's Day": "Dia das Maes",
-      "Father's Day": "Dia dos Pais",
-      "Flash Sale": "Promocao relampago",
-      "Product Launch": "Lancamento",
-      "Pre-order": "Pre-venda",
-      Clearance: "Liquidacao",
-      "Last Chance": "Ultima chance",
-      "Free Shipping Weekend": "Fim de semana com frete gratis",
-    },
-    fr: {
-      Christmas: "Noel",
-      "New Year": "Nouvel An",
-      "Valentine's Day": "Saint-Valentin",
-      "Mother's Day": "Fete des meres",
-      "Father's Day": "Fete des peres",
-      "Flash Sale": "Vente flash",
-      "Product Launch": "Lancement",
-      "Pre-order": "Precommande",
-      Clearance: "Destockage",
-      "Last Chance": "Derniere chance",
-      "Free Shipping Weekend": "Week-end livraison gratuite",
-    },
-    de: {
-      Christmas: "Weihnachten",
-      "New Year": "Neujahr",
-      "Valentine's Day": "Valentinstag",
-      "Mother's Day": "Muttertag",
-      "Father's Day": "Vatertag",
-      "Flash Sale": "Blitzverkauf",
-      "Product Launch": "Produkteinfuehrung",
-      "Pre-order": "Vorbestellung",
-      Clearance: "Abverkauf",
-      "Last Chance": "Letzte Chance",
-      "Free Shipping Weekend": "Wochenende mit kostenlosem Versand",
-    },
-  };
-
-  return names[locale]?.[eventName] || eventName;
-}
-
-function copyForLocale(locale) {
-  if (locale === "es") {
-    return {
-      saleHeadline: (eventName) => `${eventName} esta activo`,
-      saleSubheadline: "Usa esta plantilla con una oferta real antes de publicar.",
-      shopEvent: () => "Ver ofertas",
-      expired: "Esta campana termino.",
-      continueShopping: "Seguir comprando",
-      freeShippingHeadline: "Estas cerca del envio gratis",
-      freeShippingSubheadline: "Agrega productos para activar la meta.",
-      freeShippingEmpty: "Agrega productos para activar envio gratis.",
-      freeShippingProgress: "Agrega {{amount}} mas para envio gratis.",
-      freeShippingSuccess: "Activaste el envio gratis.",
-      freeShippingBadge: "Envio gratis",
-      productLaunchHeadline: (eventName) => `${eventName} destacado`,
-      productLaunchSubheadline: "Marca productos nuevos sin promesas inventadas.",
-      productLaunchBadge: "Nuevo",
-      preorderHeadline: (eventName) => `${eventName} disponible`,
-      preorderSubheadline: "Muestra el periodo real de preventa.",
-      preorderBadge: "Preventa",
-      viewCollection: "Ver coleccion",
-      viewDetails: "Ver detalles",
-    };
-  }
-
-  if (locale === "pt-BR") {
-    return {
-      saleHeadline: (eventName) => `${eventName} esta ativo`,
-      saleSubheadline: "Use esta plantilla com uma oferta real antes de publicar.",
-      shopEvent: () => "Ver ofertas",
-      expired: "Esta campanha terminou.",
-      continueShopping: "Continuar comprando",
-      freeShippingHeadline: "Voce esta perto do frete gratis",
-      freeShippingSubheadline: "Adicione produtos para liberar a meta.",
-      freeShippingEmpty: "Adicione produtos para liberar frete gratis.",
-      freeShippingProgress: "Adicione mais {{amount}} para frete gratis.",
-      freeShippingSuccess: "Voce liberou frete gratis.",
-      freeShippingBadge: "Frete gratis",
-      productLaunchHeadline: (eventName) => `${eventName} em destaque`,
-      productLaunchSubheadline: "Marque novos produtos sem promessas inventadas.",
-      productLaunchBadge: "Novo",
-      preorderHeadline: (eventName) => `${eventName} disponivel`,
-      preorderSubheadline: "Mostre o periodo real de pre-venda.",
-      preorderBadge: "Pre-venda",
-      viewCollection: "Ver colecao",
-      viewDetails: "Ver detalhes",
-    };
-  }
-
-  if (locale === "fr") {
-    return {
-      saleHeadline: (eventName) => `${eventName} est actif`,
-      saleSubheadline: "Utilisez ce modele avec une vraie offre avant publication.",
-      shopEvent: () => "Voir les offres",
-      expired: "Cette campagne est terminee.",
-      continueShopping: "Continuer les achats",
-      freeShippingHeadline: "Vous etes proche de la livraison gratuite",
-      freeShippingSubheadline: "Ajoutez des articles pour atteindre l'objectif.",
-      freeShippingEmpty: "Ajoutez des articles pour debloquer la livraison gratuite.",
-      freeShippingProgress: "Ajoutez encore {{amount}} pour la livraison gratuite.",
-      freeShippingSuccess: "La livraison gratuite est debloquee.",
-      freeShippingBadge: "Livraison gratuite",
-      productLaunchHeadline: (eventName) => `${eventName} en vedette`,
-      productLaunchSubheadline: "Signalez les nouveautes sans promesses inventees.",
-      productLaunchBadge: "Nouveau",
-      preorderHeadline: (eventName) => `${eventName} disponible`,
-      preorderSubheadline: "Affichez la periode reelle de precommande.",
-      preorderBadge: "Precommande",
-      viewCollection: "Voir la collection",
-      viewDetails: "Voir les details",
-    };
-  }
-
-  if (locale === "de") {
-    return {
-      saleHeadline: (eventName) => `${eventName} ist aktiv`,
-      saleSubheadline: "Nutze diese Vorlage mit einem echten Angebot vor der Veroeffentlichung.",
-      shopEvent: () => "Angebote ansehen",
-      expired: "Diese Kampagne ist beendet.",
-      continueShopping: "Weiter einkaufen",
-      freeShippingHeadline: "Du bist nah am kostenlosen Versand",
-      freeShippingSubheadline: "Fuege Artikel hinzu, um das Ziel zu erreichen.",
-      freeShippingEmpty: "Fuege Artikel hinzu, um kostenlosen Versand zu erhalten.",
-      freeShippingProgress: "Fuege noch {{amount}} fuer kostenlosen Versand hinzu.",
-      freeShippingSuccess: "Kostenloser Versand ist freigeschaltet.",
-      freeShippingBadge: "Kostenloser Versand",
-      productLaunchHeadline: (eventName) => `${eventName} im Fokus`,
-      productLaunchSubheadline: "Kennzeichne neue Produkte ohne erfundene Aussagen.",
-      productLaunchBadge: "Neu",
-      preorderHeadline: (eventName) => `${eventName} verfuegbar`,
-      preorderSubheadline: "Zeige den echten Vorbestellzeitraum.",
-      preorderBadge: "Vorbestellung",
-      viewCollection: "Kollektion ansehen",
-      viewDetails: "Details ansehen",
-    };
-  }
-
-  return {
-    saleHeadline: (eventName) => `${eventName} is live`,
-    saleSubheadline: "Use this template with a real offer before publishing.",
-    shopEvent: () => "Shop offers",
-    expired: "This campaign has ended.",
-    continueShopping: "Continue shopping",
-    freeShippingHeadline: "You are close to free shipping",
-    freeShippingSubheadline: "Add items to unlock the goal.",
-    freeShippingEmpty: "Add items to unlock free shipping.",
-    freeShippingProgress: "You're {{amount}} away from free shipping.",
-    freeShippingSuccess: "You've unlocked free shipping.",
-    freeShippingBadge: "Free shipping",
-    productLaunchHeadline: (eventName) => `${eventName} spotlight`,
-    productLaunchSubheadline: "Highlight new products without invented claims.",
-    productLaunchBadge: "New",
-    preorderHeadline: (eventName) => `${eventName} available`,
-    preorderSubheadline: "Show the real pre-order period.",
-    preorderBadge: "Pre-order",
-    viewCollection: "View collection",
-    viewDetails: "View details",
-  };
 }

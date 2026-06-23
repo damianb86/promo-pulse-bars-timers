@@ -117,7 +117,7 @@ export const loader = async ({
   const templateGate = canUsePremiumFeature(shop, "CAMPAIGN_LIBRARY");
   const template =
     templateKey && templateGate.allowed
-      ? await getCampaignTemplateByKey(templateKey)
+      ? await getCampaignTemplateByKey(templateKey, shop.id)
       : null;
 
   return {

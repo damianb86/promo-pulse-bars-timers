@@ -53,6 +53,7 @@ model Shop {
   advancedBadgeRules    AdvancedBadgeRule[]
   marketCampaignRules   MarketCampaignRule[]
   recommendations       CampaignRecommendation[]
+  campaignTemplates     CampaignTemplate[]
   agencyShopAccesses    AgencyShopAccess[]
   contactRequests       ContactRequest[]
   onboardingChecklist   ShopOnboardingChecklist?
@@ -673,6 +674,7 @@ model CampaignRecommendation {
 
 model CampaignTemplate {
   id              String                   @id @default(cuid())
+  shopId          String?
   key             String                   @unique
   category        CampaignTemplateCategory
   countryCode     String?
@@ -687,6 +689,10 @@ model CampaignTemplate {
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
+  shop Shop? @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([isSystem, shopId])
   @@index([category])
   @@index([countryCode, locale])
   @@index([goal, type])

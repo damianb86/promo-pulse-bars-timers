@@ -12,24 +12,26 @@ test("merchant filters templates and creates a draft campaign", async ({
 }) => {
   await resetDb("template-library");
   await loginAsDemoShop(
-    "/app/templates?country=MX&locale=es&eventName=Buen+Fin&type=COUNTDOWN_BAR",
+    "/app/templates?country=US&locale=en&eventName=Black+Friday&type=COUNTDOWN_BAR",
   );
 
   await expect(
     page.getByRole("heading", { exact: true, name: "Template Library" }),
   ).toBeVisible();
-  const buenFinTemplate = page
+  const blackFridayTemplate = page
     .locator(".counterpulse-template-card")
-    .filter({ hasText: "MX / es" })
+    .filter({ hasText: "US / en" })
     .first();
 
-  await expect(buenFinTemplate).toContainText("Buen Fin");
-  await buenFinTemplate.getByRole("button", { name: "Use template" }).click();
+  await expect(blackFridayTemplate).toContainText("Black Friday");
+  await blackFridayTemplate
+    .getByRole("button", { name: "Use template" })
+    .click();
 
   await page.waitForURL(/\/app\/campaigns\/[^/]+$/);
   await expect(
     page.locator("#campaign-basics-form").getByTestId("campaign-name-input"),
-  ).toHaveValue(/Buen Fin/);
+  ).toHaveValue(/Black Friday/);
   await expect(
     page.locator("#campaign-basics-form").getByTestId("campaign-status-select"),
   ).toHaveValue("DRAFT");

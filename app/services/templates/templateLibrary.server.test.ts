@@ -12,8 +12,11 @@ const prismaMock = vi.hoisted(() => ({
   },
   campaignTemplate: {
     count: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn(),
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     upsert: vi.fn(),
   },
 }));
@@ -35,28 +38,37 @@ describe("template library", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.campaign.create.mockResolvedValue({ id: "campaign-draft-1" });
+    prismaMock.campaignTemplate.create.mockResolvedValue({ key: "custom-key" });
+    prismaMock.campaignTemplate.deleteMany.mockResolvedValue({ count: 0 });
     prismaMock.campaignTemplate.findMany.mockResolvedValue([]);
     prismaMock.campaignTemplate.findUnique.mockResolvedValue(null);
+    prismaMock.campaignTemplate.findFirst.mockResolvedValue(null);
   });
 
   it("filters templates by goal, country, locale fallback, event, and type", async () => {
-    await listTemplateLibrary({
-      country: "mx",
-      eventName: "Buen Fin",
+    await listTemplateLibrary("shop-1", {
+      country: "us",
+      eventName: "Black Friday",
       goal: "FLASH_SALE",
-      locale: "es-MX",
+      locale: "en-US",
       type: "COUNTDOWN_BAR",
     });
 
     expect(prismaMock.campaignTemplate.findMany).toHaveBeenCalledWith({
       where: {
-        goal: "FLASH_SALE",
-        type: "COUNTDOWN_BAR",
-        OR: [{ countryCode: "MX" }, { countryCode: null }],
-        locale: { in: ["es", "en"] },
-        eventName: { contains: "Buen Fin" },
+        AND: [
+          {
+            goal: "FLASH_SALE",
+            type: "COUNTDOWN_BAR",
+            locale: { in: ["en"] },
+            eventName: { contains: "Black Friday" },
+            AND: [{ OR: [{ countryCode: "US" }, { countryCode: null }] }],
+          },
+          { OR: [{ isSystem: true }, { shopId: "shop-1" }] },
+        ],
       },
       orderBy: [
+        { isSystem: "asc" },
         { category: "asc" },
         { eventName: "asc" },
         { countryCode: "asc" },
@@ -66,12 +78,12 @@ describe("template library", () => {
   });
 
   it("creates an editable draft campaign from a template", async () => {
-    prismaMock.campaignTemplate.findUnique.mockResolvedValue(
-      templateRecord("br-free-shipping-weekend"),
+    prismaMock.campaignTemplate.findFirst.mockResolvedValue(
+      templateRecord("us-free-shipping-weekend"),
     );
 
     await expect(
-      createDraftCampaignFromTemplate("shop-1", "br-free-shipping-weekend"),
+      createDraftCampaignFromTemplate("shop-1", "us-free-shipping-weekend"),
     ).resolves.toEqual({ id: "campaign-draft-1" });
 
     expect(prismaMock.campaign.create).toHaveBeenCalledWith(
@@ -81,19 +93,21 @@ describe("template library", () => {
           status: CampaignStatus.DRAFT,
           type: CampaignType.FREE_SHIPPING_GOAL,
           placements: {
-            create: [{ placementType: PlacementType.CART_DRAWER, enabled: true }],
+            create: [
+              { placementType: PlacementType.CART_DRAWER, enabled: true },
+            ],
           },
           targeting: expect.objectContaining({
             create: expect.objectContaining({
-              countries: ["BR"],
-              locales: ["pt-BR"],
+              countries: ["US"],
+              locales: ["en"],
             }),
           }),
           translations: expect.objectContaining({
             create: expect.arrayContaining([
               expect.objectContaining({
-                locale: "pt-BR",
-                headline: expect.stringContaining("frete gratis"),
+                locale: "en",
+                headline: expect.stringContaining("free shipping"),
               }),
             ]),
           }),
@@ -105,8 +119,8 @@ describe("template library", () => {
           },
           freeShippingSettings: {
             create: expect.objectContaining({
-              currencyCode: "BRL",
-              thresholdAmount: "350",
+              currencyCode: "USD",
+              thresholdAmount: "75",
             }),
           },
         }),
@@ -125,12 +139,16 @@ describe("template library", () => {
     const templates = getSystemCampaignTemplateInputs();
     const keys = templates.map((template) => template.key);
 
-    expect(templates).toHaveLength(120);
+    expect(templates).toHaveLength(18);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toContain("us-black-friday");
-    expect(keys).toContain("mx-buen-fin");
-    expect(keys).toContain("ar-hot-sale");
-    expect(keys).toContain("br-free-shipping-weekend");
+    expect(keys).toContain("us-cart-rescue");
+    expect(keys).toContain("us-free-shipping-weekend");
+    expect(keys).toContain("us-shipping-cutoff");
+    expect(templates.every((template) => template.countryCode === "US")).toBe(
+      true,
+    );
+    expect(templates.every((template) => template.locale === "en")).toBe(true);
   });
 });
 

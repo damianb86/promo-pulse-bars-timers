@@ -177,6 +177,7 @@ function campaign(
     goal: "FLASH_SALE",
     placement: "THANK_YOU_PAGE",
     placementSelector: "",
+    placementStyle: "",
     design: {} as StorefrontCampaignResponseItem["design"],
     timer: null,
     freeShipping: null,

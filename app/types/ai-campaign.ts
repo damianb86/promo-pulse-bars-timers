@@ -109,6 +109,7 @@ export type CampaignAiTargetingSettings = {
   collectionIds: string[];
   productTags: string[];
   customSelector: string;
+  customStyle: string;
   urlContains: string[];
   excludedUrlContains: string[];
   countrySelection: CountrySelectionValue;

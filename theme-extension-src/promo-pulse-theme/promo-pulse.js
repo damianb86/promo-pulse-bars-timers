@@ -222,6 +222,12 @@
 
     if (design.mobileEnabled === false && config.device === "mobile") return;
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) return;
+
+    if (campaign.type === "PRODUCT_BADGE") {
+      renderProductBadgeCampaign(campaign, targetContainer, timerState);
+      return;
+    }
+
     var renderKey =
       (targetContainer
         ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
@@ -233,8 +239,12 @@
 
     var bar = document.createElement("section");
     var container = targetContainer
-      ? getSnippetContainer(targetContainer)
-      : getPlacementContainer(campaign.placement, campaign.placementSelector);
+      ? getSnippetContainer(targetContainer, campaign.placementStyle)
+      : getPlacementContainer(
+          campaign.placement,
+          campaign.placementSelector,
+          campaign.placementStyle,
+        );
 
     if (!container) return;
 
@@ -310,6 +320,80 @@
     container.appendChild(bar);
     renderedCampaigns[renderKey] = true;
     startCountdown(bar, campaign);
+    emitImpression(campaign);
+  }
+
+  function renderProductBadgeCampaign(campaign, targetContainer, timerState) {
+    var design = campaign.design || {};
+    var badgeSettings = campaign.badge || {};
+    var renderKey =
+      (targetContainer
+        ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
+        : campaign.placement) +
+      ":badge:" +
+      campaign.id;
+    var container = targetContainer
+      ? getSnippetContainer(targetContainer, campaign.placementStyle)
+      : getPlacementContainer(
+          campaign.placement,
+          campaign.placementSelector,
+          campaign.placementStyle,
+        );
+    var rootEl;
+    var badgeEl;
+    var badgeText;
+    var badgeHref;
+    var textEl;
+
+    if (!container || renderedCampaigns[renderKey]) return;
+
+    rootEl = document.createElement("div");
+    rootEl.className = "pp-root pp-product-badge pp-product-badge--surface";
+    rootEl.dataset.campaignId = campaign.id;
+    rootEl.dataset.testid = "promo-badge-root";
+
+    badgeText = getBadgeText(campaign, badgeSettings);
+    badgeHref = getBadgeHref(campaign);
+    badgeEl = document.createElement(badgeHref ? "a" : "span");
+    badgeEl.className =
+      "pp-badge pp-badge--" +
+      getBadgeShape(badgeSettings) +
+      " pp-badge--" +
+      getBadgePosition(badgeSettings);
+    if (design.positionMode === "OVERLAY") {
+      badgeEl.classList.add("pp-surface--overlay");
+    }
+    badgeEl.dataset.campaignId = campaign.id;
+    badgeEl.dataset.testid = "promo-badge";
+    badgeEl.setAttribute(
+      "aria-label",
+      (badgeText || "Promo Pulse badge").trim(),
+    );
+
+    if (badgeHref) {
+      badgeEl.href = badgeHref;
+      badgeEl.addEventListener("click", function () {
+        emitClick(campaign);
+      });
+    } else {
+      badgeEl.setAttribute("role", "note");
+    }
+
+    setDesignProperties(badgeEl, design);
+
+    textEl = document.createElement("span");
+    textEl.className = "pp-badge-text";
+    textEl.textContent = badgeText;
+    badgeEl.appendChild(textEl);
+
+    if (timerState.isActive) {
+      badgeEl.appendChild(renderCountdown(timerState, design, true));
+    }
+
+    rootEl.appendChild(badgeEl);
+    container.appendChild(rootEl);
+    renderedCampaigns[renderKey] = true;
+    startCountdown(rootEl, campaign);
     emitImpression(campaign);
   }
 
@@ -481,7 +565,7 @@
     return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
-  function getPlacementContainer(placement, selector) {
+  function getPlacementContainer(placement, selector, customStyle) {
     var target;
     var customContainer;
     var id = placement === "BOTTOM_BAR" ? "pp-bottom-bars" : "pp-top-bars";
@@ -495,6 +579,7 @@
 
       customContainer = document.createElement("div");
       customContainer.className = "pp-container pp-container--custom-selector";
+      applyCustomPlacementStyle(customContainer, customStyle);
       target.appendChild(customContainer);
 
       return customContainer;
@@ -516,29 +601,57 @@
     return container;
   }
 
-  function getSnippetContainer(target) {
+  function getSnippetContainer(target, customStyle) {
     var container = document.createElement("div");
 
     container.className =
       "pp-container pp-container--custom-selector pp-container--snippet";
+    applyCustomPlacementStyle(container, customStyle);
     target.appendChild(container);
 
     return container;
   }
 
+  function applyCustomPlacementStyle(element, customStyle) {
+    var styleText = typeof customStyle === "string" ? customStyle.trim() : "";
+
+    if (!styleText) return;
+
+    element.setAttribute("style", styleText);
+  }
+
   function queryCustomPlacementTarget(selector) {
+    var selectors;
+    var index;
+    var currentSelector;
+    var target;
+
     if (!selector || typeof selector !== "string") {
       updateDebug(root, "CUSTOM_SELECTOR omitido: falta el selector.");
       return null;
     }
 
-    try {
-      return document.querySelector(selector);
-    } catch (error) {
-      updateDebug(root, "CUSTOM_SELECTOR invalido: " + selector);
-      debug(selector, error);
-      return null;
+    selectors = selector
+      .split(",")
+      .map(function (value) {
+        return value.trim();
+      })
+      .filter(Boolean);
+
+    for (index = 0; index < selectors.length; index += 1) {
+      currentSelector = selectors[index];
+
+      try {
+        target = document.querySelector(currentSelector);
+        if (target) return target;
+      } catch (error) {
+        updateDebug(root, "CUSTOM_SELECTOR invalido: " + currentSelector);
+        debug(currentSelector, error);
+      }
     }
+
+    updateDebug(root, "CUSTOM_SELECTOR omitido: ningun selector coincide.");
+    return null;
   }
 
   function renderIcon(design) {
@@ -736,25 +849,70 @@
     cta.textContent = text;
     cta.setAttribute("aria-label", text);
     cta.addEventListener("click", function () {
-      document.dispatchEvent(
-        new CustomEvent("promo-pulse:click", {
-          detail: {
-            campaignId: campaign.id,
-            experimentId:
-              campaign.experimentId ||
-              (campaign.experiment && campaign.experiment.id) ||
-              null,
-            variantId:
-              campaign.variantId ||
-              (campaign.variant && campaign.variant.id) ||
-              null,
-            placement: campaign.placement,
-          },
-        }),
-      );
+      emitClick(campaign);
     });
 
     return cta;
+  }
+
+  function emitClick(campaign) {
+    document.dispatchEvent(
+      new CustomEvent("promo-pulse:click", {
+        detail: {
+          campaignId: campaign.id,
+          experimentId:
+            campaign.experimentId ||
+            (campaign.experiment && campaign.experiment.id) ||
+            null,
+          variantId:
+            campaign.variantId ||
+            (campaign.variant && campaign.variant.id) ||
+            null,
+          placement: campaign.placement,
+        },
+      }),
+    );
+  }
+
+  function getBadgeText(campaign, badgeSettings) {
+    var texts = campaign.texts || {};
+
+    return (
+      badgeSettings.badgeText ||
+      texts.badgeText ||
+      texts.headline ||
+      campaign.name ||
+      "Limited offer"
+    );
+  }
+
+  function getBadgeHref(campaign) {
+    var href = ((campaign.texts || {}).ctaUrl || "").trim();
+
+    return isSafeUrl(href) ? href : "";
+  }
+
+  function getBadgeShape(badgeSettings) {
+    var shape = String(badgeSettings.badgeShape || "PILL").toLowerCase();
+
+    if (shape === "rounded" || shape === "square") return shape;
+    return "pill";
+  }
+
+  function getBadgePosition(badgeSettings) {
+    var position = String(badgeSettings.badgePosition || "TOP_RIGHT")
+      .toLowerCase()
+      .replace(/_/g, "-");
+
+    if (
+      position === "top-left" ||
+      position === "bottom-left" ||
+      position === "bottom-right"
+    ) {
+      return position;
+    }
+
+    return "top-right";
   }
 
   function renderCloseButton(bar, design) {

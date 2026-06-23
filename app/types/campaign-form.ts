@@ -93,6 +93,7 @@ export type CampaignFormValues = {
   collectionIds: string;
   productTags: string;
   customSelector: string;
+  customStyle: string;
   urlContains?: string;
   excludedUrlContains?: string;
   countrySelection: CountrySelectionValue;
@@ -159,6 +160,7 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   collectionIds: "",
   productTags: "",
   customSelector: "",
+  customStyle: "",
   urlContains: "",
   excludedUrlContains: "",
   countrySelection: "ALL_WORLD",

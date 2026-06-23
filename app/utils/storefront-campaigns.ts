@@ -87,6 +87,7 @@ export type StorefrontCampaignResponseItem = {
   goal: string;
   placement: string;
   placementSelector: string;
+  placementStyle: string;
   design: ReturnType<typeof serializeDesign>;
   timer: ReturnType<typeof serializeTimer>;
   freeShipping: ReturnType<typeof serializeFreeShipping>;
@@ -174,6 +175,7 @@ function serializeStorefrontCampaignForPlacement(
     goal: campaign.goal,
     placement: placement.placementType,
     placementSelector: placement.customSelector ?? "",
+    placementStyle: placement.customStyle ?? "",
     design: serializeDesign(campaign.design, context.device),
     timer: serializeTimer(campaign.timerSettings),
     freeShipping: serializeFreeShipping(campaign.freeShippingSettings, context),

@@ -351,6 +351,10 @@ export const loader = async ({
     (placement) => placement.enabled,
   );
   const placement = enabledPlacements[0] ?? campaign.placements[0];
+  const customPlacement =
+    campaign.placements.find(
+      (item) => item.placementType === "CUSTOM_SELECTOR",
+    ) ?? null;
   const designValues = toCampaignDesignValues(campaign.design);
   const mobileDesignValues = toCampaignMobileDesignValues(
     campaign.design,
@@ -450,7 +454,8 @@ export const loader = async ({
       ),
       collectionIds: targetingListText(campaign.targeting?.collectionIds),
       productTags: targetingListText(campaign.targeting?.productTags),
-      customSelector: placement?.customSelector ?? "",
+      customSelector: customPlacement?.customSelector ?? "",
+      customStyle: customPlacement?.customStyle ?? "",
       urlContains: targetingListText(campaign.targeting?.urlContains),
       excludedUrlContains: targetingListText(
         campaign.targeting?.excludedUrlContains,
@@ -1367,6 +1372,7 @@ export const action = async ({
       placementType: parsed.values.placementType,
       placementTypes: parsed.values.placementTypes,
       customSelector: parsed.values.customSelector,
+      customStyle: parsed.values.customStyle,
       targeting,
       headline: baseTranslationValues?.headline ?? parsed.values.headline,
       subheadline:

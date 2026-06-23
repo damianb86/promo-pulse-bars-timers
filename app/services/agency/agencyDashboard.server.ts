@@ -332,6 +332,7 @@ function buildCrossShopCampaignDraft(
       create: campaign.placements.map((placement) => ({
         placementType: placement.placementType,
         customSelector: placement.customSelector,
+        customStyle: placement.customStyle,
         enabled: placement.enabled,
       })),
     },

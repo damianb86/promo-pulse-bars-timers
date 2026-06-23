@@ -313,6 +313,10 @@ export const action = async ({
             placementType === "CUSTOM_SELECTOR"
               ? parsed.values.customSelector || null
               : null,
+          customStyle:
+            placementType === "CUSTOM_SELECTOR"
+              ? parsed.values.customStyle || null
+              : null,
           enabled: true,
         })),
       },

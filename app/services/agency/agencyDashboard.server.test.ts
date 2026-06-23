@@ -313,6 +313,7 @@ function campaignCopySource() {
         campaignId: "campaign-1",
         placementType: PlacementType.TOP_BAR,
         customSelector: null,
+        customStyle: null,
         enabled: true,
         createdAt: now,
         updatedAt: now,

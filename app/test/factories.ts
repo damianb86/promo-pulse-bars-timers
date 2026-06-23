@@ -37,6 +37,7 @@ type PlacementInput = {
   placementType: PlacementType;
   enabled?: boolean;
   customSelector?: string | null;
+  customStyle?: string | null;
 };
 
 type TestCampaignOverrides = {
@@ -156,6 +157,7 @@ export function createTestCampaign(
       campaignId: id,
       placementType: placement.placementType,
       customSelector: placement.customSelector ?? null,
+      customStyle: placement.customStyle ?? null,
       enabled: placement.enabled ?? true,
     })),
     targeting:

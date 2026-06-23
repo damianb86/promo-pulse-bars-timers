@@ -1356,10 +1356,11 @@ function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {
     collectionIds: suggestion.targeting.collectionIds.join("\n"),
     productTags: suggestion.targeting.productTags.join("\n"),
     customSelector: suggestion.targeting.customSelector,
+    customStyle: suggestion.targeting.customStyle,
     urlContains: (suggestion.targeting.urlContains ?? []).join("\n"),
-    excludedUrlContains: (
-      suggestion.targeting.excludedUrlContains ?? []
-    ).join("\n"),
+    excludedUrlContains: (suggestion.targeting.excludedUrlContains ?? []).join(
+      "\n",
+    ),
     countrySelection: suggestion.targeting.countrySelection,
     countries: suggestion.targeting.countries.join("\n"),
   };

@@ -188,17 +188,19 @@ describe("storefront campaign serialization", () => {
         {
           placementType: "CART_DRAWER",
           customSelector: "#CartDrawer .drawer__contents",
+          customStyle: "position: absolute; top: 0;",
           enabled: true,
         },
       ],
     });
 
-    expect(
-      serializeStorefrontCampaign(campaign, {
-        ...baseContext(),
-        placement: "CART_DRAWER",
-      })?.placementSelector,
-    ).toBe("#CartDrawer .drawer__contents");
+    const serialized = serializeStorefrontCampaign(campaign, {
+      ...baseContext(),
+      placement: "CART_DRAWER",
+    });
+
+    expect(serialized?.placementSelector).toBe("#CartDrawer .drawer__contents");
+    expect(serialized?.placementStyle).toBe("position: absolute; top: 0;");
   });
 
   it("serializes responsive campaign design by storefront device", () => {
@@ -788,6 +790,7 @@ function buildCampaign(
       placementType: string;
       enabled: boolean;
       customSelector?: string | null;
+      customStyle?: string | null;
     }>;
     type?: string;
     goal?: string;

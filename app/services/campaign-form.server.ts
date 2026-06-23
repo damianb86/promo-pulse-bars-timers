@@ -163,6 +163,7 @@ export function parseCampaignFormData(
     collectionIds: readString(formData, "collectionIds"),
     productTags: readString(formData, "productTags"),
     customSelector: readString(formData, "customSelector"),
+    customStyle: readString(formData, "customStyle"),
     urlContains: readString(formData, "urlContains"),
     excludedUrlContains: readString(formData, "excludedUrlContains"),
     countrySelection: readOption(
@@ -354,9 +355,16 @@ export function parseCampaignFormData(
 
   if (
     values.placementTypes.includes("CUSTOM_SELECTOR") &&
-    values.customSelector.length > 120
+    values.customSelector.length > 500
   ) {
-    errors.customSelector = "Keep the selector under 120 characters.";
+    errors.customSelector = "Keep the selector list under 500 characters.";
+  }
+
+  if (
+    values.placementTypes.includes("CUSTOM_SELECTOR") &&
+    values.customStyle.length > 500
+  ) {
+    errors.customStyle = "Keep the custom style under 500 characters.";
   }
 
   if (values.type === "FREE_SHIPPING_GOAL" || values.goal === "FREE_SHIPPING") {

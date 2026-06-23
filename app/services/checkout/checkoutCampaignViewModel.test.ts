@@ -25,8 +25,7 @@ describe("checkout campaign view model", () => {
           progressStyle: "BAR",
         },
         texts: {
-          freeShippingProgressText:
-            "You're {{amount}} away from free shipping",
+          freeShippingProgressText: "You're {{amount}} away from free shipping",
         },
       }),
       cartSubtotal: 60,
@@ -213,6 +212,7 @@ function campaign(
     goal: "FLASH_SALE",
     placement: "TOP_BAR",
     placementSelector: "",
+    placementStyle: "",
     design: {} as StorefrontCampaignResponseItem["design"],
     timer: null,
     freeShipping: null,

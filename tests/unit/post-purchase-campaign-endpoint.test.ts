@@ -218,6 +218,7 @@ function baseCampaign({
         campaignId: id,
         placementType,
         customSelector: null,
+        customStyle: null,
         enabled: true,
       },
     ],

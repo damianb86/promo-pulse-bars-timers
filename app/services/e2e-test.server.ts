@@ -51,6 +51,7 @@ export type E2ETestScenario =
   | "campaign-type-delivery-cutoff"
   | "campaign-type-low-stock"
   | "campaign-type-product-badge"
+  | "campaign-type-product-badge-top-bar"
   | "campaign-targeting-filters"
   | "campaign-custom-selector"
   | "countdown"
@@ -303,6 +304,11 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "campaign-type-product-badge") {
     await createProductBadgeCampaign(shopId);
+    return;
+  }
+
+  if (scenario === "campaign-type-product-badge-top-bar") {
+    await createProductBadgeTopBarCampaign(shopId);
     return;
   }
 
@@ -1586,6 +1592,74 @@ async function createProductBadgeCampaign(shopId: string) {
   });
 }
 
+async function createProductBadgeTopBarCampaign(shopId: string) {
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
+  return prisma.campaign.create({
+    data: {
+      id: "e2e-product-badge-top-bar",
+      shopId,
+      name: "E2E Product Badge Top Bar Placement",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.PRODUCT_BADGE,
+      goal: CampaignGoal.PRODUCT_BADGE,
+      startsAt: new Date(now.getTime() - 60 * 1000),
+      endsAt,
+      timezone: "America/New_York",
+      placements: {
+        create: [{ placementType: PlacementType.TOP_BAR, enabled: true }],
+      },
+      design: {
+        create: {
+          ...flashSaleDesign(),
+          templateKey: "product-badge-top-bar",
+          backgroundType: DesignBackgroundType.SOLID,
+          backgroundColor: "#111827",
+          textColor: "#FFFFFF",
+          accentColor: "#A78BFA",
+          borderRadius: 999,
+          paddingBlock: 7,
+          paddingInline: 11,
+          fontSize: 13,
+          timerStyle: DesignTimerStyle.BOXES,
+          timerFontSize: 22,
+          timerSurfaceColor: "#1F2937",
+          timerSurfaceBorderColor: "#A78BFA",
+          timerSurfaceBorderSize: 1,
+          timerSurfaceRadius: 8,
+          icon: CampaignDesignIcon.NONE,
+        },
+      },
+      timerSettings: {
+        create: {
+          mode: TimerMode.FIXED_DATE,
+          durationMinutes: null,
+          recurringDays: [],
+          resetBehavior: TimerResetBehavior.NEVER,
+          expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
+        },
+      },
+      badgeSettings: {
+        create: {
+          badgeText: "Top placement badge",
+          badgeShape: BadgeShape.PILL,
+          badgePosition: BadgePosition.TOP_RIGHT,
+        },
+      },
+      translations: {
+        create: [
+          {
+            ...englishTranslation("Top placement badge"),
+            badgeText: "Top placement badge",
+            ctaText: "",
+          },
+        ],
+      },
+    },
+  });
+}
+
 async function createCustomSelectorCampaign(shopId: string) {
   const now = new Date();
   const endsAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -1603,7 +1677,12 @@ async function createCustomSelectorCampaign(shopId: string) {
       timezone: "America/New_York",
       placements: {
         create: [
-          { placementType: PlacementType.CUSTOM_SELECTOR, enabled: true },
+          {
+            placementType: PlacementType.CUSTOM_SELECTOR,
+            customSelector: ".e2e-missing-target, .e2e-custom-target",
+            customStyle: "position: absolute; top: 4px; right: 4px;",
+            enabled: true,
+          },
         ],
       },
       design: {

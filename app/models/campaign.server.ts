@@ -57,6 +57,7 @@ type CampaignBasicsInput = {
   placementType: PlacementTypeValue;
   placementTypes?: PlacementTypeValue[];
   customSelector: string;
+  customStyle: string;
   targeting: CampaignTargetingRules;
   headline: string;
   subheadline: string;
@@ -254,6 +255,10 @@ export async function updateCampaignBasicsForShop(
             customSelector:
               placementType === "CUSTOM_SELECTOR"
                 ? input.customSelector.trim() || null
+                : null,
+            customStyle:
+              placementType === "CUSTOM_SELECTOR"
+                ? input.customStyle.trim() || null
                 : null,
             enabled: true,
           },
@@ -856,6 +861,7 @@ export async function duplicateCampaign(id: string, shopId: string) {
         create: campaign.placements.map((placement) => ({
           placementType: placement.placementType,
           customSelector: placement.customSelector,
+          customStyle: placement.customStyle,
           enabled: placement.enabled,
         })),
       },

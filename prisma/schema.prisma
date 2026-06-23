@@ -148,6 +148,7 @@ model CampaignPlacement {
   campaignId     String
   placementType  PlacementType
   customSelector String?
+  customStyle    String?
   enabled        Boolean       @default(true)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

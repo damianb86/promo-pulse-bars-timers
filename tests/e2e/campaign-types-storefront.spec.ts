@@ -189,9 +189,9 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
 
   await expect(page.locator(".e2e-product-card")).toHaveCount(3);
   await expect(page.locator(".pp-badge")).toHaveCount(3);
-  await expect(page.locator(".e2e-product-card .card__media .pp-badge")).toHaveCount(
-    3,
-  );
+  await expect(
+    page.locator(".e2e-product-card .card__media .pp-badge"),
+  ).toHaveCount(3);
   await expect(
     page.locator(".e2e-product-card").first().locator(".pp-badge"),
   ).toContainText("Launch badge");
@@ -204,6 +204,26 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   await expect(page.locator("media-gallery .pp-badge")).toHaveCount(1);
   await expect(page.locator(".pp-badge")).toContainText("Launch badge");
   await expect(page.locator(".pp-badge .pp-countdown")).toBeVisible();
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("PRODUCT_BADGE keeps badge rendering when assigned to a global placement", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("campaign-type-product-badge-top-bar");
+  await page.goto("/__test/storefront");
+
+  const topBars = page.locator("#pp-top-bars");
+
+  await expect(topBars.locator(".pp-badge")).toHaveCount(1);
+  await expect(topBars.locator(".pp-bar")).toHaveCount(0);
+  await expect(topBars.locator(".pp-badge")).toContainText(
+    "Top placement badge",
+  );
+  await expect(topBars.locator(".pp-badge .pp-countdown")).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -226,6 +246,30 @@ test("CUSTOM_SELECTOR renders only into the matching Campaign ID snippet", async
 
   await expect(slot.locator(".pp-bar")).toContainText(
     "Custom slot announcement",
+  );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("CUSTOM_SELECTOR accepts comma-separated theme selectors and applies container style", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("campaign-custom-selector");
+  await page.goto("/__test/storefront?customThemeTargets=1");
+
+  const target = page.getByTestId("custom-theme-target");
+  const fallbackTarget = page.getByTestId("custom-theme-fallback-target");
+  const injectedContainer = target.locator(".pp-container--custom-selector");
+
+  await expect(target.locator(".pp-bar")).toContainText(
+    "Custom slot announcement",
+  );
+  await expect(fallbackTarget.locator(".pp-bar")).toHaveCount(0);
+  await expect(injectedContainer).toHaveAttribute(
+    "style",
+    /position:\s*absolute/i,
   );
 
   expectNoConsoleErrors(page);

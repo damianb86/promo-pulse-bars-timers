@@ -170,6 +170,7 @@ function freeShippingCampaign(): StorefrontCampaignSource {
         campaignId: "campaign-1",
         placementType: "CART_PAGE" as PlacementType,
         customSelector: null,
+        customStyle: null,
         enabled: true,
       },
     ],

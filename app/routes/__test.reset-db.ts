@@ -48,6 +48,7 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "campaign-type-delivery-cutoff" ||
     value === "campaign-type-low-stock" ||
     value === "campaign-type-product-badge" ||
+    value === "campaign-type-product-badge-top-bar" ||
     value === "campaign-targeting-filters" ||
     value === "campaign-custom-selector" ||
     value === "countdown-consent-strict" ||

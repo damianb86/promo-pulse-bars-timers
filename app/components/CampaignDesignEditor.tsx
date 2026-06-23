@@ -48,9 +48,13 @@ export function CampaignDesignEditor({
   const actualPlacements = useMemo(
     () =>
       Array.from(
-        new Set(viewModel.placements.map(toPreviewPlacementFromCampaign)),
+        new Set(
+          viewModel.placements.map((placement) =>
+            toPreviewPlacementFromCampaign(placement, viewModel.type),
+          ),
+        ),
       ),
-    [viewModel.placements],
+    [viewModel.placements, viewModel.type],
   );
   const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [placementOverride, setPlacementOverride] = useState<{
@@ -334,7 +338,11 @@ function isTimerShown(timer: CampaignViewModel["timer"]) {
   return true;
 }
 
-function toPreviewPlacementFromCampaign(value: string): PreviewPlacement {
+function toPreviewPlacementFromCampaign(
+  value: string,
+  campaignType?: string,
+): PreviewPlacement {
+  if (campaignType === "PRODUCT_BADGE") return "PRODUCT_BADGE";
   if (value === "BOTTOM_BAR") return "BOTTOM_BAR";
   if (value === "PRODUCT_PAGE") return "PRODUCT_PAGE";
   if (value === "CART_PAGE") return "CART_PAGE";

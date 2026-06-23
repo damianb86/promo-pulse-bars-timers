@@ -926,6 +926,7 @@ function buildTargeting(
     collectionIds: [],
     productTags: productSelection === "TAGS" ? productTags : [],
     customSelector: "",
+    customStyle: "",
     urlContains: [],
     excludedUrlContains: [],
     countrySelection,
@@ -1285,8 +1286,12 @@ function sanitizeTargetingSettings(
     productTags: sanitizePlainList(targeting?.productTags, 40, 60),
     customSelector:
       typeof targeting?.customSelector === "string"
-        ? targeting.customSelector.trim().slice(0, 120)
+        ? targeting.customSelector.trim().slice(0, 500)
         : fallback.customSelector,
+    customStyle:
+      typeof targeting?.customStyle === "string"
+        ? targeting.customStyle.trim().slice(0, 500)
+        : fallback.customStyle,
     urlContains: sanitizePlainList(targeting?.urlContains, 20, 200),
     excludedUrlContains: sanitizePlainList(
       targeting?.excludedUrlContains,

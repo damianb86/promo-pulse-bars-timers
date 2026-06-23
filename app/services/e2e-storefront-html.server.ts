@@ -22,6 +22,7 @@ export function buildE2EStorefrontHtml(
   const collectionIds =
     url.searchParams.get("collectionIds") ||
     "gid://shopify/Collection/e2e-sale";
+  const customThemeTargets = url.searchParams.get("customThemeTargets") === "1";
   const inventory = Number(url.searchParams.get("inventory") || "3");
   const inventoryQuantity = Number.isFinite(inventory) ? inventory : 3;
   const subtotalCents = Number.isFinite(subtotal)
@@ -133,6 +134,7 @@ export function buildE2EStorefrontHtml(
       collectionIds,
       inventoryQuantity,
       customCampaignId: url.searchParams.get("customCampaignId") || "",
+      customThemeTargets,
     })}
     ${scriptsForKind(kind)}
   </body>
@@ -200,6 +202,7 @@ function bodyForKind(
     collectionIds: string;
     inventoryQuantity: number;
     customCampaignId: string;
+    customThemeTargets: boolean;
   },
 ) {
   if (kind === "product") {
@@ -295,6 +298,14 @@ function bodyForKind(
       data-promo-pulse-placement="CUSTOM_SELECTOR"
       data-promo-pulse-campaign-id="${escapeHtml(context.customCampaignId)}"
     ></div>`
+        : ""
+    }
+    ${
+      context.customThemeTargets
+        ? `<section class="e2e-custom-targets" aria-label="Custom placement targets">
+      <div class="e2e-custom-target" data-testid="custom-theme-target"></div>
+      <div class="e2e-custom-fallback-target" data-testid="custom-theme-fallback-target"></div>
+    </section>`
         : ""
     }
     <section class="e2e-product-grid" aria-label="Featured products">

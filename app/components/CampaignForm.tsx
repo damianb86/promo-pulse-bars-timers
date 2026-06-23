@@ -746,12 +746,19 @@ export function CampaignForm({
     : "";
   const previewPlacements = useMemo(
     () =>
-      Array.from(new Set(formValues.placementTypes.map(toPreviewPlacement))),
-    [formValues.placementTypes],
+      Array.from(
+        new Set(
+          formValues.placementTypes.map((placementType) =>
+            toPreviewPlacement(placementType, formValues.type),
+          ),
+        ),
+      ),
+    [formValues.placementTypes, formValues.type],
   );
   const campaignPreviewPlacementKey = formValues.placementTypes.join("|");
   const defaultCampaignPreviewPlacement = toPreviewPlacement(
     formValues.placementType,
+    formValues.type,
   );
   const campaignPreviewPlacement =
     campaignPreviewPlacementOverride?.key === campaignPreviewPlacementKey
@@ -2429,24 +2436,51 @@ export function CampaignForm({
                         id={scopedId("custom-selector")}
                         name="customSelector"
                         value={formValues.customSelector}
-                        placeholder=".product-form__buttons"
+                        placeholder=".product-form__buttons, .product__info-container"
                         onChange={updateField("customSelector")}
                       />
                       <small>
-                        Promo Pulse will inject the campaign inside this
-                        selector when the app embed is active.
+                        Separate multiple theme selectors with commas. Promo
+                        Pulse uses the first matching selector as the injection
+                        target when the app embed is active.
                       </small>
                       <FieldError message={errors.customSelector} />
+                    </div>
+                    <div className="counterpulse-targeting-field">
+                      <label htmlFor={scopedId("custom-style")}>
+                        Container style
+                      </label>
+                      <textarea
+                        id={scopedId("custom-style")}
+                        name="customStyle"
+                        value={formValues.customStyle}
+                        placeholder="position: absolute; top: 12px; right: 12px; z-index: 20;"
+                        rows={3}
+                        onChange={updateField("customStyle")}
+                      />
+                      <small>
+                        Applied as inline CSS to the injected Promo Pulse
+                        container. Use it only for placement rules such as
+                        position, inset, margin, or z-index.
+                      </small>
+                      <FieldError message={errors.customStyle} />
                     </div>
                   </div>
                 </section>
               )}
               {!formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
-                <input
-                  name="customSelector"
-                  type="hidden"
-                  value={formValues.customSelector}
-                />
+                <>
+                  <input
+                    name="customSelector"
+                    type="hidden"
+                    value={formValues.customSelector}
+                  />
+                  <input
+                    name="customStyle"
+                    type="hidden"
+                    value={formValues.customStyle}
+                  />
+                </>
               )}
 
               {formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
@@ -2682,11 +2716,7 @@ export function CampaignForm({
                       title="Show only on page types"
                       description="Leave empty to keep the campaign eligible on any page that matches the rest of targeting."
                       onToggle={(token, checked) =>
-                        setUrlPageTargetingToken(
-                          "urlContains",
-                          token,
-                          checked,
-                        )
+                        setUrlPageTargetingToken("urlContains", token, checked)
                       }
                     />
                     <UrlPageTargetingPicker
@@ -3995,7 +4025,9 @@ function formatPlacementSelectionLabel(placements: PlacementTypeValue[]) {
 
 function toPreviewPlacement(
   placementType: CampaignFormValues["placementType"],
+  campaignType?: CampaignFormValues["type"],
 ): PreviewPlacement {
+  if (campaignType === "PRODUCT_BADGE") return "PRODUCT_BADGE";
   if (placementType === "BOTTOM_BAR") return "BOTTOM_BAR";
   if (placementType === "PRODUCT_PAGE") return "PRODUCT_PAGE";
   if (placementType === "CART_PAGE") return "CART_PAGE";
@@ -4058,6 +4090,7 @@ const campaignErrorFieldLabels: Partial<
   ctaText: "CTA text",
   ctaUrl: "CTA URL",
   customSelector: "Custom selector",
+  customStyle: "Custom placement style",
   deliveryAfterCutoffBehavior: "After cutoff behavior",
   deliveryCutoffHour: "Cutoff hour",
   deliveryCutoffMinute: "Cutoff minute",

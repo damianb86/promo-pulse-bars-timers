@@ -944,7 +944,7 @@ export function DesignControls({
           />
           <ToggleField
             checked={values.mobileEnabled}
-            label="Mobile enabled"
+            label="Show on mobile"
             name="mobileEnabled"
             onChange={(checked) => updateValue("mobileEnabled", checked)}
           />

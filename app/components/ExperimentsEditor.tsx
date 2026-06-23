@@ -2671,7 +2671,7 @@ function formatDesignKey(key: keyof CampaignDesignValues) {
     showIcon: "Icon",
     iconSize: "Icon size",
     customIconUrl: "Custom icon",
-    mobileEnabled: "Mobile",
+    mobileEnabled: "Show on mobile",
   };
 
   return (

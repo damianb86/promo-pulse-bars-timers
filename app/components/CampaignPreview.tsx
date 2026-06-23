@@ -89,6 +89,8 @@ export function CampaignPreview({
       : null;
   const previewStyle = buildPreviewStyle(design);
   const viewportStyle = buildPreviewViewportStyle(device);
+  const isHiddenOnMobile =
+    device === "mobile" && design.mobileEnabled === false;
   const renderPromoSurface = (variant: "bar" | "block" | "badge") => (
     <PromoSurface
       design={design}
@@ -135,39 +137,53 @@ export function CampaignPreview({
                 .replace("_", "-")}`,
             ].join(" ")}
           >
-            {placement === "TOP_BAR" && (
+            {isHiddenOnMobile && <MobileDisabledScene />}
+
+            {!isHiddenOnMobile && placement === "TOP_BAR" && (
               <>
                 {renderPromoSurface("bar")}
                 <ProductPageScene />
               </>
             )}
 
-            {placement === "BOTTOM_BAR" && (
+            {!isHiddenOnMobile && placement === "BOTTOM_BAR" && (
               <>
                 <ProductPageScene />
                 {renderPromoSurface("bar")}
               </>
             )}
 
-            {placement === "PRODUCT_PAGE" && (
+            {!isHiddenOnMobile && placement === "PRODUCT_PAGE" && (
               <ProductPageScene promo={renderPromoSurface("block")} />
             )}
 
-            {placement === "PRODUCT_BADGE" && (
+            {!isHiddenOnMobile && placement === "PRODUCT_BADGE" && (
               <ProductPageScene badge={renderPromoSurface("badge")} />
             )}
 
-            {placement === "CART_PAGE" && (
+            {!isHiddenOnMobile && placement === "CART_PAGE" && (
               <CartPageScene promo={renderPromoSurface("block")} />
             )}
 
-            {placement === "CART_DRAWER" && (
+            {!isHiddenOnMobile && placement === "CART_DRAWER" && (
               <CartDrawerScene promo={renderPromoSurface("block")} />
             )}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileDisabledScene() {
+  return (
+    <main className="counterpulse-preview-disabled-scene">
+      <div className="counterpulse-preview-disabled-state">
+        <strong>Not shown on mobile</strong>
+        <span>This campaign still renders for desktop visitors.</span>
+      </div>
+      <ProductPageScene />
+    </main>
   );
 }
 

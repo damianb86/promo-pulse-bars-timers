@@ -76,6 +76,19 @@ test("design changes update live preview and persist", async ({
   );
   await expect(preview).toHaveClass(/counterpulse-preview-promo--enter-slide/);
   await expect(preview).toHaveClass(/counterpulse-preview-promo--exit-pop/);
+
+  await editor.getByLabel("Show on mobile").uncheck();
+  await expect(
+    editor.locator(".counterpulse-preview-disabled-state"),
+  ).toContainText("Not shown on mobile");
+  await expect(
+    page.locator(
+      ".counterpulse-design-editor__preview .counterpulse-preview-promo",
+    ),
+  ).toHaveCount(0);
+  await editor.getByLabel("Show on mobile").check();
+  await expect(preview).toContainText("Sale ends soon");
+
   await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -217,10 +230,7 @@ test("separate desktop and mobile design uses distinct editable previews", async
   await expect(reloadedEditor.locator('input[name="templateKey"]')).toHaveValue(
     "black-friday",
   );
-  await expect(reloadedPreview).toHaveCSS(
-    "background-color",
-    "rgb(5, 5, 5)",
-  );
+  await expect(reloadedPreview).toHaveCSS("background-color", "rgb(5, 5, 5)");
 
   await reloadedPreviewToggle.getByRole("button", { name: "Mobile" }).click();
   await expect(reloadedEditor.locator('input[name="templateKey"]')).toHaveValue(

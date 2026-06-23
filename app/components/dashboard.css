@@ -6803,6 +6803,47 @@ s-page::part(page) {
   background: #ffffff;
 }
 
+.counterpulse-preview-disabled-scene {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+}
+
+.counterpulse-preview-disabled-scene .counterpulse-preview-product-page {
+  opacity: 0.46;
+  filter: grayscale(0.35);
+}
+
+.counterpulse-preview-disabled-state {
+  position: absolute;
+  z-index: 4;
+  top: 18px;
+  left: 50%;
+  width: min(320px, calc(100% - 32px));
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #202223;
+  text-align: center;
+  box-shadow: 0 14px 34px rgba(32, 34, 35, 0.12);
+  transform: translateX(-50%);
+}
+
+.counterpulse-preview-disabled-state strong {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 18px;
+}
+
+.counterpulse-preview-disabled-state span {
+  color: #616161;
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .counterpulse-preview-storefront--top-bar .counterpulse-preview-product-page,
 .counterpulse-preview-storefront--bottom-bar
   .counterpulse-preview-product-page {

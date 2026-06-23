@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { AnalyticsEventType } from "@prisma/client";
 import { type ReactNode, useRef, useState } from "react";
 import { AppAlert, ConfirmModal } from "../components/Notifications";
 import {
@@ -13,6 +14,7 @@ import {
 
 import { CampaignStatusBadge } from "../components/CampaignStatusBadge";
 import { EmptyStateCard } from "../components/EmptyStateCard";
+import prisma from "../db.server";
 import {
   activateCampaign,
   deleteCampaignForShop,
@@ -39,6 +41,22 @@ type CampaignListItem = {
   type: CampaignTypeValue;
   updatedAt: string;
   placements: string[];
+  experiment: CampaignExperimentSummary;
+  performance: CampaignPerformanceSummary;
+};
+
+type CampaignExperimentSummary = {
+  status: "DRAFT" | "RUNNING" | "PAUSED" | "COMPLETED" | "NONE";
+  label: string;
+  detail: string;
+  variantCount: number;
+};
+
+type CampaignPerformanceSummary = {
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  orders: number;
 };
 
 type LoaderData = {
@@ -71,6 +89,10 @@ export const loader = async ({
       type: isCampaignType(type) ? type : undefined,
       query,
     });
+    const performanceByCampaign = await loadCampaignPerformance(
+      shop.id,
+      campaigns.map((campaign) => campaign.id),
+    );
 
     return {
       campaigns: campaigns.map((campaign) => ({
@@ -82,6 +104,10 @@ export const loader = async ({
         placements: campaign.placements.map((placement) =>
           formatCampaignOption(placement.placementType),
         ),
+        experiment: buildExperimentSummary(campaign.experiments),
+        performance:
+          performanceByCampaign.get(campaign.id) ??
+          createEmptyPerformanceSummary(),
       })),
       filters: { status, type, query },
       error: null,
@@ -141,6 +167,129 @@ export const action = async ({
   return redirect("/app/campaigns");
 };
 
+async function loadCampaignPerformance(shopId: string, campaignIds: string[]) {
+  if (campaignIds.length === 0) {
+    return new Map<string, CampaignPerformanceSummary>();
+  }
+
+  const rows = await prisma.analyticsEvent.groupBy({
+    by: ["campaignId", "eventType"],
+    where: {
+      shopId,
+      campaignId: { in: campaignIds },
+      eventType: {
+        in: [
+          AnalyticsEventType.IMPRESSION,
+          AnalyticsEventType.BADGE_IMPRESSION,
+          AnalyticsEventType.CLICK,
+          AnalyticsEventType.BADGE_CLICK,
+          AnalyticsEventType.ORDER_ATTRIBUTED,
+        ],
+      },
+    },
+    _count: { _all: true },
+  });
+  const summaries = new Map<string, CampaignPerformanceSummary>();
+
+  for (const row of rows) {
+    if (!row.campaignId) continue;
+
+    const summary =
+      summaries.get(row.campaignId) ?? createEmptyPerformanceSummary();
+    const count = row._count._all;
+
+    if (
+      row.eventType === AnalyticsEventType.IMPRESSION ||
+      row.eventType === AnalyticsEventType.BADGE_IMPRESSION
+    ) {
+      summary.impressions += count;
+    } else if (
+      row.eventType === AnalyticsEventType.CLICK ||
+      row.eventType === AnalyticsEventType.BADGE_CLICK
+    ) {
+      summary.clicks += count;
+    } else if (row.eventType === AnalyticsEventType.ORDER_ATTRIBUTED) {
+      summary.orders += count;
+    }
+
+    summary.ctr =
+      summary.impressions > 0 ? summary.clicks / summary.impressions : 0;
+    summaries.set(row.campaignId, summary);
+  }
+
+  return summaries;
+}
+
+function createEmptyPerformanceSummary(): CampaignPerformanceSummary {
+  return {
+    impressions: 0,
+    clicks: 0,
+    ctr: 0,
+    orders: 0,
+  };
+}
+
+function buildExperimentSummary(
+  experiments: Array<{
+    name: string;
+    status: CampaignExperimentSummary["status"];
+    variants: Array<unknown>;
+  }>,
+): CampaignExperimentSummary {
+  const experiment =
+    experiments.find((item) => item.status === "RUNNING") ??
+    experiments.find((item) => item.status === "DRAFT") ??
+    experiments.find((item) => item.status === "PAUSED") ??
+    experiments.find((item) => item.status === "COMPLETED") ??
+    null;
+
+  if (!experiment) {
+    return {
+      status: "NONE",
+      label: "No experiment",
+      detail: "Campaign baseline only",
+      variantCount: 0,
+    };
+  }
+
+  const variantCount = experiment.variants.length;
+  const variantText = `${variantCount} ${variantCount === 1 ? "variant" : "variants"}`;
+
+  if (experiment.status === "RUNNING") {
+    return {
+      status: "RUNNING",
+      label: "Experiment running",
+      detail: variantText,
+      variantCount,
+    };
+  }
+
+  if (experiment.status === "DRAFT") {
+    return {
+      status: "DRAFT",
+      label: "Experiment draft",
+      detail: variantText,
+      variantCount,
+    };
+  }
+
+  if (experiment.status === "PAUSED") {
+    return {
+      status: "PAUSED",
+      label: "Experiment paused",
+      detail: variantText,
+      variantCount,
+    };
+  }
+
+  return {
+    status: "COMPLETED",
+    label: "Experiment completed",
+    detail: variantText,
+    variantCount,
+  };
+}
+
 export default function CampaignsPage() {
   const { campaigns, filters, error } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionData | undefined;
@@ -162,6 +311,9 @@ export default function CampaignsPage() {
       PAUSED: 0,
     },
   );
+  const runningExperiments = campaigns.filter(
+    (campaign) => campaign.experiment.status === "RUNNING",
+  ).length;
   const isCampaignsIndexRoute =
     location.pathname.replace(/\/+$/, "") === "/app/campaigns";
 
@@ -170,14 +322,14 @@ export default function CampaignsPage() {
   }
 
   return (
-    <s-page inlineSize="large" heading="Campaigns">
-      {(error || actionData?.error) && (
-        <AppAlert tone="critical" title="Campaigns need attention">
-          <s-paragraph>{error ?? actionData?.error}</s-paragraph>
-        </AppAlert>
-      )}
+    <s-page inlineSize="large">
+      <div className="counterpulse-campaigns-layout">
+        {(error || actionData?.error) && (
+          <AppAlert tone="critical" title="Campaigns need attention">
+            <s-paragraph>{error ?? actionData?.error}</s-paragraph>
+          </AppAlert>
+        )}
 
-      <s-section>
         <div className="counterpulse-campaigns-header">
           <div>
             <p className="counterpulse-kicker">Campaign workspace</p>
@@ -188,6 +340,12 @@ export default function CampaignsPage() {
             </s-paragraph>
             <div className="counterpulse-campaigns-header__meta">
               <span>{formatCampaignCount(campaigns.length)} showing</span>
+              {runningExperiments > 0 && (
+                <span>
+                  {runningExperiments} running{" "}
+                  {runningExperiments === 1 ? "experiment" : "experiments"}
+                </span>
+              )}
               {hasActiveFilters && <span>Filtered view</span>}
             </div>
           </div>
@@ -201,12 +359,10 @@ export default function CampaignsPage() {
             </Link>
           </div>
         </div>
-      </s-section>
 
-      <s-section heading="Campaign overview">
         <div className="counterpulse-campaigns-metrics">
           <CampaignMetric
-            caption="Current list"
+            caption="Current filtered list"
             label="Showing"
             value={campaigns.length}
           />
@@ -226,9 +382,7 @@ export default function CampaignsPage() {
             value={statusCounts.PAUSED + statusCounts.EXPIRED}
           />
         </div>
-      </s-section>
 
-      <s-section>
         <div className="counterpulse-campaigns-filter-panel">
           <div className="counterpulse-campaigns-filter-header">
             <div>
@@ -282,9 +436,7 @@ export default function CampaignsPage() {
             </button>
           </Form>
         </div>
-      </s-section>
 
-      <s-section>
         <div className="counterpulse-campaigns-list-header">
           <div>
             <p className="counterpulse-kicker">Campaign list</p>
@@ -317,6 +469,8 @@ export default function CampaignsPage() {
                   <th>Campaign</th>
                   <th>Status</th>
                   <th>Placements</th>
+                  <th>Experiment</th>
+                  <th>Performance</th>
                   <th>Updated</th>
                   <th>Actions</th>
                 </tr>
@@ -343,6 +497,14 @@ export default function CampaignsPage() {
                     <td data-label="Placements">
                       <CampaignPlacementChips
                         placements={campaign.placements}
+                      />
+                    </td>
+                    <td data-label="Experiment">
+                      <CampaignExperimentBadge experiment={campaign.experiment} />
+                    </td>
+                    <td data-label="Performance">
+                      <CampaignPerformanceSummaryView
+                        performance={campaign.performance}
                       />
                     </td>
                     <td data-label="Updated">
@@ -399,7 +561,7 @@ export default function CampaignsPage() {
             </table>
           </div>
         )}
-      </s-section>
+      </div>
     </s-page>
   );
 }
@@ -416,7 +578,7 @@ function CampaignMetric({
   return (
     <div className="counterpulse-campaigns-metric">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong>{formatCompactNumber(value)}</strong>
       <small>{caption}</small>
     </div>
   );
@@ -428,12 +590,76 @@ function CampaignPlacementChips({ placements }: { placements: string[] }) {
   }
 
   return (
-    <div className="counterpulse-placement-chips">
+    <div
+      className={
+        placements.length > 1
+          ? "counterpulse-placement-chips counterpulse-placement-chips--has-popover"
+          : "counterpulse-placement-chips"
+      }
+    >
       {placements.map((placement) => (
         <span className="counterpulse-placement-chip" key={placement}>
           {placement}
         </span>
       ))}
+      {placements.length > 1 && (
+        <div className="counterpulse-placement-popover" role="tooltip">
+          <strong>{placements.length} placements</strong>
+          <span>{placements.join(", ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampaignExperimentBadge({
+  experiment,
+}: {
+  experiment: CampaignExperimentSummary;
+}) {
+  return (
+    <div
+      className={`counterpulse-experiment-pill counterpulse-experiment-pill--${experiment.status.toLowerCase()}`}
+    >
+      <span className="counterpulse-experiment-pill__dot" />
+      <span>
+        <strong>{experiment.label}</strong>
+        <small>{experiment.detail}</small>
+      </span>
+    </div>
+  );
+}
+
+function CampaignPerformanceSummaryView({
+  performance,
+}: {
+  performance: CampaignPerformanceSummary;
+}) {
+  const hasData =
+    performance.impressions > 0 ||
+    performance.clicks > 0 ||
+    performance.orders > 0;
+
+  if (!hasData) {
+    return (
+      <div className="counterpulse-campaign-performance counterpulse-campaign-performance--empty">
+        <strong>No data yet</strong>
+        <span>Waiting for impressions</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="counterpulse-campaign-performance">
+      <strong>{formatCompactNumber(performance.impressions)}</strong>
+      <span>impressions</span>
+      <small>
+        {formatPercent(performance.ctr)} CTR ·{" "}
+        {formatCompactNumber(performance.clicks)} clicks
+        {performance.orders > 0
+          ? ` · ${formatCompactNumber(performance.orders)} orders`
+          : ""}
+      </small>
     </div>
   );
 }
@@ -543,4 +769,19 @@ function formatUpdatedDate(value: string) {
 
 function formatCampaignCount(value: number) {
   return `${value} ${value === 1 ? "campaign" : "campaigns"}`;
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    compactDisplay: "short",
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+    notation: value >= 10000 ? "compact" : "standard",
+  }).format(value);
+}
+
+function formatPercent(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1,
+    style: "percent",
+  }).format(value);
 }

@@ -93,3 +93,63 @@ test("campaign list filters by search, status, and type", async ({
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });
+
+test("campaign list shows all placements with a hover summary", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+  createCampaignViaUI,
+}) => {
+  await resetDb();
+  await loginAsDemoShop("/app");
+
+  await createCampaignViaUI({
+    name: "E2E Placement Matrix",
+    placements: ["TOP_BAR", "BOTTOM_BAR", "CART_PAGE"],
+  });
+
+  await page.goto("/app/campaigns");
+  const row = page.getByRole("row", { name: /E2E Placement Matrix/ });
+
+  await expect(row).toContainText("Top Bar");
+  await expect(row).toContainText("Bottom Bar");
+  await expect(row).toContainText("Cart Page");
+  await expect(row).toContainText("No experiment");
+  await expect(row).toContainText("No data yet");
+
+  await row.locator(".counterpulse-placement-chips--has-popover").hover();
+  await expect(row.getByRole("tooltip")).toContainText("3 placements");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("campaign list surfaces experiments and campaign performance", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("ab-test");
+  await loginAsDemoShop("/app/campaigns");
+
+  const experimentRow = page.getByRole("row", {
+    name: /E2E Flash Sale Countdown/,
+  });
+
+  await expect(experimentRow).toContainText("Experiment running");
+  await expect(experimentRow).toContainText("2 variants");
+
+  await resetDb("reports");
+  await loginAsDemoShop("/app/campaigns");
+
+  const reportsRow = page.getByRole("row", {
+    name: /E2E Reports US Campaign/,
+  });
+
+  await expect(reportsRow).toContainText("30");
+  await expect(reportsRow).toContainText("impressions");
+  await expect(reportsRow).toContainText("20% CTR");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});

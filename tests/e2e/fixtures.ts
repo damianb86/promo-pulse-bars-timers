@@ -15,6 +15,7 @@ type E2EFixtures = {
       goal: string;
       type: string;
       placement: string;
+      placements: string[];
       status: string;
       headline: string;
       subheadline: string;
@@ -115,6 +116,10 @@ export const test = base.extend<E2EFixtures>({
         ctaUrl: "/collections/sale",
         ...options,
       };
+      const selectedPlacements =
+        values.placements && values.placements.length > 0
+          ? values.placements
+          : [values.placement];
 
       const form = page.locator("[data-campaign-form]");
 
@@ -125,7 +130,10 @@ export const test = base.extend<E2EFixtures>({
         .getByRole("combobox", { name: /^Status$/ })
         .selectOption(values.status);
       await form.getByRole("tab", { name: "Placement" }).click();
-      await selectOnlyCampaignPlacement(form, values.placement);
+      await selectOnlyCampaignPlacement(form, selectedPlacements[0]);
+      for (const placement of selectedPlacements.slice(1)) {
+        await selectCampaignPlacement(form, placement);
+      }
       await form.getByRole("tab", { name: "Schedule" }).click();
       const endDate = form.getByLabel("End date");
       if ((await endDate.count()) > 0) {
@@ -194,14 +202,7 @@ export async function selectOnlyCampaignPlacement(
   scope: Locator | Page,
   placement: string,
 ) {
-  const label = placementLabel(placement);
-  const name =
-    placement === "PRODUCT_PAGE"
-      ? /^Product page Product detail\b/
-      : new RegExp(`^${escapeRegExp(label)}\\b`);
-  const target = scope.getByRole("button", {
-    name,
-  });
+  const target = getPlacementButton(scope, placement);
 
   await target.click();
 
@@ -212,6 +213,27 @@ export async function selectOnlyCampaignPlacement(
       await topBar.click();
     }
   }
+}
+
+export async function selectCampaignPlacement(
+  scope: Locator | Page,
+  placement: string,
+) {
+  const target = getPlacementButton(scope, placement);
+
+  if ((await target.getAttribute("aria-pressed")) !== "true") {
+    await target.click();
+  }
+}
+
+function getPlacementButton(scope: Locator | Page, placement: string) {
+  const label = placementLabel(placement);
+  const name =
+    placement === "PRODUCT_PAGE"
+      ? /^Product page Product detail\b/
+      : new RegExp(`^${escapeRegExp(label)}\\b`);
+
+  return scope.getByRole("button", { name });
 }
 
 export async function publishCurrentCampaign(page: Page) {

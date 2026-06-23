@@ -23,6 +23,20 @@ test("design changes update live preview and persist", async ({
   const livePreview = page
     .locator(".counterpulse-design-editor__preview .counterpulse-preview-promo")
     .first();
+  const cardPanel = editor.locator(".counterpulse-card-editor");
+
+  await expect(cardPanel).toContainText("Customize the appearance and layout");
+  await expect(cardPanel).toContainText("Preview");
+  await expect(
+    cardPanel.getByRole("radiogroup", { name: "Background" }),
+  ).toBeVisible();
+  await expect(
+    cardPanel.getByRole("radio", { name: /Single color/ }),
+  ).toBeVisible();
+  await expect(
+    cardPanel.getByRole("radio", { name: /Gradient/ }),
+  ).toBeVisible();
+  await expect(cardPanel.getByRole("radio", { name: /Image/ })).toBeVisible();
 
   await editor.getByRole("button", { name: "Layout options" }).click();
   await editor.getByRole("option", { name: /^Split\b/ }).click();

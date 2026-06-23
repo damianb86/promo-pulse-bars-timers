@@ -13,6 +13,7 @@ import {
   designTimerFormatOptions,
   designTimerStyleOptions,
   type CampaignDesignErrors,
+  type DesignBackgroundTypeValue,
   type CampaignDesignImageOption,
   type CampaignDesignMediaOptions,
   type CampaignDesignTemplate,
@@ -237,220 +238,17 @@ export function DesignControls({
         </DesignGroup>
       </DesignPanel>
 
-      <DesignPanel title="Card">
-        <DesignGroup error={errors.backgroundType} label="Background">
-          <div className="counterpulse-radio-stack">
-            {designBackgroundTypeOptions.map((option) => (
-              <label className="counterpulse-radio" key={option.value}>
-                <input
-                  checked={values.backgroundType === option.value}
-                  name="backgroundType"
-                  type="radio"
-                  value={option.value}
-                  onChange={() => updateValue("backgroundType", option.value)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
-          </div>
-        </DesignGroup>
-
-        {values.backgroundType === "GRADIENT" ? (
-          <>
-            <input
-              name="backgroundColor"
-              type="hidden"
-              value={values.backgroundColor}
-            />
-            <input name="backgroundImageUrl" type="hidden" value="" />
-            <DesignField
-              error={errors.gradientAngle}
-              label="Gradient angle degree"
-            >
-              <div className="counterpulse-range-field">
-                <input
-                  max={360}
-                  min={0}
-                  type="range"
-                  value={values.gradientAngle}
-                  onChange={(event) =>
-                    updateNumber("gradientAngle", event.target.value)
-                  }
-                />
-                <input
-                  aria-label="Gradient angle value"
-                  max={360}
-                  min={0}
-                  name="gradientAngle"
-                  type="number"
-                  value={values.gradientAngle}
-                  onChange={(event) =>
-                    updateNumber("gradientAngle", event.target.value)
-                  }
-                />
-              </div>
-            </DesignField>
-            <ColorField
-              error={errors.gradientStartColor}
-              label="Gradient start"
-              name="gradientStartColor"
-              value={values.gradientStartColor}
-              onChange={(value) => updateColor("gradientStartColor", value)}
-            />
-            <ColorField
-              error={errors.gradientEndColor}
-              label="Gradient end"
-              name="gradientEndColor"
-              value={values.gradientEndColor}
-              onChange={(value) => updateColor("gradientEndColor", value)}
-            />
-          </>
-        ) : values.backgroundType === "IMAGE" ? (
-          <>
-            <input
-              name="gradientStartColor"
-              type="hidden"
-              value={values.gradientStartColor}
-            />
-            <input
-              name="gradientEndColor"
-              type="hidden"
-              value={values.gradientEndColor}
-            />
-            <input
-              name="gradientAngle"
-              type="hidden"
-              value={values.gradientAngle}
-            />
-            <ImageBackgroundPicker
-              error={backgroundImageError ?? errors.backgroundImageUrl}
-              isPicking={isBackgroundPickerBusy}
-              value={values.backgroundImageUrl}
-              onPickFromShopify={selectShopifyBackgroundImage}
-            />
-            <ColorField
-              error={errors.backgroundColor}
-              label="Fallback color"
-              name="backgroundColor"
-              value={values.backgroundColor}
-              onChange={(value) => updateColor("backgroundColor", value)}
-            />
-          </>
-        ) : (
-          <ColorField
-            error={errors.backgroundColor}
-            label="Background"
-            name="backgroundColor"
-            value={values.backgroundColor}
-            onChange={(value) => updateColor("backgroundColor", value)}
-          />
-        )}
-
-        {values.backgroundType === "SOLID" && (
-          <>
-            <input
-              name="gradientStartColor"
-              type="hidden"
-              value={values.gradientStartColor}
-            />
-            <input
-              name="gradientEndColor"
-              type="hidden"
-              value={values.gradientEndColor}
-            />
-            <input
-              name="gradientAngle"
-              type="hidden"
-              value={values.gradientAngle}
-            />
-            <input name="backgroundImageUrl" type="hidden" value="" />
-          </>
-        )}
-
-        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-          <NumberField
-            error={errors.borderRadius}
-            label="Border radius"
-            min={0}
-            name="borderRadius"
-            value={values.borderRadius}
-            onChange={(value) => updateNumber("borderRadius", value)}
-          />
-          <NumberField
-            error={errors.borderSize}
-            label="Border size"
-            max={8}
-            min={0}
-            name="borderSize"
-            value={values.borderSize}
-            onChange={(value) => updateNumber("borderSize", value)}
-          />
-          <ColorField
-            error={errors.borderColor}
-            label="Border color"
-            name="borderColor"
-            value={values.borderColor}
-            onChange={(value) => updateColor("borderColor", value)}
-          />
-          <DesignField label="Alignment" error={errors.alignment}>
-            <select
-              name="alignment"
-              value={values.alignment}
-              onChange={(event) =>
-                updateValue(
-                  "alignment",
-                  event.target.value as CampaignDesignValues["alignment"],
-                )
-              }
-            >
-              {designAlignmentOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </DesignField>
-        </div>
-
-        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-          <NumberField
-            error={errors.paddingBlock}
-            label="Vertical padding"
-            max={48}
-            min={4}
-            name="paddingBlock"
-            value={values.paddingBlock}
-            onChange={(value) => updateNumber("paddingBlock", value)}
-          />
-          <NumberField
-            error={errors.paddingInline}
-            label="Horizontal padding"
-            max={64}
-            min={8}
-            name="paddingInline"
-            value={values.paddingInline}
-            onChange={(value) => updateNumber("paddingInline", value)}
-          />
-          <NumberField
-            error={errors.contentGap}
-            label="Content gap"
-            max={32}
-            min={0}
-            name="contentGap"
-            value={values.contentGap}
-            onChange={(value) => updateNumber("contentGap", value)}
-          />
-          <NumberField
-            error={errors.contentMaxWidth}
-            label="Content max width"
-            max={1440}
-            min={280}
-            name="contentMaxWidth"
-            value={values.contentMaxWidth}
-            onChange={(value) => updateNumber("contentMaxWidth", value)}
-          />
-        </div>
-      </DesignPanel>
+      <CardDesignPanel
+        backgroundImageError={backgroundImageError ?? errors.backgroundImageUrl}
+        errors={errors}
+        isBackgroundPickerBusy={isBackgroundPickerBusy}
+        values={values}
+        onAlignmentChange={(value) => updateValue("alignment", value)}
+        onBackgroundImagePick={selectShopifyBackgroundImage}
+        onBackgroundTypeChange={(value) => updateValue("backgroundType", value)}
+        onColorChange={updateColor}
+        onNumberChange={updateNumber}
+      />
 
       <DesignPanel title="Typography">
         <DesignField label="Font" error={errors.fontFamily}>
@@ -1328,6 +1126,795 @@ function TemplatePreview({ template }: { template: CampaignDesignTemplate }) {
   );
 }
 
+function CardDesignPanel({
+  values,
+  errors,
+  backgroundImageError,
+  isBackgroundPickerBusy,
+  onBackgroundTypeChange,
+  onBackgroundImagePick,
+  onNumberChange,
+  onColorChange,
+  onAlignmentChange,
+}: {
+  values: CampaignDesignValues;
+  errors: CampaignDesignErrors;
+  backgroundImageError?: string;
+  isBackgroundPickerBusy: boolean;
+  onBackgroundTypeChange: (value: DesignBackgroundTypeValue) => void;
+  onBackgroundImagePick: () => void;
+  onNumberChange: (key: NumberDesignKey, value: string) => void;
+  onColorChange: (key: ColorDesignKey, value: string) => void;
+  onAlignmentChange: (value: CampaignDesignValues["alignment"]) => void;
+}) {
+  return (
+    <section className="counterpulse-design-card counterpulse-card-editor">
+      <div className="counterpulse-card-editor__header">
+        <div className="counterpulse-card-editor__title">
+          <span className="counterpulse-card-editor__title-icon">
+            <CardControlIcon kind="card" />
+          </span>
+          <div>
+            <strong>Card</strong>
+            <p>Customize the appearance and layout of your card.</p>
+          </div>
+        </div>
+        <div className="counterpulse-card-editor__preview">
+          <span>Preview</span>
+          <CardPreviewSwatch values={values} />
+        </div>
+      </div>
+
+      <div className="counterpulse-card-editor__body">
+        <div className="counterpulse-card-editor__section">
+          <CardSectionHeader
+            description="Choose the background style for your card."
+            title="Background"
+          />
+          <div
+            className="counterpulse-card-background-grid"
+            role="radiogroup"
+            aria-label="Background"
+          >
+            {designBackgroundTypeOptions.map((option) => (
+              <CardBackgroundOption
+                checked={values.backgroundType === option.value}
+                key={option.value}
+                type={option.value}
+                values={values}
+                onChange={onBackgroundTypeChange}
+              />
+            ))}
+          </div>
+          {errors.backgroundType ? (
+            <span className="counterpulse-form-error">
+              {errors.backgroundType}
+            </span>
+          ) : null}
+        </div>
+
+        {values.backgroundType === "GRADIENT" ? (
+          <>
+            <input
+              name="backgroundColor"
+              type="hidden"
+              value={values.backgroundColor}
+            />
+            <input name="backgroundImageUrl" type="hidden" value="" />
+            <div className="counterpulse-card-editor__section">
+              <div className="counterpulse-card-angle-heading">
+                <CardSectionHeader
+                  description="Control the direction of the gradient."
+                  title="Gradient angle"
+                />
+                <div className="counterpulse-card-angle-value">
+                  <input
+                    aria-label="Gradient angle value"
+                    max={360}
+                    min={0}
+                    name="gradientAngle"
+                    type="number"
+                    value={values.gradientAngle}
+                    onChange={(event) =>
+                      onNumberChange("gradientAngle", event.target.value)
+                    }
+                  />
+                  <span aria-hidden="true">°</span>
+                </div>
+              </div>
+              <input
+                aria-label="Gradient angle"
+                className="counterpulse-card-slider"
+                max={360}
+                min={0}
+                type="range"
+                value={values.gradientAngle}
+                onChange={(event) =>
+                  onNumberChange("gradientAngle", event.target.value)
+                }
+              />
+              {errors.gradientAngle ? (
+                <span className="counterpulse-form-error">
+                  {errors.gradientAngle}
+                </span>
+              ) : null}
+            </div>
+            <div className="counterpulse-card-field-grid counterpulse-card-field-grid--two">
+              <CardColorField
+                description="Starting color of the gradient."
+                error={errors.gradientStartColor}
+                label="Gradient start"
+                name="gradientStartColor"
+                value={values.gradientStartColor}
+                onChange={(value) => onColorChange("gradientStartColor", value)}
+              />
+              <CardColorField
+                description="Ending color of the gradient."
+                error={errors.gradientEndColor}
+                label="Gradient end"
+                name="gradientEndColor"
+                value={values.gradientEndColor}
+                onChange={(value) => onColorChange("gradientEndColor", value)}
+              />
+            </div>
+          </>
+        ) : values.backgroundType === "IMAGE" ? (
+          <>
+            <input
+              name="gradientStartColor"
+              type="hidden"
+              value={values.gradientStartColor}
+            />
+            <input
+              name="gradientEndColor"
+              type="hidden"
+              value={values.gradientEndColor}
+            />
+            <input
+              name="gradientAngle"
+              type="hidden"
+              value={values.gradientAngle}
+            />
+            <CardImagePicker
+              error={backgroundImageError}
+              isPicking={isBackgroundPickerBusy}
+              value={values.backgroundImageUrl}
+              onPickFromShopify={onBackgroundImagePick}
+            />
+            <CardColorField
+              description="Shown while the image loads or if it cannot render."
+              error={errors.backgroundColor}
+              label="Fallback color"
+              name="backgroundColor"
+              value={values.backgroundColor}
+              onChange={(value) => onColorChange("backgroundColor", value)}
+            />
+          </>
+        ) : (
+          <>
+            <CardColorField
+              description="Primary surface color for the card."
+              error={errors.backgroundColor}
+              label="Background color"
+              name="backgroundColor"
+              value={values.backgroundColor}
+              onChange={(value) => onColorChange("backgroundColor", value)}
+            />
+            <input
+              name="gradientStartColor"
+              type="hidden"
+              value={values.gradientStartColor}
+            />
+            <input
+              name="gradientEndColor"
+              type="hidden"
+              value={values.gradientEndColor}
+            />
+            <input
+              name="gradientAngle"
+              type="hidden"
+              value={values.gradientAngle}
+            />
+            <input name="backgroundImageUrl" type="hidden" value="" />
+          </>
+        )}
+
+        <div className="counterpulse-card-editor__section counterpulse-card-editor__section--container">
+          <CardSectionHeader title="Card container" />
+          <div className="counterpulse-card-field-grid counterpulse-card-field-grid--three">
+            <CardNumberField
+              description="Corner roundness"
+              error={errors.borderRadius}
+              icon={<CardControlIcon kind="radius" />}
+              label="Border radius"
+              min={0}
+              name="borderRadius"
+              value={values.borderRadius}
+              onChange={(value) => onNumberChange("borderRadius", value)}
+            />
+            <CardNumberField
+              description="Border thickness"
+              error={errors.borderSize}
+              icon={<CardControlIcon kind="borderSize" />}
+              label="Border size"
+              max={8}
+              min={0}
+              name="borderSize"
+              value={values.borderSize}
+              onChange={(value) => onNumberChange("borderSize", value)}
+            />
+            <CardColorField
+              description="Border color"
+              error={errors.borderColor}
+              label="Border color"
+              name="borderColor"
+              value={values.borderColor}
+              onChange={(value) => onColorChange("borderColor", value)}
+            />
+            <CardSelectField
+              description="Content alignment"
+              error={errors.alignment}
+              icon={<CardControlIcon kind="align" />}
+              label="Alignment"
+              name="alignment"
+              value={values.alignment}
+              onChange={onAlignmentChange}
+            />
+            <CardNumberField
+              description="Space top & bottom"
+              error={errors.paddingBlock}
+              icon={<CardControlIcon kind="verticalPadding" />}
+              label="Vertical padding"
+              max={48}
+              min={4}
+              name="paddingBlock"
+              value={values.paddingBlock}
+              onChange={(value) => onNumberChange("paddingBlock", value)}
+            />
+            <CardNumberField
+              description="Space left & right"
+              error={errors.paddingInline}
+              icon={<CardControlIcon kind="horizontalPadding" />}
+              label="Horizontal padding"
+              max={64}
+              min={8}
+              name="paddingInline"
+              value={values.paddingInline}
+              onChange={(value) => onNumberChange("paddingInline", value)}
+            />
+            <CardNumberField
+              description="Space between elements"
+              error={errors.contentGap}
+              icon={<CardControlIcon kind="gap" />}
+              label="Content gap"
+              max={32}
+              min={0}
+              name="contentGap"
+              value={values.contentGap}
+              onChange={(value) => onNumberChange("contentGap", value)}
+            />
+            <CardNumberField
+              description="Maximum content width"
+              error={errors.contentMaxWidth}
+              icon={<CardControlIcon kind="maxWidth" />}
+              label="Content max width"
+              max={1440}
+              min={280}
+              name="contentMaxWidth"
+              value={values.contentMaxWidth}
+              onChange={(value) => onNumberChange("contentMaxWidth", value)}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CardSectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="counterpulse-card-section-heading">
+      <strong>{title}</strong>
+      {description ? <span>{description}</span> : null}
+    </div>
+  );
+}
+
+function CardBackgroundOption({
+  type,
+  values,
+  checked,
+  onChange,
+}: {
+  type: DesignBackgroundTypeValue;
+  values: CampaignDesignValues;
+  checked: boolean;
+  onChange: (value: DesignBackgroundTypeValue) => void;
+}) {
+  const detail = getBackgroundTypeDetail(type);
+
+  return (
+    <label
+      className={
+        checked
+          ? "counterpulse-card-background-option is-selected"
+          : "counterpulse-card-background-option"
+      }
+    >
+      <input
+        checked={checked}
+        name="backgroundType"
+        type="radio"
+        value={type}
+        onChange={() => onChange(type)}
+      />
+      <span className="counterpulse-card-background-option__visual">
+        <CardBackgroundVisual type={type} values={values} />
+      </span>
+      <span className="counterpulse-card-background-option__copy">
+        <strong>{detail.label}</strong>
+        <small>{detail.description}</small>
+      </span>
+    </label>
+  );
+}
+
+function CardBackgroundVisual({
+  type,
+  values,
+}: {
+  type: DesignBackgroundTypeValue;
+  values: CampaignDesignValues;
+}) {
+  if (type === "IMAGE") {
+    return values.backgroundImageUrl ? (
+      <img alt="" src={values.backgroundImageUrl} />
+    ) : (
+      <CardControlIcon kind="image" />
+    );
+  }
+
+  if (type === "GRADIENT") {
+    return (
+      <span
+        className="counterpulse-card-background-option__gradient"
+        style={{
+          background: `linear-gradient(${values.gradientAngle}deg, ${values.gradientStartColor}, ${values.gradientEndColor})`,
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="counterpulse-card-background-option__solid"
+      style={{ background: values.backgroundColor }}
+    />
+  );
+}
+
+function CardPreviewSwatch({ values }: { values: CampaignDesignValues }) {
+  const background =
+    values.backgroundType === "IMAGE" && values.backgroundImageUrl
+      ? `linear-gradient(rgba(0, 0, 0, .08), rgba(0, 0, 0, .08)), url("${values.backgroundImageUrl}") center / cover`
+      : values.backgroundType === "GRADIENT"
+        ? `linear-gradient(${values.gradientAngle}deg, ${values.gradientStartColor}, ${values.gradientEndColor})`
+        : values.backgroundColor;
+
+  return (
+    <span
+      className="counterpulse-card-editor__preview-swatch"
+      style={{ background, borderColor: values.borderColor }}
+    >
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
+function CardColorField({
+  name,
+  label,
+  description,
+  value,
+  error,
+  onChange,
+}: {
+  name: ColorDesignKey;
+  label: string;
+  description: string;
+  value: string;
+  error?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="counterpulse-card-field">
+      <span className="counterpulse-card-field__label">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="counterpulse-card-color-control">
+        <span className="counterpulse-card-color-control__swatch">
+          <input
+            aria-label={`${label} color picker`}
+            type="color"
+            value={isHexColor(value) ? value : "#000000"}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </span>
+        <input
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span
+          className="counterpulse-card-color-control__picker"
+          aria-hidden="true"
+        >
+          <CardControlIcon kind="eyedropper" />
+        </span>
+      </span>
+      {error ? <span className="counterpulse-form-error">{error}</span> : null}
+    </label>
+  );
+}
+
+function CardNumberField({
+  name,
+  label,
+  description,
+  icon,
+  value,
+  error,
+  min,
+  max,
+  onChange,
+}: {
+  name: NumberDesignKey;
+  label: string;
+  description: string;
+  icon: ReactNode;
+  value: number;
+  error?: string;
+  min: number;
+  max?: number;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="counterpulse-card-field">
+      <span className="counterpulse-card-field__label">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="counterpulse-card-number-control">
+        <span
+          className="counterpulse-card-number-control__icon"
+          aria-hidden="true"
+        >
+          {icon}
+        </span>
+        <input
+          {...(typeof max === "number" ? { max } : {})}
+          min={min}
+          name={name}
+          type="number"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span className="counterpulse-card-number-control__unit">px</span>
+      </span>
+      {error ? <span className="counterpulse-form-error">{error}</span> : null}
+    </label>
+  );
+}
+
+function CardSelectField({
+  name,
+  label,
+  description,
+  icon,
+  value,
+  error,
+  onChange,
+}: {
+  name: "alignment";
+  label: string;
+  description: string;
+  icon: ReactNode;
+  value: CampaignDesignValues["alignment"];
+  error?: string;
+  onChange: (value: CampaignDesignValues["alignment"]) => void;
+}) {
+  return (
+    <label className="counterpulse-card-field">
+      <span className="counterpulse-card-field__label">
+        <strong>{label}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="counterpulse-card-number-control">
+        <span
+          className="counterpulse-card-number-control__icon"
+          aria-hidden="true"
+        >
+          {icon}
+        </span>
+        <select
+          name={name}
+          value={value}
+          onChange={(event) =>
+            onChange(event.target.value as CampaignDesignValues["alignment"])
+          }
+        >
+          {designAlignmentOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </span>
+      {error ? <span className="counterpulse-form-error">{error}</span> : null}
+    </label>
+  );
+}
+
+function CardImagePicker({
+  value,
+  error,
+  isPicking,
+  onPickFromShopify,
+}: {
+  value: string;
+  error?: string;
+  isPicking: boolean;
+  onPickFromShopify: () => void;
+}) {
+  return (
+    <div className="counterpulse-card-image-picker">
+      <div className="counterpulse-card-image-picker__preview">
+        {value ? <img alt="" src={value} /> : <CardControlIcon kind="image" />}
+      </div>
+      <div className="counterpulse-card-image-picker__content">
+        <CardSectionHeader
+          description="Use a Shopify-hosted image as the card surface."
+          title="Background image"
+        />
+        <button
+          className="counterpulse-button-secondary counterpulse-button-secondary--small"
+          disabled={isPicking}
+          type="button"
+          onClick={onPickFromShopify}
+        >
+          {isPicking ? "Opening library..." : "Choose from Shopify library"}
+        </button>
+        {error ? (
+          <span className="counterpulse-form-error">{error}</span>
+        ) : null}
+      </div>
+      <input name="backgroundImageUrl" type="hidden" value={value} />
+    </div>
+  );
+}
+
+function getBackgroundTypeDetail(type: DesignBackgroundTypeValue) {
+  if (type === "GRADIENT") {
+    return {
+      label: "Gradient",
+      description: "Two color background",
+    };
+  }
+
+  if (type === "IMAGE") {
+    return {
+      label: "Image",
+      description: "Use an image background",
+    };
+  }
+
+  return {
+    label: "Single color",
+    description: "Solid background",
+  };
+}
+
+function CardControlIcon({
+  kind,
+}: {
+  kind:
+    | "align"
+    | "borderSize"
+    | "card"
+    | "eyedropper"
+    | "gap"
+    | "horizontalPadding"
+    | "image"
+    | "maxWidth"
+    | "radius"
+    | "verticalPadding";
+}) {
+  const common = {
+    "aria-hidden": true,
+    focusable: false,
+    viewBox: "0 0 24 24",
+  };
+
+  if (kind === "card") {
+    return (
+      <svg {...common}>
+        <rect
+          x="4"
+          y="6"
+          width="16"
+          height="12"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path d="M8 14h8" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  if (kind === "image") {
+    return (
+      <svg {...common}>
+        <rect
+          x="4"
+          y="5"
+          width="16"
+          height="14"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="m7 16 3.5-4 2.5 3 2-2.3L18 16"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <circle cx="9" cy="9" r="1.2" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (kind === "eyedropper") {
+    return (
+      <svg {...common}>
+        <path
+          d="m14.5 5.5 4 4M13 7l4 4-7.8 7.8H5.2V14.8L13 7Z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "radius") {
+    return (
+      <svg {...common}>
+        <path
+          d="M6 15v-3a6 6 0 0 1 6-6h3"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "borderSize") {
+    return (
+      <svg {...common}>
+        <path
+          d="M7 8h10M9 12h6M10.5 16h3"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "align") {
+    return (
+      <svg {...common}>
+        <path
+          d="M5 7h11M5 12h14M5 17h8M16 9l3 3-3 3"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "verticalPadding") {
+    return (
+      <svg {...common}>
+        <path
+          d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "horizontalPadding") {
+    return (
+      <svg {...common}>
+        <path
+          d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (kind === "gap") {
+    return (
+      <svg {...common}>
+        <rect
+          x="5"
+          y="5"
+          width="5"
+          height="5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <rect
+          x="14"
+          y="14"
+          width="5"
+          height="5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path
+        d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4M8 12h8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function DesignPanel({
   title,
   children,
@@ -1578,39 +2165,6 @@ function DesignField({
       {children}
       {error && <span className="counterpulse-form-error">{error}</span>}
     </label>
-  );
-}
-
-function ImageBackgroundPicker({
-  value,
-  error,
-  isPicking,
-  onPickFromShopify,
-}: {
-  value: string;
-  error?: string;
-  isPicking: boolean;
-  onPickFromShopify: () => void;
-}) {
-  return (
-    <DesignGroup label="Shopify image" error={error}>
-      <div className="counterpulse-library-picker">
-        <div className="counterpulse-library-picker__preview">
-          {value ? <img alt="" src={value} /> : <span>No image selected</span>}
-        </div>
-        <div className="counterpulse-library-picker__actions">
-          <button
-            className="counterpulse-button-secondary counterpulse-button-secondary--small"
-            disabled={isPicking}
-            type="button"
-            onClick={onPickFromShopify}
-          >
-            {isPicking ? "Opening library..." : "Choose from Shopify library"}
-          </button>
-        </div>
-      </div>
-      <input name="backgroundImageUrl" type="hidden" value={value} />
-    </DesignGroup>
   );
 }
 

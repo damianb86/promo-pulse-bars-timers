@@ -115,12 +115,12 @@ test.describe("real design and timer configuration", () => {
       .first();
 
     const layouts = [
-      ["Standard", "STANDARD"],
-      ["Balanced", "BALANCED"],
+      ["Stacked", "STANDARD"],
+      ["Split", "BALANCED"],
       ["Inline", "INLINE"],
-      ["Button right", "CTA_RIGHT"],
-      ["Button left", "CTA_LEFT"],
-      ["Button top", "CTA_TOP"],
+      ["Action right", "CTA_RIGHT"],
+      ["Action left", "CTA_LEFT"],
+      ["Action top", "CTA_TOP"],
     ] as const;
 
     for (const [label, value] of layouts) {
@@ -134,7 +134,7 @@ test.describe("real design and timer configuration", () => {
     await selectPreviewDropdownOption(
       controls,
       "Layout options",
-      "Button left",
+      "Action left",
     );
     await selectPreviewDropdownOption(controls, "Preset options", "Dawn");
     await expect(controls.locator('input[name="layout"]')).toHaveValue(

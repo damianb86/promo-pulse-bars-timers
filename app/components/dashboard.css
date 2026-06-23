@@ -5976,18 +5976,28 @@ s-page::part(page) {
 }
 
 .counterpulse-layout-preview--balanced {
-  grid-template-columns: 1fr 0.8fr;
+  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-rows: 1fr 1fr;
   align-content: center;
 }
 
-.counterpulse-layout-preview--balanced span:nth-child(1),
-.counterpulse-layout-preview--balanced span:nth-child(2) {
+.counterpulse-layout-preview--balanced span:nth-child(1) {
+  width: 88%;
   height: 7px;
+}
+
+.counterpulse-layout-preview--balanced span:nth-child(2) {
+  width: 64%;
+  height: 5px;
 }
 
 .counterpulse-layout-preview--balanced span:nth-child(3) {
   grid-column: 2;
-  height: 7px;
+  grid-row: 1 / span 2;
+  align-self: center;
+  height: 22px;
+  border-radius: 999px;
+  background: #202223;
 }
 
 .counterpulse-layout-preview--inline {
@@ -6662,6 +6672,18 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-message,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-timer,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-actions,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-progress,
+.counterpulse-preview-shell--mobile
   .counterpulse-preview-promo--layout-cta_right
   .counterpulse-preview-message,
 .counterpulse-preview-shell--mobile
@@ -6684,6 +6706,7 @@ s-page::part(page) {
   .counterpulse-preview-progress {
   grid-column: auto;
   grid-row: auto;
+  justify-self: auto;
 }
 
 .counterpulse-preview-shell--mobile .counterpulse-preview-promo--layout-inline {
@@ -6693,6 +6716,10 @@ s-page::part(page) {
 
 .counterpulse-preview-shell--mobile .counterpulse-preview-message {
   justify-content: center;
+}
+
+.counterpulse-preview-shell--mobile .counterpulse-preview-message-copy {
+  justify-items: center;
 }
 
 .counterpulse-preview-shell--mobile .counterpulse-preview-actions {
@@ -7332,10 +7359,40 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-promo--layout-balanced {
-  width: min(100%, 470px);
-  grid-template-columns: minmax(0, 1fr) auto;
+  width: min(100%, 620px);
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.72fr);
+  align-items: center;
   justify-items: stretch;
   text-align: left;
+}
+
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-message {
+  grid-column: 1;
+  justify-content: flex-start;
+}
+
+.counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-message-copy {
+  justify-items: start;
+}
+
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  justify-content: flex-end;
+}
+
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-progress {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  width: 100%;
 }
 
 .counterpulse-preview-promo--layout-inline {
@@ -8236,12 +8293,21 @@ s-page::part(page) {
   .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
   .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer,
   .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-message,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-progress,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
     grid-column: auto;
     grid-row: auto;
+    justify-self: auto;
+  }
+
+  .counterpulse-preview-message-copy {
+    justify-items: center;
   }
 
   .counterpulse-preview-timer {

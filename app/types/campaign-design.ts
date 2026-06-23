@@ -451,34 +451,35 @@ export const designLayoutOptions: Array<{
 }> = [
   {
     value: "STANDARD",
-    label: "Standard",
-    description: "Stacked card with title, subtitle, timer, and unit labels.",
+    label: "Stacked",
+    description:
+      "Centered stack: message, timer, and action read from top to bottom.",
   },
   {
     value: "BALANCED",
-    label: "Balanced",
-    description: "Copy on the left and timer on the right for compact blocks.",
+    label: "Split",
+    description:
+      "Two-column composition with copy on the left and timer/action on the right.",
   },
   {
     value: "INLINE",
     label: "Inline",
-    description: "Single-line bar for compact announcement placements.",
+    description: "Compact single-line message and timer for slim bars.",
   },
   {
     value: "CTA_RIGHT",
-    label: "Button right",
-    description: "Copy and timer stay left while the action sits on the right.",
+    label: "Action right",
+    description: "Main action sits on the right rail beside the message.",
   },
   {
     value: "CTA_LEFT",
-    label: "Button left",
-    description: "Action is emphasized first with the content beside it.",
+    label: "Action left",
+    description: "Main action is emphasized first on the left rail.",
   },
   {
     value: "CTA_TOP",
-    label: "Button top",
-    description:
-      "Action is placed above copy and timer for mobile-first offers.",
+    label: "Action top",
+    description: "Main action is placed above the message for priority offers.",
   },
 ];
 

@@ -17,12 +17,48 @@ test("design changes update live preview and persist", async ({
   await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
   await page.getByRole("tab", { name: "Design" }).click();
   const editor = page.getByRole("tabpanel", { name: "Design" });
+  const layoutInput = editor.locator('input[name="layout"]');
+  const titleSizeInput = editor.locator('input[name="titleFontSize"]');
+  const timerSizeInput = editor.locator('input[name="timerFontSize"]');
+  const livePreview = page
+    .locator(".counterpulse-design-editor__preview .counterpulse-preview-promo")
+    .first();
 
   await editor.getByRole("button", { name: "Layout options" }).click();
-  await editor.getByRole("option", { name: /^Button right\b/ }).click();
+  await editor.getByRole("option", { name: /^Split\b/ }).click();
+  await expect(layoutInput).toHaveValue("BALANCED");
+  await expect(titleSizeInput).toHaveValue("22");
+  await expect(timerSizeInput).toHaveValue("34");
+  await expect(livePreview).toHaveClass(
+    /counterpulse-preview-promo--layout-balanced/,
+  );
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Inline\b/ }).click();
+  await expect(layoutInput).toHaveValue("INLINE");
+  await expect(titleSizeInput).toHaveValue("16");
+  await expect(timerSizeInput).toHaveValue("16");
+  await expect(livePreview).toHaveClass(
+    /counterpulse-preview-promo--layout-inline/,
+  );
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Stacked\b/ }).click();
+  await expect(layoutInput).toHaveValue("STANDARD");
+  await expect(titleSizeInput).toHaveValue("22");
+  await expect(timerSizeInput).toHaveValue("38");
+  await expect(livePreview).toHaveClass(
+    /counterpulse-preview-promo--layout-standard/,
+  );
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Action right\b/ }).click();
+  await expect(layoutInput).toHaveValue("CTA_RIGHT");
+  await expect(timerSizeInput).toHaveValue("32");
   await editor.getByRole("button", { name: "Preset options" }).click();
   await editor.getByRole("option", { name: /^Dawn\b/ }).click();
-  await expect(editor.locator('input[name="layout"]')).toHaveValue("CTA_RIGHT");
+  await expect(layoutInput).toHaveValue("CTA_RIGHT");
+  await expect(timerSizeInput).toHaveValue("42");
   await page.getByRole("button", { name: "Plain" }).click();
   await page.getByRole("button", { name: "Colon" }).click();
   await page.getByLabel("Show timer labels").uncheck();

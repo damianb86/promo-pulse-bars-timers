@@ -847,6 +847,15 @@ s-page::part(page) {
   align-items: center;
 }
 
+.counterpulse-experiment-header__aside {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
 .counterpulse-experiment-status {
   display: inline-flex;
   min-height: 22px;
@@ -1132,6 +1141,40 @@ s-page::part(page) {
   border-radius: 999px;
   background: #008060;
   content: "";
+}
+
+.counterpulse-variant-changes__extra {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 180ms ease;
+}
+
+.counterpulse-variant-changes__extra.is-expanded {
+  grid-template-rows: 1fr;
+}
+
+.counterpulse-variant-changes__extra > div {
+  overflow: hidden;
+}
+
+.counterpulse-variant-changes__toggle {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #006f4e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.counterpulse-variant-changes__toggle:hover,
+.counterpulse-variant-changes__toggle:focus-visible {
+  color: #004c3f;
+  text-decoration: underline;
+  outline: none;
 }
 
 .counterpulse-variant-preview {
@@ -8081,6 +8124,7 @@ s-page::part(page) {
   }
 
   .counterpulse-experiment-summary__actions,
+  .counterpulse-experiment-header__aside,
   .counterpulse-experiment-controls__actions {
     justify-content: flex-start;
   }

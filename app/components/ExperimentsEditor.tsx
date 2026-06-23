@@ -113,6 +113,10 @@ type VariantDraft = {
 };
 
 type DrawerTab = "copy" | "placement" | "design" | "settings";
+type LifecycleActionValue =
+  | "startExperiment"
+  | "pauseExperiment"
+  | "stopExperiment";
 
 const metricOptions = [
   { label: "CTR", value: "CLICK_RATE" },
@@ -129,6 +133,8 @@ const variantStatuses = [
   "LOSER",
   "ARCHIVED",
 ];
+
+const collapsedVariantChangeCount = 3;
 
 const defaultVariantRows: ExperimentVariantRow[] = [
   {
@@ -432,36 +438,22 @@ function ExistingExperiment({
 
   return (
     <section className="counterpulse-experiment-shell">
-      <ExperimentSummary
-        canEdit={canEditExperiment}
-        experiment={experiment}
-        isEditing={isEditing}
-        onEdit={() => setIsEditing(true)}
-      />
-
-      {isEditing && canEditExperiment && (
-        <div className="counterpulse-experiment-edit-panel">
-          <div className="counterpulse-experiment-edit-panel__header">
-            <div>
-              <p className="counterpulse-kicker">Edit experiment</p>
-              <h3>{experiment.name}</h3>
-            </div>
-            <button
-              className="counterpulse-button-secondary"
-              type="button"
-              onClick={() => setIsEditing(false)}
-            >
-              Close editor
-            </button>
-          </div>
-          <ExperimentComposer
-            baseDesign={baseDesign}
-            baseViewModel={baseViewModel}
-            designMediaOptions={designMediaOptions}
-            experiment={experiment}
-            isProPlan={isProPlan}
-          />
-        </div>
+      {isEditing && canEditExperiment ? (
+        <ExperimentComposer
+          baseDesign={baseDesign}
+          baseViewModel={baseViewModel}
+          designMediaOptions={designMediaOptions}
+          experiment={experiment}
+          isProPlan={isProPlan}
+          onClose={() => setIsEditing(false)}
+        />
+      ) : (
+        <ExperimentSummary
+          canEdit={canEditExperiment}
+          experiment={experiment}
+          isEditing={isEditing}
+          onEdit={() => setIsEditing(true)}
+        />
       )}
 
       <ExperimentResultsTable experiment={experiment} />
@@ -582,12 +574,14 @@ function ExperimentComposer({
   designMediaOptions,
   experiment,
   isProPlan,
+  onClose,
 }: {
   baseDesign: CampaignDesignValues;
   baseViewModel: CampaignViewModel;
   designMediaOptions: CampaignDesignMediaOptions;
   experiment?: ExperimentRow;
   isProPlan: boolean;
+  onClose?: () => void;
 }) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -720,24 +714,35 @@ function ExperimentComposer({
             {experiment && <ExperimentStatusBadge status={experiment.status} />}
           </div>
         </div>
-        <div className="counterpulse-experiment-metrics">
-          <MetricPill
-            label="Primary metric"
-            value={formatMetric(primaryMetric)}
-          />
-          {experiment && (
-            <>
-              <MetricPill
-                label="Minimum sample"
-                value={`${experiment.autoWinnerMinSampleSize} per variant`}
-              />
-              <MetricPill
-                label="Confidence"
-                value={`${Math.round(
-                  experiment.autoWinnerConfidenceThreshold * 100,
-                )}%`}
-              />
-            </>
+        <div className="counterpulse-experiment-header__aside">
+          <div className="counterpulse-experiment-metrics">
+            <MetricPill
+              label="Primary metric"
+              value={formatMetric(primaryMetric)}
+            />
+            {experiment && (
+              <>
+                <MetricPill
+                  label="Minimum sample"
+                  value={`${experiment.autoWinnerMinSampleSize} per variant`}
+                />
+                <MetricPill
+                  label="Confidence"
+                  value={`${Math.round(
+                    experiment.autoWinnerConfidenceThreshold * 100,
+                  )}%`}
+                />
+              </>
+            )}
+          </div>
+          {onClose && (
+            <button
+              className="counterpulse-button-secondary"
+              type="button"
+              onClick={onClose}
+            >
+              Close editor
+            </button>
           )}
         </div>
       </header>
@@ -966,12 +971,10 @@ function VariantCard({
       </div>
 
       <div className="counterpulse-variant-changes">
-        <strong>{index === 0 ? "What is shown" : "Changes vs. control"}</strong>
-        <ul>
-          {changes.map((change) => (
-            <li key={change}>{change}</li>
-          ))}
-        </ul>
+        <VariantChangesList
+          changes={changes}
+          title={index === 0 ? "What is shown" : "Changes vs. control"}
+        />
       </div>
 
       <VariantMiniPreview design={variant.design} viewModel={preview} />
@@ -1293,6 +1296,58 @@ function DeleteVariantModal({
   );
 }
 
+function VariantChangesList({
+  changes,
+  title,
+}: {
+  changes: string[];
+  title: string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const visibleChanges = changes.slice(0, collapsedVariantChangeCount);
+  const hiddenChanges = changes.slice(collapsedVariantChangeCount);
+  const hasHiddenChanges = hiddenChanges.length > 0;
+
+  return (
+    <>
+      <strong>{title}</strong>
+      <ul>
+        {visibleChanges.map((change) => (
+          <li key={change}>{change}</li>
+        ))}
+      </ul>
+      {hasHiddenChanges && (
+        <>
+          <div
+            className={[
+              "counterpulse-variant-changes__extra",
+              isExpanded ? "is-expanded" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <div>
+              <ul>
+                {hiddenChanges.map((change) => (
+                  <li key={change}>{change}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <button
+            aria-expanded={isExpanded}
+            className="counterpulse-variant-changes__toggle"
+            type="button"
+            onClick={() => setIsExpanded((current) => !current)}
+          >
+            {isExpanded ? "See less" : `See more (${hiddenChanges.length})`}
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
 function VariantHiddenInputs({
   archivedVariants,
   baseDesign,
@@ -1592,8 +1647,12 @@ function ExperimentLifecycleActions({
   canDuplicateCompletedExperiment: boolean;
   experiment: ExperimentRow;
 }) {
+  const [pendingAction, setPendingAction] =
+    useState<LifecycleActionValue | null>(null);
   const isCompleted = experiment.status === "COMPLETED";
   const hasDeclaredWinner = Boolean(experiment.winnerVariantId);
+  const startActionLabel =
+    experiment.status === "PAUSED" ? "Resume experiment" : "Start experiment";
 
   return (
     <section className="counterpulse-experiment-controls">
@@ -1622,20 +1681,18 @@ function ExperimentLifecycleActions({
         {experiment.status !== "RUNNING" && !isCompleted && (
           <button
             className="counterpulse-experiment-start-button counterpulse-experiment-control-button"
-            name="_action"
-            type="submit"
-            value="startExperiment"
+            type="button"
+            onClick={() => setPendingAction("startExperiment")}
           >
             <span aria-hidden="true">▷</span>
-            Start experiment
+            {startActionLabel}
           </button>
         )}
         {experiment.status === "RUNNING" && !isCompleted && (
           <button
             className="counterpulse-button-secondary counterpulse-experiment-control-button"
-            name="_action"
-            type="submit"
-            value="pauseExperiment"
+            type="button"
+            onClick={() => setPendingAction("pauseExperiment")}
           >
             <span aria-hidden="true">Ⅱ</span>
             Pause
@@ -1645,9 +1702,8 @@ function ExperimentLifecycleActions({
           experiment.status === "PAUSED") && (
           <button
             className="counterpulse-button-danger counterpulse-experiment-control-button"
-            name="_action"
-            type="submit"
-            value="stopExperiment"
+            type="button"
+            onClick={() => setPendingAction("stopExperiment")}
           >
             <span aria-hidden="true">□</span>
             Stop experiment
@@ -1682,8 +1738,126 @@ function ExperimentLifecycleActions({
           </>
         )}
       </Form>
+      {pendingAction && (
+        <ExperimentLifecycleConfirmModal
+          action={pendingAction}
+          experiment={experiment}
+          onCancel={() => setPendingAction(null)}
+        />
+      )}
     </section>
   );
+}
+
+function ExperimentLifecycleConfirmModal({
+  action,
+  experiment,
+  onCancel,
+}: {
+  action: LifecycleActionValue;
+  experiment: ExperimentRow;
+  onCancel: () => void;
+}) {
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
+  const copy = getLifecycleConfirmationCopy(action, experiment.status);
+
+  return (
+    <div className="counterpulse-modal-backdrop" role="presentation">
+      <button
+        aria-label="Cancel experiment status change"
+        className="counterpulse-modal-backdrop__dismiss"
+        type="button"
+        onClick={onCancel}
+      />
+      <section
+        aria-labelledby="counterpulse-experiment-lifecycle-title"
+        aria-modal="true"
+        className="counterpulse-modal"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <span
+            aria-hidden="true"
+            className={`counterpulse-modal__icon ${copy.isCritical ? "counterpulse-modal__icon--critical" : "counterpulse-modal__icon--info"}`}
+          >
+            {copy.icon}
+          </span>
+          <div>
+            <h2 id="counterpulse-experiment-lifecycle-title">{copy.title}</h2>
+            <p className="counterpulse-modal__body">{copy.body}</p>
+          </div>
+        </div>
+        <Form
+          method="post"
+          className="counterpulse-modal__actions"
+          onSubmit={() => {
+            globalThis.setTimeout(onCancel, 0);
+          }}
+        >
+          <input name="experimentId" type="hidden" value={experiment.id} />
+          <button
+            className="counterpulse-button-secondary"
+            disabled={isSubmitting}
+            type="button"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className={
+              copy.isCritical
+                ? "counterpulse-button-danger"
+                : "counterpulse-button"
+            }
+            disabled={isSubmitting}
+            name="_action"
+            type="submit"
+            value={action}
+          >
+            {isSubmitting ? "Saving..." : copy.confirmLabel}
+          </button>
+        </Form>
+      </section>
+    </div>
+  );
+}
+
+function getLifecycleConfirmationCopy(
+  action: LifecycleActionValue,
+  currentStatus: string,
+) {
+  if (action === "pauseExperiment") {
+    return {
+      body: "Traffic will stop rotating through experiment variants until you resume it.",
+      confirmLabel: "Pause experiment",
+      icon: "Ⅱ",
+      isCritical: false,
+      title: "Pause experiment?",
+    };
+  }
+
+  if (action === "stopExperiment") {
+    return {
+      body: "This ends the experiment and keeps the results visible. This same experiment cannot be started again after it is stopped.",
+      confirmLabel: "Stop experiment",
+      icon: "!",
+      isCritical: true,
+      title: "Stop experiment?",
+    };
+  }
+
+  const isResume = currentStatus === "PAUSED";
+
+  return {
+    body: isResume
+      ? "Traffic will resume rotating through eligible variants using the current split."
+      : "Traffic will begin rotating through eligible variants using the current split.",
+    confirmLabel: isResume ? "Resume experiment" : "Start experiment",
+    icon: "▷",
+    isCritical: false,
+    title: isResume ? "Resume experiment?" : "Start experiment?",
+  };
 }
 
 function VariantMiniPreview({

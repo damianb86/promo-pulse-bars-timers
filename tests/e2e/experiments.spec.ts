@@ -24,6 +24,13 @@ async function setRangeValue(locator: Locator, value: number) {
   }, value);
 }
 
+async function confirmExperimentAction(page: Page, confirmLabel: string) {
+  const dialog = page.getByRole("dialog");
+
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: confirmLabel }).click();
+}
+
 async function findVisitorIdForVariant(
   page: Page,
   campaignId: string,
@@ -161,7 +168,7 @@ async function recordExperimentEvent(
   expect(await response.json()).toMatchObject({ ok: true });
 }
 
-test("campaign experiments assign stable variants and can be paused", async ({
+test("campaign experiments assign stable variants and confirm lifecycle changes", async ({
   createCampaignViaUI,
   loginAsDemoShop,
   page,
@@ -256,13 +263,16 @@ test("campaign experiments assign stable variants and can be paused", async ({
     ),
   ).toHaveCount(0);
 
+  await savedExperiment
+    .getByRole("button", { name: "Start experiment" })
+    .click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    savedExperiment.getByRole("button", { name: "Start experiment" }).click(),
+    confirmExperimentAction(page, "Start experiment"),
   ]);
   await expect(
     savedExperiment.locator(".counterpulse-experiment-status"),
@@ -292,13 +302,14 @@ test("campaign experiments assign stable variants and can be paused", async ({
 
   await loginAsDemoShop(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Experiments" }).click();
+  await savedExperiment.getByRole("button", { name: "Pause" }).click();
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes(`/app/campaigns/${campaignId}`) &&
         response.request().method() === "POST",
     ),
-    savedExperiment.getByRole("button", { name: "Pause" }).click(),
+    confirmExperimentAction(page, "Pause experiment"),
   ]);
   await expect(
     savedExperiment.locator(".counterpulse-experiment-status"),
@@ -311,6 +322,38 @@ test("campaign experiments assign stable variants and can be paused", async ({
   await expect(page.locator(".pp-bar").first()).toContainText(
     "Experiment base headline",
   );
+
+  await loginAsDemoShop(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Experiments" }).click();
+  await savedExperiment
+    .getByRole("button", { name: "Resume experiment" })
+    .click();
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes(`/app/campaigns/${campaignId}`) &&
+        response.request().method() === "POST",
+    ),
+    confirmExperimentAction(page, "Resume experiment"),
+  ]);
+  await expect(
+    savedExperiment.locator(".counterpulse-experiment-status"),
+  ).toHaveText("Live");
+
+  await savedExperiment
+    .getByRole("button", { name: "Stop experiment" })
+    .click();
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes(`/app/campaigns/${campaignId}`) &&
+        response.request().method() === "POST",
+    ),
+    confirmExperimentAction(page, "Stop experiment"),
+  ]);
+  await expect(
+    savedExperiment.locator(".counterpulse-experiment-status"),
+  ).toHaveText("Completed");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -523,6 +566,20 @@ test("experiment variant copy is prefilled and design preview updates live", asy
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
   ).toHaveClass(/counterpulse-preview-timer--tick-flip/);
+
+  await variantDrawer.getByRole("button", { name: "Done" }).click();
+  const changedVariantCard = createExperimentForm
+    .locator(".counterpulse-variant-card")
+    .filter({ hasText: "Variant B" });
+  const changesToggle = changedVariantCard.locator(
+    ".counterpulse-variant-changes__toggle",
+  );
+  await expect(changesToggle).toBeVisible();
+  await expect(changesToggle).toHaveText(/^See more/);
+  await expect(changesToggle).toHaveAttribute("aria-expanded", "false");
+  await changesToggle.click();
+  await expect(changesToggle).toHaveAttribute("aria-expanded", "true");
+  await expect(changesToggle).toHaveText("See less");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -192,7 +192,19 @@ export async function createExperimentViaUI(page: Page, campaignName: string) {
     .locator('form:has(input[name="_action"][value="createExperiment"])')
     .first();
   await createExperimentForm.getByLabel("Experiment name").fill(experimentName);
-  await app.getByRole("button", { name: /create experiment/i }).click();
+  await createExperimentForm
+    .getByRole("button", { name: "Add variant" })
+    .click();
+
+  const variantDrawer = app.getByRole("complementary", {
+    name: "Edit variant",
+  });
+  await expect(variantDrawer).toBeVisible();
+  await variantDrawer.getByRole("button", { name: "Done" }).click();
+  await expect(variantDrawer).toHaveCount(0);
+  await createExperimentForm
+    .getByRole("button", { name: /create experiment/i })
+    .click();
 
   const refreshedApp = await getAppFrameOrPage(page);
   await expect(

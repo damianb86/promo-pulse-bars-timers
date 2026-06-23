@@ -10,9 +10,13 @@
   var lastPromoTouchStorageKey = "promo_pulse_last_promo_touch";
   var uniqueCodeRequestCache = {};
   var trackedOnceEvents = {};
+  var commerceEventTimestamps = {};
   var uniqueCodeRequestTtlMs = 30000;
+  var commerceEventDedupeMs = 3000;
+  var attributionMaxAgeMs = 24 * 60 * 60 * 1000;
   var memoryVisitorId = "";
   var memorySessionId = "";
+  var lastRememberedCampaign = null;
 
   installFetchGuard();
 
@@ -114,6 +118,11 @@
       consentGranted: hasAnalyticsConsent(),
     };
   };
+
+  if (!window.PromoPulseCommerceTrackingReady) {
+    window.PromoPulseCommerceTrackingReady = true;
+    installCommerceTracking();
+  }
 
   window.PromoPulseCopyCode = function (code, campaign) {
     if (window.navigator.clipboard && window.navigator.clipboard.writeText) {
@@ -621,6 +630,241 @@
     return options && options.purpose === "uniqueCode";
   }
 
+  function installCommerceTracking() {
+    trackCheckoutPageLoad();
+
+    document.addEventListener(
+      "submit",
+      function (event) {
+        var target = event && event.target;
+
+        if (isAddToCartForm(target)) {
+          trackRecentCampaignEvent("ADD_TO_CART");
+          return;
+        }
+
+        if (isCheckoutForm(target)) {
+          trackRecentCampaignEvent("CHECKOUT_STARTED");
+        }
+      },
+      true,
+    );
+
+    document.addEventListener(
+      "click",
+      function (event) {
+        var target = event && event.target;
+
+        if (isCheckoutTrigger(target)) {
+          trackRecentCampaignEvent("CHECKOUT_STARTED");
+          return;
+        }
+
+        if (isAddToCartTrigger(target)) {
+          trackRecentCampaignEvent("ADD_TO_CART");
+        }
+      },
+      true,
+    );
+  }
+
+  function trackCheckoutPageLoad() {
+    if (isCheckoutPath(window.location && window.location.pathname)) {
+      trackRecentCampaignEvent("CHECKOUT_STARTED");
+    }
+  }
+
+  function trackRecentCampaignEvent(eventType) {
+    var campaign = readRecentCampaign();
+    var extra;
+
+    if (!campaign) return;
+    if (wasCommerceEventTrackedRecently(eventType, campaign)) return;
+
+    extra = buildCommerceEventExtra();
+    window.PromoPulseTrackEvent(eventType, campaign, extra);
+  }
+
+  function buildCommerceEventExtra() {
+    var cartState =
+      window.PromoPulseGetCartState &&
+      window.PromoPulseGetCartState(attributionMaxAgeMs);
+    var extra = {};
+    var cartToken =
+      (cartState && cartState.token) || window.PromoPulseCartToken || "";
+    var currencyCode =
+      (cartState && cartState.currency) || window.PromoPulseCartCurrency || "";
+
+    if (cartToken) extra.cartToken = cartToken;
+    if (currencyCode) extra.currencyCode = currencyCode;
+
+    return extra;
+  }
+
+  function wasCommerceEventTrackedRecently(eventType, campaign) {
+    var now = Date.now();
+    var key = [
+      String(eventType || "").toUpperCase(),
+      campaign.campaignId || campaign.id || "",
+      campaign.variantId || "",
+      readStoredValue("sessionStorage", sessionIdStorageKey) ||
+        memorySessionId ||
+        "",
+    ].join(":");
+    var previous = commerceEventTimestamps[key] || 0;
+
+    if (previous && now - previous < commerceEventDedupeMs) return true;
+
+    commerceEventTimestamps[key] = now;
+    return false;
+  }
+
+  function readRecentCampaign() {
+    var attribution = normalizeAttributionState(lastRememberedCampaign);
+    var storedValue;
+    var campaignId;
+    var lastPromoTouch;
+
+    if (attribution) return attribution;
+
+    try {
+      storedValue = JSON.parse(
+        readStoredValue("localStorage", attributionStorageKey) || "null",
+      );
+    } catch {
+      storedValue = null;
+    }
+
+    attribution = normalizeAttributionState(storedValue);
+    if (attribution) return attribution;
+
+    campaignId = readStoredValue("localStorage", lastSeenCampaignIdStorageKey);
+    lastPromoTouch = Number(
+      readStoredValue("localStorage", lastPromoTouchStorageKey),
+    );
+
+    return normalizeAttributionState({
+      campaignId: campaignId,
+      experimentId: readStoredValue(
+        "localStorage",
+        lastSeenExperimentIdStorageKey,
+      ),
+      variantId: readStoredValue("localStorage", lastSeenVariantIdStorageKey),
+      lastPromoTouch: lastPromoTouch,
+    });
+  }
+
+  function normalizeAttributionState(value) {
+    var campaignId = value && (value.campaignId || value.id);
+    var lastPromoTouch = Number(
+      value && (value.lastPromoTouch || value.seenAt),
+    );
+    var placementType = value && (value.placementType || value.placement);
+
+    if (!campaignId) return null;
+    if (!Number.isFinite(lastPromoTouch)) return null;
+    if (Date.now() - lastPromoTouch > attributionMaxAgeMs) return null;
+
+    return {
+      id: campaignId,
+      campaignId: campaignId,
+      experimentId: (value && value.experimentId) || null,
+      variantId: (value && value.variantId) || null,
+      placement: placementType || null,
+      placementType: placementType || null,
+    };
+  }
+
+  function isAddToCartTrigger(target) {
+    var element = findClosestElement(target, "button,input,a,[role='button']");
+    var form = element && findClosestElement(element, "form");
+
+    if (!element) return false;
+    if (isAddToCartForm(form)) return true;
+    if (String(element.tagName || "").toUpperCase() === "A") return false;
+
+    return isAddToCartText(readElementText(element));
+  }
+
+  function isCheckoutTrigger(target) {
+    var element = findClosestElement(target, "a,button,input,[role='button']");
+    var form = element && findClosestElement(element, "form");
+    var href = element && readElementAttribute(element, "href");
+    var name = element && readElementAttribute(element, "name");
+
+    if (!element) return false;
+    if (isCheckoutPath(href)) return true;
+    if (isCheckoutForm(form)) return true;
+    if (String(name || "").toLowerCase() === "checkout") return true;
+
+    return isCheckoutText(readElementText(element));
+  }
+
+  function isAddToCartForm(form) {
+    var action = form && readElementAttribute(form, "action");
+
+    return /\/cart\/add(?:\.js)?(?:[?#/]|$)/i.test(action || "");
+  }
+
+  function isCheckoutForm(form) {
+    var action = form && readElementAttribute(form, "action");
+
+    return isCheckoutPath(action);
+  }
+
+  function isCheckoutPath(value) {
+    return /(^|\/)(checkouts?|cart\/checkout)(?:[/?#]|$)/i.test(
+      String(value || ""),
+    );
+  }
+
+  function isAddToCartText(value) {
+    return /\b(add[\s_-]*(to[\s_-]*)?cart|addtocart|agregar[\s_-]*(al[\s_-]*)?carrito)\b/i.test(
+      value || "",
+    );
+  }
+
+  function isCheckoutText(value) {
+    return /\b(checkout|check[\s_-]*out|finalizar[\s_-]*compra|ir[\s_-]*a[\s_-]*pagar)\b/i.test(
+      value || "",
+    );
+  }
+
+  function findClosestElement(target, selector) {
+    var element = target;
+
+    if (element && element.nodeType === 3) {
+      element = element.parentElement;
+    }
+
+    if (!element || typeof element.closest !== "function") return null;
+
+    try {
+      return element.closest(selector);
+    } catch {
+      return null;
+    }
+  }
+
+  function readElementAttribute(element, name) {
+    if (!element || typeof element.getAttribute !== "function") return "";
+
+    return element.getAttribute(name) || "";
+  }
+
+  function readElementText(element) {
+    return [
+      readElementAttribute(element, "aria-label"),
+      readElementAttribute(element, "name"),
+      readElementAttribute(element, "value"),
+      element && element.id,
+      element && element.className,
+      element && element.textContent,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
   function getVisitorSessionTracking(campaign, options) {
     var publicTracking = window.PromoPulseGetVisitorSessionTracking(options);
     var touchTime = Date.now();
@@ -704,6 +948,15 @@
 
     if (!campaignId) return;
     if (!analyticsAllowed()) return;
+
+    lastRememberedCampaign = {
+      campaignId: campaignId,
+      experimentId: tracking.experimentId,
+      variantId: tracking.variantId,
+      placementType: placementType || null,
+      lastPromoTouch: tracking.lastPromoTouch,
+      seenAt: tracking.lastPromoTouch,
+    };
 
     try {
       writeStoredValue(

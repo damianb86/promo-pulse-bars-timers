@@ -116,6 +116,7 @@ import {
   calculateExperimentResults,
   createExperiment,
   declareWinningVariant,
+  duplicateExperiment,
   listExperimentsForCampaign,
   pauseExperiment,
   startExperiment,
@@ -1142,7 +1143,8 @@ export const action = async ({
     intent === "saveExperimentAutoWinner" ||
     intent === "declareExperimentWinner" ||
     intent === "detectExperimentWinner" ||
-    intent === "applyExperimentWinner"
+    intent === "applyExperimentWinner" ||
+    intent === "duplicateExperiment"
   ) {
     const experimentGate = canUsePremiumFeature(shop, "AB_TESTING");
 
@@ -1184,7 +1186,9 @@ export const action = async ({
       }
 
       if (intent === "updateExperiment") {
-        const parsed = parseExperimentFormData(formData);
+        const parsed = parseExperimentFormData(formData, {
+          requireTwoWeightedVariants: false,
+        });
 
         if (parsed.errors.form) {
           return { experimentErrors: parsed.errors };
@@ -1219,21 +1223,36 @@ export const action = async ({
           experimentId,
           variantId,
         });
+        await applyWinningVariantToCampaign({
+          shopId: shop.id,
+          experimentId,
+          variantId,
+        });
       } else if (intent === "detectExperimentWinner") {
         const result = await autoDeclareWinningVariant({
           shopId: shop.id,
           experimentId,
         });
 
-        if (!result.declared) {
+        if (!result.declared || !result.winner) {
           return {
             experimentErrors: {
               form: "No winner met the configured sample, runtime, and confidence rules.",
             },
           };
         }
+        await applyWinningVariantToCampaign({
+          shopId: shop.id,
+          experimentId,
+          variantId: result.winner.variantId,
+        });
       } else if (intent === "applyExperimentWinner") {
         await applyWinningVariantToCampaign({
+          shopId: shop.id,
+          experimentId,
+        });
+      } else if (intent === "duplicateExperiment") {
+        await duplicateExperiment({
           shopId: shop.id,
           experimentId,
         });
@@ -2817,13 +2836,17 @@ function readAdvancedDiscountRuleStatus(value: string) {
   return null;
 }
 
-function parseExperimentFormData(formData: FormData): {
+function parseExperimentFormData(
+  formData: FormData,
+  options: { requireTwoWeightedVariants?: boolean } = {},
+): {
   errors: ExperimentErrors;
   name: string;
   primaryMetric: ExperimentPrimaryMetric;
   variants: ExperimentVariantInput[];
 } {
   const errors: ExperimentErrors = {};
+  const requireTwoWeightedVariants = options.requireTwoWeightedVariants ?? true;
   const name = String(formData.get("name") ?? "").trim();
   const primaryMetric = readExperimentPrimaryMetric(
     String(formData.get("primaryMetric") ?? ""),
@@ -2891,11 +2914,16 @@ function parseExperimentFormData(formData: FormData): {
     });
   }
 
-  if (variants.length < 2) {
+  if (variants.length < 1) {
+    errors.form = "Create at least one variant.";
+  }
+
+  if (requireTwoWeightedVariants && variants.length < 2) {
     errors.form = "Create at least two variants.";
   }
 
   if (
+    requireTwoWeightedVariants &&
     variants.filter(
       (variant) =>
         variant.status !== ExperimentVariantStatus.ARCHIVED &&

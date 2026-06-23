@@ -635,6 +635,53 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     );
   });
 
+  it("dedupes near-identical add-to-cart analytics before writing attribution", async () => {
+    const addToCart = validateAnalyticsEventPayload({
+      shop: "example.myshopify.com",
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+      visitorId: "visitor-1",
+      sessionId: "session-1",
+      eventType: AnalyticsEventType.ADD_TO_CART,
+      placementType: PlacementType.TOP_BAR,
+    });
+
+    expect(addToCart.ok).toBe(true);
+
+    if (!addToCart.ok) {
+      throw new Error("Expected valid add-to-cart analytics payload.");
+    }
+
+    prismaMock.analyticsEvent.findFirst.mockResolvedValueOnce({
+      id: "event-existing",
+      occurredAt: new Date("2026-06-16T12:00:02.000Z"),
+    });
+
+    await expect(
+      recordAnalyticsEvent(
+        addToCart.payload,
+        new Date("2026-06-16T12:00:05.000Z"),
+      ),
+    ).resolves.toMatchObject({
+      saved: false,
+      deduped: true,
+      eventId: "event-existing",
+    });
+
+    expect(prismaMock.analyticsEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          campaignId: "campaign-1",
+          eventType: AnalyticsEventType.ADD_TO_CART,
+          OR: [{ sessionId: "session-1" }],
+        }),
+      }),
+    );
+    expect(prismaMock.analyticsEvent.create).not.toHaveBeenCalled();
+    expect(prismaMock.attributionTouch.create).not.toHaveBeenCalled();
+  });
+
   it("records checkout completed analytics as an attribution conversion", async () => {
     const completedCheckout = validateAnalyticsEventPayload({
       shop: "example.myshopify.com",

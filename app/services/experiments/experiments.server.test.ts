@@ -13,6 +13,7 @@ import {
   calculateExperimentResults,
   createExperiment,
   detectWinningVariant,
+  duplicateExperiment,
   pauseExperiment,
   selectWeightedVariant,
   startExperiment,
@@ -105,6 +106,70 @@ describe("experiment service", () => {
         data: expect.objectContaining({
           primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
           trafficSplitStrategy: "WEIGHTED",
+        }),
+      }),
+    );
+  });
+
+  it("rejects direct creation when the campaign already has an experiment", async () => {
+    prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prismaMock.experiment.findFirst.mockResolvedValue({ id: "experiment-1" });
+
+    await expect(
+      createExperiment({
+        shopId: "shop-1",
+        campaignId: "campaign-1",
+        name: "Second experiment",
+        primaryMetric: "CTR",
+      }),
+    ).rejects.toThrow("This campaign already has an experiment.");
+    expect(prismaMock.experiment.create).not.toHaveBeenCalled();
+  });
+
+  it("duplicates a completed experiment into a new draft", async () => {
+    prismaMock.experiment.findFirst
+      .mockResolvedValueOnce(
+        experimentFixture({
+          status: ExperimentStatus.COMPLETED,
+          variants: [
+            variantFixture({
+              id: "winner",
+              name: "Winner",
+              status: ExperimentVariantStatus.WINNER,
+              textOverride: { headline: "Winner headline" },
+            }),
+            variantFixture({
+              id: "loser",
+              name: "Loser",
+              status: ExperimentVariantStatus.LOSER,
+            }),
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(null);
+    prismaMock.experiment.create.mockResolvedValue({
+      id: "experiment-copy",
+      variants: [],
+    });
+
+    await duplicateExperiment({
+      shopId: "shop-1",
+      experimentId: "experiment-1",
+    });
+
+    expect(prismaMock.experiment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: "Experiment copy",
+          variants: expect.objectContaining({
+            create: expect.arrayContaining([
+              expect.objectContaining({
+                name: "Winner",
+                status: ExperimentVariantStatus.DRAFT,
+                textOverride: { headline: "Winner headline" },
+              }),
+            ]),
+          }),
         }),
       }),
     );

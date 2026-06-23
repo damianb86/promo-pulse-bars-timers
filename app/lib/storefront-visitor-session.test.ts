@@ -177,6 +177,43 @@ describe("storefront visitor and session tracking", () => {
     });
     expect(event.detail).not.toHaveProperty("code");
   });
+
+  it("tracks commerce interactions with the last remembered experiment variant", () => {
+    const loaded = loadDiscountCodeScript({
+      localStorage: createStorage(),
+      sessionStorage: createStorage(),
+    });
+    const submitHandler = getDocumentListener(loaded, "submit");
+    const clickHandler = getDocumentListener(loaded, "click");
+    const addToCartForm = createMockElement({
+      tagName: "FORM",
+      attributes: { action: "/cart/add" },
+    });
+    const checkoutLink = createMockElement({
+      tagName: "A",
+      attributes: { href: "/checkout" },
+      textContent: "Checkout",
+    });
+
+    trackCampaign(loaded, "IMPRESSION");
+    submitHandler({ target: addToCartForm });
+    clickHandler({ target: checkoutLink });
+
+    const [, addToCartPayload, checkoutPayload] = readFetchPayloads(loaded);
+
+    expect(addToCartPayload).toMatchObject({
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+      eventType: "ADD_TO_CART",
+    });
+    expect(checkoutPayload).toMatchObject({
+      campaignId: "campaign-1",
+      experimentId: "experiment-1",
+      variantId: "variant-1",
+      eventType: "CHECKOUT_STARTED",
+    });
+  });
 });
 
 function loadDiscountCodeScript({
@@ -292,6 +329,75 @@ function readFetchPayloads(loaded: ReturnType<typeof loadDiscountCodeScript>) {
   return calls.map(([, init]) => {
     return JSON.parse(init.body) as Record<string, unknown>;
   });
+}
+
+function getDocumentListener(
+  loaded: ReturnType<typeof loadDiscountCodeScript>,
+  eventType: string,
+) {
+  const call = loaded.documentMock.addEventListener.mock.calls.find(
+    ([type]) => type === eventType,
+  );
+
+  if (!call) {
+    throw new Error(`Missing ${eventType} listener.`);
+  }
+
+  return call[1] as (event: { target: unknown }) => void;
+}
+
+type MockElement = {
+  className: string;
+  closest: (selector: string) => MockElement | null;
+  getAttribute: (name: string) => string;
+  id: string;
+  nodeType: number;
+  parentElement: MockElement | null;
+  tagName: string;
+  textContent: string;
+};
+
+function createMockElement({
+  tagName,
+  attributes = {},
+  textContent = "",
+  parent,
+}: {
+  tagName: string;
+  attributes?: Record<string, string>;
+  textContent?: string;
+  parent?: MockElement;
+}) {
+  const element = {
+    className: attributes.class || "",
+    closest: () => null,
+    getAttribute: vi.fn((name: string) => attributes[name] ?? ""),
+    id: attributes.id || "",
+    nodeType: 1,
+    parentElement: parent ?? null,
+    tagName,
+    textContent,
+  } as MockElement;
+
+  element.closest = (selector: string) => {
+    if (elementMatchesSelector(element, selector)) return element;
+
+    return element.parentElement?.closest(selector) ?? null;
+  };
+
+  return element;
+}
+
+function elementMatchesSelector(
+  element: { tagName: string },
+  selector: string,
+) {
+  const tagName = element.tagName.toLowerCase();
+
+  return selector
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .some((part) => part === tagName || part === `[role='button']`);
 }
 
 function createStorage(initial: Record<string, string> = {}, blocked = false) {

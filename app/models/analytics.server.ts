@@ -17,6 +17,7 @@ import {
 } from "./stage2.server";
 
 export const IMPRESSION_DEDUPE_WINDOW_MS = 10 * 60 * 1000;
+export const COMMERCE_EVENT_DEDUPE_WINDOW_MS = 5 * 1000;
 
 const maxStringLengths = {
   shop: 255,
@@ -206,24 +207,15 @@ export async function recordAnalyticsEvent(
     throw new AnalyticsIngestionError("Campaign was not found.", 404);
   }
 
-  const existingImpression = shouldCheckImpressionDedupe(payload)
-    ? await prisma.analyticsEvent.findFirst({
-        where: {
-          shopId: shop.id,
-          campaignId: campaign.id,
-          eventType: AnalyticsEventType.IMPRESSION,
-          placementType: payload.placementType,
-          sessionId: payload.sessionId,
-          occurredAt: {
-            gte: getImpressionDedupeSince(now),
-          },
-        },
-        select: { id: true, occurredAt: true },
-      })
-    : null;
+  const existingEvent = await findExistingDedupableEvent({
+    shopId: shop.id,
+    campaignId: campaign.id,
+    payload,
+    now,
+  });
 
-  if (shouldDedupeIncomingEvent(payload, existingImpression, now)) {
-    return { saved: false, deduped: true, eventId: existingImpression?.id };
+  if (shouldDedupeIncomingEvent(payload, existingEvent, now)) {
+    return { saved: false, deduped: true, eventId: existingEvent?.id };
   }
 
   const event = await prisma.analyticsEvent.create({
@@ -282,6 +274,52 @@ export async function recordAnalyticsEvent(
     attributionTouchId: attributionTouch.id,
     attributionConversionId: conversion?.id,
   };
+}
+
+async function findExistingDedupableEvent({
+  shopId,
+  campaignId,
+  payload,
+  now,
+}: {
+  shopId: string;
+  campaignId: string;
+  payload: AnalyticsEventPayload;
+  now: Date;
+}) {
+  if (shouldCheckImpressionDedupe(payload)) {
+    return prisma.analyticsEvent.findFirst({
+      where: {
+        shopId,
+        campaignId,
+        eventType: AnalyticsEventType.IMPRESSION,
+        placementType: payload.placementType,
+        sessionId: payload.sessionId,
+        occurredAt: {
+          gte: getImpressionDedupeSince(now),
+        },
+      },
+      select: { id: true, occurredAt: true },
+    });
+  }
+
+  if (shouldCheckCommerceEventDedupe(payload)) {
+    return prisma.analyticsEvent.findFirst({
+      where: {
+        shopId,
+        campaignId,
+        eventType: payload.eventType,
+        OR: buildCommerceDedupeIdentityFilters(payload),
+        occurredAt: {
+          gte: getCommerceEventDedupeSince(now),
+        },
+      },
+      orderBy: { occurredAt: "desc" },
+      select: { id: true, occurredAt: true },
+    });
+  }
+
+  return null;
 }
 
 async function maybeRecordAttributionConversion({
@@ -498,21 +536,33 @@ export function shouldDedupeIncomingEvent(
   payload: Pick<
     AnalyticsEventPayload,
     "eventType" | "placementType" | "sessionId"
-  >,
+  > &
+    Partial<Pick<AnalyticsEventPayload, "cartToken">>,
   existingEvent: Pick<AnalyticsEvent, "occurredAt"> | null,
   now = new Date(),
-  windowMs = IMPRESSION_DEDUPE_WINDOW_MS,
 ) {
+  const windowMs = shouldCheckCommerceEventDedupe(payload)
+    ? COMMERCE_EVENT_DEDUPE_WINDOW_MS
+    : IMPRESSION_DEDUPE_WINDOW_MS;
+
   return Boolean(
-    shouldCheckImpressionDedupe(payload) &&
-    existingEvent &&
-    existingEvent.occurredAt.getTime() >= now.getTime() - windowMs,
+    (shouldCheckImpressionDedupe(payload) ||
+      shouldCheckCommerceEventDedupe(payload)) &&
+      existingEvent &&
+      existingEvent.occurredAt.getTime() >= now.getTime() - windowMs,
   );
 }
 
 export function getImpressionDedupeSince(
   now = new Date(),
   windowMs = IMPRESSION_DEDUPE_WINDOW_MS,
+) {
+  return new Date(now.getTime() - windowMs);
+}
+
+export function getCommerceEventDedupeSince(
+  now = new Date(),
+  windowMs = COMMERCE_EVENT_DEDUPE_WINDOW_MS,
 ) {
   return new Date(now.getTime() - windowMs);
 }
@@ -529,6 +579,29 @@ function shouldCheckImpressionDedupe(
     payload.placementType &&
     payload.sessionId,
   );
+}
+
+function shouldCheckCommerceEventDedupe(
+  payload: Pick<
+    AnalyticsEventPayload,
+    "eventType" | "sessionId"
+  > &
+    Partial<Pick<AnalyticsEventPayload, "cartToken">>,
+) {
+  return Boolean(
+    (payload.eventType === AnalyticsEventType.ADD_TO_CART ||
+      payload.eventType === AnalyticsEventType.CHECKOUT_STARTED) &&
+      (payload.sessionId || payload.cartToken),
+  );
+}
+
+function buildCommerceDedupeIdentityFilters(
+  payload: Pick<AnalyticsEventPayload, "sessionId" | "cartToken">,
+): Prisma.AnalyticsEventWhereInput[] {
+  return [
+    payload.sessionId ? { sessionId: payload.sessionId } : null,
+    payload.cartToken ? { cartToken: payload.cartToken } : null,
+  ].filter(Boolean) as Prisma.AnalyticsEventWhereInput[];
 }
 
 function createEmptyAnalyticsSummary(): AnalyticsSummary {

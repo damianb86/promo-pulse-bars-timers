@@ -52,6 +52,11 @@ export type UpdateExperimentInput = {
   variants?: ExperimentVariantInput[];
 };
 
+export type DuplicateExperimentInput = {
+  shopId: string;
+  experimentId: string;
+};
+
 export type ExperimentWithVariants = Experiment & {
   variants: ExperimentVariant[];
 };
@@ -151,6 +156,7 @@ const assignableVariantStatuses = new Set<ExperimentVariantStatus>([
 
 export async function createExperiment(input: CreateExperimentInput) {
   await assertCampaignBelongsToShop(input.campaignId, input.shopId);
+  await assertCampaignHasNoExperiments(input.campaignId, input.shopId);
 
   const experiment = await prisma.experiment.create({
     data: {
@@ -171,6 +177,63 @@ export async function createExperiment(input: CreateExperimentInput) {
   });
 
   await markCampaignSaved(input.campaignId, input.shopId);
+
+  return experiment;
+}
+
+export async function duplicateExperiment(input: DuplicateExperimentInput) {
+  const sourceExperiment = await prisma.experiment.findFirst({
+    where: { id: input.experimentId, shopId: input.shopId },
+    include: experimentInclude,
+  });
+
+  if (!sourceExperiment) {
+    throw new Error("Experiment not found.");
+  }
+
+  if (sourceExperiment.status !== ExperimentStatus.COMPLETED) {
+    throw new Error("Only completed experiments can be duplicated.");
+  }
+
+  await assertCampaignHasNoOpenExperiment(
+    sourceExperiment.campaignId,
+    input.shopId,
+  );
+
+  const experiment = await prisma.experiment.create({
+    data: {
+      shopId: input.shopId,
+      campaignId: sourceExperiment.campaignId,
+      name: buildDuplicateExperimentName(sourceExperiment.name),
+      trafficSplitStrategy: sourceExperiment.trafficSplitStrategy,
+      primaryMetric: sourceExperiment.primaryMetric,
+      autoWinnerEnabled: sourceExperiment.autoWinnerEnabled,
+      autoWinnerMinSampleSize: sourceExperiment.autoWinnerMinSampleSize,
+      autoWinnerMinRuntimeHours: sourceExperiment.autoWinnerMinRuntimeHours,
+      autoWinnerConfidenceThreshold:
+        sourceExperiment.autoWinnerConfidenceThreshold,
+      variants: {
+        create: sourceExperiment.variants
+          .filter(
+            (variant) => variant.status !== ExperimentVariantStatus.ARCHIVED,
+          )
+          .map((variant) =>
+            toVariantCreateInput(sourceExperiment.campaignId, {
+              name: variant.name,
+              weight: variant.weight,
+              status: ExperimentVariantStatus.DRAFT,
+              designOverride: jsonObject(variant.designOverride),
+              textOverride: jsonObject(variant.textOverride),
+              discountOverride: jsonObject(variant.discountOverride),
+              placementOverride: jsonObject(variant.placementOverride),
+            }),
+          ),
+      },
+    },
+    include: experimentInclude,
+  });
+
+  await markCampaignSaved(sourceExperiment.campaignId, input.shopId);
 
   return experiment;
 }
@@ -598,7 +661,7 @@ export async function applyWinningVariantToCampaign({
     throw new Error("Winning variant was not found.");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updatedExperiment = await prisma.$transaction(async (tx) => {
     await applyTextOverride(tx, experiment.campaignId, winningVariant);
     await applyDesignOverride(tx, experiment.campaignId, winningVariant);
     await applyDiscountOverride(tx, experiment.campaignId, winningVariant);
@@ -628,6 +691,10 @@ export async function applyWinningVariantToCampaign({
       include: experimentInclude,
     });
   });
+
+  await markCampaignSaved(experiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function assignVariantToVisitor(
@@ -721,6 +788,40 @@ async function assertCampaignBelongsToShop(campaignId: string, shopId: string) {
   }
 }
 
+async function assertCampaignHasNoExperiments(
+  campaignId: string,
+  shopId: string,
+) {
+  const experiment = await prisma.experiment.findFirst({
+    where: { campaignId, shopId },
+    select: { id: true },
+  });
+
+  if (experiment) {
+    throw new Error("This campaign already has an experiment.");
+  }
+}
+
+async function assertCampaignHasNoOpenExperiment(
+  campaignId: string,
+  shopId: string,
+) {
+  const experiment = await prisma.experiment.findFirst({
+    where: {
+      campaignId,
+      shopId,
+      status: { not: ExperimentStatus.COMPLETED },
+    },
+    select: { id: true },
+  });
+
+  if (experiment) {
+    throw new Error(
+      "Finish the current experiment before duplicating another.",
+    );
+  }
+}
+
 async function assertExperimentBelongsToShop(
   experimentId: string,
   shopId: string,
@@ -742,6 +843,12 @@ function markCampaignSaved(campaignId: string, shopId: string) {
     where: { id: campaignId, shopId },
     data: { lastSavedAt: new Date() },
   });
+}
+
+function buildDuplicateExperimentName(name: string) {
+  const baseName = name.trim() || "Campaign experiment";
+
+  return `${baseName} copy`;
 }
 
 function isExperimentRunning(

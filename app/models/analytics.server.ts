@@ -82,6 +82,12 @@ export type AnalyticsByCampaignRow = AnalyticsSummary & {
   campaignType: string;
 };
 
+export type AnalyticsDeviceBreakdownRow = {
+  device: "Desktop" | "Mobile" | "Tablet";
+  impressions: number;
+  percentage: number;
+};
+
 type AnalyticsSummaryEvent = Pick<
   AnalyticsEvent,
   "eventType" | "occurredAt" | "revenueAmount" | "currencyCode" | "campaignId"
@@ -456,6 +462,42 @@ export async function getAnalyticsByCampaign(
   return buildAnalyticsByCampaign(events);
 }
 
+export async function getAnalyticsDeviceBreakdown(
+  shopId: string,
+  options: { days?: number; now?: Date } = {},
+): Promise<AnalyticsDeviceBreakdownRow[]> {
+  const events = await prisma.analyticsEvent.findMany({
+    where: {
+      shopId,
+      eventType: {
+        in: [
+          AnalyticsEventType.IMPRESSION,
+          AnalyticsEventType.BADGE_IMPRESSION,
+        ],
+      },
+      occurredAt: { gte: getRangeStart(options.days ?? 7, options.now) },
+    },
+    select: { userAgent: true },
+  });
+  const counts: Record<AnalyticsDeviceBreakdownRow["device"], number> = {
+    Desktop: 0,
+    Mobile: 0,
+    Tablet: 0,
+  };
+
+  for (const event of events) {
+    counts[getDeviceFromUserAgent(event.userAgent)] += 1;
+  }
+
+  const total = events.length;
+
+  return (["Desktop", "Mobile", "Tablet"] as const).map((device) => ({
+    device,
+    impressions: counts[device],
+    percentage: total > 0 ? counts[device] / total : 0,
+  }));
+}
+
 export function summarizeAnalyticsEvents(
   events: AnalyticsSummaryEvent[],
 ): AnalyticsSummary {
@@ -548,8 +590,8 @@ export function shouldDedupeIncomingEvent(
   return Boolean(
     (shouldCheckImpressionDedupe(payload) ||
       shouldCheckCommerceEventDedupe(payload)) &&
-      existingEvent &&
-      existingEvent.occurredAt.getTime() >= now.getTime() - windowMs,
+    existingEvent &&
+    existingEvent.occurredAt.getTime() >= now.getTime() - windowMs,
   );
 }
 
@@ -582,16 +624,13 @@ function shouldCheckImpressionDedupe(
 }
 
 function shouldCheckCommerceEventDedupe(
-  payload: Pick<
-    AnalyticsEventPayload,
-    "eventType" | "sessionId"
-  > &
+  payload: Pick<AnalyticsEventPayload, "eventType" | "sessionId"> &
     Partial<Pick<AnalyticsEventPayload, "cartToken">>,
 ) {
   return Boolean(
     (payload.eventType === AnalyticsEventType.ADD_TO_CART ||
       payload.eventType === AnalyticsEventType.CHECKOUT_STARTED) &&
-      (payload.sessionId || payload.cartToken),
+    (payload.sessionId || payload.cartToken),
   );
 }
 
@@ -735,9 +774,22 @@ function getDayRangeStart(days: number, now = new Date()) {
 }
 
 function normalizeRangeDays(days: number | undefined) {
-  return days === 30 ? 30 : 7;
+  if (days === 90) return 90;
+  if (days === 30) return 30;
+  return 7;
 }
 
 function toDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function getDeviceFromUserAgent(
+  userAgent: string | null,
+): AnalyticsDeviceBreakdownRow["device"] {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (/(ipad|tablet|kindle|silk|playbook)/.test(value)) return "Tablet";
+  if (/(mobi|iphone|android.*mobile|phone)/.test(value)) return "Mobile";
+
+  return "Desktop";
 }

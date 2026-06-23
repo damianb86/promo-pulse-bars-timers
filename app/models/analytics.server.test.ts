@@ -137,6 +137,18 @@ describe("analytics aggregation helpers", () => {
     });
   });
 
+  it("supports 90 day analytics ranges", () => {
+    const rows = buildAnalyticsByDay(
+      [],
+      90,
+      new Date("2026-06-16T16:00:00.000Z"),
+    );
+
+    expect(rows).toHaveLength(90);
+    expect(rows[0]?.date).toBe("2026-03-19");
+    expect(rows.at(-1)?.date).toBe("2026-06-16");
+  });
+
   it("groups analytics by campaign", () => {
     const rows = buildAnalyticsByCampaign([
       event({

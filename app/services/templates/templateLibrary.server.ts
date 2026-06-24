@@ -13,6 +13,13 @@ import {
 } from "@prisma/client";
 
 import prisma from "../../db.server";
+import {
+  behaviorSegmentOptions,
+  hasBehaviorTargetingRules,
+  normalizeBehaviorTargetingRules,
+  type BehaviorSegmentKey,
+  type BehaviorTargetingRules,
+} from "../../types/behavior-targeting";
 import { defaultBadgeSettingsValues } from "../../types/badge";
 import type { CampaignAiInput, CampaignAiShape } from "../../types/ai-campaign";
 import {
@@ -274,6 +281,11 @@ export async function createDraftCampaignFromTemplate(
     settings.recommendedPlacement,
     template.type,
   );
+  const placementTypes = resolveTemplatePlacements(settings, placementType);
+  const behaviorRulesValue =
+    settings.behaviorRules && hasBehaviorTargetingRules(settings.behaviorRules)
+      ? (settings.behaviorRules as unknown as Prisma.InputJsonValue)
+      : Prisma.JsonNull;
 
   return prisma.campaign.create({
     data: {
@@ -286,7 +298,10 @@ export async function createDraftCampaignFromTemplate(
       endsAt: null,
       timezone: settings.timezone ?? "UTC",
       placements: {
-        create: [{ placementType, enabled: true }],
+        create: placementTypes.map((type) => ({
+          placementType: type,
+          enabled: true,
+        })),
       },
       targeting: {
         create: {
@@ -295,14 +310,14 @@ export async function createDraftCampaignFromTemplate(
           locales: template.locale ? [template.locale] : [],
           productIds: [],
           collectionIds: [],
-          productTags: [],
+          productTags: settings.productTags ?? [],
           customerTags: [],
-          urlContains: [],
-          utmSources: [],
-          devices: [],
+          urlContains: settings.urlContains ?? [],
+          utmSources: settings.utmSources ?? [],
+          devices: settings.devices ?? [],
           excludeProductIds: [],
           excludeCollectionIds: [],
-          behaviorRules: Prisma.JsonNull,
+          behaviorRules: behaviorRulesValue,
         },
       },
       translations: {
@@ -646,28 +661,104 @@ function buildTemplateDesignFromCampaign(
 }
 
 function buildTemplateSettingsFromCampaign(campaign: CampaignTemplateSource) {
-  const placement = campaign.placements.find((candidate) => candidate.enabled);
+  const enabledPlacements = campaign.placements
+    .filter((candidate) => candidate.enabled)
+    .map((candidate) => candidate.placementType);
+  const targeting = campaign.targeting;
+  const behaviorRules = hasBehaviorTargetingRules(targeting?.behaviorRules)
+    ? normalizeBehaviorTargetingRules(targeting?.behaviorRules)
+    : undefined;
 
   return {
     badgePosition: campaign.badgeSettings?.badgePosition,
     badgeShape: campaign.badgeSettings?.badgeShape,
+    behaviorRules,
     currencyCode: campaign.freeShippingSettings?.currencyCode,
     cutoffHour: campaign.deliveryCutoffSettings?.cutoffHour,
     cutoffMinute: campaign.deliveryCutoffSettings?.cutoffMinute,
+    description: buildCampaignTemplateDescription(campaign, behaviorRules),
+    devices: jsonStringArray(targeting?.devices),
     knownOffer: campaign.name,
     maxDeliveryDays: campaign.deliveryCutoffSettings?.maxDeliveryDays,
     minDeliveryDays: campaign.deliveryCutoffSettings?.minDeliveryDays,
+    placements: enabledPlacements,
     processingDays: campaign.deliveryCutoffSettings?.processingDays,
     productContext: "settings copied from an existing campaign",
+    productTags: jsonStringArray(targeting?.productTags),
     recommendedPlacement:
-      placement?.placementType ??
-      getDefaultPlacementForCampaignType(campaign.type),
+      enabledPlacements[0] ?? getDefaultPlacementForCampaignType(campaign.type),
     suggestedDurationHours: campaign.timerSettings?.durationMinutes
       ? Math.max(1, Math.round(campaign.timerSettings.durationMinutes / 60))
       : 48,
     thresholdAmount: campaign.freeShippingSettings?.thresholdAmount?.toString(),
     timezone: campaign.timezone,
+    urlContains: jsonStringArray(targeting?.urlContains),
+    utmSources: jsonStringArray(targeting?.utmSources),
   };
+}
+
+const behaviorSegmentLabels: Record<BehaviorSegmentKey, string> =
+  Object.fromEntries(
+    behaviorSegmentOptions.map((option) => [option.key, option.label]),
+  ) as Record<BehaviorSegmentKey, string>;
+
+/**
+ * Human-readable segment labels for a template's behavior rules, used to explain
+ * the bundled targeting on the template card. Returns an empty array when the
+ * template has no behavior targeting.
+ */
+export function summarizeBehaviorSegments(
+  behaviorRules: unknown,
+): string[] {
+  if (!hasBehaviorTargetingRules(behaviorRules)) return [];
+
+  return normalizeBehaviorTargetingRules(behaviorRules).segments.map(
+    (segment) => behaviorSegmentLabels[segment] ?? segment,
+  );
+}
+
+function buildCampaignTemplateDescription(
+  campaign: CampaignTemplateSource,
+  behaviorRules: BehaviorTargetingRules | undefined,
+) {
+  const parts = [
+    `${formatCampaignType(campaign.type)} saved from "${campaign.name}".`,
+  ];
+
+  if (behaviorRules && behaviorRules.segments.length > 0) {
+    parts.push(
+      `Includes behavior targeting for ${behaviorRules.segments
+        .map((segment) => behaviorSegmentLabels[segment] ?? segment)
+        .join(", ")}.`,
+    );
+  }
+
+  return parts.join(" ");
+}
+
+function jsonStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Remove a shop's own custom template. System templates and other shops'
+ * templates are never matched, so they cannot be deleted through this path.
+ */
+export async function deleteCustomTemplate(shopId: string, key: string) {
+  const result = await prisma.campaignTemplate.deleteMany({
+    where: { key, shopId, isSystem: false },
+  });
+
+  if (result.count === 0) {
+    throw new TemplateLibraryError(
+      "Custom template was not found or cannot be deleted.",
+    );
+  }
 }
 
 function readTemplateCategory(
@@ -1039,22 +1130,47 @@ function readTemplateDesign(value: Prisma.JsonValue) {
 function readTemplateSettings(value: Prisma.JsonValue): TemplateSettings {
   const input = readObject(value);
 
+  const behaviorRules = input.behaviorRules
+    ? normalizeBehaviorTargetingRules(input.behaviorRules)
+    : undefined;
+
   return {
     badgePosition: readString(input.badgePosition),
     badgeShape: readString(input.badgeShape),
+    behaviorRules,
     currencyCode: readString(input.currencyCode),
     cutoffHour: readInteger(input.cutoffHour, 14),
     cutoffMinute: readInteger(input.cutoffMinute, 0),
+    description: readString(input.description),
+    devices: readStringArray(input.devices),
+    highlights: readStringArray(input.highlights),
     knownOffer: readString(input.knownOffer),
     maxDeliveryDays: readInteger(input.maxDeliveryDays, 5),
     minDeliveryDays: readInteger(input.minDeliveryDays, 2),
+    placements: readStringArray(input.placements),
     processingDays: readInteger(input.processingDays, 0),
     productContext: readString(input.productContext),
+    productTags: readStringArray(input.productTags),
     recommendedPlacement: readString(input.recommendedPlacement),
     suggestedDurationHours: readInteger(input.suggestedDurationHours, 48),
     thresholdAmount: readString(input.thresholdAmount),
     timezone: readString(input.timezone),
+    urlContains: readStringArray(input.urlContains),
+    utmSources: readStringArray(input.utmSources),
   };
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function readPlacementType(
@@ -1076,6 +1192,18 @@ function readPlacementType(
     (getDefaultPlacementForCampaignType(
       type,
     ) as PlacementTypeValue)) as PlacementType;
+}
+
+function resolveTemplatePlacements(
+  settings: TemplateSettings,
+  fallback: PlacementType,
+): PlacementType[] {
+  const fromSettings = (settings.placements ?? []).map((value) =>
+    readPlacementType(value, CampaignType.COUNTDOWN_BAR),
+  );
+  const unique = Array.from(new Set(fromSettings.length ? fromSettings : []));
+
+  return unique.length ? unique : [fallback];
 }
 
 function shouldCreateTimerSettings(type: CampaignType) {
@@ -1202,18 +1330,26 @@ type TemplateTexts = {
 type TemplateSettings = {
   badgePosition?: string;
   badgeShape?: string;
+  behaviorRules?: BehaviorTargetingRules;
   currencyCode?: string;
   cutoffHour?: number;
   cutoffMinute?: number;
+  description?: string;
+  devices?: string[];
+  highlights?: string[];
   knownOffer?: string;
   maxDeliveryDays?: number;
   minDeliveryDays?: number;
+  placements?: string[];
   processingDays?: number;
   productContext?: string;
+  productTags?: string[];
   recommendedPlacement?: string;
   suggestedDurationHours?: number;
   thresholdAmount?: string;
   timezone?: string;
+  urlContains?: string[];
+  utmSources?: string[];
 };
 
 export const templateLibraryCountryOptions = templateMarkets.map((market) => ({

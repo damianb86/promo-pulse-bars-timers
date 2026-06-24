@@ -27,9 +27,11 @@ vi.mock("../../db.server", () => ({
 
 import {
   createDraftCampaignFromTemplate,
+  deleteCustomTemplate,
   getSystemCampaignTemplateInputs,
   getTemplateLocaleFallbacks,
   listTemplateLibrary,
+  TemplateLibraryError,
 } from "./templateLibrary.server";
 
 const now = new Date("2026-06-18T12:00:00.000Z");
@@ -142,16 +144,75 @@ describe("template library", () => {
     const templates = getSystemCampaignTemplateInputs();
     const keys = templates.map((template) => template.key);
 
-    expect(templates).toHaveLength(18);
+    expect(templates).toHaveLength(27);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toContain("us-black-friday");
     expect(keys).toContain("us-cart-rescue");
     expect(keys).toContain("us-free-shipping-weekend");
     expect(keys).toContain("us-shipping-cutoff");
+    expect(keys).toContain("us-abandoned-cart-rescue");
+    expect(keys).toContain("us-cross-campaign-retargeting");
+    expect(keys).toContain("us-high-intent-flash-offer");
     expect(templates.every((template) => template.countryCode === "US")).toBe(
       true,
     );
     expect(templates.every((template) => template.locale === "en")).toBe(true);
+  });
+
+  it("bundles behavior targeting and an explanation into strategy templates", () => {
+    const template = getSystemCampaignTemplateInputs().find(
+      (candidate) => candidate.key === "us-abandoned-cart-rescue",
+    );
+
+    expect(template).toBeDefined();
+
+    const settings = template?.defaultSettings as {
+      behaviorRules?: { enabled?: boolean; segments?: string[] };
+      description?: string;
+      highlights?: string[];
+    };
+
+    expect(settings.behaviorRules?.enabled).toBe(true);
+    expect(settings.behaviorRules?.segments).toEqual(
+      expect.arrayContaining(["INACTIVE_CART", "ADDED_TO_CART_NO_CHECKOUT"]),
+    );
+    expect(settings.description).toBeTruthy();
+    expect(settings.highlights?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("applies template behavior targeting when creating a draft campaign", async () => {
+    prismaMock.campaignTemplate.findFirst.mockResolvedValue(
+      templateRecord("us-abandoned-cart-rescue"),
+    );
+
+    await createDraftCampaignFromTemplate("shop-1", "us-abandoned-cart-rescue");
+
+    const createArgs = prismaMock.campaign.create.mock.calls[0][0];
+    const behaviorRules = createArgs.data.targeting.create.behaviorRules;
+
+    expect(behaviorRules).toMatchObject({
+      enabled: true,
+      segments: expect.arrayContaining([
+        "INACTIVE_CART",
+        "ADDED_TO_CART_NO_CHECKOUT",
+      ]),
+    });
+  });
+
+  it("deletes only the shop's own custom templates", async () => {
+    prismaMock.campaignTemplate.deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      deleteCustomTemplate("shop-1", "custom-key"),
+    ).resolves.toBeUndefined();
+    expect(prismaMock.campaignTemplate.deleteMany).toHaveBeenCalledWith({
+      where: { key: "custom-key", shopId: "shop-1", isSystem: false },
+    });
+
+    prismaMock.campaignTemplate.deleteMany.mockResolvedValue({ count: 0 });
+    await expect(
+      deleteCustomTemplate("shop-1", "us-black-friday"),
+    ).rejects.toThrow(TemplateLibraryError);
   });
 });
 

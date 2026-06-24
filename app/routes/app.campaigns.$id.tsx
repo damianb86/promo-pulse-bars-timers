@@ -3315,6 +3315,7 @@ function toExperimentRow(
     startsAt: Date | string | null;
     endsAt: Date | string | null;
     winnerVariantId: string | null;
+    winnerAppliedAt?: Date | string | null;
     autoWinnerEnabled: boolean;
     autoWinnerMinSampleSize: number;
     autoWinnerMinRuntimeHours: number;
@@ -3341,6 +3342,7 @@ function toExperimentRow(
     startsAt: toShortDateTime(experiment.startsAt),
     endsAt: toShortDateTime(experiment.endsAt),
     winnerVariantId: experiment.winnerVariantId ?? "",
+    winnerAppliedAt: toShortDateTime(experiment.winnerAppliedAt ?? null),
     autoWinnerEnabled: experiment.autoWinnerEnabled,
     autoWinnerMinSampleSize: experiment.autoWinnerMinSampleSize,
     autoWinnerMinRuntimeHours: experiment.autoWinnerMinRuntimeHours,

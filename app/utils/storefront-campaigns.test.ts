@@ -54,6 +54,7 @@ describe("storefront campaign serialization", () => {
             endsAt: null,
             winnerVariantId: null,
             winnerDeclaredAt: null,
+            winnerAppliedAt: null,
             autoWinnerEnabled: false,
             autoWinnerMinSampleSize: 100,
             autoWinnerMinRuntimeHours: 24,

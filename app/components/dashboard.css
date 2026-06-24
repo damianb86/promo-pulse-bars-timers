@@ -683,6 +683,222 @@ s-page::part(page) {
   background: transparent;
 }
 
+.counterpulse-experiment-history {
+  display: grid;
+  gap: 10px;
+}
+
+.counterpulse-experiment-history__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 2px 2px 0;
+}
+
+.counterpulse-experiment-history__header h3 {
+  margin: 0;
+  color: #202223;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 20px;
+}
+
+.counterpulse-experiment-history__header p {
+  margin: 3px 0 0;
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-experiment-history__list {
+  display: grid;
+  gap: 10px;
+}
+
+.counterpulse-experiment-history-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(330px, 1.15fr) minmax(380px, 1fr) minmax(220px, 0.75fr)
+    auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.04);
+}
+
+.counterpulse-experiment-history-card__winner {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 156px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.counterpulse-experiment-history-card__preview {
+  min-width: 0;
+}
+
+.counterpulse-experiment-history-card__preview .counterpulse-variant-preview {
+  min-height: 88px;
+  aspect-ratio: 16 / 9;
+  padding: 8px;
+}
+
+.counterpulse-experiment-history-card__preview
+  .counterpulse-preview-message-copy
+  > span:not(.counterpulse-preview-timer) {
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.counterpulse-experiment-history-card__preview
+  .counterpulse-preview-message
+  strong {
+  font-size: clamp(13px, 9cqi, 18px);
+  line-height: 1.08;
+}
+
+.counterpulse-experiment-history-card__winner-copy {
+  min-width: 0;
+}
+
+.counterpulse-experiment-history-card__winner-copy h3 {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: #202223;
+  font-size: 14px;
+  font-weight: 780;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-experiment-history-card__winner-copy p:not(.counterpulse-kicker) {
+  margin: 3px 0 0;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-experiment-history-card__badges,
+.counterpulse-experiment-history-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.counterpulse-experiment-applied-badge,
+.counterpulse-experiment-pending-badge,
+.counterpulse-experiment-history-card__muted-badge {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 16px;
+}
+
+.counterpulse-experiment-applied-badge {
+  border: 1px solid #8cd2a4;
+  background: #e3fcef;
+  color: #006f4e;
+}
+
+.counterpulse-experiment-pending-badge {
+  border: 1px solid #f4c06a;
+  background: #fff5db;
+  color: #7a4b00;
+}
+
+.counterpulse-experiment-history-card__muted-badge {
+  border: 1px solid #dfe3e8;
+  background: #f4f6f8;
+  color: #6d7175;
+}
+
+.counterpulse-experiment-history-card__stats {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(84px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.counterpulse-experiment-history-card__stats div {
+  min-width: 0;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8faf9;
+}
+
+.counterpulse-experiment-history-card__stats dt {
+  overflow: hidden;
+  color: #6d7175;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-experiment-history-card__stats dd {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: #202223;
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-experiment-history-card__variants {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.counterpulse-experiment-history-card__variants span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  color: #202223;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.counterpulse-experiment-history-card__variants span.is-winner strong {
+  color: #006f4e;
+}
+
+.counterpulse-experiment-history-card__variants strong {
+  overflow: hidden;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counterpulse-experiment-history-card__variants small {
+  color: #6d7175;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.counterpulse-experiment-history-card__actions {
+  justify-content: flex-end;
+}
+
 .counterpulse-experiment-summary {
   display: grid;
   gap: 18px;
@@ -9440,18 +9656,21 @@ s-page::part(page) {
   .counterpulse-experiment-summary__main,
   .counterpulse-experiment-summary__overview,
   .counterpulse-experiment-edit-panel__header,
+  .counterpulse-experiment-history-card,
   .counterpulse-experiment-controls {
     grid-template-columns: 1fr;
   }
 
   .counterpulse-experiment-summary__actions,
+  .counterpulse-experiment-history-card__actions,
   .counterpulse-experiment-header__aside,
   .counterpulse-experiment-controls__actions {
     justify-content: flex-start;
   }
 
   .counterpulse-experiment-metrics,
-  .counterpulse-experiment-summary__stats {
+  .counterpulse-experiment-summary__stats,
+  .counterpulse-experiment-history-card__stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -9473,6 +9692,7 @@ s-page::part(page) {
 @media (max-width: 640px) {
   .counterpulse-experiment-metrics,
   .counterpulse-experiment-summary__stats,
+  .counterpulse-experiment-history-card__stats,
   .counterpulse-experiment-settings,
   .counterpulse-experiment-auto-winner__grid,
   .counterpulse-variant-drawer__design .counterpulse-form-grid,
@@ -9488,6 +9708,7 @@ s-page::part(page) {
   .counterpulse-experiment-summary,
   .counterpulse-experiment-edit-panel,
   .counterpulse-experiment-summary__overview,
+  .counterpulse-experiment-history-card,
   .counterpulse-experiment-results__header,
   .counterpulse-experiment-auto-winner,
   .counterpulse-experiment-controls {
@@ -9500,6 +9721,19 @@ s-page::part(page) {
   }
 
   .counterpulse-experiment-control-button {
+    width: 100%;
+  }
+
+  .counterpulse-experiment-history-card__winner {
+    grid-template-columns: 1fr;
+  }
+
+  .counterpulse-experiment-history-card__preview {
+    max-width: 260px;
+  }
+
+  .counterpulse-experiment-history-card__actions > form,
+  .counterpulse-experiment-history-card__actions button {
     width: 100%;
   }
 

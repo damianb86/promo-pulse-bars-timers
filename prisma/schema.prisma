@@ -475,6 +475,7 @@ model Experiment {
   endsAt                        DateTime?
   winnerVariantId               String?
   winnerDeclaredAt              DateTime?
+  winnerAppliedAt               DateTime?
   autoWinnerEnabled             Boolean                 @default(false)
   autoWinnerMinSampleSize       Int                     @default(100)
   autoWinnerMinRuntimeHours     Int                     @default(24)

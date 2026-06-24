@@ -67,6 +67,7 @@ type ExperimentWithAutoWinner = ExperimentWithVariants & {
   autoWinnerMinRuntimeHours: number;
   autoWinnerConfidenceThreshold: number;
   winnerDeclaredAt: Date | null;
+  winnerAppliedAt?: Date | null;
 };
 
 export type AutoWinnerSettingsInput = {
@@ -156,7 +157,7 @@ const assignableVariantStatuses = new Set<ExperimentVariantStatus>([
 
 export async function createExperiment(input: CreateExperimentInput) {
   await assertCampaignBelongsToShop(input.campaignId, input.shopId);
-  await assertCampaignHasNoExperiments(input.campaignId, input.shopId);
+  await assertCampaignHasNoOpenExperiment(input.campaignId, input.shopId);
 
   const experiment = await prisma.experiment.create({
     data: {
@@ -642,7 +643,7 @@ export async function declareWinningVariant({
     throw new Error("Experiment variant not found.");
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updatedExperiment = await prisma.$transaction(async (tx) => {
     await tx.experimentVariant.updateMany({
       where: {
         experimentId,
@@ -659,12 +660,19 @@ export async function declareWinningVariant({
     return tx.experiment.update({
       where: { id: experimentId },
       data: {
+        status: ExperimentStatus.COMPLETED,
+        endsAt: now,
         winnerVariantId: variantId,
         winnerDeclaredAt: now,
+        winnerAppliedAt: null,
       },
       include: experimentInclude,
     });
   });
+
+  await markCampaignSaved(updatedExperiment.campaignId, shopId);
+
+  return updatedExperiment;
 }
 
 export async function autoDeclareWinningVariant({
@@ -755,6 +763,7 @@ export async function applyWinningVariantToCampaign({
         endsAt: now,
         winnerVariantId: winningVariant.id,
         winnerDeclaredAt: experiment.winnerDeclaredAt ?? now,
+        winnerAppliedAt: now,
       },
       include: experimentInclude,
     });
@@ -926,20 +935,6 @@ async function assertCampaignBelongsToShop(campaignId: string, shopId: string) {
   }
 }
 
-async function assertCampaignHasNoExperiments(
-  campaignId: string,
-  shopId: string,
-) {
-  const experiment = await prisma.experiment.findFirst({
-    where: { campaignId, shopId },
-    select: { id: true },
-  });
-
-  if (experiment) {
-    throw new Error("This campaign already has an experiment.");
-  }
-}
-
 async function assertCampaignHasNoOpenExperiment(
   campaignId: string,
   shopId: string,
@@ -954,9 +949,7 @@ async function assertCampaignHasNoOpenExperiment(
   });
 
   if (experiment) {
-    throw new Error(
-      "Finish the current experiment before duplicating another.",
-    );
+    throw new Error("Finish the current experiment before creating another.");
   }
 }
 

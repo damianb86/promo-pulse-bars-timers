@@ -36,6 +36,29 @@ async function confirmExperimentAction(page: Page, confirmLabel: string) {
   await dialog.getByRole("button", { name: confirmLabel }).click();
 }
 
+function trackPendingStorefrontBadgeRequests(page: Page) {
+  const pendingRequests = new Set<string>();
+  const isBadgeRequest = (url: string) =>
+    url.includes("/api/storefront/badges");
+
+  page.on("request", (request) => {
+    if (isBadgeRequest(request.url())) {
+      pendingRequests.add(`${request.method()} ${request.url()}`);
+    }
+  });
+  page.on("requestfinished", (request) => {
+    pendingRequests.delete(`${request.method()} ${request.url()}`);
+  });
+  page.on("requestfailed", (request) => {
+    pendingRequests.delete(`${request.method()} ${request.url()}`);
+  });
+
+  return () =>
+    expect
+      .poll(() => pendingRequests.size, { timeout: 5_000 })
+      .toBe(0);
+}
+
 async function findVisitorIdForVariant(
   page: Page,
   campaignId: string,
@@ -179,7 +202,7 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Stage 2 Experiment",
@@ -187,6 +210,8 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
     headline: "Experiment base headline",
     subheadline: "Base campaign copy.",
   });
+  const waitForStorefrontBadgesToSettle =
+    trackPendingStorefrontBadgeRequests(page);
 
   await page.goto(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Experiments" }).click();
@@ -370,6 +395,7 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(bar).toContainText("Variant headline");
   await expect(bar).toContainText("A/B treatment copy.");
   await expect(bar.locator(".pp-code")).toHaveCount(0);
+  await waitForStorefrontBadgesToSettle();
 
   await page.reload();
   await expect(page.locator(".pp-bar").first()).toContainText(
@@ -378,6 +404,7 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect
     .poll(async () => readAnalyticsSummary(page))
     .toMatchObject({ attributedVariants: 1 });
+  await waitForStorefrontBadgesToSettle();
 
   await loginAsDemoShop(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Experiments" }).click();
@@ -431,8 +458,14 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
     confirmExperimentAction(page, "Stop experiment"),
   ]);
   await expect(
-    savedExperiment.locator(".counterpulse-experiment-status"),
+    page
+      .locator(".counterpulse-experiment-history-card")
+      .filter({ hasText: "E2E A/B Experiment" })
+      .locator(".counterpulse-experiment-status"),
   ).toHaveText("Completed");
+  await expect(
+    page.locator('form:has(input[name="_action"][value="createExperiment"])'),
+  ).toHaveCount(1);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -444,7 +477,7 @@ test("traffic split keeps the previously adjusted variant fixed", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Traffic Split Lock",
@@ -593,7 +626,16 @@ test("experiment results aggregate commerce events across campaigns and choose w
     page.getByRole("button", { name: "Auto declare winner" }).click(),
   ]);
   await expect(
-    page.getByRole("cell", { name: "Treatment (winner)" }),
+    page
+      .locator(".counterpulse-experiment-history-card")
+      .filter({ hasText: "E2E Add-to-cart Test" })
+      .getByText("Treatment won on Add-to-cart rate."),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".counterpulse-experiment-history-card")
+      .filter({ hasText: "E2E Add-to-cart Test" })
+      .getByRole("button", { name: "Apply winner" }),
   ).toBeVisible();
 
   await page.goto("/app/campaigns/e2e-checkout-campaign");
@@ -621,7 +663,16 @@ test("experiment results aggregate commerce events across campaigns and choose w
     page.getByRole("button", { name: "Auto declare winner" }).click(),
   ]);
   await expect(
-    page.getByRole("cell", { name: "Checkout Treatment (winner)" }),
+    page
+      .locator(".counterpulse-experiment-history-card")
+      .filter({ hasText: "E2E Checkout Test" })
+      .getByText("Checkout Treatment won on Checkout rate."),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".counterpulse-experiment-history-card")
+      .filter({ hasText: "E2E Checkout Test" })
+      .getByRole("button", { name: "Apply winner" }),
   ).toBeVisible();
 
   expectNoConsoleErrors(page);
@@ -634,7 +685,7 @@ test("experiment variant copy is prefilled and design preview updates live", asy
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Experiment Design Preview",
@@ -794,7 +845,7 @@ test("AI variant drawer generates a reviewable experiment variant", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E AI Experiment Variant",

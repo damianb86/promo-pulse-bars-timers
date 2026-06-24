@@ -12,6 +12,7 @@ import {
   applyWinningVariantToCampaign,
   calculateExperimentResults,
   createExperiment,
+  declareWinningVariant,
   detectWinningVariant,
   duplicateExperiment,
   pauseExperiment,
@@ -111,7 +112,7 @@ describe("experiment service", () => {
     );
   });
 
-  it("rejects direct creation when the campaign already has an experiment", async () => {
+  it("rejects direct creation when the campaign already has an open experiment", async () => {
     prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
     prismaMock.experiment.findFirst.mockResolvedValue({ id: "experiment-1" });
 
@@ -122,8 +123,34 @@ describe("experiment service", () => {
         name: "Second experiment",
         primaryMetric: "CTR",
       }),
-    ).rejects.toThrow("This campaign already has an experiment.");
+    ).rejects.toThrow("Finish the current experiment before creating another.");
     expect(prismaMock.experiment.create).not.toHaveBeenCalled();
+  });
+
+  it("declares a winner and completes the experiment without applying it", async () => {
+    const now = new Date("2026-01-02T00:00:00.000Z");
+
+    prismaMock.experimentVariant.findFirst.mockResolvedValue({ id: "winner" });
+    txMock.experiment.update.mockResolvedValue({ id: "experiment-1" });
+
+    await declareWinningVariant({
+      shopId: "shop-1",
+      experimentId: "experiment-1",
+      variantId: "winner",
+      now,
+    });
+
+    expect(txMock.experiment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: ExperimentStatus.COMPLETED,
+          endsAt: now,
+          winnerVariantId: "winner",
+          winnerDeclaredAt: now,
+          winnerAppliedAt: null,
+        }),
+      }),
+    );
   });
 
   it("duplicates a completed experiment into a new draft", async () => {
@@ -497,6 +524,14 @@ describe("experiment service", () => {
         data: { placementType: "BOTTOM_BAR" },
       }),
     );
+    expect(txMock.experiment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: ExperimentStatus.COMPLETED,
+          winnerAppliedAt: expect.any(Date),
+        }),
+      }),
+    );
   });
 });
 
@@ -508,6 +543,7 @@ function experimentFixture(
     startsAt: Date | null;
     endsAt: Date | null;
     winnerVariantId: string | null;
+    winnerAppliedAt: Date | null;
     variants: ExperimentVariant[];
   }> = {},
 ) {
@@ -524,6 +560,7 @@ function experimentFixture(
     endsAt: overrides.endsAt ?? null,
     winnerVariantId: overrides.winnerVariantId ?? null,
     winnerDeclaredAt: null,
+    winnerAppliedAt: overrides.winnerAppliedAt ?? null,
     autoWinnerEnabled: false,
     autoWinnerMinSampleSize: 100,
     autoWinnerMinRuntimeHours: 24,

@@ -60,6 +60,7 @@ export type ExperimentRow = {
   startsAt: string;
   endsAt: string;
   winnerVariantId: string;
+  winnerAppliedAt: string;
   autoWinnerEnabled: boolean;
   autoWinnerMinSampleSize: number;
   autoWinnerMinRuntimeHours: number;
@@ -462,6 +463,14 @@ export function ExperimentsEditor({
   lockedReason,
   notice,
 }: ExperimentsEditorProps) {
+  const openExperiments = experiments.filter(
+    (experiment) => experiment.status !== "COMPLETED",
+  );
+  const completedExperiments = experiments.filter(
+    (experiment) => experiment.status === "COMPLETED",
+  );
+  const canCreateNewExperiment = openExperiments.length === 0;
+
   return (
     <s-section heading="Experiments">
       {lockedReason && (
@@ -487,7 +496,7 @@ export function ExperimentsEditor({
         <div className="counterpulse-experiments">
           <ExperimentIntro />
 
-          {experiments.length === 0 && (
+          {canCreateNewExperiment && (
             <ExperimentComposer
               baseDesign={baseDesign}
               baseViewModel={baseViewModel}
@@ -497,34 +506,41 @@ export function ExperimentsEditor({
           )}
 
           <div className="counterpulse-experiments-list">
-            {experiments.length > 0 ? (
-              experiments.map((experiment) => {
-                const hasOpenExperiment = experiments.some(
-                  (item) =>
-                    item.id !== experiment.id && item.status !== "COMPLETED",
-                );
+            {openExperiments.map((experiment) => (
+              <ExistingExperiment
+                baseDesign={baseDesign}
+                baseViewModel={baseViewModel}
+                canDuplicateCompletedExperiment={false}
+                designMediaOptions={designMediaOptions}
+                experiment={experiment}
+                isProPlan={isProPlan}
+                key={experiment.id}
+              />
+            ))}
 
-                return (
-                  <ExistingExperiment
-                    baseDesign={baseDesign}
-                    baseViewModel={baseViewModel}
-                    canDuplicateCompletedExperiment={!hasOpenExperiment}
-                    designMediaOptions={designMediaOptions}
-                    experiment={experiment}
-                    isProPlan={isProPlan}
-                    key={experiment.id}
-                  />
-                );
-              })
-            ) : (
-              <div className="counterpulse-experiment-empty">
-                <h3>No experiments created yet.</h3>
-                <p>
-                  Create variants to compare copy, placement, and design while
-                  keeping the campaign offer, targeting, and markets unchanged.
-                </p>
-              </div>
-            )}
+            {completedExperiments.length > 0 ? (
+              <section className="counterpulse-experiment-history">
+                <div className="counterpulse-experiment-history__header">
+                  <div>
+                    <h3>Completed experiments</h3>
+                    <p>
+                      Historical results are locked after a winner is declared.
+                    </p>
+                  </div>
+                </div>
+                <div className="counterpulse-experiment-history__list">
+                  {completedExperiments.map((experiment) => (
+                    <CompletedExperimentCard
+                      baseDesign={baseDesign}
+                      baseViewModel={baseViewModel}
+                      canDuplicateExperiment={canCreateNewExperiment}
+                      experiment={experiment}
+                      key={experiment.id}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
         </div>
       )}
@@ -591,6 +607,17 @@ function ExistingExperiment({
     setIsEditing(true);
   };
 
+  if (experiment.status === "COMPLETED") {
+    return (
+      <CompletedExperimentCard
+        baseDesign={baseDesign}
+        baseViewModel={baseViewModel}
+        canDuplicateExperiment={canDuplicateCompletedExperiment}
+        experiment={experiment}
+      />
+    );
+  }
+
   return (
     <section className="counterpulse-experiment-shell">
       {isEditing && canEditExperiment ? (
@@ -624,6 +651,161 @@ function ExistingExperiment({
         experiment={experiment}
       />
     </section>
+  );
+}
+
+function CompletedExperimentCard({
+  baseDesign,
+  baseViewModel,
+  canDuplicateExperiment,
+  experiment,
+}: {
+  baseDesign: CampaignDesignValues;
+  baseViewModel: CampaignViewModel;
+  canDuplicateExperiment: boolean;
+  experiment: ExperimentRow;
+}) {
+  const visibleVariants = experiment.variants.filter(
+    (variant) => variant.status !== "ARCHIVED",
+  );
+  const winnerVariant =
+    visibleVariants.find((variant) => variant.id === experiment.winnerVariantId) ??
+    visibleVariants[0] ??
+    null;
+  const winnerResult =
+    experiment.results.variants.find(
+      (variant) => variant.variantId === experiment.winnerVariantId,
+    ) ??
+    experiment.results.variants[0] ??
+    null;
+  const sortedResults = sortExperimentResultsByPrimaryMetric(experiment);
+  const runnerUpResult = sortedResults.find(
+    (variant) => variant.variantId !== winnerResult?.variantId,
+  );
+  const totals = calculateExperimentTotals(experiment.results.variants);
+  const primaryMetricLift = calculateMetricLift(
+    winnerResult?.primaryMetricValue ?? 0,
+    runnerUpResult?.primaryMetricValue ?? 0,
+  );
+  const previewVariant = winnerVariant
+    ? toVariantDraft(winnerVariant, baseDesign, baseViewModel)
+    : toVariantDraft(defaultVariantRows[0], baseDesign, baseViewModel);
+  const preview = buildVariantPreviewModel(baseViewModel, previewVariant);
+  const hasWinner = Boolean(experiment.winnerVariantId && winnerResult);
+  const isWinnerApplied = Boolean(experiment.winnerAppliedAt);
+
+  return (
+    <article className="counterpulse-experiment-history-card">
+      <div className="counterpulse-experiment-history-card__winner">
+        <div className="counterpulse-experiment-history-card__preview">
+          <VariantMiniPreview design={previewVariant.design} viewModel={preview} />
+        </div>
+        <div className="counterpulse-experiment-history-card__winner-copy">
+          <div className="counterpulse-experiment-history-card__badges">
+            <ExperimentStatusBadge status={experiment.status} />
+            {hasWinner ? (
+              <span className="counterpulse-result-winner">Winner</span>
+            ) : (
+              <span className="counterpulse-experiment-history-card__muted-badge">
+                No winner
+              </span>
+            )}
+            {isWinnerApplied ? (
+              <span className="counterpulse-experiment-applied-badge">
+                Applied
+              </span>
+            ) : hasWinner ? (
+              <span className="counterpulse-experiment-pending-badge">
+                Pending apply
+              </span>
+            ) : null}
+          </div>
+          <p className="counterpulse-kicker">A/B Testing result</p>
+          <h3>{experiment.name}</h3>
+          <p>
+            {hasWinner
+              ? `${winnerResult?.variantName ?? "Winning variant"} won on ${formatMetric(
+                  experiment.primaryMetric,
+                )}.`
+              : "Experiment ended without a declared winner."}
+          </p>
+        </div>
+      </div>
+
+      <dl className="counterpulse-experiment-history-card__stats">
+        <div>
+          <dt>Winner conversion</dt>
+          <dd>{winnerResult ? formatPercent(winnerResult.conversionRate) : "-"}</dd>
+        </div>
+        <div>
+          <dt>{formatMetric(experiment.primaryMetric)} lift</dt>
+          <dd>{primaryMetricLift}</dd>
+        </div>
+        <div>
+          <dt>Visitors</dt>
+          <dd>{totals.visitors}</dd>
+        </div>
+        <div>
+          <dt>Revenue</dt>
+          <dd>
+            {formatCurrency(totals.revenue, experiment.results.currencyCode)}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="counterpulse-experiment-history-card__variants">
+        {sortedResults.slice(0, 4).map((variant, index) => (
+          <span
+            className={
+              variant.variantId === experiment.winnerVariantId
+                ? "is-winner"
+                : ""
+            }
+            key={variant.variantId}
+          >
+            <span
+              aria-hidden="true"
+              className={`counterpulse-variant-dot counterpulse-variant-dot--${index % 6}`}
+            />
+            <strong>{variant.variantName}</strong>
+            <small>{formatPercent(variant.conversionRate)}</small>
+          </span>
+        ))}
+      </div>
+
+      <div className="counterpulse-experiment-history-card__actions">
+        {hasWinner && !isWinnerApplied ? (
+          <Form method="post">
+            <input name="experimentId" type="hidden" value={experiment.id} />
+            <button
+              className="counterpulse-button counterpulse-button-secondary--small"
+              name="_action"
+              type="submit"
+              value="applyExperimentWinner"
+            >
+              Apply winner
+            </button>
+          </Form>
+        ) : null}
+        <Form method="post">
+          <input name="experimentId" type="hidden" value={experiment.id} />
+          <button
+            className="counterpulse-button-secondary counterpulse-button-secondary--small"
+            disabled={!canDuplicateExperiment}
+            name="_action"
+            title={
+              canDuplicateExperiment
+                ? undefined
+                : "Finish the current experiment before duplicating another."
+            }
+            type="submit"
+            value="duplicateExperiment"
+          >
+            Duplicate
+          </button>
+        </Form>
+      </div>
+    </article>
   );
 }
 
@@ -3928,7 +4110,12 @@ function formatDrawerTab(tab: DrawerTab) {
 }
 
 function formatMetric(value: string) {
-  return value === "CLICK_RATE" ? "CTR" : formatEnum(value);
+  if (value === "CLICK_RATE") return "CTR";
+  if (value === "ADD_TO_CART_RATE") return "Add-to-cart rate";
+  if (value === "CHECKOUT_RATE") return "Checkout rate";
+  if (value === "REVENUE_PER_VISITOR") return "Revenue per visitor";
+
+  return formatEnum(value);
 }
 
 function formatExperimentStatus(value: string) {
@@ -3951,18 +4138,20 @@ function getExperimentStatusDescription(experiment: ExperimentRow) {
   }
 
   if (experiment.status === "COMPLETED") {
-    return experiment.winnerVariantId
+    if (!experiment.winnerVariantId) {
+      return "Completed experiment. Results are retained for reference.";
+    }
+
+    return experiment.winnerAppliedAt
       ? "Completed experiment. The winning variant has been applied to the campaign."
-      : "Completed experiment. Results are retained for reference.";
+      : "Completed experiment. The winning variant is declared and ready to apply.";
   }
 
   return "Saved experiment.";
 }
 
-function getRecommendedVariantId(experiment: ExperimentRow) {
-  if (experiment.winnerVariantId) return experiment.winnerVariantId;
-
-  const [recommendedVariant] = [...experiment.results.variants].sort(
+function sortExperimentResultsByPrimaryMetric(experiment: ExperimentRow) {
+  return [...experiment.results.variants].sort(
     (left, right) =>
       right.primaryMetricValue - left.primaryMetricValue ||
       right.conversionRate - left.conversionRate ||
@@ -3971,6 +4160,38 @@ function getRecommendedVariantId(experiment: ExperimentRow) {
       right.clicks - left.clicks ||
       right.impressions - left.impressions,
   );
+}
+
+function calculateExperimentTotals(variants: ExperimentVariantResultRow[]) {
+  return variants.reduce(
+    (total, variant) => ({
+      impressions: total.impressions + variant.impressions,
+      visitors: total.visitors + variant.visitors,
+      orders: total.orders + variant.orders,
+      revenue: total.revenue + variant.revenue,
+    }),
+    {
+      impressions: 0,
+      visitors: 0,
+      orders: 0,
+      revenue: 0,
+    },
+  );
+}
+
+function calculateMetricLift(winnerValue: number, runnerUpValue: number) {
+  if (!Number.isFinite(winnerValue) || winnerValue <= 0) return "-";
+  if (!Number.isFinite(runnerUpValue) || runnerUpValue <= 0) return "Leading";
+
+  return `+${(((winnerValue - runnerUpValue) / runnerUpValue) * 100).toFixed(
+    1,
+  )}%`;
+}
+
+function getRecommendedVariantId(experiment: ExperimentRow) {
+  if (experiment.winnerVariantId) return experiment.winnerVariantId;
+
+  const [recommendedVariant] = sortExperimentResultsByPrimaryMetric(experiment);
 
   return recommendedVariant?.variantId ?? "";
 }

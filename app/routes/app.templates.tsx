@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { CampaignPreview } from "../components/CampaignPreview";
-import { AppAlert } from "../components/Notifications";
+import { AppAlert, useConfirmSubmit } from "../components/Notifications";
 import {
   Form,
   Link,
@@ -18,10 +18,12 @@ import { canUsePremiumFeature } from "../services/premiumFeatures.server";
 import {
   createTemplateFromCampaign,
   createDraftCampaignFromTemplate,
+  deleteCustomTemplate,
   ensureSystemCampaignTemplates,
   getTemplateFilterOptions,
   listTemplateSourceCampaigns,
   listTemplateLibrary,
+  summarizeBehaviorSegments,
   TemplateLibraryError,
   type TemplateFilterOptions,
   type TemplateLibraryFilters,
@@ -38,8 +40,11 @@ import {
 
 type TemplateRow = {
   key: string;
+  behaviorSegments: string[];
   category: string;
   countryCode: string | null;
+  description: string;
+  highlights: string[];
   locale: string;
   eventName: string;
   goal: string;
@@ -58,6 +63,7 @@ type LoaderData = {
   filters: TemplateLibraryFilters;
   filterOptions: TemplateFilterOptions;
   lockedReason: string;
+  notice: string;
   shopifyDomain: string;
   sourceCampaigns: SourceCampaignRow[];
   templates: TemplateRow[];
@@ -84,12 +90,14 @@ export const loader = async ({
   const gate = canUsePremiumFeature(shop, "CAMPAIGN_LIBRARY");
   const url = new URL(request.url);
   const filters = readTemplateFilters(url);
+  const notice = readTemplateNotice(url);
 
   if (!gate.allowed) {
     return {
       filters,
       filterOptions: emptyFilterOptions(),
       lockedReason: gate.reason,
+      notice,
       shopifyDomain: shop.shopifyDomain,
       sourceCampaigns: [],
       templates: [],
@@ -108,18 +116,23 @@ export const loader = async ({
     filters,
     filterOptions,
     lockedReason: "",
+    notice,
     shopifyDomain: shop.shopifyDomain,
     templates: templates.map((template) => {
       const texts = readTexts(template.defaultTexts);
       const settings = readTemplateSettings(template.defaultSettings);
+      const settingsObject = readObject(template.defaultSettings);
       const previewDesign = readTemplateDesign(template.defaultDesign);
       const placementType = readRecommendedPlacement(template.defaultSettings);
       const previewPlacement = toPreviewPlacement(placementType, template.type);
 
       return {
         key: template.key,
+        behaviorSegments: summarizeBehaviorSegments(template.defaultSettings),
         category: template.category,
         countryCode: template.countryCode,
+        description: readString(settingsObject.description),
+        highlights: readStringList(settingsObject.highlights),
         locale: template.locale,
         eventName: template.eventName,
         goal: template.goal,
@@ -184,6 +197,25 @@ export const action = async ({
 
       console.error("Failed to create template from campaign", error);
       return { error: "Template could not be created. Try again." };
+    }
+  }
+
+  if (intent === "deleteTemplate") {
+    if (!templateKey) {
+      return { error: "Template key is required." };
+    }
+
+    try {
+      await deleteCustomTemplate(shop.id, templateKey);
+
+      return redirect("/app/templates?deleted=1");
+    } catch (error) {
+      if (error instanceof TemplateLibraryError) {
+        return { error: error.message };
+      }
+
+      console.error("Failed to delete custom template", error);
+      return { error: "Template could not be deleted. Try again." };
     }
   }
 
@@ -259,6 +291,12 @@ export default function TemplateLibraryPage() {
           />
         ) : (
           <>
+            {data.notice && (
+              <AppAlert tone="success" title="Template library updated">
+                <s-paragraph>{data.notice}</s-paragraph>
+              </AppAlert>
+            )}
+
             {actionData?.error && (
               <AppAlert tone="critical" title="Template action failed">
                 <s-paragraph>{actionData.error}</s-paragraph>
@@ -489,6 +527,19 @@ function CreateTemplateFromCampaign({
 }
 
 function TemplateCard({ template }: { template: TemplateRow }) {
+  const confirmDelete = useConfirmSubmit({
+    cancelLabel: "Keep template",
+    confirmLabel: "Delete template",
+    title: "Delete this custom template?",
+    tone: "critical",
+    children: (
+      <p>
+        “{template.eventName}” will be permanently removed from your library.
+        Campaigns already created from it are not affected.
+      </p>
+    ),
+  });
+
   return (
     <article className="counterpulse-template-card">
       <div
@@ -528,6 +579,33 @@ function TemplateCard({ template }: { template: TemplateRow }) {
           </span>
         </div>
 
+        {template.behaviorSegments.length > 0 && (
+          <div className="counterpulse-template-card__tags">
+            {template.behaviorSegments.map((segment) => (
+              <span
+                className="counterpulse-template-card__tag"
+                key={segment}
+              >
+                {segment}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {template.description && (
+          <p className="counterpulse-template-card__description">
+            {template.description}
+          </p>
+        )}
+
+        {template.highlights.length > 0 && (
+          <ul className="counterpulse-template-card__highlights">
+            {template.highlights.map((highlight) => (
+              <li key={highlight}>{highlight}</li>
+            ))}
+          </ul>
+        )}
+
         <div className="counterpulse-template-card__actions">
           <Form method="post">
             <input name="_action" type="hidden" value="useTemplate" />
@@ -536,8 +614,23 @@ function TemplateCard({ template }: { template: TemplateRow }) {
               Use template
             </button>
           </Form>
+
+          {!template.isSystem && (
+            <Form method="post" onSubmit={confirmDelete.onSubmit}>
+              <input name="_action" type="hidden" value="deleteTemplate" />
+              <input name="templateKey" type="hidden" value={template.key} />
+              <button
+                aria-label={`Delete ${template.eventName}`}
+                className="counterpulse-button-danger counterpulse-button-danger--small"
+                type="submit"
+              >
+                Delete
+              </button>
+            </Form>
+          )}
         </div>
       </div>
+      {!template.isSystem && confirmDelete.modal}
     </article>
   );
 }
@@ -553,6 +646,24 @@ function readTemplateFilters(url: URL): TemplateLibraryFilters {
     sort: url.searchParams.get("sort") ?? "",
     type: url.searchParams.get("type") ?? "",
   };
+}
+
+function readTemplateNotice(url: URL) {
+  if (url.searchParams.get("deleted")) return "Custom template deleted.";
+  if (url.searchParams.get("created")) {
+    return "Template saved to your library.";
+  }
+
+  return "";
+}
+
+function readStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function emptyFilterOptions(): TemplateFilterOptions {

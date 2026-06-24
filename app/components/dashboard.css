@@ -11669,16 +11669,73 @@ s-page::part(page) {
   color: #006f4e;
 }
 
-.counterpulse-template-card__actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+.counterpulse-template-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.counterpulse-template-card__actions form,
+.counterpulse-template-card__tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 16px;
+}
+
+.counterpulse-template-card__description {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.counterpulse-template-card__highlights {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-template-card__highlights li {
+  list-style: disc;
+}
+
+.counterpulse-template-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.counterpulse-template-card__actions form {
+  flex: 1 1 auto;
+}
+
+.counterpulse-template-card__actions form:has(
+    button.counterpulse-button-danger
+  ) {
+  flex: 0 0 auto;
+}
+
 .counterpulse-template-card__actions button,
 .counterpulse-template-card__actions a {
   width: 100%;
+}
+
+.counterpulse-button-danger--small {
+  width: auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 12px;
 }
 
 @media (max-width: 1200px) {

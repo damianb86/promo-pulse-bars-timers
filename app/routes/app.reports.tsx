@@ -1,8 +1,9 @@
-import type { CSSProperties } from "react";
-import { Form, useLoaderData } from "react-router";
+import { type CSSProperties, type FormEvent, useState } from "react";
+import { Link, useLoaderData, useNavigate } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
+import { AppAlert } from "../components/Notifications";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import prisma from "../db.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
@@ -86,21 +87,88 @@ export const loader = async ({
 export default function ReportsPage() {
   const data = useLoaderData<typeof loader>() as ReportsLoaderData;
   const report = data.report;
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const summary = report?.revenue.summary;
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    setExportError("");
+
+    try {
+      const response = await fetch(data.csvHref, {
+        credentials: "include",
+        headers: { Accept: "text/csv" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "promo-pulse-report.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Failed to export Promo Pulse reports", error);
+      setExportError("Report export failed. Try again in a moment.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
-    <s-page inlineSize="large" heading="Reports">
-      <div className="counterpulse-reports-page">
-        <section className="counterpulse-reports-hero">
+    <s-page inlineSize="large">
+      <div className="counterpulse-campaigns-layout counterpulse-reports-page">
+        {exportError && (
+          <AppAlert tone="critical" title="Reports need attention">
+            <s-paragraph>{exportError}</s-paragraph>
+          </AppAlert>
+        )}
+
+        <div className="counterpulse-campaigns-header counterpulse-reports-page-header">
           <div>
-            <h1>Advanced reporting</h1>
-            <p>
+            <p className="counterpulse-kicker">Reporting workspace</p>
+            <s-heading>Reports</s-heading>
+            <s-paragraph>
               Compare campaign outcomes across channels, markets, locales,
               campaign types, experiments, and discount-code usage.
-            </p>
-            <span>{data.shopifyDomain}</span>
+            </s-paragraph>
+            <div className="counterpulse-campaigns-header__meta">
+              <span>Advanced reporting</span>
+              <span>
+                {summary ? formatNumber(summary.impressions) : 0} impressions
+              </span>
+              <span>
+                {summary
+                  ? formatCurrency(summary.revenue, summary.currencyCode)
+                  : "$0.00"}{" "}
+                revenue
+              </span>
+            </div>
           </div>
-          <s-badge tone="success">Premium</s-badge>
-        </section>
+          {!data.lockedReason && (
+            <div className="counterpulse-campaigns-header__actions">
+              <button
+                className="counterpulse-button-secondary counterpulse-reports-export"
+                data-export-href={data.csvHref}
+                data-testid="reports-export-csv"
+                disabled={isExporting}
+                type="button"
+                onClick={handleExport}
+              >
+                <span aria-hidden="true" />
+                {isExporting ? "Exporting..." : "Export CSV"}
+              </button>
+            </div>
+          )}
+        </div>
 
         {data.lockedReason ? (
           <PlanUpgradeCallout
@@ -111,7 +179,6 @@ export default function ReportsPage() {
           <>
             <ReportFilters
               campaignOptions={data.campaignOptions}
-              csvHref={data.csvHref}
               filters={data.filters}
               marketOptions={
                 report?.market.byMarket.map((row) => row.label) ?? []
@@ -157,22 +224,50 @@ export default function ReportsPage() {
 
 function ReportFilters({
   campaignOptions,
-  csvHref,
   filters = defaultReportFilterValues(),
   marketOptions,
 }: {
   campaignOptions: CampaignOption[];
-  csvHref: string;
   filters?: ReportFilterValues;
   marketOptions: string[];
 }) {
+  const navigate = useNavigate();
   const resolvedMarketOptions = Array.from(
     new Set([filters.market, ...marketOptions].filter(Boolean)),
   );
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const params = new URLSearchParams();
+
+    [
+      "start",
+      "end",
+      "campaignId",
+      "placement",
+      "country",
+      "locale",
+      "market",
+      "device",
+    ].forEach((fieldName) => {
+      const value = String(formData.get(fieldName) ?? "").trim();
+
+      if (value) {
+        params.set(fieldName, value);
+      }
+    });
+
+    navigate(params.toString() ? `?${params.toString()}` : "/app/reports");
+  };
 
   return (
     <section className="counterpulse-reports-filters">
-      <Form method="get" className="counterpulse-reports-filters__form">
+      <form
+        className="counterpulse-reports-filters__form"
+        method="get"
+        onSubmit={handleSubmit}
+      >
         <label className="counterpulse-form-field counterpulse-reports-filters__date">
           <span>Date range</span>
           <div className="counterpulse-reports-date-range">
@@ -244,15 +339,7 @@ function ReportFilters({
         <button className="counterpulse-button" type="submit">
           Apply
         </button>
-        <a
-          className="counterpulse-button-secondary counterpulse-reports-export"
-          data-testid="reports-export-csv"
-          href={csvHref}
-        >
-          <span aria-hidden="true" />
-          Export CSV
-        </a>
-      </Form>
+      </form>
     </section>
   );
 }
@@ -482,9 +569,6 @@ function BreakdownCard({
         <>
           <MetricBars rows={rows.slice(0, 5)} />
           <ReportTable rows={rows} />
-          <a className="counterpulse-reports-full-link" href="/app/reports">
-            View full report <span aria-hidden="true">{">"}</span>
-          </a>
         </>
       )}
     </section>
@@ -561,9 +645,9 @@ function DiscountCodeCard({ report }: { report: AdvancedReports }) {
           <span aria-hidden="true" />
           <h3>No unique-code data</h3>
           <p>No unique-code activity matched the selected filters.</p>
-          <a className="counterpulse-button-secondary" href="/app/campaigns">
+          <Link className="counterpulse-button-secondary" to="/app/campaigns">
             View campaigns
-          </a>
+          </Link>
         </div>
       ) : (
         <div className="counterpulse-reports-table-wrap">

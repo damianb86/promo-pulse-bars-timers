@@ -10697,7 +10697,11 @@ s-page::part(page) {
 
 .counterpulse-reports-page {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+}
+
+.counterpulse-reports-page-header s-paragraph {
+  max-width: 840px;
 }
 
 .counterpulse-reports-hero {
@@ -10748,13 +10752,13 @@ s-page::part(page) {
 }
 
 .counterpulse-reports-filters {
-  padding: 18px;
+  padding: 14px;
 }
 
 .counterpulse-reports-filters__form {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
-  gap: 14px 18px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
   align-items: end;
 }
 
@@ -10763,7 +10767,7 @@ s-page::part(page) {
 }
 
 .counterpulse-reports-date-range {
-  min-height: 42px;
+  min-height: 36px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
@@ -10778,6 +10782,12 @@ s-page::part(page) {
 
 .counterpulse-reports-export {
   gap: 8px;
+  white-space: nowrap;
+}
+
+.counterpulse-reports-export:disabled {
+  cursor: progress;
+  opacity: 0.68;
 }
 
 .counterpulse-reports-export span {
@@ -10814,16 +10824,16 @@ s-page::part(page) {
 .counterpulse-reports-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .counterpulse-reports-metric {
   min-width: 0;
-  min-height: 116px;
+  min-height: 102px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
-  padding: 16px 18px;
+  padding: 14px;
 }
 
 .counterpulse-reports-metric > div {
@@ -10833,8 +10843,8 @@ s-page::part(page) {
 }
 
 .counterpulse-reports-metric > div > span {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
@@ -10844,8 +10854,8 @@ s-page::part(page) {
 
 .counterpulse-reports-metric > div > span::before {
   content: "";
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border: 2px solid currentColor;
   border-radius: 999px;
 }
@@ -10853,16 +10863,16 @@ s-page::part(page) {
 .counterpulse-reports-metric p {
   margin: 0;
   color: #4b5563;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 16px;
 }
 
 .counterpulse-reports-metric strong {
   color: #111827;
-  font-size: 27px;
+  font-size: 22px;
   font-weight: 780;
-  line-height: 32px;
+  line-height: 28px;
 }
 
 .counterpulse-reports-metric small {
@@ -10874,8 +10884,8 @@ s-page::part(page) {
 .counterpulse-reports-panel {
   min-width: 0;
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
 }
 
 .counterpulse-reports-panel__header {
@@ -10897,8 +10907,8 @@ s-page::part(page) {
 .counterpulse-reports-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
-  margin-top: 12px;
+  gap: 14px;
+  margin-top: 8px;
 }
 
 .counterpulse-reports-legend span {
@@ -10925,28 +10935,29 @@ s-page::part(page) {
 }
 
 .counterpulse-reports-period {
-  min-height: 38px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   border: 1px solid #dfe3e8;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
   background: #ffffff;
   color: #202223;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .counterpulse-reports-chart {
   overflow: hidden;
+  height: 220px;
 }
 
 .counterpulse-reports-chart svg {
   width: 100%;
-  min-width: 720px;
-  height: auto;
+  min-width: 0;
+  height: 220px;
   display: block;
 }
 
@@ -10965,7 +10976,7 @@ s-page::part(page) {
   stroke: #008060;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 4;
+  stroke-width: 3.5;
 }
 
 .counterpulse-reports-chart__line--clicks {
@@ -10976,18 +10987,18 @@ s-page::part(page) {
 .counterpulse-reports-breakdown-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .counterpulse-reports-bars {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .counterpulse-reports-bar {
   display: grid;
-  grid-template-columns: minmax(120px, 0.95fr) minmax(150px, 1.6fr) 44px;
-  gap: 10px;
+  grid-template-columns: minmax(112px, 0.95fr) minmax(132px, 1.6fr) 40px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -11034,7 +11045,7 @@ s-page::part(page) {
 
 .counterpulse-reports-table th,
 .counterpulse-reports-table td {
-  padding: 9px 10px;
+  padding: 8px 9px;
   font-size: 12px;
   line-height: 16px;
 }
@@ -11050,36 +11061,23 @@ s-page::part(page) {
   font-weight: 700;
 }
 
-.counterpulse-reports-full-link {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #e3e5e7;
-  padding-top: 10px;
-  color: #008060;
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 18px;
-  text-decoration: none;
-}
-
 .counterpulse-reports-empty-panel {
   align-content: start;
 }
 
 .counterpulse-reports-empty-state {
-  min-height: 260px;
+  min-height: 220px;
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 10px;
+  gap: 9px;
   text-align: center;
 }
 
 .counterpulse-reports-empty-state > span {
   position: relative;
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
   border-radius: 999px;
   background: #f1f2f4;
 }
@@ -11096,9 +11094,9 @@ s-page::part(page) {
 .counterpulse-reports-empty-state h3 {
   margin: 4px 0 0;
   color: #202223;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 760;
-  line-height: 22px;
+  line-height: 20px;
 }
 
 .counterpulse-reports-empty-state p {
@@ -11110,19 +11108,19 @@ s-page::part(page) {
 }
 
 .counterpulse-reports-weekly {
-  gap: 16px;
+  gap: 12px;
 }
 
 .counterpulse-reports-weekly__content {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 18px;
   align-items: center;
 }
 
 .counterpulse-reports-weekly__icon {
-  width: 82px;
-  height: 82px;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -11132,8 +11130,8 @@ s-page::part(page) {
 
 .counterpulse-reports-weekly__icon::before {
   content: "";
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border: 3px solid currentColor;
   border-radius: 8px;
   box-shadow: inset 0 8px 0 rgba(0, 128, 96, 0.14);
@@ -11142,9 +11140,9 @@ s-page::part(page) {
 .counterpulse-reports-weekly h3 {
   margin: 0;
   color: #202223;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 760;
-  line-height: 22px;
+  line-height: 20px;
 }
 
 .counterpulse-reports-weekly p {

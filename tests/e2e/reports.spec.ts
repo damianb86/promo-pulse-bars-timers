@@ -13,9 +13,7 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   await resetDb("reports");
   await loginAsDemoShop("/app/reports");
   await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Advanced reporting" }),
-  ).toBeVisible();
+  await expect(page.getByText("Reporting workspace")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Performance trend" }),
   ).toBeVisible();
@@ -43,8 +41,8 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   await expect(page.getByRole("row", { name: /US 30 6/ })).toHaveCount(0);
 
   const csvHref = await page
-    .getByRole("link", { name: "Export CSV" })
-    .getAttribute("href");
+    .getByTestId("reports-export-csv")
+    .getAttribute("data-export-href");
   expect(csvHref).toContain("/app/reports/csv");
 
   const csvResponse = await page.request.get(csvHref!);
@@ -55,6 +53,9 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   expect(csv).toContain("Country,ES");
   expect(csv).toContain("Market,ES");
   expect(csv).not.toContain("Market,US");
+  await expect(
+    page.getByRole("link", { name: "View full report" }),
+  ).toHaveCount(0);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

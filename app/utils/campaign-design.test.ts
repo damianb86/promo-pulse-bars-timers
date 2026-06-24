@@ -70,6 +70,8 @@ describe("campaign design validation", () => {
       "STANDARD",
       "BALANCED",
       "INLINE",
+      "STACKED_WIDE",
+      "COMPACT_STACK",
       "CTA_RIGHT",
       "CTA_LEFT",
       "CTA_TOP",
@@ -168,7 +170,27 @@ describe("campaign design validation", () => {
     expect(values.templateKey).toBe("flash-sale");
     expect(values.layout).toBe("CTA_LEFT");
     expect(values.backgroundColor).toBe("#7F1D1D");
+    expect(values.timerFontSize).toBe(32);
+    expect(values.timerStyle).toBe("GROUPED");
     expect(values.customCss).toBe(".banner { letter-spacing: 0; }");
+  });
+
+  it("reconciles preset visuals with the selected layout defaults", () => {
+    const values = applyCampaignDesignTemplate("love", {
+      ...defaultCampaignDesignValues,
+      layout: "STACKED_WIDE",
+      titleFontSize: 48,
+      timerFontSize: 72,
+    });
+
+    expect(values.templateKey).toBe("love");
+    expect(values.layout).toBe("STACKED_WIDE");
+    expect(values.backgroundType).toBe("GRADIENT");
+    expect(values.titleFontSize).toBe(24);
+    expect(values.timerFontSize).toBe(36);
+    expect(values.timerFormat).toBe("UNITS");
+    expect(values.timerShowLabels).toBe(true);
+    expect(values.contentMaxWidth).toBe(1040);
   });
 
   it("gates and sanitizes custom CSS", () => {

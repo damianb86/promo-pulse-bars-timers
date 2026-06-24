@@ -3,6 +3,8 @@ export type DesignLayoutValue =
   | "STANDARD"
   | "BALANCED"
   | "INLINE"
+  | "STACKED_WIDE"
+  | "COMPACT_STACK"
   | "CTA_RIGHT"
   | "CTA_LEFT"
   | "CTA_TOP";
@@ -445,6 +447,61 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    templateKey: "wide-clean",
+    label: "Wide Clean",
+    layout: "STACKED_WIDE",
+    fullWidth: true,
+    contentMaxWidth: 1040,
+    backgroundColor: "#F8FAFC",
+    textColor: "#0F172A",
+    closeButtonColor: "#334155",
+    accentColor: "#0F766E",
+    buttonColor: "#0F766E",
+    buttonTextColor: "#FFFFFF",
+    borderColor: "#CBD5E1",
+    borderRadius: 0,
+    borderSize: 1,
+    titleColor: "#0F172A",
+    subheadingColor: "#475569",
+    timerColor: "#0F766E",
+    legendColor: "#64748B",
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#FFFFFF",
+    timerSurfaceBorderColor: "#99F6E4",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 10,
+    showIcon: true,
+    icon: "TAG",
+  },
+  {
+    ...defaultCampaignDesignValues,
+    templateKey: "cart-compact",
+    label: "Cart Compact",
+    layout: "COMPACT_STACK",
+    contentMaxWidth: 420,
+    backgroundColor: "#FFFFFF",
+    textColor: "#111827",
+    closeButtonColor: "#4B5563",
+    accentColor: "#D97706",
+    buttonColor: "#111827",
+    buttonTextColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    borderSize: 1,
+    titleColor: "#111827",
+    subheadingColor: "#4B5563",
+    timerColor: "#D97706",
+    legendColor: "#6B7280",
+    timerStyle: "BOXES",
+    timerSurfaceColor: "#FFFBEB",
+    timerSurfaceBorderColor: "#FCD34D",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 8,
+    showIcon: true,
+    icon: "CLOCK",
+  },
+  {
+    ...defaultCampaignDesignValues,
     templateKey: "premium-dark",
     label: "Premium Dark",
     backgroundColor: "#111827",
@@ -512,6 +569,18 @@ export const designLayoutOptions: Array<{
     value: "INLINE",
     label: "Inline",
     description: "Compact single-line message and timer for slim bars.",
+  },
+  {
+    value: "STACKED_WIDE",
+    label: "Wide stacked",
+    description:
+      "Full-width friendly stack that keeps the message, timer, and action grouped vertically.",
+  },
+  {
+    value: "COMPACT_STACK",
+    label: "Compact stack",
+    description:
+      "Dense vertical composition for cart drawers, cards, and tighter placements.",
   },
   {
     value: "CTA_RIGHT",

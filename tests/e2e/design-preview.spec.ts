@@ -75,7 +75,30 @@ test("design changes update live preview and persist", async ({
   await editor.getByRole("button", { name: "Preset options" }).click();
   await editor.getByRole("option", { name: /^Dawn\b/ }).click();
   await expect(layoutInput).toHaveValue("CTA_RIGHT");
-  await expect(timerSizeInput).toHaveValue("42");
+  await expect(timerSizeInput).toHaveValue("32");
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Wide stacked\b/ }).click();
+  await expect(layoutInput).toHaveValue("STACKED_WIDE");
+  await expect(titleSizeInput).toHaveValue("24");
+  await expect(timerSizeInput).toHaveValue("36");
+  await expect(livePreview).toHaveClass(
+    /counterpulse-preview-promo--layout-stacked_wide/,
+  );
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Compact stack\b/ }).click();
+  await expect(layoutInput).toHaveValue("COMPACT_STACK");
+  await expect(titleSizeInput).toHaveValue("18");
+  await expect(timerSizeInput).toHaveValue("24");
+  await expect(livePreview).toHaveClass(
+    /counterpulse-preview-promo--layout-compact_stack/,
+  );
+
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Action right\b/ }).click();
+  await expect(layoutInput).toHaveValue("CTA_RIGHT");
+  await expect(timerSizeInput).toHaveValue("32");
   await page.getByRole("button", { name: "Plain" }).click();
   await page.getByRole("button", { name: "Colon" }).click();
   await page.getByLabel("Show timer labels").uncheck();

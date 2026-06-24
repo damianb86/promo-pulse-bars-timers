@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "DesignLayout" ADD VALUE 'STACKED_WIDE';
+ALTER TYPE "DesignLayout" ADD VALUE 'COMPACT_STACK';

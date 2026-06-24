@@ -17,6 +17,7 @@ import { defaultBadgeSettingsValues } from "../../types/badge";
 import type { CampaignAiInput, CampaignAiShape } from "../../types/ai-campaign";
 import {
   defaultCampaignDesignValues,
+  designLayoutOptions,
   findCampaignDesignTemplate,
   type CampaignDesignValues,
 } from "../../types/campaign-design";
@@ -748,14 +749,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     ...defaultCampaignDesignValues,
     templateKey,
     layout:
-      readEnum(input.layout, [
-        "STANDARD",
-        "BALANCED",
-        "INLINE",
-        "CTA_RIGHT",
-        "CTA_LEFT",
-        "CTA_TOP",
-      ]) ?? defaultCampaignDesignValues.layout,
+      readEnum(
+        input.layout,
+        designLayoutOptions.map((option) => option.value),
+      ) ?? defaultCampaignDesignValues.layout,
     backgroundType:
       readEnum(input.backgroundType, ["SOLID", "GRADIENT", "IMAGE"]) ??
       defaultCampaignDesignValues.backgroundType,

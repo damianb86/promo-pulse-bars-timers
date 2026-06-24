@@ -116,6 +116,8 @@ test.describe("real design and timer configuration", () => {
       ["Stacked", "STANDARD"],
       ["Split", "BALANCED"],
       ["Inline", "INLINE"],
+      ["Wide stacked", "STACKED_WIDE"],
+      ["Compact stack", "COMPACT_STACK"],
       ["Action right", "CTA_RIGHT"],
       ["Action left", "CTA_LEFT"],
       ["Action top", "CTA_TOP"],

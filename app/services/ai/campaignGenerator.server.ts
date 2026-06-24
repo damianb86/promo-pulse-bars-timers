@@ -1,5 +1,6 @@
 import {
   defaultCampaignDesignValues,
+  designLayoutOptions,
   findCampaignDesignTemplate,
 } from "../../types/campaign-design";
 import type { CampaignDesignValues } from "../../types/campaign-design";
@@ -2087,12 +2088,7 @@ function sanitizePartialDesign(
     ...(typeof design.templateKey === "string"
       ? { templateKey: design.templateKey.slice(0, 80) }
       : {}),
-    ...(design.layout === "STANDARD" ||
-    design.layout === "BALANCED" ||
-    design.layout === "INLINE" ||
-    design.layout === "CTA_RIGHT" ||
-    design.layout === "CTA_LEFT" ||
-    design.layout === "CTA_TOP"
+    ...(designLayoutOptions.some((option) => option.value === design.layout)
       ? { layout: design.layout }
       : {}),
     ...(design.backgroundType === "SOLID" ||

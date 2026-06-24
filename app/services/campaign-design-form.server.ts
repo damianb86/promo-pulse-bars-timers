@@ -2,6 +2,7 @@ import type { ShopPlan } from "@prisma/client";
 
 import {
   defaultCampaignDesignValues,
+  designLayoutOptions,
   type CampaignDesignErrors,
   type CampaignDesignValues,
   type DesignBackgroundTypeValue,
@@ -394,16 +395,7 @@ function readBoolean(formData: FormData, key: keyof CampaignDesignValues) {
 function readLayout(formData: FormData): DesignLayoutValue {
   const value = readString(formData, "layout");
 
-  if (
-    [
-      "STANDARD",
-      "BALANCED",
-      "INLINE",
-      "CTA_RIGHT",
-      "CTA_LEFT",
-      "CTA_TOP",
-    ].includes(value)
-  ) {
+  if (designLayoutOptions.some((option) => option.value === value)) {
     return value as DesignLayoutValue;
   }
 

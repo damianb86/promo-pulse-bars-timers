@@ -70,15 +70,154 @@ export function applyCampaignDesignTemplate(
   currentValues: CampaignDesignValues = defaultCampaignDesignValues,
 ): CampaignDesignValues {
   const template = findCampaignDesignTemplate(templateKey);
+  const layout = currentValues.layout;
 
-  return {
+  return applyCampaignLayoutDefaults({
     ...currentValues,
     ...template,
     templateKey: template.templateKey,
     customCss: currentValues.customCss,
-    layout: currentValues.layout,
+    layout,
+    separateMobileDesign: currentValues.separateMobileDesign,
+  });
+}
+
+export function applyCampaignLayoutDefaults(
+  values: CampaignDesignValues,
+): CampaignDesignValues {
+  return {
+    ...values,
+    ...campaignLayoutDefaultValues[values.layout],
   };
 }
+
+export const campaignLayoutDefaultValues: Record<
+  CampaignDesignValues["layout"],
+  Partial<CampaignDesignValues>
+> = {
+  STANDARD: {
+    showButton: true,
+    alignment: "CENTER",
+    timerStyle: "PLAIN",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 14,
+    titleFontSize: 22,
+    subheadingFontSize: 14,
+    timerFontSize: 38,
+    legendFontSize: 12,
+    paddingBlock: 20,
+    paddingInline: 24,
+    contentGap: 8,
+  },
+  BALANCED: {
+    showButton: true,
+    alignment: "LEFT",
+    timerStyle: "BOXES",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 14,
+    titleFontSize: 22,
+    subheadingFontSize: 14,
+    timerFontSize: 34,
+    legendFontSize: 11,
+    paddingBlock: 18,
+    paddingInline: 22,
+    contentGap: 16,
+  },
+  INLINE: {
+    showButton: false,
+    alignment: "CENTER",
+    timerStyle: "PLAIN",
+    timerFormat: "COLON",
+    timerShowLabels: false,
+    fontSize: 13,
+    titleFontSize: 16,
+    subheadingFontSize: 12,
+    timerFontSize: 16,
+    legendFontSize: 11,
+    paddingBlock: 10,
+    paddingInline: 18,
+    contentGap: 8,
+  },
+  STACKED_WIDE: {
+    showButton: true,
+    alignment: "CENTER",
+    timerStyle: "GROUPED",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 15,
+    titleFontSize: 24,
+    subheadingFontSize: 15,
+    timerFontSize: 36,
+    legendFontSize: 12,
+    paddingBlock: 18,
+    paddingInline: 32,
+    contentGap: 12,
+    contentMaxWidth: 1040,
+  },
+  COMPACT_STACK: {
+    showButton: true,
+    alignment: "CENTER",
+    timerStyle: "BOXES",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 13,
+    titleFontSize: 18,
+    subheadingFontSize: 12,
+    timerFontSize: 24,
+    legendFontSize: 10,
+    paddingBlock: 12,
+    paddingInline: 14,
+    contentGap: 7,
+    contentMaxWidth: 420,
+  },
+  CTA_RIGHT: {
+    showButton: true,
+    alignment: "LEFT",
+    timerStyle: "GROUPED",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 14,
+    titleFontSize: 22,
+    subheadingFontSize: 14,
+    timerFontSize: 32,
+    legendFontSize: 12,
+    paddingBlock: 16,
+    paddingInline: 20,
+    contentGap: 12,
+  },
+  CTA_LEFT: {
+    showButton: true,
+    alignment: "LEFT",
+    timerStyle: "GROUPED",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 14,
+    titleFontSize: 22,
+    subheadingFontSize: 14,
+    timerFontSize: 32,
+    legendFontSize: 12,
+    paddingBlock: 16,
+    paddingInline: 20,
+    contentGap: 12,
+  },
+  CTA_TOP: {
+    showButton: true,
+    alignment: "CENTER",
+    timerStyle: "PLAIN",
+    timerFormat: "UNITS",
+    timerShowLabels: true,
+    fontSize: 14,
+    titleFontSize: 20,
+    subheadingFontSize: 13,
+    timerFontSize: 32,
+    legendFontSize: 11,
+    paddingBlock: 16,
+    paddingInline: 20,
+    contentGap: 12,
+  },
+};
 
 export function validateCampaignDesignValues(values: CampaignDesignValues) {
   const errors: CampaignDesignErrors = {};

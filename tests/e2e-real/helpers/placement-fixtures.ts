@@ -660,9 +660,16 @@ function layoutClassForDesign(layout: DesignLayout) {
 function layoutForClass(layoutClass: string) {
   if (layoutClass.endsWith("inline")) return DesignLayout.INLINE;
   if (layoutClass.endsWith("balanced")) return DesignLayout.BALANCED;
+  if (layoutClass.endsWith("stacked-wide")) return DesignLayout.STACKED_WIDE;
+  if (layoutClass.endsWith("stacked_wide")) return DesignLayout.STACKED_WIDE;
+  if (layoutClass.endsWith("compact-stack")) return DesignLayout.COMPACT_STACK;
+  if (layoutClass.endsWith("compact_stack")) return DesignLayout.COMPACT_STACK;
   if (layoutClass.endsWith("cta-right")) return DesignLayout.CTA_RIGHT;
+  if (layoutClass.endsWith("cta_right")) return DesignLayout.CTA_RIGHT;
   if (layoutClass.endsWith("cta-left")) return DesignLayout.CTA_LEFT;
+  if (layoutClass.endsWith("cta_left")) return DesignLayout.CTA_LEFT;
   if (layoutClass.endsWith("cta-top")) return DesignLayout.CTA_TOP;
+  if (layoutClass.endsWith("cta_top")) return DesignLayout.CTA_TOP;
 
   return DesignLayout.STANDARD;
 }

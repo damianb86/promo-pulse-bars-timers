@@ -23,6 +23,10 @@ import {
   type CampaignDesignValues,
 } from "../types/campaign-design";
 import {
+  applyCampaignDesignTemplate,
+  applyCampaignLayoutDefaults,
+} from "../utils/campaign-design";
+import {
   freeShippingProgressStyleOptions,
   type FreeShippingProgressStyleValue,
 } from "../types/free-shipping";
@@ -138,18 +142,12 @@ export function DesignControls({
   };
 
   const selectLayout = (layout: CampaignDesignValues["layout"]) => {
-    onChange(applyLayoutDefaults({ ...values }, layout));
+    onChange(applyCampaignLayoutDefaults({ ...values, layout }));
     setOpenTemplateDropdown(null);
   };
 
   const selectTemplate = (template: CampaignDesignTemplate) => {
-    onChange({
-      ...values,
-      ...template,
-      customCss: values.customCss,
-      layout: values.layout,
-      separateMobileDesign: values.separateMobileDesign,
-    });
+    onChange(applyCampaignDesignTemplate(template.templateKey, values));
     setOpenTemplateDropdown(null);
   };
 
@@ -1299,101 +1297,6 @@ type NumberDesignKey = {
     ? Key
     : never;
 }[keyof CampaignDesignValues];
-
-function applyLayoutDefaults(
-  values: CampaignDesignValues,
-  layout: CampaignDesignValues["layout"],
-): CampaignDesignValues {
-  return {
-    ...values,
-    layout,
-    ...layoutDefaultValues[layout],
-  };
-}
-
-const layoutDefaultValues: Record<
-  CampaignDesignValues["layout"],
-  Partial<CampaignDesignValues>
-> = {
-  STANDARD: {
-    showButton: true,
-    timerStyle: "PLAIN",
-    timerFormat: "UNITS",
-    timerShowLabels: true,
-    titleFontSize: 22,
-    subheadingFontSize: 14,
-    timerFontSize: 38,
-    legendFontSize: 12,
-    paddingBlock: 20,
-    paddingInline: 24,
-    contentGap: 8,
-  },
-  BALANCED: {
-    showButton: true,
-    timerStyle: "BOXES",
-    timerFormat: "UNITS",
-    timerShowLabels: true,
-    titleFontSize: 22,
-    subheadingFontSize: 14,
-    timerFontSize: 34,
-    legendFontSize: 11,
-    paddingBlock: 18,
-    paddingInline: 22,
-    contentGap: 16,
-  },
-  INLINE: {
-    showButton: false,
-    timerStyle: "PLAIN",
-    timerFormat: "COLON",
-    timerShowLabels: false,
-    titleFontSize: 16,
-    subheadingFontSize: 12,
-    timerFontSize: 16,
-    legendFontSize: 11,
-    paddingBlock: 10,
-    paddingInline: 18,
-    contentGap: 8,
-  },
-  CTA_RIGHT: {
-    showButton: true,
-    timerStyle: "GROUPED",
-    timerFormat: "UNITS",
-    timerShowLabels: true,
-    titleFontSize: 22,
-    subheadingFontSize: 14,
-    timerFontSize: 32,
-    legendFontSize: 12,
-    paddingBlock: 16,
-    paddingInline: 20,
-    contentGap: 12,
-  },
-  CTA_LEFT: {
-    showButton: true,
-    timerStyle: "GROUPED",
-    timerFormat: "UNITS",
-    timerShowLabels: true,
-    titleFontSize: 22,
-    subheadingFontSize: 14,
-    timerFontSize: 32,
-    legendFontSize: 12,
-    paddingBlock: 16,
-    paddingInline: 20,
-    contentGap: 12,
-  },
-  CTA_TOP: {
-    showButton: true,
-    timerStyle: "PLAIN",
-    timerFormat: "UNITS",
-    timerShowLabels: true,
-    titleFontSize: 20,
-    subheadingFontSize: 13,
-    timerFontSize: 32,
-    legendFontSize: 11,
-    paddingBlock: 16,
-    paddingInline: 20,
-    contentGap: 12,
-  },
-};
 
 function PreviewSelectDropdown({
   isOpen,

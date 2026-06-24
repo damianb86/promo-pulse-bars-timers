@@ -132,6 +132,73 @@
   text-align: center;
 }
 
+.pp-container .pp-bar--layout-stacked_wide {
+  width: min(100%, var(--pp-content-max-width, 1040px));
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(10px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-container .pp-bar--layout-stacked_wide > .pp-message,
+.pp-container .pp-bar--layout-stacked_wide > .pp-countdown,
+.pp-container .pp-bar--layout-stacked_wide > .pp-progress,
+.pp-container .pp-bar--layout-stacked_wide > .pp-discount-offer {
+  width: min(100%, 760px);
+}
+
+.pp-container .pp-bar--layout-stacked_wide .pp-message,
+.pp-container .pp-bar--layout-stacked_wide .pp-cta,
+.pp-container .pp-bar--layout-stacked_wide .pp-code,
+.pp-container .pp-bar--layout-stacked_wide .pp-unique-code,
+.pp-container .pp-bar--layout-stacked_wide .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-container .pp-bar--layout-stacked_wide .pp-message-copy {
+  justify-items: center;
+}
+
+.pp-container .pp-bar--layout-stacked_wide .pp-progress {
+  width: min(100%, 680px);
+  justify-self: center;
+  max-width: none;
+}
+
+.pp-container .pp-bar--layout-compact_stack {
+  width: min(100%, 420px);
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(6px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-container .pp-bar--layout-compact_stack .pp-message {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pp-container .pp-bar--layout-compact_stack .pp-message-copy {
+  justify-items: center;
+  gap: 3px;
+}
+
+.pp-container .pp-bar--layout-compact_stack .pp-cta,
+.pp-container .pp-bar--layout-compact_stack .pp-code,
+.pp-container .pp-bar--layout-compact_stack .pp-unique-code,
+.pp-container .pp-bar--layout-compact_stack .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-container .pp-bar--layout-compact_stack .pp-progress {
+  width: min(100%, 320px);
+  justify-self: center;
+  max-width: none;
+}
+
 .pp-container .pp-bar--layout-cta_right,
 .pp-container .pp-bar--layout-cta_left {
   width: min(100%, 520px);
@@ -827,6 +894,71 @@
   text-align: center;
 }
 
+.pp-product-card--layout-stacked-wide {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(10px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-product-card--layout-stacked-wide > .pp-message,
+.pp-product-card--layout-stacked-wide > .pp-countdown,
+.pp-product-card--layout-stacked-wide > .pp-progress,
+.pp-product-card--layout-stacked-wide > .pp-discount-offer {
+  width: min(100%, 640px);
+}
+
+.pp-product-card--layout-stacked-wide .pp-message,
+.pp-product-card--layout-stacked-wide .pp-cta,
+.pp-product-card--layout-stacked-wide .pp-code,
+.pp-product-card--layout-stacked-wide .pp-unique-code,
+.pp-product-card--layout-stacked-wide .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-product-card--layout-stacked-wide .pp-message-copy {
+  justify-items: center;
+}
+
+.pp-product-card--layout-stacked-wide .pp-progress {
+  width: min(100%, 560px);
+  justify-self: center;
+  max-width: none;
+}
+
+.pp-product-card--layout-compact-stack {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(6px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-product-card--layout-compact-stack .pp-message {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pp-product-card--layout-compact-stack .pp-message-copy {
+  justify-items: center;
+  gap: 3px;
+}
+
+.pp-product-card--layout-compact-stack .pp-cta,
+.pp-product-card--layout-compact-stack .pp-code,
+.pp-product-card--layout-compact-stack .pp-unique-code,
+.pp-product-card--layout-compact-stack .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-product-card--layout-compact-stack .pp-progress {
+  width: min(100%, 320px);
+  justify-self: center;
+  max-width: none;
+}
+
 .pp-product-card--layout-cta-right,
 .pp-product-card--layout-cta-left {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1142,6 +1274,71 @@
   padding: max(8px, calc(var(--pp-padding-block, 12px) * 0.6))
     var(--pp-padding-inline, 14px);
   text-align: center;
+}
+
+.pp-cart-card--layout-stacked-wide {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(10px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-cart-card--layout-stacked-wide > .pp-message,
+.pp-cart-card--layout-stacked-wide > .pp-countdown,
+.pp-cart-card--layout-stacked-wide > .pp-cart-progress,
+.pp-cart-card--layout-stacked-wide > .pp-discount-offer {
+  width: min(100%, 640px);
+}
+
+.pp-cart-card--layout-stacked-wide .pp-message,
+.pp-cart-card--layout-stacked-wide .pp-cta,
+.pp-cart-card--layout-stacked-wide .pp-code,
+.pp-cart-card--layout-stacked-wide .pp-unique-code,
+.pp-cart-card--layout-stacked-wide .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-cart-card--layout-stacked-wide .pp-message-copy {
+  justify-items: center;
+}
+
+.pp-cart-card--layout-stacked-wide .pp-cart-progress {
+  width: min(100%, 560px);
+  justify-self: center;
+  max-width: none;
+}
+
+.pp-cart-card--layout-compact-stack {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: max(6px, var(--pp-gap, 10px));
+  text-align: center;
+}
+
+.pp-cart-card--layout-compact-stack .pp-message {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pp-cart-card--layout-compact-stack .pp-message-copy {
+  justify-items: center;
+  gap: 3px;
+}
+
+.pp-cart-card--layout-compact-stack .pp-cta,
+.pp-cart-card--layout-compact-stack .pp-code,
+.pp-cart-card--layout-compact-stack .pp-unique-code,
+.pp-cart-card--layout-compact-stack .pp-discount-offer {
+  justify-content: center;
+  justify-self: center;
+}
+
+.pp-cart-card--layout-compact-stack .pp-cart-progress {
+  width: min(100%, 320px);
+  justify-self: center;
+  max-width: none;
 }
 
 .pp-cart-card--layout-cta-right,

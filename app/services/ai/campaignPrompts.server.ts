@@ -132,6 +132,9 @@ Design guidance:
   the colors built into the selected preset.
 - Use compact typography for badges and low-stock messages.
 - For TOP_BAR or BOTTOM_BAR with fullWidth true, set borderRadius 0.
+- For full-width bars that should keep a vertical reading order, prefer
+  STACKED_WIDE over INLINE. For cart drawers or small cards, prefer
+  COMPACT_STACK.
 - Pick timerStyle and timerFormat intentionally: COLON works well for inline
   plain timers; BOXES works well for balanced sale timers.
 - Button visibility should match the layout. Badges and low-stock messages often

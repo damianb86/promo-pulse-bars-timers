@@ -1,5 +1,8 @@
 import type { Prisma } from "@prisma/client";
-import type { BehaviorTargetingRules } from "./behavior-targeting";
+import {
+  defaultBehaviorTargetingRules,
+  type BehaviorTargetingRules,
+} from "./behavior-targeting";
 
 export const campaignDetailsInclude = {
   placements: true,
@@ -94,14 +97,6 @@ export function createEmptyTargetingRules(): CampaignTargetingRules {
     devices: [],
     excludeProductIds: [],
     excludeCollectionIds: [],
-    behaviorRules: {
-      enabled: false,
-      segments: [],
-      campaignIds: [],
-      lookbackDays: 30,
-      inactiveCartMinutes: 60,
-      highIntentMinEvents: 3,
-      highIntentWindowMinutes: 60,
-    },
+    behaviorRules: { ...defaultBehaviorTargetingRules },
   };
 }

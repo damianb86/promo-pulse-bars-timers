@@ -178,6 +178,8 @@ import {
   type BadgeSettingsValues,
 } from "../types/badge";
 import {
+  behaviorTargetingBounds,
+  defaultBehaviorTargetingRules,
   normalizeBehaviorTargetingRules,
   type BehaviorTargetingRules,
 } from "../types/behavior-targeting";
@@ -2648,45 +2650,80 @@ function parseBehaviorTargetingFormData(formData: FormData): {
   errors: BehaviorTargetingErrors;
 } {
   const errors: BehaviorTargetingErrors = {};
+  const d = defaultBehaviorTargetingRules;
+  const b = behaviorTargetingBounds;
+  const readInt = (
+    key: string,
+    field: keyof typeof b & keyof BehaviorTargetingErrors,
+  ) =>
+    readBehaviorInteger(
+      formData,
+      key,
+      d[field] as number,
+      b[field].min,
+      b[field].max,
+      field,
+      errors,
+    );
+
   const rawValues = {
     enabled: isFormCheckboxChecked(formData, "behaviorEnabled"),
     segments: formData.getAll("behaviorSegments").map(String),
-    campaignIds: parseMultilineIds(formData.get("behaviorCampaignIds")),
-    lookbackDays: readBehaviorInteger(
-      formData,
-      "behaviorLookbackDays",
-      30,
-      1,
-      365,
-      "lookbackDays",
-      errors,
+    lookbackDays: readInt("behaviorLookbackDays", "lookbackDays"),
+
+    newVisitorWithinMinutes: readInt(
+      "behaviorNewVisitorWithinMinutes",
+      "newVisitorWithinMinutes",
     ),
-    inactiveCartMinutes: readBehaviorInteger(
+    returningMinPriorSessions: readInt(
+      "behaviorReturningMinPriorSessions",
+      "returningMinPriorSessions",
+    ),
+    returningMinDaysSinceFirstSeen: readInt(
+      "behaviorReturningMinDaysSinceFirstSeen",
+      "returningMinDaysSinceFirstSeen",
+    ),
+
+    viewedProductMinViews: readInt(
+      "behaviorViewedProductMinViews",
+      "viewedProductMinViews",
+    ),
+    viewedProductDelayMinutes: readInt(
+      "behaviorViewedProductDelayMinutes",
+      "viewedProductDelayMinutes",
+    ),
+    addedToCartDelayMinutes: readInt(
+      "behaviorAddedToCartDelayMinutes",
+      "addedToCartDelayMinutes",
+    ),
+    checkoutStartedDelayMinutes: readInt(
+      "behaviorCheckoutStartedDelayMinutes",
+      "checkoutStartedDelayMinutes",
+    ),
+    checkoutStartedExcludePurchasers: isFormCheckboxChecked(
       formData,
+      "behaviorCheckoutStartedExcludePurchasers",
+    ),
+    inactiveCartMinutes: readInt(
       "behaviorInactiveCartMinutes",
-      60,
-      15,
-      10080,
       "inactiveCartMinutes",
-      errors,
     ),
-    highIntentMinEvents: readBehaviorInteger(
+
+    sawCampaignIds: parseMultilineIds(formData.get("behaviorSawCampaignIds")),
+    clickedCampaignIds: parseMultilineIds(
+      formData.get("behaviorClickedCampaignIds"),
+    ),
+    usedUniqueCodeIncludeAssigned: isFormCheckboxChecked(
       formData,
+      "behaviorUsedUniqueCodeIncludeAssigned",
+    ),
+    highIntentMinEvents: readInt(
       "behaviorHighIntentMinEvents",
-      3,
-      2,
-      20,
       "highIntentMinEvents",
-      errors,
     ),
-    highIntentWindowMinutes: readBehaviorInteger(
-      formData,
+    highIntentWindowMinutes: readInt(
       "behaviorHighIntentWindowMinutes",
-      60,
-      5,
-      1440,
       "highIntentWindowMinutes",
-      errors,
     ),
   };
   const values = normalizeBehaviorTargetingRules(rawValues);

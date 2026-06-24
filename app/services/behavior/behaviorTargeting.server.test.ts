@@ -44,8 +44,8 @@ describe("behavior targeting", () => {
 
     expect(profile).toMatchObject({
       canUseBehaviorTargeting: true,
-      newVisitor: true,
-      returningVisitor: false,
+      totalTouches: 0,
+      priorSessionCount: 0,
     });
     expect(
       campaignMatchesBehaviorTargeting(
@@ -69,16 +69,27 @@ describe("behavior targeting", () => {
       now,
     });
 
-    expect(profile.returningVisitor).toBe(true);
+    expect(profile.priorSessionCount).toBe(1);
     expect(
       campaignMatchesBehaviorTargeting(
         { enabled: true, segments: ["RETURNING_VISITOR"] },
         profile,
       ),
     ).toBe(true);
+    // Requiring more prior sessions than observed excludes the visitor.
+    expect(
+      campaignMatchesBehaviorTargeting(
+        {
+          enabled: true,
+          segments: ["RETURNING_VISITOR"],
+          returningMinPriorSessions: 2,
+        },
+        profile,
+      ),
+    ).toBe(false);
   });
 
-  it("detects added-to-cart without checkout", async () => {
+  it("detects added-to-cart without checkout and honors the delay", async () => {
     prismaMock.attributionTouch.findMany.mockResolvedValue([
       touch({
         eventType: AnalyticsEventType.ADD_TO_CART,
@@ -94,13 +105,79 @@ describe("behavior targeting", () => {
       now,
     });
 
-    expect(profile.addedToCartNoCheckout).toBe(true);
+    expect(profile.latestAddToCartAt).toEqual(
+      new Date("2026-06-18T11:00:00.000Z"),
+    );
+    // 60 minutes elapsed: a 30-minute delay is satisfied, a 120-minute one is not.
     expect(
       campaignMatchesBehaviorTargeting(
-        { enabled: true, segments: ["ADDED_TO_CART_NO_CHECKOUT"] },
+        {
+          enabled: true,
+          segments: ["ADDED_TO_CART_NO_CHECKOUT"],
+          addedToCartDelayMinutes: 30,
+        },
         profile,
       ),
     ).toBe(true);
+    expect(
+      campaignMatchesBehaviorTargeting(
+        {
+          enabled: true,
+          segments: ["ADDED_TO_CART_NO_CHECKOUT"],
+          addedToCartDelayMinutes: 120,
+        },
+        profile,
+      ),
+    ).toBe(false);
+  });
+
+  it("counts high intent events within the configured window", async () => {
+    prismaMock.attributionTouch.findMany.mockResolvedValue([
+      touch({
+        eventType: AnalyticsEventType.PRODUCT_VIEWED,
+        occurredAt: new Date("2026-06-18T11:50:00.000Z"),
+      }),
+      touch({
+        eventType: AnalyticsEventType.ADD_TO_CART,
+        occurredAt: new Date("2026-06-18T11:55:00.000Z"),
+      }),
+      touch({
+        eventType: AnalyticsEventType.PRODUCT_VIEWED,
+        occurredAt: new Date("2026-06-18T09:00:00.000Z"),
+      }),
+    ]);
+
+    const profile = await buildVisitorBehaviorProfile({
+      shopId: "shop-1",
+      visitorId: "visitor-1",
+      sessionId: "session-1",
+      settings,
+      now,
+    });
+
+    // 2 events in the last 15 minutes, 3 within 4 hours.
+    expect(
+      campaignMatchesBehaviorTargeting(
+        {
+          enabled: true,
+          segments: ["HIGH_INTENT"],
+          highIntentMinEvents: 2,
+          highIntentWindowMinutes: 15,
+        },
+        profile,
+      ),
+    ).toBe(true);
+    expect(
+      campaignMatchesBehaviorTargeting(
+        {
+          enabled: true,
+          segments: ["HIGH_INTENT"],
+          highIntentMinEvents: 3,
+          highIntentWindowMinutes: 15,
+        },
+        profile,
+      ),
+    ).toBe(false);
   });
 
   it("matches clicked campaign targeting by campaign id", async () => {
@@ -120,6 +197,17 @@ describe("behavior targeting", () => {
     });
 
     expect(profile.clickedCampaignIds).toEqual(["campaign-clicked"]);
+    expect(
+      campaignMatchesBehaviorTargeting(
+        {
+          enabled: true,
+          segments: ["CLICKED_CAMPAIGN"],
+          clickedCampaignIds: ["campaign-clicked"],
+        },
+        profile,
+      ),
+    ).toBe(true);
+    // Legacy shared campaignIds still seed the per-segment list.
     expect(
       campaignMatchesBehaviorTargeting(
         {

@@ -5950,6 +5950,43 @@ s-page::part(page) {
   line-height: 16px;
 }
 
+.counterpulse-choice-card__panel {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e3e8ee;
+  background: #f9fafb;
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-subfield-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .counterpulse-subfield-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.counterpulse-toggle--inline {
+  display: grid;
+  gap: 4px;
+}
+
+.counterpulse-toggle--inline .counterpulse-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #202223;
+}
+
 .counterpulse-tier-list {
   display: grid;
   gap: 10px;

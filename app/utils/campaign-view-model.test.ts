@@ -178,6 +178,7 @@ describe("buildCampaignViewModel", () => {
     });
 
     expect(viewModel.discountCode).toBe("");
+    expect(viewModel.offer).toBeNull();
     expect(viewModel.freeShipping).toEqual({
       thresholdAmount: 125.5,
       currencyCode: "USD",
@@ -205,6 +206,30 @@ describe("buildCampaignViewModel", () => {
       badgePosition: "TOP_LEFT",
     });
     expect(viewModel.freeShippingProgressText).toBe("You're {{amount}} away.");
+  });
+
+  it("builds an editable preview offer for unique discount codes", () => {
+    const viewModel = buildCampaignViewModel({
+      name: "VIP unique codes",
+      type: "COUNTDOWN_BAR",
+      placements: [{ placementType: "TOP_BAR", enabled: true }],
+      translations: [{ locale: "en", headline: "VIP sale" }],
+      design: null,
+      discountSync: {
+        method: "UNIQUE_CODE",
+        discountCode: null,
+        uniqueCodePrefix: "VIP",
+        uniqueCodeAutoApply: true,
+      },
+    });
+
+    expect(viewModel.discountCode).toBe("");
+    expect(viewModel.offer).toEqual({
+      method: "UNIQUE_CODE",
+      code: "VIP-A1B2C3",
+      isUniqueCode: true,
+      canApply: true,
+    });
   });
 
   it("builds cart rescue settings without enabling unsupported urgency", () => {

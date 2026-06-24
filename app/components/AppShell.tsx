@@ -14,7 +14,6 @@ const navigationItems = [
   { label: "Reports", href: "/app/reports" },
   { label: "Recommendations", href: "/app/recommendations" },
   { label: "Template Library", href: "/app/templates" },
-  { label: "Multi-store", href: "/app/agency" },
   { label: "Settings", href: "/app/settings" },
   { label: "Billing", href: "/app/billing" },
   { label: "Help", href: "/app/help" },

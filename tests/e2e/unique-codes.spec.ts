@@ -66,6 +66,16 @@ test("unique codes can be generated and assigned per visitor", async ({
   });
   await expect(generatedPoolRow).toBeVisible();
   await expect(generatedPoolRow).toContainText("Yes");
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  await expect(page.getByRole("heading", { name: "Offer code" })).toBeVisible();
+  const preview = page.getByRole("region", {
+    name: "Design live campaign preview",
+  });
+  await expect(preview).toContainText("STG2-A1B2C3");
+  await expect(preview).toContainText("Copy code");
+  await expect(preview).toContainText("Apply discount");
+
   await publishCurrentCampaign(page);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");

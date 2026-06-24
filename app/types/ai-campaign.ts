@@ -67,6 +67,7 @@ export type CampaignAiInput = {
   merchantNotes: string;
   followUpAnswers: CampaignAiAnswerMap;
   ctaUrl: string;
+  locales: StorefrontLocale[];
 };
 
 export type CampaignAiFormErrors = Partial<

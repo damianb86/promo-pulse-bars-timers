@@ -24,6 +24,7 @@ import {
   recordAnalyticsEvent,
   validateAnalyticsEventPayload,
 } from "../models/analytics.server";
+import { publishCampaignForShop } from "../models/campaign.server";
 import {
   action as storefrontCampaignsAction,
   loader as storefrontCampaignsLoader,
@@ -57,6 +58,7 @@ const prismaMock = vi.hoisted(() => ({
   campaign: {
     findFirst: vi.fn(),
     findMany: vi.fn(),
+    update: vi.fn(),
   },
   analyticsEvent: {
     count: vi.fn(),
@@ -125,6 +127,10 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     prismaMock.shopSettings.findUnique.mockResolvedValue(null);
     prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
     prismaMock.campaign.findMany.mockResolvedValue([]);
+    prismaMock.campaign.update.mockImplementation(async ({ data }) => ({
+      id: "campaign-1",
+      ...data,
+    }));
     prismaMock.analyticsEvent.count.mockResolvedValue(0);
     prismaMock.analyticsEvent.findFirst.mockResolvedValue(null);
     prismaMock.analyticsEvent.create.mockImplementation(async () => ({
@@ -335,8 +341,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     const eligibleBody = await eligibleResponse.json();
 
     expect(eligibleResponse.status).toBe(200);
-    expect(eligibleResponse.headers.get("Cache-Control")).toContain(
-      "max-age=45",
+    expect(eligibleResponse.headers.get("Cache-Control")).toBe(
+      "no-cache, max-age=0, must-revalidate",
     );
     expect(prismaMock.campaign.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -373,6 +379,93 @@ describe("Promo Pulse Stage 1 critical flow", () => {
 
     expect(mismatchResponse.status).toBe(200);
     expect(mismatchBody.campaigns).toEqual([]);
+  });
+
+  it("flushes cached storefront payloads when publishing campaign changes", async () => {
+    const initialEndsAt = new Date(Date.now() + 60 * 60 * 1000);
+    const updatedEndsAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const initialPublishedCampaign = createTestCampaign({
+      id: "publish-cache-campaign",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.ANNOUNCEMENT,
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: initialEndsAt,
+      placements: [{ placementType: PlacementType.TOP_BAR }],
+      translations: [
+        {
+          locale: "en",
+          headline: "Announcement before publish",
+        },
+      ],
+    });
+    const updatedDraftCampaign = createTestCampaign({
+      id: "publish-cache-campaign",
+      status: CampaignStatus.ACTIVE,
+      type: CampaignType.COUNTDOWN_BAR,
+      goal: CampaignGoal.ANNOUNCEMENT,
+      startsAt: new Date(Date.now() - 60_000),
+      endsAt: updatedEndsAt,
+      placements: [{ placementType: PlacementType.TOP_BAR }],
+      translations: [
+        {
+          locale: "en",
+          headline: "Announcement after publish",
+        },
+      ],
+    });
+    let publishedCampaign = initialPublishedCampaign;
+
+    prismaMock.campaign.findMany.mockImplementation(async () => [
+      publishedCampaign,
+    ]);
+    prismaMock.campaign.findFirst.mockResolvedValue(updatedDraftCampaign);
+    prismaMock.campaign.update.mockImplementation(async ({ data }) => {
+      publishedCampaign = {
+        ...updatedDraftCampaign,
+        status: data.status ?? updatedDraftCampaign.status,
+        lastSavedAt: data.lastSavedAt,
+        publishedAt: data.publishedAt,
+        publishedSnapshot: data.publishedSnapshot,
+      };
+
+      return publishedCampaign;
+    });
+
+    const requestUrl =
+      "https://app.test/api/storefront/campaigns?shop=example.myshopify.com&path=/&locale=en&placement=TOP_BAR";
+    const initialResponse = await storefrontCampaignsLoader(
+      createLoaderArgs(
+        new Request(requestUrl, {
+          headers: { "x-forwarded-for": "203.0.113.30" },
+        }),
+      ),
+    );
+    const initialBody = await initialResponse.json();
+
+    expect(initialBody.campaigns[0]).toMatchObject({
+      endsAt: initialEndsAt.toISOString(),
+      texts: { headline: "Announcement before publish" },
+    });
+
+    await publishCampaignForShop("publish-cache-campaign", "shop-1");
+
+    const refreshedResponse = await storefrontCampaignsLoader(
+      createLoaderArgs(
+        new Request(requestUrl, {
+          headers: { "x-forwarded-for": "203.0.113.31" },
+        }),
+      ),
+    );
+    const refreshedBody = await refreshedResponse.json();
+
+    expect(refreshedBody.campaigns[0]).toMatchObject({
+      endsAt: updatedEndsAt.toISOString(),
+      texts: { headline: "Announcement after publish" },
+    });
+    expect(refreshedResponse.headers.get("ETag")).not.toBe(
+      initialResponse.headers.get("ETag"),
+    );
   });
 
   it("serves behavior-targeted storefront campaigns from anonymous visitor history", async () => {

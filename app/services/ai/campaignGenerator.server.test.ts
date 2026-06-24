@@ -11,7 +11,10 @@ import {
   shouldAskCampaignAiFollowUpQuestions,
   type CampaignAiProvider,
 } from "./campaignGenerator.server";
-import { AI_CAMPAIGN_SYSTEM_PROMPT } from "./campaignPrompts.server";
+import {
+  AI_CAMPAIGN_SYSTEM_PROMPT,
+  buildCampaignAiUserPrompt,
+} from "./campaignPrompts.server";
 
 describe("AI campaign generator", () => {
   it("generates deterministic mock campaign suggestions", async () => {
@@ -39,6 +42,19 @@ describe("AI campaign generator", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).not.toContain("variants");
   });
 
+  it("asks the provider only for active storefront locales", () => {
+    const input = buildDefaultCampaignAiInput({
+      locale: "it",
+      locales: ["en", "it"],
+      productContext: "linen shirts",
+    });
+    const prompt = buildCampaignAiUserPrompt(input);
+
+    expect(prompt).toContain('"targetLocales": [');
+    expect(prompt).toContain('"it"');
+    expect(prompt).not.toContain('"de"');
+  });
+
   it("does not apply a suggestion when the save form has no reviewed payload", () => {
     expect(parseAppliedCampaignSuggestion(null)).toBeNull();
     expect(parseAppliedCampaignSuggestion("")).toBeNull();
@@ -51,7 +67,7 @@ describe("AI campaign generator", () => {
     formData.set("campaignShape", "product");
     formData.set("productContext", "espresso accessories");
     formData.set("countryCode", "IT");
-    formData.set("locale", "it-IT");
+    formData.set("locale", "xx-ZZ");
     formData.set("brandTone", "minimal");
     formData.set("merchantNotes", "Keep copy compact.");
     formData.set("ctaUrl", "/collections/coffee");
@@ -67,6 +83,21 @@ describe("AI campaign generator", () => {
     expect(parsed.values.merchantNotes).toBe("Keep copy compact.");
     expect(translations.en.headline).toContain("espresso accessories");
     expect(translations.es.ctaText).toBeTruthy();
+  });
+
+  it("builds AI suggestions only for enabled storefront locales", async () => {
+    const suggestion = await generateCampaignSuggestion(
+      buildDefaultCampaignAiInput({
+        locale: "it",
+        locales: ["en", "it"],
+        productContext: "linen shirts",
+      }),
+      { provider: createMockCampaignAiProvider() },
+    );
+
+    expect(Object.keys(suggestion.translations)).toEqual(["en", "it"]);
+    expect(suggestion.translations.it.headline).toContain("linen shirts");
+    expect(suggestion.translations.es).toBeUndefined();
   });
 
   it("maps cart and offer input into actionable campaign settings", async () => {

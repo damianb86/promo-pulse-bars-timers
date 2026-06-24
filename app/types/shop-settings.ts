@@ -1,9 +1,18 @@
-export const supportedStorefrontLocales = ["en", "es", "pt-BR", "fr", "de"];
+import {
+  defaultEnabledStorefrontLocales,
+  storefrontLocales,
+} from "./localization";
 
-export const storefrontLocaleLabels: Record<string, string> = {
-  en: "English",
-  es: "Spanish",
-  "pt-BR": "Portuguese BR",
-  fr: "French",
-  de: "German",
-};
+export const supportedStorefrontLocales = storefrontLocales.map(
+  (localeOption) => localeOption.locale,
+);
+
+export const storefrontLocaleLabels: Record<string, string> =
+  Object.fromEntries(
+    storefrontLocales.map((localeOption) => [
+      localeOption.locale,
+      localeOption.label,
+    ]),
+  );
+
+export const defaultShopEnabledLocales = defaultEnabledStorefrontLocales;

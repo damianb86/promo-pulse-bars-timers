@@ -39,6 +39,7 @@ export type ExperimentVariantRow = {
 export type ExperimentVariantResultRow = {
   variantId: string;
   variantName: string;
+  trafficSplit: number;
   impressions: number;
   clicks: number;
   ctr: number;
@@ -571,7 +572,14 @@ export function ExperimentsEditor({
       )}
 
       {notice && (
-        <AppAlert tone="info" title="Experiments updated">
+        <AppAlert
+          tone="info"
+          title={
+            notice.includes("created as draft")
+              ? "Experiment created as draft"
+              : "Experiments updated"
+          }
+        >
           <s-paragraph>{notice}</s-paragraph>
         </AppAlert>
       )}
@@ -2421,6 +2429,7 @@ function ExperimentResultsTable({
           <thead>
             <tr>
               <th>Variant</th>
+              <th>Traffic split</th>
               <th>Impressions</th>
               <th>Clicks</th>
               <th>CTR</th>
@@ -2476,6 +2485,7 @@ function ExperimentResultsTable({
                       ) : null}
                     </div>
                   </td>
+                  <td>{formatPercent(variant.trafficSplit / 100)}</td>
                   <td>{variant.impressions}</td>
                   <td>{variant.clicks}</td>
                   <td>{formatPercent(variant.ctr)}</td>
@@ -3170,6 +3180,9 @@ function VariantMiniPreview({
   const placement = viewModel.placements[0] || "TOP_BAR";
   const hasTimer = Boolean(viewModel.timer || viewModel.deliveryCutoff);
   const isInline = design.layout === "INLINE";
+  const hasOffer = isVariantOfferVisible(viewModel, design);
+  const hasCta = design.showButton && Boolean(viewModel.ctaText);
+  const buttonStyle = buildVariantPreviewButtonStyle(design);
 
   return (
     <div className="counterpulse-variant-preview">
@@ -3210,16 +3223,11 @@ function VariantMiniPreview({
 
         {!isInline && hasTimer ? <VariantPreviewTimer design={design} /> : null}
 
-        {(viewModel.discountCode ||
-          (design.showButton && viewModel.ctaText)) && (
+        {(hasOffer || hasCta) && (
           <div className="counterpulse-preview-actions">
-            {viewModel.discountCode ? (
-              <span className="counterpulse-preview-code">
-                {viewModel.discountCode}
-              </span>
-            ) : null}
-            {design.showButton && viewModel.ctaText ? (
-              <span className="counterpulse-preview-cta">
+            <VariantOfferPreview design={design} viewModel={viewModel} />
+            {hasCta ? (
+              <span className="counterpulse-preview-cta" style={buttonStyle}>
                 {viewModel.ctaText}
               </span>
             ) : null}
@@ -3248,6 +3256,68 @@ function VariantMiniPreview({
         ) : null}
       </section>
     </div>
+  );
+}
+
+function VariantOfferPreview({
+  design,
+  viewModel,
+}: {
+  design: CampaignDesignValues;
+  viewModel: CampaignViewModel;
+}) {
+  const offer = viewModel.offer;
+
+  if (!offer || !isVariantOfferVisible(viewModel, design)) return null;
+
+  const buttonStyle = buildVariantPreviewButtonStyle(design);
+
+  return (
+    <span
+      className={[
+        "counterpulse-preview-offer",
+        `counterpulse-preview-offer--${design.offerCodeLayout.toLowerCase()}`,
+      ].join(" ")}
+    >
+      {design.showDiscountCode ? (
+        <span className="counterpulse-preview-code-wrap">
+          {design.offerCodeLabel ? (
+            <span className="counterpulse-preview-offer-label">
+              {design.offerCodeLabel}
+            </span>
+          ) : null}
+          <span className="counterpulse-preview-code">{offer.code}</span>
+        </span>
+      ) : null}
+      {design.showCopyCodeButton ? (
+        <span className="counterpulse-preview-code-action" style={buttonStyle}>
+          {design.copyCodeLabel}
+        </span>
+      ) : null}
+      {design.showApplyDiscountButton && offer.canApply ? (
+        <span
+          className="counterpulse-preview-cta counterpulse-preview-cta--offer"
+          style={buttonStyle}
+        >
+          {design.applyDiscountLabel}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function isVariantOfferVisible(
+  viewModel: CampaignViewModel,
+  design: CampaignDesignValues,
+) {
+  const offer = viewModel.offer;
+
+  if (!offer) return false;
+
+  return Boolean(
+    design.showDiscountCode ||
+    design.showCopyCodeButton ||
+    (design.showApplyDiscountButton && offer.canApply),
   );
 }
 
@@ -3499,8 +3569,26 @@ function buildVariantPreviewStyle(design: CampaignDesignValues) {
     "--cp-padding-block": `${design.paddingBlock}px`,
     "--cp-padding-inline": `${design.paddingInline}px`,
     "--cp-gap": `${design.contentGap}px`,
+    "--cp-offer-code-text": design.offerCodeTextColor,
+    "--cp-offer-code-bg": design.offerCodeBackgroundColor,
+    "--cp-offer-code-border": design.offerCodeBorderColor,
+    "--cp-offer-code-size": `${design.offerCodeFontSize}px`,
+    "--cp-offer-code-radius": `${design.offerCodeBorderRadius}px`,
+    "--cp-offer-code-padding-block": `${design.offerCodePaddingBlock}px`,
+    "--cp-offer-code-padding-inline": `${design.offerCodePaddingInline}px`,
+    "--cp-offer-gap": `${design.offerCodeGap}px`,
     "--cp-motion-duration": `${design.animationDurationMs}ms`,
   } as CSSProperties;
+}
+
+function buildVariantPreviewButtonStyle(
+  design: CampaignDesignValues,
+): CSSProperties {
+  return {
+    backgroundColor: design.buttonColor,
+    borderColor: design.buttonColor,
+    color: design.buttonTextColor,
+  };
 }
 
 function VariantDrawerField({

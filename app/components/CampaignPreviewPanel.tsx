@@ -28,6 +28,7 @@ const previewPlacementOptions: Array<{
 
 type CampaignPreviewPanelProps = {
   actualPlacements?: PreviewPlacement[];
+  ariaLabel?: string;
   className?: string;
   design: CampaignDesignValues;
   device: PreviewDevice;
@@ -41,6 +42,7 @@ type CampaignPreviewPanelProps = {
 
 export function CampaignPreviewPanel({
   actualPlacements = [],
+  ariaLabel,
   className = "",
   design,
   device,
@@ -70,9 +72,11 @@ export function CampaignPreviewPanel({
 
   return (
     <div
+      aria-label={ariaLabel}
       className={["counterpulse-preview-panel", className]
         .filter(Boolean)
         .join(" ")}
+      role={ariaLabel ? "region" : undefined}
     >
       <div className="counterpulse-preview-toolbar">
         <DevicePreviewToggle value={device} onChange={onDeviceChange} />

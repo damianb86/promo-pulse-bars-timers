@@ -672,6 +672,38 @@
       clamp(design.iconSize, 12, 64, 20) + "px",
     );
     bar.style.setProperty(
+      "--pp-offer-code-text",
+      safeColor(design.offerCodeTextColor, "#111827"),
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-bg",
+      safeColor(design.offerCodeBackgroundColor, "#ffffff"),
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-border",
+      safeColor(design.offerCodeBorderColor, "#d1d5db"),
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-size",
+      clamp(design.offerCodeFontSize, 10, 24, 13) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-radius",
+      clamp(design.offerCodeBorderRadius, 0, 40, 4) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-padding-block",
+      clamp(design.offerCodePaddingBlock, 2, 24, 5) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-offer-code-padding-inline",
+      clamp(design.offerCodePaddingInline, 4, 32, 8) + "px",
+    );
+    bar.style.setProperty(
+      "--pp-offer-gap",
+      clamp(design.offerCodeGap, 0, 24, 6) + "px",
+    );
+    bar.style.setProperty(
       "--pp-motion-duration",
       clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
     );
@@ -715,9 +747,12 @@
     var id = placement === "BOTTOM_BAR" ? "pp-bottom-bars" : "pp-top-bars";
     var existingContainer = document.getElementById(id);
     var container;
+    var configuredTarget;
 
     if (placement === "CUSTOM_SELECTOR") {
-      target = queryCustomPlacementTarget(selector);
+      target = querySelectorList(
+        selector || getConfiguredSelector("CUSTOM_SELECTOR"),
+      );
 
       if (!target) return null;
 
@@ -731,13 +766,16 @@
 
     if (existingContainer) return existingContainer;
 
+    configuredTarget = querySelectorList(getConfiguredSelector(placement));
     container = document.createElement("div");
     container.id = id;
     container.className =
       "pp-container pp-container--" + placement.toLowerCase().replace("_", "-");
 
     if (placement === "BOTTOM_BAR") {
-      document.body.appendChild(container);
+      (configuredTarget || document.body).appendChild(container);
+    } else if (configuredTarget) {
+      configuredTarget.insertBefore(container, configuredTarget.firstChild);
     } else {
       document.body.insertBefore(container, document.body.firstChild);
     }
@@ -764,14 +802,31 @@
     element.setAttribute("style", styleText);
   }
 
-  function queryCustomPlacementTarget(selector) {
+  function getConfiguredSelector(placement) {
+    var settings = window.PromoPulseSettings || {};
+    var selectors = {
+      TOP_BAR: settings.customTopBarSelector,
+      BOTTOM_BAR: settings.customBottomBarSelector,
+      PRODUCT_PAGE: settings.customProductPageSelector,
+      PRODUCT_PAGE_BADGE: settings.customProductPageBadgeSelector,
+      COLLECTION_CARD: settings.customCollectionCardSelector,
+      CART_PAGE: settings.customCartPageSelector,
+      CART_DRAWER: settings.customCartDrawerSelector,
+      THANK_YOU_PAGE: settings.customThankYouPageSelector,
+      ORDER_STATUS_PAGE: settings.customOrderStatusPageSelector,
+      CUSTOM_SELECTOR: settings.customHtmlSlotSelector,
+    };
+
+    return selectors[placement] || "";
+  }
+
+  function querySelectorList(selector) {
     var selectors;
     var index;
     var currentSelector;
     var target;
 
     if (!selector || typeof selector !== "string") {
-      updateDebug(root, "CUSTOM_SELECTOR omitido: falta el selector.");
       return null;
     }
 
@@ -789,12 +844,11 @@
         target = document.querySelector(currentSelector);
         if (target) return target;
       } catch (error) {
-        updateDebug(root, "CUSTOM_SELECTOR invalido: " + currentSelector);
+        updateDebug(root, "Selector invalido: " + currentSelector);
         debug(currentSelector, error);
       }
     }
 
-    updateDebug(root, "CUSTOM_SELECTOR omitido: ningun selector coincide.");
     return null;
   }
 

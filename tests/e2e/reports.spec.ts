@@ -16,10 +16,13 @@ test("advanced reports load filtered campaign data and export CSV", async ({
   await expect(page.getByText("Reporting workspace")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Performance trend" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Performance by placement" }),
   ).toBeVisible();
+  await expect(page.locator(".counterpulse-reports-metric__icon")).toHaveCount(
+    10,
+  );
   await expect(
     page.getByRole("row", { name: /US 30 6 20\.0%/ }).first(),
   ).toBeVisible();
@@ -44,6 +47,11 @@ test("advanced reports load filtered campaign data and export CSV", async ({
     .getByTestId("reports-export-csv")
     .getAttribute("data-export-href");
   expect(csvHref).toContain("/app/reports/csv");
+  await expect(
+    page
+      .getByTestId("reports-export-csv")
+      .locator("svg.counterpulse-reports-export__icon"),
+  ).toBeVisible();
 
   const csvResponse = await page.request.get(csvHref!);
   expect(csvResponse.ok()).toBe(true);

@@ -7,11 +7,14 @@ import {
   createEmptyCampaignTranslationsByLocale,
   defaultStorefrontLocale,
   emptyCampaignTranslationValues,
+  getStorefrontLocaleOptions,
+  normalizeStorefrontLocaleCode,
   storefrontLocales,
   type CampaignTextField,
   type CampaignTranslationValues,
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
+  type StorefrontLocaleOption,
 } from "../types/localization";
 
 export type CampaignTranslationRecord = {
@@ -28,7 +31,7 @@ export type CampaignTextLookup = {
 };
 
 export type CampaignTranslationsViewModel = {
-  locales: typeof storefrontLocales;
+  locales: StorefrontLocaleOption[];
   fields: typeof campaignTranslationFields;
   values: CampaignTranslationsByLocale;
   resolvedValues: CampaignTranslationsByLocale;
@@ -57,7 +60,7 @@ export type CampaignTranslationCreateValues = CampaignTranslationValues & {
   ctaUrl?: string;
 };
 
-const genericCopy: Record<StorefrontLocale, CampaignTranslationValues> = {
+const genericCopy: Record<string, CampaignTranslationValues> = {
   en: copy({
     headline: "Limited-time offer",
     subheadline: "Save while this promotion is available.",
@@ -141,7 +144,7 @@ const genericCopy: Record<StorefrontLocale, CampaignTranslationValues> = {
 
 const defaultCampaignCopy: Record<
   DefaultCampaignCopyKey,
-  Record<StorefrontLocale, CampaignTranslationValues>
+  Record<string, CampaignTranslationValues>
 > = {
   flashSale: withLocaleOverrides({
     en: {
@@ -407,12 +410,13 @@ export function getCampaignText(
 }
 
 export function getCampaignTranslationsViewModel(
-  campaign: CampaignTextLookup,
+  campaign: CampaignTextLookup & { locales?: readonly string[] },
 ): CampaignTranslationsViewModel {
-  const values = createEmptyCampaignTranslationsByLocale();
-  const resolvedValues = createEmptyCampaignTranslationsByLocale();
+  const localeOptions = getStorefrontLocaleOptions(campaign.locales);
+  const values = createEmptyCampaignTranslationsByLocale(localeOptions);
+  const resolvedValues = createEmptyCampaignTranslationsByLocale(localeOptions);
 
-  for (const localeOption of storefrontLocales) {
+  for (const localeOption of localeOptions) {
     const translation = findTranslation(
       campaign.translations,
       localeOption.locale,
@@ -429,7 +433,7 @@ export function getCampaignTranslationsViewModel(
   }
 
   return {
-    locales: storefrontLocales,
+    locales: localeOptions,
     fields: campaignTranslationFields,
     values,
     resolvedValues,
@@ -438,17 +442,19 @@ export function getCampaignTranslationsViewModel(
 
 export function buildDefaultCampaignTranslations({
   goal,
+  locales,
   type,
   overrides = {},
 }: {
   goal: CampaignGoalValue | string;
+  locales?: readonly string[];
   type: CampaignTypeValue | string;
   overrides?: DefaultTranslationOverrides;
 }): CampaignTranslationCreateValues[] {
   const copyKey = getDefaultCampaignCopyKey(goal, type);
 
-  return storefrontLocales.map(({ locale }) => {
-    const baseValues = defaultCampaignCopy[copyKey][locale];
+  return getStorefrontLocaleOptions(locales).map(({ locale }) => {
+    const baseValues = getCampaignCopyValues(copyKey, locale);
     const override = overrides[locale] ?? {};
     const cleanOverride = removeBlankOverrideValues(override);
 
@@ -465,29 +471,13 @@ export function getDefaultCampaignTranslationValues(
   type: CampaignTypeValue | string,
   locale: StorefrontLocale,
 ) {
-  return defaultCampaignCopy[getDefaultCampaignCopyKey(goal, type)][locale];
+  return getCampaignCopyValues(getDefaultCampaignCopyKey(goal, type), locale);
 }
 
 export function normalizeStorefrontLocale(
   locale: string | null | undefined,
 ): StorefrontLocale | null {
-  const normalized = locale?.trim().replace("_", "-").toLowerCase();
-  if (!normalized) return null;
-
-  if (
-    normalized === "pt-br" ||
-    normalized === "pt" ||
-    normalized.startsWith("pt-")
-  ) {
-    return "pt-BR";
-  }
-
-  if (normalized === "en" || normalized.startsWith("en-")) return "en";
-  if (normalized === "es" || normalized.startsWith("es-")) return "es";
-  if (normalized === "fr" || normalized.startsWith("fr-")) return "fr";
-  if (normalized === "de" || normalized.startsWith("de-")) return "de";
-
-  return null;
+  return normalizeStorefrontLocaleCode(locale);
 }
 
 function findTranslation(
@@ -549,18 +539,39 @@ function copy(values: Partial<CampaignTranslationValues>) {
   };
 }
 
+function getCampaignCopyValues(
+  copyKey: DefaultCampaignCopyKey,
+  locale: StorefrontLocale,
+) {
+  return (
+    defaultCampaignCopy[copyKey][locale] ??
+    defaultCampaignCopy[copyKey][defaultStorefrontLocale] ??
+    getGenericCopy(locale)
+  );
+}
+
+function getGenericCopy(locale: StorefrontLocale) {
+  return (
+    genericCopy[locale] ??
+    genericCopy[defaultStorefrontLocale] ??
+    emptyCampaignTranslationValues
+  );
+}
+
 function withLocaleOverrides(
-  overrides: Record<StorefrontLocale, Partial<CampaignTranslationValues>>,
+  overrides: Partial<
+    Record<StorefrontLocale, Partial<CampaignTranslationValues>>
+  >,
 ) {
   return storefrontLocales.reduce(
     (copies, localeOption) => {
       copies[localeOption.locale] = {
-        ...genericCopy[localeOption.locale],
+        ...getGenericCopy(localeOption.locale),
         ...overrides[localeOption.locale],
       };
       return copies;
     },
-    {} as Record<StorefrontLocale, CampaignTranslationValues>,
+    {} as Record<string, CampaignTranslationValues>,
   );
 }
 

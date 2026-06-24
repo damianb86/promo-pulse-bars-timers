@@ -76,8 +76,11 @@ export type CampaignViewModelInput = {
     badgePosition: string;
   } | null;
   discountSync?: {
+    method?: string | null;
     discountCode?: string | null;
     showCodeOnStorefront?: boolean | null;
+    uniqueCodePrefix?: string | null;
+    uniqueCodeAutoApply?: boolean | null;
   } | null;
 };
 
@@ -98,6 +101,7 @@ export type CampaignViewModel = {
   lowStockText: string;
   badgeText: string;
   discountCode: string;
+  offer: DiscountOfferViewModel | null;
   placements: string[];
   design: CampaignDesignValues;
   timer: TimerSettingsInput | null;
@@ -135,6 +139,13 @@ export type BadgeViewModel = {
   badgePosition: BadgePositionValue;
 };
 
+export type DiscountOfferViewModel = {
+  method: string;
+  code: string;
+  isUniqueCode: boolean;
+  canApply: boolean;
+};
+
 export function buildCampaignViewModel(
   campaign: CampaignViewModelInput,
 ): CampaignViewModel {
@@ -151,6 +162,7 @@ export function buildCampaignViewModel(
     customCss: campaign.design?.customCss ?? "",
   };
   design.showIcon = design.icon !== "NONE";
+  const offer = buildDiscountOfferViewModel(campaign);
 
   return {
     name: campaign.name,
@@ -192,10 +204,8 @@ export function buildCampaignViewModel(
       getCampaignText(campaign, "en", "badgeText") ||
       getCampaignText(campaign, "en", "headline") ||
       campaign.name,
-    discountCode:
-      campaign.discountSync?.showCodeOnStorefront === false
-        ? ""
-        : (campaign.discountSync?.discountCode ?? ""),
+    discountCode: offer && !offer.isUniqueCode ? offer.code : "",
+    offer,
     placements: campaign.placements
       .filter((placement) => placement.enabled)
       .map((placement) => placement.placementType),
@@ -207,6 +217,47 @@ export function buildCampaignViewModel(
     lowStock: buildLowStockViewModel(campaign),
     badge: buildBadgeViewModel(campaign),
   };
+}
+
+function buildDiscountOfferViewModel(
+  campaign: CampaignViewModelInput,
+): DiscountOfferViewModel | null {
+  const discountSync = campaign.discountSync;
+
+  if (!discountSync) return null;
+
+  if (discountSync.method === "UNIQUE_CODE") {
+    return {
+      method: "UNIQUE_CODE",
+      code: buildPreviewUniqueCode(discountSync.uniqueCodePrefix),
+      isUniqueCode: true,
+      canApply: discountSync.uniqueCodeAutoApply !== false,
+    };
+  }
+
+  if (discountSync.showCodeOnStorefront === false) return null;
+
+  const code = discountSync.discountCode?.trim() ?? "";
+
+  if (!code) return null;
+
+  return {
+    method: discountSync.method || "CODE",
+    code,
+    isUniqueCode: false,
+    canApply: true,
+  };
+}
+
+function buildPreviewUniqueCode(prefix: string | null | undefined) {
+  const normalizedPrefix = (prefix || "PP")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "")
+    .slice(0, 12);
+  const safePrefix = normalizedPrefix || "PP";
+
+  return `${safePrefix}-A1B2C3`;
 }
 
 function buildTimerViewModel(

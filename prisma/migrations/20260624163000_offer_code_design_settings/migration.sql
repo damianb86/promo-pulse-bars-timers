@@ -1,0 +1,20 @@
+-- AlterTable
+ALTER TABLE "CampaignDesign" ADD COLUMN "showDiscountCode" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "CampaignDesign" ADD COLUMN "showCopyCodeButton" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "CampaignDesign" ADD COLUMN "showApplyDiscountButton" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeLayout" TEXT NOT NULL DEFAULT 'INLINE';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeLabel" TEXT NOT NULL DEFAULT 'Discount code';
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyCodeLabel" TEXT NOT NULL DEFAULT 'Copy code';
+ALTER TABLE "CampaignDesign" ADD COLUMN "copiedCodeLabel" TEXT NOT NULL DEFAULT 'Copied';
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyDiscountLabel" TEXT NOT NULL DEFAULT 'Apply discount';
+ALTER TABLE "CampaignDesign" ADD COLUMN "appliedDiscountMessage" TEXT NOT NULL DEFAULT 'Discount applied successfully.';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeTextColor" TEXT NOT NULL DEFAULT '#111827';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeBackgroundColor" TEXT NOT NULL DEFAULT '#FFFFFF';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeBorderColor" TEXT NOT NULL DEFAULT '#D1D5DB';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeFontSize" INTEGER NOT NULL DEFAULT 13;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeBorderRadius" INTEGER NOT NULL DEFAULT 4;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodePaddingBlock" INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodePaddingInline" INTEGER NOT NULL DEFAULT 8;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCodeGap" INTEGER NOT NULL DEFAULT 6;
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerCopyBehavior" TEXT NOT NULL DEFAULT 'FEEDBACK';
+ALTER TABLE "CampaignDesign" ADD COLUMN "offerApplyBehavior" TEXT NOT NULL DEFAULT 'SHOW_APPLIED';

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { AppAlert } from "../components/Notifications";
+import { AppAlert, FieldInfoButton } from "../components/Notifications";
 import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
@@ -212,10 +212,7 @@ export default function AnalyticsPage() {
               type="button"
               onClick={handleExport}
             >
-              <span
-                aria-hidden="true"
-                className="counterpulse-analytics-export__icon"
-              />
+              <CsvDownloadIcon />
               {isExporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
@@ -244,130 +241,163 @@ export default function AnalyticsPage() {
               </div>
             </section>
 
-          <section className="counterpulse-analytics-metric-grid">
-            <AnalyticsMetricCard
-              accent
-              label="Impressions"
-              previousLabel={previousRangeLabel}
-              sparkline={byDay.map((row) => row.impressions)}
-              value={formatNumber(summary.impressions)}
-            />
-            <AnalyticsMetricCard
-              label="Clicks"
-              previousLabel={previousRangeLabel}
-              value={formatNumber(summary.clicks)}
-            />
-            <AnalyticsMetricCard
-              label="CTR"
-              previousLabel={previousRangeLabel}
-              value={formatPercent(summary.ctr)}
-            />
-            <AnalyticsMetricCard
-              label="Add to cart"
-              previousLabel={previousRangeLabel}
-              value={formatNumber(summary.addToCart)}
-            />
-            <AnalyticsMetricCard
-              label="Checkout started"
-              previousLabel={previousRangeLabel}
-              value={formatNumber(summary.checkoutStarted)}
-            />
-            <AnalyticsMetricCard
-              label="Coupon copies"
-              previousLabel={previousRangeLabel}
-              value={formatNumber(summary.copyCode)}
-            />
-            <AnalyticsMetricCard
-              accent
-              icon="$"
-              label="Attributed revenue"
-              previousLabel={previousRangeLabel}
-              value={revenue}
-            />
-          </section>
+            <section className="counterpulse-analytics-metric-grid">
+              <AnalyticsMetricCard
+                accent
+                label="Impressions"
+                previousLabel={previousRangeLabel}
+                sparkline={byDay.map((row) => row.impressions)}
+                value={formatNumber(summary.impressions)}
+              />
+              <AnalyticsMetricCard
+                label="Clicks"
+                previousLabel={previousRangeLabel}
+                value={formatNumber(summary.clicks)}
+              />
+              <AnalyticsMetricCard
+                label="CTR"
+                previousLabel={previousRangeLabel}
+                value={formatPercent(summary.ctr)}
+              />
+              <AnalyticsMetricCard
+                label="Add to cart"
+                previousLabel={previousRangeLabel}
+                value={formatNumber(summary.addToCart)}
+              />
+              <AnalyticsMetricCard
+                label="Checkout started"
+                previousLabel={previousRangeLabel}
+                value={formatNumber(summary.checkoutStarted)}
+              />
+              <AnalyticsMetricCard
+                label="Coupon copies"
+                previousLabel={previousRangeLabel}
+                value={formatNumber(summary.copyCode)}
+              />
+              <AnalyticsMetricCard
+                accent
+                icon="$"
+                label="Attributed revenue"
+                previousLabel={previousRangeLabel}
+                value={revenue}
+              />
+            </section>
 
-          <section className="counterpulse-analytics-chart-grid">
-            <article className="counterpulse-analytics-card counterpulse-analytics-card--wide">
-              <div className="counterpulse-analytics-card__header">
-                <div>
-                  <h2>Performance over time</h2>
-                  <div className="counterpulse-analytics-legend">
-                    <span>
-                      <i className="counterpulse-analytics-legend__solid" />
-                      Impressions
-                    </span>
-                    <span>
-                      <i className="counterpulse-analytics-legend__dashed" />
-                      Clicks
-                    </span>
+            <section className="counterpulse-analytics-chart-grid">
+              <article className="counterpulse-analytics-card counterpulse-analytics-card--wide">
+                <div className="counterpulse-analytics-card__header">
+                  <div>
+                    <h2>Performance over time</h2>
+                    <div className="counterpulse-analytics-legend">
+                      <span>
+                        <i className="counterpulse-analytics-legend__solid" />
+                        Impressions
+                      </span>
+                      <span>
+                        <i className="counterpulse-analytics-legend__dashed" />
+                        Clicks
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <button
-                  className="counterpulse-analytics-period-button"
-                  type="button"
-                >
-                  Daily <span aria-hidden="true">v</span>
-                </button>
-              </div>
-              <PerformanceChart rows={byDay} />
-              <p className="counterpulse-analytics-insight">
-                <span aria-hidden="true" />
-                {latestInsight}
-              </p>
-            </article>
+                <PerformanceChart rows={byDay} />
+                <p className="counterpulse-analytics-insight">
+                  <span aria-hidden="true" />
+                  {latestInsight}
+                </p>
+              </article>
 
-            <article className="counterpulse-analytics-card">
-              <div className="counterpulse-analytics-card__header">
-                <h2>Traffic by device</h2>
-              </div>
-              <DeviceBreakdown rows={deviceBreakdown} />
-              <p className="counterpulse-analytics-card__caption">
-                Based on impressions
-              </p>
-            </article>
-          </section>
+              <article className="counterpulse-analytics-card">
+                <div className="counterpulse-analytics-card__header">
+                  <h2>Traffic by device</h2>
+                </div>
+                <DeviceBreakdown rows={deviceBreakdown} />
+                <p className="counterpulse-analytics-card__caption">
+                  Based on impressions
+                </p>
+              </article>
+            </section>
 
-          <section className="counterpulse-analytics-table-grid">
-            <article className="counterpulse-analytics-card">
-              <div className="counterpulse-analytics-card__header">
-                <h2>Campaign performance</h2>
-              </div>
-              {byCampaign.length === 0 ? (
-                <EmptyStateCard
-                  title="No analytics events yet"
-                  message="Events will appear here after the theme embed renders campaigns or after test events are posted to the analytics endpoint."
-                  actionLabel="View campaigns"
-                  actionHref="/app/campaigns"
-                />
-              ) : (
+            <section className="counterpulse-analytics-table-grid">
+              <article className="counterpulse-analytics-card">
+                <div className="counterpulse-analytics-card__header">
+                  <h2>Campaign performance</h2>
+                </div>
+                {byCampaign.length === 0 ? (
+                  <EmptyStateCard
+                    title="No analytics events yet"
+                    message="Events will appear here after the theme embed renders campaigns or after test events are posted to the analytics endpoint."
+                    actionLabel="View campaigns"
+                    actionHref="/app/campaigns"
+                  />
+                ) : (
+                  <div className="counterpulse-analytics-table-wrap">
+                    <table className="counterpulse-table counterpulse-analytics-table">
+                      <thead>
+                        <tr>
+                          <th>Campaign</th>
+                          <th>Type</th>
+                          <th>Impressions</th>
+                          <th>Clicks</th>
+                          <th>CTR</th>
+                          <th>Copy code</th>
+                          <th>Add to cart</th>
+                          <th>Checkout</th>
+                          <th>Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {byCampaign.map((row) => (
+                          <tr key={row.campaignId}>
+                            <td>
+                              <strong>{row.campaignName}</strong>
+                            </td>
+                            <td>{formatEnum(row.campaignType)}</td>
+                            <td>{formatNumber(row.impressions)}</td>
+                            <td>{formatNumber(row.clicks)}</td>
+                            <td>{formatPercent(row.ctr)}</td>
+                            <td>{formatNumber(row.copyCode)}</td>
+                            <td>{formatNumber(row.addToCart)}</td>
+                            <td>{formatNumber(row.checkoutStarted)}</td>
+                            <td>
+                              {formatCurrency(
+                                row.revenueAttributed,
+                                row.currencyCode,
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="counterpulse-analytics-table-footnote">
+                  Showing {byCampaign.length} of {byCampaign.length} campaigns
+                </p>
+              </article>
+
+              <article className="counterpulse-analytics-card">
+                <div className="counterpulse-analytics-card__header">
+                  <h2>Daily trend</h2>
+                </div>
                 <div className="counterpulse-analytics-table-wrap">
                   <table className="counterpulse-table counterpulse-analytics-table">
                     <thead>
                       <tr>
-                        <th>Campaign</th>
-                        <th>Type</th>
+                        <th>Date</th>
                         <th>Impressions</th>
                         <th>Clicks</th>
                         <th>CTR</th>
-                        <th>Copy code</th>
-                        <th>Add to cart</th>
-                        <th>Checkout</th>
                         <th>Revenue</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {byCampaign.map((row) => (
-                        <tr key={row.campaignId}>
-                          <td>
-                            <strong>{row.campaignName}</strong>
-                          </td>
-                          <td>{formatEnum(row.campaignType)}</td>
+                      {dailyTrendRows.map((row) => (
+                        <tr key={row.date}>
+                          <td>{formatDateKey(row.date)}</td>
                           <td>{formatNumber(row.impressions)}</td>
                           <td>{formatNumber(row.clicks)}</td>
                           <td>{formatPercent(row.ctr)}</td>
-                          <td>{formatNumber(row.copyCode)}</td>
-                          <td>{formatNumber(row.addToCart)}</td>
-                          <td>{formatNumber(row.checkoutStarted)}</td>
                           <td>
                             {formatCurrency(
                               row.revenueAttributed,
@@ -379,50 +409,11 @@ export default function AnalyticsPage() {
                     </tbody>
                   </table>
                 </div>
-              )}
-              <p className="counterpulse-analytics-table-footnote">
-                Showing {byCampaign.length} of {byCampaign.length} campaigns
-              </p>
-            </article>
-
-            <article className="counterpulse-analytics-card">
-              <div className="counterpulse-analytics-card__header">
-                <h2>Daily trend</h2>
-              </div>
-              <div className="counterpulse-analytics-table-wrap">
-                <table className="counterpulse-table counterpulse-analytics-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Impressions</th>
-                      <th>Clicks</th>
-                      <th>CTR</th>
-                      <th>Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailyTrendRows.map((row) => (
-                      <tr key={row.date}>
-                        <td>{formatDateKey(row.date)}</td>
-                        <td>{formatNumber(row.impressions)}</td>
-                        <td>{formatNumber(row.clicks)}</td>
-                        <td>{formatPercent(row.ctr)}</td>
-                        <td>
-                          {formatCurrency(
-                            row.revenueAttributed,
-                            row.currencyCode,
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="counterpulse-analytics-table-footnote">
-                Showing {byDay.length} of {byDay.length} days
-              </p>
-            </article>
-          </section>
+                <p className="counterpulse-analytics-table-footnote">
+                  Showing {byDay.length} of {byDay.length} days
+                </p>
+              </article>
+            </section>
           </div>
         )}
       </div>
@@ -445,6 +436,8 @@ function AnalyticsMetricCard({
   sparkline?: number[];
   value: string;
 }) {
+  const metricInfo = getMetricInfo(label);
+
   return (
     <article
       className={
@@ -455,9 +448,9 @@ function AnalyticsMetricCard({
     >
       <div className="counterpulse-analytics-metric__header">
         <span>{label}</span>
-        <span aria-hidden="true" className="counterpulse-analytics-info">
-          i
-        </span>
+        <FieldInfoButton label={label} title={metricInfo.title}>
+          <MetricInfoContent info={metricInfo} />
+        </FieldInfoButton>
       </div>
       <strong>{value}</strong>
       <div className="counterpulse-analytics-metric__meta">
@@ -474,6 +467,153 @@ function AnalyticsMetricCard({
         </span>
       ) : null}
     </article>
+  );
+}
+
+type MetricInfo = {
+  title: string;
+  description: string;
+  details: string[];
+};
+
+function MetricInfoContent({ info }: { info: MetricInfo }) {
+  return (
+    <div className="counterpulse-info-copy">
+      <p>{info.description}</p>
+      <ul className="counterpulse-info-list">
+        {info.details.map((detail) => (
+          <li key={detail}>
+            <span>{detail}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function getMetricInfo(label: string): MetricInfo {
+  switch (label) {
+    case "Impressions":
+      return {
+        title: "Impressions",
+        description:
+          "Impressions count how many times a campaign was rendered for shoppers in the selected date range.",
+        details: [
+          "Top bars, bottom bars, product blocks, cart placements, and badges can all create impressions.",
+          "Near-identical repeat impressions are deduplicated by the analytics pipeline before aggregation.",
+          "CTR uses impressions as its denominator.",
+        ],
+      };
+    case "Clicks":
+      return {
+        title: "Clicks",
+        description:
+          "Clicks count shopper interactions with campaign calls to action in the selected date range.",
+        details: [
+          "CTA clicks and badge clicks are included.",
+          "Copy-code actions are tracked separately as Coupon copies.",
+          "Clicks are plotted on the same Performance over time Y axis as impressions.",
+        ],
+      };
+    case "CTR":
+      return {
+        title: "CTR",
+        description:
+          "CTR is the click-through rate for campaigns in the selected date range.",
+        details: [
+          "Formula: clicks divided by impressions.",
+          "A 5.0% CTR means 5 clicks for every 100 impressions.",
+          "When impressions are zero, CTR is reported as 0.0%.",
+        ],
+      };
+    case "Add to cart":
+      return {
+        title: "Add to cart",
+        description:
+          "Add to cart counts tracked cart-intent events that happened after shoppers saw or interacted with campaigns.",
+        details: [
+          "This metric depends on storefront analytics and theme event tracking.",
+          "It is a signal of product intent, not a completed purchase.",
+        ],
+      };
+    case "Checkout started":
+      return {
+        title: "Checkout started",
+        description:
+          "Checkout started counts tracked checkout intent after campaign exposure or interaction.",
+        details: [
+          "This helps separate simple clicks from deeper purchase intent.",
+          "Completed revenue is shown separately as attributed revenue.",
+        ],
+      };
+    case "Coupon copies":
+      return {
+        title: "Coupon copies",
+        description:
+          "Coupon copies count times shoppers copied a visible discount or unique code from a campaign.",
+        details: [
+          "Copy events are separate from CTA clicks.",
+          "Unique code campaigns can use this to measure code intent before redemption.",
+        ],
+      };
+    case "Attributed revenue":
+      return {
+        title: "Attributed revenue",
+        description:
+          "Attributed revenue totals order value connected to recent campaign activity.",
+        details: [
+          "Revenue attribution uses tracked campaign touchpoints and available order events.",
+          "Use this alongside CTR and checkout intent to evaluate quality of engagement.",
+        ],
+      };
+    default:
+      return {
+        title: label,
+        description:
+          "This metric summarizes recent campaign activity for the selected date range.",
+        details: ["Values update from tracked storefront analytics events."],
+      };
+  }
+}
+
+function CsvDownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="counterpulse-analytics-export__icon"
+      focusable="false"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d="M5.5 2.75h6.1L15 6.15v11.1H5.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M11.5 2.95v3.4h3.25"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M10.25 7.75v5.1m0 0 2.05-2.05m-2.05 2.05L8.2 10.8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M7.6 15.2h5.3"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
   );
 }
 
@@ -498,17 +638,23 @@ function Sparkline({ values }: { values: number[] }) {
 }
 
 function PerformanceChart({ rows }: { rows: AnalyticsByDayRow[] }) {
+  const chartMaxValue = Math.max(
+    1,
+    ...rows.flatMap((row) => [row.impressions, row.clicks]),
+  );
   const impressionPoints = getChartPoints(
     rows.map((row) => row.impressions),
     860,
     210,
     18,
+    chartMaxValue,
   );
   const clickPoints = getChartPoints(
     rows.map((row) => row.clicks),
     860,
     210,
     18,
+    chartMaxValue,
   );
   const impressionPath = impressionPoints
     .map((point) => `${point.x},${point.y}`)
@@ -524,14 +670,10 @@ function PerformanceChart({ rows }: { rows: AnalyticsByDayRow[] }) {
           `L ${impressionPoints[impressionPoints.length - 1].x} 228 Z`,
         ].join(" ")
       : "";
-  const maxValue = Math.max(
-    1,
-    ...rows.flatMap((row) => [row.impressions, row.clicks]),
-  );
   const yTicks = [
-    maxValue,
-    Math.round(maxValue * 0.66),
-    Math.round(maxValue * 0.33),
+    chartMaxValue,
+    Math.round(chartMaxValue * 0.66),
+    Math.round(chartMaxValue * 0.33),
     0,
   ];
   const xLabels = selectChartLabels(rows);
@@ -660,8 +802,8 @@ function getChartPoints(
   width: number,
   height: number,
   offset: number,
+  maxValue: number,
 ) {
-  const maxValue = Math.max(1, ...values);
   const denominator = Math.max(values.length - 1, 1);
 
   return values.map((value, index) => ({

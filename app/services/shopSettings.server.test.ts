@@ -27,6 +27,7 @@ describe("shop settings", () => {
       defaultTimezone: "Mars/Base",
       defaultCurrency: "US",
       defaultCountry: "USA",
+      customCollectionCardSelector: "a[href='javascript:alert(1)']",
       customCartDrawerSelector: "<script>",
     });
 
@@ -34,6 +35,7 @@ describe("shop settings", () => {
       defaultTimezone: "Enter a valid IANA timezone.",
       defaultCurrency: "Currency must be a 3-letter ISO code.",
       defaultCountry: "Country must be a 2-letter ISO code.",
+      customCollectionCardSelector: "Enter a valid CSS selector.",
       customCartDrawerSelector: "Enter a valid CSS selector.",
     });
   });
@@ -42,9 +44,12 @@ describe("shop settings", () => {
     const formData = new FormData();
     formData.set("defaultLocale", "es");
     formData.append("enabledLocales", "en");
+    formData.append("enabledLocales", "it-IT");
     formData.set("defaultTimezone", "America/New_York");
     formData.set("defaultCurrency", "usd");
     formData.set("defaultCountry", "us");
+    formData.set("customTopBarSelector", "#shopify-section-header");
+    formData.set("customCollectionCardSelector", ".collection .grid__item");
     formData.set("analyticsEnabled", "on");
     formData.set("respectDoNotTrack", "on");
     formData.set("consentMode", "STRICT");
@@ -54,10 +59,12 @@ describe("shop settings", () => {
     expect(parsed.errors).toEqual({});
     expect(parsed.values).toMatchObject({
       defaultLocale: "es",
-      enabledLocales: ["es", "en"],
+      enabledLocales: ["es", "en", "it"],
       defaultTimezone: "America/New_York",
       defaultCurrency: "USD",
       defaultCountry: "US",
+      customTopBarSelector: "#shopify-section-header",
+      customCollectionCardSelector: ".collection .grid__item",
       analyticsEnabled: true,
       respectDoNotTrack: true,
       consentMode: "STRICT",
@@ -73,6 +80,8 @@ describe("shop settings", () => {
     expect(serialized).toEqual(
       expect.objectContaining({
         defaultLocale: "en",
+        customTopBarSelector: "",
+        customCollectionCardSelector: "",
         customCartDrawerSelector: "",
         analyticsEnabled: true,
       }),

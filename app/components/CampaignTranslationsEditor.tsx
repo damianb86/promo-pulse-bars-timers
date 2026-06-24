@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppAlert, ConfirmModal, useConfirmSubmit } from "./Notifications";
 import { Form, useFetcher, useNavigation, useSubmit } from "react-router";
 
 import {
   campaignTranslationFields,
-  storefrontLocales,
+  getStorefrontLocaleOptions,
   translationFallbackInputName,
   translationInputName,
   type CampaignTextField,
@@ -12,6 +12,7 @@ import {
   type CampaignTranslationValues,
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
+  type StorefrontLocaleOption,
 } from "../types/localization";
 import { AiGenerateIcon } from "./AiGenerateIcon";
 
@@ -22,6 +23,7 @@ type CampaignTranslationsEditorProps = {
   showActions?: boolean;
   resolvedValues: CampaignTranslationsByLocale;
   errors?: CampaignTranslationFormErrors;
+  locales?: readonly string[];
   onActiveLocaleChange?: (
     values: CampaignTranslationsByLocale,
     activeLocale: StorefrontLocale,
@@ -54,14 +56,25 @@ export function CampaignTranslationsEditor({
   showActions = true,
   resolvedValues,
   errors,
+  locales,
   onActiveLocaleChange,
   onValuesChange,
 }: CampaignTranslationsEditorProps) {
   const navigation = useNavigation();
   const submit = useSubmit();
   const aiTranslationFetcher = useFetcher<CampaignTranslationAiFetcherData>();
-  const [activeLocale, setActiveLocale] =
-    useState<StorefrontLocale>(initialLocale);
+  const localeOptions = useMemo(
+    () => getStorefrontLocaleOptions(locales),
+    [locales],
+  );
+  const localeOptionsKey = localeOptions
+    .map((localeOption) => localeOption.locale)
+    .join("|");
+  const [activeLocale, setActiveLocale] = useState<StorefrontLocale>(() =>
+    localeOptions.some((localeOption) => localeOption.locale === initialLocale)
+      ? initialLocale
+      : (localeOptions[0]?.locale ?? "en"),
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [translatingLocale, setTranslatingLocale] =
     useState<StorefrontLocale | null>(null);
@@ -69,7 +82,10 @@ export function CampaignTranslationsEditor({
     useState<TranslationNotice | null>(null);
   const [values, setValues] = useState(initialValues);
   const initialValuesRef = useRef(initialValues);
-  const initialValuesSignature = getTranslationValuesSignature(initialValues);
+  const initialValuesSignature = getTranslationValuesSignature(
+    initialValues,
+    localeOptions,
+  );
   const isSubmitting = navigation.state === "submitting";
   const isAiTranslating = aiTranslationFetcher.state !== "idle";
   const confirmSubmit = useConfirmSubmit({
@@ -114,7 +130,7 @@ export function CampaignTranslationsEditor({
     setTranslationNotice(null);
     setTranslatingLocale(locale);
     aiTranslationFetcher.submit(
-      buildAiTranslationFormData(values, resolvedValues, locale),
+      buildAiTranslationFormData(values, resolvedValues, locale, localeOptions),
       { method: "post" },
     );
   };
@@ -139,7 +155,7 @@ export function CampaignTranslationsEditor({
     const syncAiTranslation = window.setTimeout(() => {
       if (data.aiTranslation?.translations) {
         const sourceLabel =
-          localeLabel(data.aiTranslation.sourceLocale) ??
+          localeLabel(data.aiTranslation.sourceLocale, localeOptions) ??
           data.aiTranslation.sourceLocale;
 
         setValues(data.aiTranslation.translations);
@@ -164,7 +180,29 @@ export function CampaignTranslationsEditor({
     }, 0);
 
     return () => window.clearTimeout(syncAiTranslation);
-  }, [aiTranslationFetcher.data, onValuesChange]);
+  }, [aiTranslationFetcher.data, localeOptions, onValuesChange]);
+
+  useEffect(() => {
+    if (
+      localeOptions.some((localeOption) => localeOption.locale === activeLocale)
+    ) {
+      return undefined;
+    }
+
+    const syncActiveLocale = window.setTimeout(() => {
+      setActiveLocale((current) =>
+        localeOptions.some((localeOption) => localeOption.locale === current)
+          ? current
+          : (localeOptions[0]?.locale ?? "en"),
+      );
+    }, 0);
+
+    return () => window.clearTimeout(syncActiveLocale);
+  }, [activeLocale, localeOptions, localeOptionsKey]);
+
+  const hasEnglishLocale = localeOptions.some(
+    (localeOption) => localeOption.locale === "en",
+  );
 
   const content = (
     <>
@@ -173,7 +211,7 @@ export function CampaignTranslationsEditor({
         className="counterpulse-locale-tabs"
         role="tablist"
       >
-        {storefrontLocales.map((localeOption) => (
+        {localeOptions.map((localeOption) => (
           <button
             aria-controls={`translation-panel-${localeOption.locale}`}
             aria-selected={activeLocale === localeOption.locale}
@@ -202,7 +240,7 @@ export function CampaignTranslationsEditor({
       )}
 
       <div className="counterpulse-translations__actions">
-        {activeLocale !== "en" && (
+        {hasEnglishLocale && activeLocale !== "en" && (
           <button
             className="counterpulse-button-secondary"
             type="button"
@@ -213,16 +251,20 @@ export function CampaignTranslationsEditor({
             Copy English
           </button>
         )}
-        <button
-          className="counterpulse-button-secondary"
-          type="button"
-          onClick={() => replaceValues(copyEnglishToAll(values))}
-        >
-          Copy English to all
-        </button>
+        {hasEnglishLocale && (
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={() =>
+              replaceValues(copyEnglishToAll(values, localeOptions))
+            }
+          >
+            Copy English to all
+          </button>
+        )}
       </div>
 
-      {storefrontLocales.map((localeOption) => (
+      {localeOptions.map((localeOption) => (
         <div
           aria-labelledby={`translation-tab-${localeOption.locale}`}
           className="counterpulse-translation-panel"
@@ -269,8 +311,16 @@ export function CampaignTranslationsEditor({
                 field={field}
                 key={field.key}
                 locale={localeOption.locale}
-                placeholder={resolvedValues[localeOption.locale][field.key]}
-                value={values[localeOption.locale][field.key]}
+                placeholder={readTranslationValue(
+                  resolvedValues,
+                  localeOption.locale,
+                  field.key,
+                )}
+                value={readTranslationValue(
+                  values,
+                  localeOption.locale,
+                  field.key,
+                )}
                 onChange={(nextValue) =>
                   updateFieldValue(localeOption.locale, field.key, nextValue)
                 }
@@ -321,7 +371,9 @@ export function CampaignTranslationsEditor({
             onCancel={() => setConfirmOpen(false)}
             onConfirm={() => {
               setConfirmOpen(false);
-              submit(buildTranslationsFormData(values), { method: "post" });
+              submit(buildTranslationsFormData(values, localeOptions), {
+                method: "post",
+              });
             }}
           >
             <p>
@@ -423,8 +475,11 @@ function copyEnglishToLocale(
   };
 }
 
-function copyEnglishToAll(values: CampaignTranslationsByLocale) {
-  return storefrontLocales.reduce((nextValues, localeOption) => {
+function copyEnglishToAll(
+  values: CampaignTranslationsByLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions.reduce((nextValues, localeOption) => {
     nextValues[localeOption.locale] =
       localeOption.locale === "en"
         ? values.en
@@ -433,11 +488,14 @@ function copyEnglishToAll(values: CampaignTranslationsByLocale) {
   }, {} as CampaignTranslationsByLocale);
 }
 
-function getTranslationValuesSignature(values: CampaignTranslationsByLocale) {
-  return storefrontLocales
+function getTranslationValuesSignature(
+  values: CampaignTranslationsByLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions
     .flatMap((localeOption) =>
-      campaignTranslationFields.map(
-        (field) => values[localeOption.locale][field.key],
+      campaignTranslationFields.map((field) =>
+        readTranslationValue(values, localeOption.locale, field.key),
       ),
     )
     .join("\u001f");
@@ -447,38 +505,44 @@ function buildAiTranslationFormData(
   values: CampaignTranslationsByLocale,
   resolvedValues: CampaignTranslationsByLocale,
   sourceLocale: StorefrontLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
 ) {
   const formData = new FormData();
 
   formData.set("_action", "translateCampaignTranslations");
   formData.set("sourceLocale", sourceLocale);
-  storefrontLocales.forEach((localeOption) => {
+  localeOptions.forEach((localeOption) => {
+    formData.append("translationLocale", localeOption.locale);
     campaignTranslationFields.forEach((field) => {
       formData.set(
         translationInputName(localeOption.locale, field.key),
-        values[localeOption.locale][field.key],
+        readTranslationValue(values, localeOption.locale, field.key),
       );
     });
   });
   campaignTranslationFields.forEach((field) => {
     formData.set(
       translationFallbackInputName(sourceLocale, field.key),
-      resolvedValues[sourceLocale][field.key],
+      readTranslationValue(resolvedValues, sourceLocale, field.key),
     );
   });
 
   return formData;
 }
 
-function buildTranslationsFormData(values: CampaignTranslationsByLocale) {
+function buildTranslationsFormData(
+  values: CampaignTranslationsByLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
   const formData = new FormData();
 
   formData.set("_action", "saveTranslations");
-  storefrontLocales.forEach((localeOption) => {
+  localeOptions.forEach((localeOption) => {
+    formData.append("translationLocale", localeOption.locale);
     campaignTranslationFields.forEach((field) => {
       formData.set(
         translationInputName(localeOption.locale, field.key),
-        values[localeOption.locale][field.key],
+        readTranslationValue(values, localeOption.locale, field.key),
       );
     });
   });
@@ -495,14 +559,24 @@ function hasTranslationSourceCopy(
     .filter((field) => field.key !== "ctaUrl")
     .some((field) => {
       return (
-        values[locale][field.key].trim() ||
-        resolvedValues[locale][field.key].trim()
+        readTranslationValue(values, locale, field.key).trim() ||
+        readTranslationValue(resolvedValues, locale, field.key).trim()
       );
     });
 }
 
-function localeLabel(locale: StorefrontLocale) {
-  return storefrontLocales.find(
-    (localeOption) => localeOption.locale === locale,
-  )?.label;
+function localeLabel(
+  locale: StorefrontLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions.find((localeOption) => localeOption.locale === locale)
+    ?.label;
+}
+
+function readTranslationValue(
+  values: CampaignTranslationsByLocale,
+  locale: StorefrontLocale,
+  field: CampaignTextField,
+) {
+  return values[locale]?.[field] ?? "";
 }

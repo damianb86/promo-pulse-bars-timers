@@ -253,6 +253,15 @@ test("campaign type keeps announcement selected and exposes timer basics", async
   await expect(
     announcementTiming.getByRole("combobox", { name: "Once it ends" }),
   ).toBeVisible();
+  await announcementTiming
+    .getByRole("combobox", { name: "Once it ends" })
+    .selectOption("SHOW_CUSTOM_TITLE");
+  await expect(
+    announcementTiming.getByRole("textbox", { name: "Custom title" }),
+  ).toBeVisible();
+  await announcementTiming
+    .getByRole("textbox", { name: "Custom title" })
+    .fill("This announcement has ended.");
 
   await selectCampaignTypeCard(form, "Product timer");
   await expect(form.locator('input[name="goal"]')).toHaveValue("FLASH_SALE");

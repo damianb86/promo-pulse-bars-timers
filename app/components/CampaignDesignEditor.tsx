@@ -215,6 +215,7 @@ export function CampaignDesignEditor({
           <DesignControls
             mediaOptions={designMediaOptions}
             errors={errors}
+            hasOffer={Boolean(previewViewModel.offer)}
             hasTimer={isTimerShown(previewViewModel.timer)}
             isProPlan={isProPlan}
             progressStyle={progressStyle}
@@ -226,6 +227,7 @@ export function CampaignDesignEditor({
 
         <CampaignPreviewPanel
           actualPlacements={actualPlacements}
+          ariaLabel="Design live campaign preview"
           className="counterpulse-design-editor__preview"
           design={design}
           device={device}
@@ -288,6 +290,25 @@ const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
   "buttonColor",
   "buttonTextColor",
   "closeButtonColor",
+  "showDiscountCode",
+  "showCopyCodeButton",
+  "showApplyDiscountButton",
+  "offerCodeLayout",
+  "offerCodeLabel",
+  "copyCodeLabel",
+  "copiedCodeLabel",
+  "applyDiscountLabel",
+  "appliedDiscountMessage",
+  "offerCodeTextColor",
+  "offerCodeBackgroundColor",
+  "offerCodeBorderColor",
+  "offerCodeFontSize",
+  "offerCodeBorderRadius",
+  "offerCodePaddingBlock",
+  "offerCodePaddingInline",
+  "offerCodeGap",
+  "offerCopyBehavior",
+  "offerApplyBehavior",
   "positionMode",
   "entranceAnimation",
   "exitAnimation",

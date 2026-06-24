@@ -275,59 +275,59 @@ export default function TemplateLibraryPage() {
 
             <section className="counterpulse-template-library__summary">
               <div className="counterpulse-template-library__chips">
-                <a
+                <Link
                   className={!data.filters.category ? "is-active" : ""}
-                  href={buildTemplateHref(data.filters, { category: "" })}
+                  to={buildTemplateHref(data.filters, { category: "" })}
                 >
                   All templates <span>{data.templates.length}</span>
-                </a>
-                <a
+                </Link>
+                <Link
                   className={
                     data.filters.category === "HOLIDAY" ? "is-active" : ""
                   }
-                  href={buildTemplateHref(data.filters, {
+                  to={buildTemplateHref(data.filters, {
                     category: "HOLIDAY",
                   })}
                 >
                   Seasonal{" "}
                   <span>{countCategory(data.templates, "HOLIDAY")}</span>
-                </a>
-                <a
+                </Link>
+                <Link
                   className={
                     data.filters.type === "COUNTDOWN_BAR" ? "is-active" : ""
                   }
-                  href={buildTemplateHref(data.filters, {
+                  to={buildTemplateHref(data.filters, {
                     category: "",
                     type: "COUNTDOWN_BAR",
                   })}
                 >
                   Countdown bar{" "}
                   <span>{countType(data.templates, "COUNTDOWN_BAR")}</span>
-                </a>
-                <a
+                </Link>
+                <Link
                   className={
                     data.filters.category === "CART_RECOVERY" ? "is-active" : ""
                   }
-                  href={buildTemplateHref(data.filters, {
+                  to={buildTemplateHref(data.filters, {
                     category: "CART_RECOVERY",
                   })}
                 >
                   Cart and checkout{" "}
                   <span>{countCategory(data.templates, "CART_RECOVERY")}</span>
-                </a>
-                <a
+                </Link>
+                <Link
                   className={
                     data.filters.category === "PRODUCT_LAUNCH"
                       ? "is-active"
                       : ""
                   }
-                  href={buildTemplateHref(data.filters, {
+                  to={buildTemplateHref(data.filters, {
                     category: "PRODUCT_LAUNCH",
                   })}
                 >
                   Product{" "}
                   <span>{countCategory(data.templates, "PRODUCT_LAUNCH")}</span>
-                </a>
+                </Link>
               </div>
               <div className="counterpulse-template-library__sort">
                 <span>{systemCount} system</span>
@@ -370,7 +370,7 @@ function TemplateFilters({
       <div className="counterpulse-template-filters__header">
         <div>
           <h3>Search templates</h3>
-          <p>Filter by goal, US market defaults, event, and campaign type.</p>
+          <p>Filter by goal, locale, campaign type, and saved template text.</p>
         </div>
         <span>{templateCount} results</span>
       </div>
@@ -397,34 +397,12 @@ function TemplateFilters({
           </select>
         </label>
         <label className="counterpulse-form-field">
-          <span>Country</span>
-          <select name="country" defaultValue={filters.country ?? ""}>
-            <option value="">All countries</option>
-            {options.countries.map((country) => (
-              <option key={country} value={country}>
-                {country}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="counterpulse-form-field">
           <span>Locale</span>
           <select name="locale" defaultValue={filters.locale ?? ""}>
             <option value="">All locales</option>
             {options.locales.map((locale) => (
               <option key={locale} value={locale}>
                 {locale}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="counterpulse-form-field">
-          <span>Season/event</span>
-          <select name="eventName" defaultValue={filters.eventName ?? ""}>
-            <option value="">All events</option>
-            {options.events.map((eventName) => (
-              <option key={eventName} value={eventName}>
-                {eventName}
               </option>
             ))}
           </select>
@@ -568,9 +546,9 @@ function readTemplateFilters(url: URL): TemplateLibraryFilters {
   return {
     category: url.searchParams.get("category") ?? "",
     goal: url.searchParams.get("goal") ?? "",
-    country: url.searchParams.get("country") ?? "",
+    country: "",
     locale: url.searchParams.get("locale") ?? "",
-    eventName: url.searchParams.get("eventName") ?? "",
+    eventName: "",
     query: url.searchParams.get("query") ?? "",
     sort: url.searchParams.get("sort") ?? "",
     type: url.searchParams.get("type") ?? "",

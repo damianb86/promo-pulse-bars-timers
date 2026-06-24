@@ -135,7 +135,7 @@ describe("template library", () => {
   it("falls back from regional locales to the supported base locale and English", () => {
     expect(getTemplateLocaleFallbacks("es-MX")).toEqual(["es", "en"]);
     expect(getTemplateLocaleFallbacks("pt")).toEqual(["pt-BR", "en"]);
-    expect(getTemplateLocaleFallbacks("it-IT")).toEqual(["en"]);
+    expect(getTemplateLocaleFallbacks("it-IT")).toEqual(["it", "en"]);
   });
 
   it("defines unique system template keys across all countries and events", () => {

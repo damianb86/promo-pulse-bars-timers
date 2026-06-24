@@ -54,13 +54,15 @@ describe("campaign localization fallback", () => {
     expect(normalizeStorefrontLocale("es-AR")).toBe("es");
     expect(normalizeStorefrontLocale("pt_BR")).toBe("pt-BR");
     expect(normalizeStorefrontLocale("de-DE")).toBe("de");
-    expect(normalizeStorefrontLocale("it")).toBeNull();
+    expect(normalizeStorefrontLocale("it-IT")).toBe("it");
+    expect(normalizeStorefrontLocale("xx-ZZ")).toBeNull();
   });
 });
 
 describe("campaign localization view model", () => {
   it("keeps raw edit values separate from resolved fallback values", () => {
     const viewModel = getCampaignTranslationsViewModel({
+      locales: ["en", "es"],
       translations: [{ locale: "en", headline: "English headline" }],
     });
 
@@ -73,6 +75,7 @@ describe("campaign default translations", () => {
   it("creates all mandatory storefront locales", () => {
     const translations = buildDefaultCampaignTranslations({
       goal: "FREE_SHIPPING",
+      locales: ["en", "es", "pt-BR", "fr", "de"],
       type: "FREE_SHIPPING_GOAL",
     });
 
@@ -92,9 +95,27 @@ describe("campaign default translations", () => {
     });
   });
 
+  it("creates translations only for the active storefront locales", () => {
+    const translations = buildDefaultCampaignTranslations({
+      goal: "FLASH_SALE",
+      locales: ["en", "it"],
+      type: "COUNTDOWN_BAR",
+    });
+
+    expect(translations.map((translation) => translation.locale)).toEqual([
+      "en",
+      "it",
+    ]);
+    expect(translations[1]).toMatchObject({
+      locale: "it",
+      headline: "Limited-time offer",
+    });
+  });
+
   it("uses non-empty merchant-provided English copy over defaults", () => {
     const translations = buildDefaultCampaignTranslations({
       goal: "FLASH_SALE",
+      locales: ["en", "es", "pt-BR", "fr", "de"],
       type: "COUNTDOWN_BAR",
       overrides: {
         en: {

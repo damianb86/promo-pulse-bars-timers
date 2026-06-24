@@ -33,6 +33,7 @@ import {
 import { defaultDeliveryCutoffSettingsValues } from "../../types/delivery-cutoff";
 import { defaultFreeShippingSettingsValues } from "../../types/free-shipping";
 import { defaultLowStockSettingsValues } from "../../types/low-stock";
+import { defaultEnabledStorefrontLocales } from "../../types/localization";
 import {
   buildDefaultCampaignTranslations,
   normalizeStorefrontLocale,
@@ -471,6 +472,7 @@ export function buildCampaignFormDefaultsFromTemplate(
 
 export function buildCampaignAiInputFromTemplate(
   template: CampaignTemplate,
+  locales: readonly string[] = defaultEnabledStorefrontLocales,
 ): CampaignAiInput {
   const texts = readTemplateTexts(template.defaultTexts);
   const settings = readTemplateSettings(template.defaultSettings);
@@ -490,18 +492,14 @@ export function buildCampaignAiInputFromTemplate(
     merchantNotes: "",
     followUpAnswers: {},
     ctaUrl: texts.ctaUrl ?? "/collections/all",
+    locales: [...locales],
   };
 }
 
 export function normalizeTemplateLocale(locale: string | null | undefined) {
   const normalized = normalizeStorefrontLocale(locale ?? "en");
 
-  if (normalized === "pt-BR") return "pt-BR";
-  if (normalized === "es") return "es";
-  if (normalized === "fr") return "fr";
-  if (normalized === "de") return "de";
-
-  return "en";
+  return normalized ?? "en";
 }
 
 export function getTemplateLocaleFallbacks(locale: string | null | undefined) {
@@ -952,6 +950,77 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       ]) ?? defaultCampaignDesignValues.icon,
     iconSize: readInteger(input.iconSize, defaultCampaignDesignValues.iconSize),
     customIconUrl: readString(input.customIconUrl),
+    showDiscountCode: readBoolean(
+      input.showDiscountCode,
+      defaultCampaignDesignValues.showDiscountCode,
+    ),
+    showCopyCodeButton: readBoolean(
+      input.showCopyCodeButton,
+      defaultCampaignDesignValues.showCopyCodeButton,
+    ),
+    showApplyDiscountButton: readBoolean(
+      input.showApplyDiscountButton,
+      defaultCampaignDesignValues.showApplyDiscountButton,
+    ),
+    offerCodeLayout:
+      readEnum(input.offerCodeLayout, ["INLINE", "STACKED", "COMPACT"]) ??
+      defaultCampaignDesignValues.offerCodeLayout,
+    offerCodeLabel:
+      readString(input.offerCodeLabel) ||
+      defaultCampaignDesignValues.offerCodeLabel,
+    copyCodeLabel:
+      readString(input.copyCodeLabel) ||
+      defaultCampaignDesignValues.copyCodeLabel,
+    copiedCodeLabel:
+      readString(input.copiedCodeLabel) ||
+      defaultCampaignDesignValues.copiedCodeLabel,
+    applyDiscountLabel:
+      readString(input.applyDiscountLabel) ||
+      defaultCampaignDesignValues.applyDiscountLabel,
+    appliedDiscountMessage:
+      readString(input.appliedDiscountMessage) ||
+      defaultCampaignDesignValues.appliedDiscountMessage,
+    offerCodeTextColor:
+      readString(input.offerCodeTextColor) ||
+      defaultCampaignDesignValues.offerCodeTextColor,
+    offerCodeBackgroundColor:
+      readString(input.offerCodeBackgroundColor) ||
+      defaultCampaignDesignValues.offerCodeBackgroundColor,
+    offerCodeBorderColor:
+      readString(input.offerCodeBorderColor) ||
+      defaultCampaignDesignValues.offerCodeBorderColor,
+    offerCodeFontSize: readInteger(
+      input.offerCodeFontSize,
+      defaultCampaignDesignValues.offerCodeFontSize,
+    ),
+    offerCodeBorderRadius: readInteger(
+      input.offerCodeBorderRadius,
+      defaultCampaignDesignValues.offerCodeBorderRadius,
+    ),
+    offerCodePaddingBlock: readInteger(
+      input.offerCodePaddingBlock,
+      defaultCampaignDesignValues.offerCodePaddingBlock,
+    ),
+    offerCodePaddingInline: readInteger(
+      input.offerCodePaddingInline,
+      defaultCampaignDesignValues.offerCodePaddingInline,
+    ),
+    offerCodeGap: readInteger(
+      input.offerCodeGap,
+      defaultCampaignDesignValues.offerCodeGap,
+    ),
+    offerCopyBehavior:
+      readEnum(input.offerCopyBehavior, [
+        "FEEDBACK",
+        "HIDE_OFFER",
+        "CLOSE_CAMPAIGN",
+      ]) ?? defaultCampaignDesignValues.offerCopyBehavior,
+    offerApplyBehavior:
+      readEnum(input.offerApplyBehavior, [
+        "SHOW_APPLIED",
+        "HIDE_OFFER",
+        "CLOSE_CAMPAIGN",
+      ]) ?? defaultCampaignDesignValues.offerApplyBehavior,
   };
 
   for (const key of Object.keys(baseDesign) as Array<

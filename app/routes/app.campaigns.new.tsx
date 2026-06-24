@@ -95,6 +95,7 @@ type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
   defaults: CampaignFormValues;
+  enabledLocales: string[];
   targetingOptions: CampaignTargetingOptions;
   lockedTargetingFeatures: {
     advanced: string;
@@ -123,10 +124,11 @@ export const loader = async ({
 
   return {
     aiInput: template
-      ? buildCampaignAiInputFromTemplate(template)
+      ? buildCampaignAiInputFromTemplate(template, settings.enabledLocales)
       : buildDefaultCampaignAiInput({
           countryCode: settings.defaultCountry ?? "US",
           locale: settings.defaultLocale,
+          locales: settings.enabledLocales,
         }),
     aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
     defaults: template
@@ -141,6 +143,7 @@ export const loader = async ({
           ),
           timezone: settings.defaultTimezone,
         },
+    enabledLocales: settings.enabledLocales,
     lockedTargetingFeatures: {
       advanced: getLockedFeatureReason(shop, "advanced_targeting"),
       basic: getLockedFeatureReason(shop, "basic_targeting"),
@@ -158,16 +161,21 @@ export const action = async ({
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
   const { admin, session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
+  const settings = await getShopSettingsOrDefaults(shop.id);
   const formData = await request.formData();
   const intent = formData.get("_action");
 
   if (intent === "generateAiCampaignSuggestion") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
     const parsedAi = parseCampaignAiFormData(formData);
+    const aiValues = buildDefaultCampaignAiInput({
+      ...parsedAi.values,
+      locales: settings.enabledLocales,
+    });
 
     if (!aiGate.allowed) {
       return {
-        aiInput: parsedAi.values,
+        aiInput: aiValues,
         aiErrors: {
           form: aiGate.reason,
         },
@@ -176,33 +184,33 @@ export const action = async ({
 
     if (hasCampaignAiFormErrors(parsedAi.errors)) {
       return {
-        aiInput: parsedAi.values,
+        aiInput: aiValues,
         aiErrors: parsedAi.errors,
       };
     }
 
     if (
       shouldAskCampaignAiFollowUpQuestions(
-        parsedAi.values,
+        aiValues,
         formData.get("aiFollowUpStatus"),
       )
     ) {
       return {
-        aiInput: parsedAi.values,
-        aiFollowUpQuestions: buildCampaignAiFollowUpQuestions(parsedAi.values),
+        aiInput: aiValues,
+        aiFollowUpQuestions: buildCampaignAiFollowUpQuestions(aiValues),
       };
     }
 
     try {
       return {
-        aiInput: parsedAi.values,
-        aiSuggestion: await generateCampaignSuggestion(parsedAi.values),
+        aiInput: aiValues,
+        aiSuggestion: await generateCampaignSuggestion(aiValues),
       };
     } catch (error) {
       console.error("Failed to generate AI campaign suggestion", error);
 
       return {
-        aiInput: parsedAi.values,
+        aiInput: aiValues,
         aiErrors: {
           form: "Suggestion could not be generated. Check the fields and try again.",
         },
@@ -212,7 +220,10 @@ export const action = async ({
 
   if (intent === "translateCampaignTranslations") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
-    const parsedTranslationAi = parseCampaignTranslationAiFormData(formData);
+    const parsedTranslationAi = parseCampaignTranslationAiFormData(
+      formData,
+      settings.enabledLocales,
+    );
 
     if (!aiGate.allowed) {
       return Response.json(
@@ -373,6 +384,7 @@ export const action = async ({
       translations: {
         create: buildDefaultCampaignTranslations({
           goal: parsed.values.goal,
+          locales: settings.enabledLocales,
           type: parsed.values.type,
           overrides: {
             en: {
@@ -468,6 +480,7 @@ export const action = async ({
       await applyAiSuggestionToCampaign({
         campaignId: campaign.id,
         formValues: parsed.values,
+        locales: settings.enabledLocales,
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
       });
@@ -504,6 +517,7 @@ export default function CreateCampaignPage() {
     aiInput,
     aiLockedReason,
     defaults,
+    enabledLocales,
     lockedTargetingFeatures,
     targetingOptions,
     templateSourceName,
@@ -543,6 +557,7 @@ export default function CreateCampaignPage() {
           <CampaignForm
             key={JSON.stringify(actionData?.values ?? defaults)}
             mode="create"
+            messageLocales={enabledLocales}
             lockedTargetingFeatures={lockedTargetingFeatures}
             targetingOptions={targetingOptions}
             values={actionData?.values ?? defaults}
@@ -594,6 +609,7 @@ export default function CreateCampaignPage() {
               suggestion={actionData?.aiSuggestion}
               templateSourceName={templateSourceName}
               values={actionData?.aiInput ?? aiInput}
+              locales={enabledLocales}
             />
           </aside>
         </div>
@@ -605,11 +621,13 @@ export default function CreateCampaignPage() {
 async function applyAiSuggestionToCampaign({
   campaignId,
   formValues,
+  locales,
   shopId,
   suggestion,
 }: {
   campaignId: string;
   formValues: CampaignFormValues;
+  locales: readonly string[];
   shopId: string;
   suggestion: CampaignSuggestion;
 }) {
@@ -617,7 +635,7 @@ async function applyAiSuggestionToCampaign({
   await updateCampaignTranslationsForShop(
     campaignId,
     shopId,
-    buildTranslationsForSavedCampaign(suggestion, formValues),
+    buildTranslationsForSavedCampaign(suggestion, formValues, locales),
   );
   await applyAiGeneratedSettingsToCampaign({
     campaignId,
@@ -740,11 +758,17 @@ async function applyAiGeneratedSettingsToCampaign({
 function buildTranslationsForSavedCampaign(
   suggestion: CampaignSuggestion,
   formValues: CampaignFormValues,
+  locales: readonly string[],
 ) {
-  const locales = Object.keys(suggestion.translations) as StorefrontLocale[];
+  const activeLocales = locales.length
+    ? locales
+    : (Object.keys(suggestion.translations) as StorefrontLocale[]);
 
-  return locales.map((locale) => {
-    const translation = suggestion.translations[locale];
+  return activeLocales.map((locale) => {
+    const translation =
+      suggestion.translations[locale] ??
+      suggestion.translations.en ??
+      Object.values(suggestion.translations)[0];
 
     return {
       locale,

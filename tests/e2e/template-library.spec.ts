@@ -11,9 +11,7 @@ test("merchant filters templates and creates a draft campaign", async ({
   loginAsDemoShop,
 }) => {
   await resetDb("template-library");
-  await loginAsDemoShop(
-    "/app/templates?country=US&locale=en&eventName=Black+Friday&type=COUNTDOWN_BAR",
-  );
+  await loginAsDemoShop("/app/templates?locale=en&type=COUNTDOWN_BAR");
 
   await expect(
     page.getByRole("heading", { exact: true, name: "Template Library" }),
@@ -21,6 +19,15 @@ test("merchant filters templates and creates a draft campaign", async ({
   await expect(
     page.getByRole("link", { name: "Generate variants" }),
   ).toHaveCount(0);
+  await expect(page.getByLabel("Country")).toHaveCount(0);
+  await expect(page.getByLabel("Season/event")).toHaveCount(0);
+
+  await page.getByRole("link", { name: /Seasonal/ }).click();
+  await expect(page).toHaveURL(/category=HOLIDAY/);
+  await expect(page).not.toHaveURL(/auth\/login/);
+  await page.getByRole("link", { name: /Countdown bar/ }).click();
+  await expect(page).toHaveURL(/type=COUNTDOWN_BAR/);
+  await expect(page).not.toHaveURL(/auth\/login/);
 
   const applyBox = await page
     .getByRole("button", { name: "Apply" })
@@ -61,7 +68,7 @@ test("template cards render real and distinct campaign previews", async ({
   loginAsDemoShop,
 }) => {
   await resetDb("template-library-previews");
-  await loginAsDemoShop("/app/templates?country=US&locale=en");
+  await loginAsDemoShop("/app/templates?locale=en");
 
   const cards = page.locator(".counterpulse-template-card");
   await expect(cards.first()).toBeVisible();
@@ -83,9 +90,7 @@ test("template cards render real and distinct campaign previews", async ({
       );
 
       return {
-        shellOverflowY: shell
-          ? window.getComputedStyle(shell).overflowY
-          : "",
+        shellOverflowY: shell ? window.getComputedStyle(shell).overflowY : "",
         storefrontOverflowY: storefront
           ? window.getComputedStyle(storefront).overflowY
           : "",

@@ -1,7 +1,7 @@
 import {
   campaignTranslationFields,
   createEmptyCampaignTranslationsByLocale,
-  storefrontLocales,
+  getStorefrontLocaleOptions,
   translationInputName,
   type CampaignTextField,
   type CampaignTranslationFormErrors,
@@ -20,11 +20,13 @@ const maxTextLength = 500;
 
 export function parseCampaignTranslationsFormData(
   formData: FormData,
+  locales?: readonly string[],
 ): ParsedCampaignTranslationsForm {
-  const values = createEmptyCampaignTranslationsByLocale();
+  const localeOptions = readTranslationLocaleOptions(formData, locales);
+  const values = createEmptyCampaignTranslationsByLocale(localeOptions);
   const errors: CampaignTranslationFormErrors = {};
 
-  for (const localeOption of storefrontLocales) {
+  for (const localeOption of localeOptions) {
     for (const field of campaignTranslationFields) {
       const value = readString(
         formData,
@@ -46,7 +48,7 @@ export function parseCampaignTranslationsFormData(
   return {
     values,
     errors,
-    translations: storefrontLocales.map(({ locale }) => ({
+    translations: localeOptions.map(({ locale }) => ({
       locale,
       ...values[locale],
     })),
@@ -61,11 +63,18 @@ export type BaseCampaignTranslationValues = Pick<
 export function syncBaseCampaignTranslationValues(
   parsed: ParsedCampaignTranslationsForm,
   baseValues: BaseCampaignTranslationValues,
+  baseLocale: StorefrontLocale = "en",
 ): ParsedCampaignTranslationsForm {
+  const locale = parsed.values[baseLocale]
+    ? baseLocale
+    : parsed.translations[0]?.locale;
+
+  if (!locale) return parsed;
+
   const values = {
     ...parsed.values,
-    en: {
-      ...parsed.values.en,
+    [locale]: {
+      ...parsed.values[locale],
       ...baseValues,
     },
   };
@@ -74,7 +83,7 @@ export function syncBaseCampaignTranslationValues(
     ...parsed,
     values,
     translations: parsed.translations.map((translation) =>
-      translation.locale === "en"
+      translation.locale === locale
         ? {
             ...translation,
             ...baseValues,
@@ -99,6 +108,17 @@ function readString(formData: FormData, key: string) {
   const values = formData.getAll(key);
   const value = values.length > 0 ? values[values.length - 1] : "";
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readTranslationLocaleOptions(
+  formData: FormData,
+  locales?: readonly string[],
+) {
+  if (locales) return getStorefrontLocaleOptions(locales);
+
+  const formLocales = formData.getAll("translationLocale").map(String);
+
+  return getStorefrontLocaleOptions(formLocales);
 }
 
 function addFieldError(

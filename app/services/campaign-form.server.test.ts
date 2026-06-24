@@ -198,6 +198,25 @@ describe("campaign form parsing and validation", () => {
         icon: "CUSTOM",
         iconSize: "48",
         customIconUrl: "data:image/png;base64,AAAA",
+        showDiscountCode: "on",
+        showCopyCodeButton: "on",
+        showApplyDiscountButton: "on",
+        offerCodeLayout: "STACKED",
+        offerCodeLabel: "Your code",
+        copyCodeLabel: "Copy",
+        copiedCodeLabel: "Copied",
+        applyDiscountLabel: "Apply",
+        appliedDiscountMessage: "Discount applied.",
+        offerCodeTextColor: "#052E16",
+        offerCodeBackgroundColor: "#DCFCE7",
+        offerCodeBorderColor: "#86EFAC",
+        offerCodeFontSize: "15",
+        offerCodeBorderRadius: "8",
+        offerCodePaddingBlock: "6",
+        offerCodePaddingInline: "12",
+        offerCodeGap: "10",
+        offerCopyBehavior: "HIDE_OFFER",
+        offerApplyBehavior: "CLOSE_CAMPAIGN",
         customCss: ".pp-banner { opacity: .98; }",
       }),
       ShopPlan.PRO,
@@ -240,6 +259,25 @@ describe("campaign form parsing and validation", () => {
       icon: "CUSTOM",
       iconSize: 48,
       customIconUrl: "data:image/png;base64,AAAA",
+      showDiscountCode: true,
+      showCopyCodeButton: true,
+      showApplyDiscountButton: true,
+      offerCodeLayout: "STACKED",
+      offerCodeLabel: "Your code",
+      copyCodeLabel: "Copy",
+      copiedCodeLabel: "Copied",
+      applyDiscountLabel: "Apply",
+      appliedDiscountMessage: "Discount applied.",
+      offerCodeTextColor: "#052E16",
+      offerCodeBackgroundColor: "#DCFCE7",
+      offerCodeBorderColor: "#86EFAC",
+      offerCodeFontSize: 15,
+      offerCodeBorderRadius: 8,
+      offerCodePaddingBlock: 6,
+      offerCodePaddingInline: 12,
+      offerCodeGap: 10,
+      offerCopyBehavior: "HIDE_OFFER",
+      offerApplyBehavior: "CLOSE_CAMPAIGN",
     });
     expect(parsed.values.customCss).toContain(".pp-banner");
   });
@@ -270,6 +308,7 @@ describe("campaign form parsing and validation", () => {
   it("parses translations and rejects overly long localized copy", () => {
     const parsed = parseCampaignTranslationsFormData(
       formData({
+        translationLocale: ["en", "es", "pt-BR", "fr", "de"],
         "translation.en.headline": "English headline",
         "translation.es.headline": "x".repeat(501),
       }),
@@ -284,6 +323,8 @@ describe("campaign form parsing and validation", () => {
 
   it("uses visible embedded translation values and syncs base campaign copy", () => {
     const data = new FormData();
+    data.append("translationLocale", "en");
+    data.append("translationLocale", "es");
     data.append("translation.en.headline", "Hidden English headline");
     data.append("translation.en.headline", "Visible English headline");
     data.set("translation.en.expiredText", "Old expired title");
@@ -312,6 +353,27 @@ describe("campaign form parsing and validation", () => {
     ).toMatchObject({
       headline: "Current headline",
       expiredText: "Timer finished for this buyer",
+    });
+  });
+
+  it("syncs base campaign copy into the first active locale when English is disabled", () => {
+    const data = new FormData();
+    data.append("translationLocale", "it");
+    data.set("translation.it.headline", "Titolo precedente");
+
+    const parsed = parseCampaignTranslationsFormData(data);
+    const synced = syncBaseCampaignTranslationValues(parsed, {
+      headline: "Current headline",
+      subheadline: "Current subheadline",
+      ctaText: "Current CTA",
+      ctaUrl: "/collections/all",
+      expiredText: "Timer finished",
+    });
+
+    expect(Object.keys(synced.values)).toEqual(["it"]);
+    expect(synced.values.it).toMatchObject({
+      headline: "Current headline",
+      expiredText: "Timer finished",
     });
   });
 });

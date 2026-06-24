@@ -533,6 +533,7 @@ export const loader = async ({
       name: campaign.name,
       type: campaign.type,
       goal: campaign.goal,
+      locales: shopSettings.enabledLocales,
       translations: campaign.translations,
     }),
     defaultLocale,
@@ -579,6 +580,9 @@ export const action = async ({
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
   const { admin, session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
+  const shopSettings = await getShopSettingsOrDefaults(shop.id);
+  const defaultLocale =
+    normalizeStorefrontLocale(shopSettings.defaultLocale) ?? "en";
   const id = params.id;
 
   if (!id) {
@@ -622,7 +626,10 @@ export const action = async ({
 
   if (intent === "translateCampaignTranslations") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
-    const parsedTranslationAi = parseCampaignTranslationAiFormData(formData);
+    const parsedTranslationAi = parseCampaignTranslationAiFormData(
+      formData,
+      shopSettings.enabledLocales,
+    );
 
     if (!aiGate.allowed) {
       return Response.json(
@@ -742,7 +749,10 @@ export const action = async ({
       };
     }
 
-    const parsed = parseCampaignTranslationsFormData(formData);
+    const parsed = parseCampaignTranslationsFormData(
+      formData,
+      shopSettings.enabledLocales,
+    );
 
     if (hasCampaignTranslationErrors(parsed.errors)) {
       return {
@@ -1284,7 +1294,10 @@ export const action = async ({
           variants: parsed.variants,
         });
 
-        return redirect(`/app/campaigns/${id}`);
+        return {
+          experimentNotice:
+            "Experiment created as draft. It is not active yet. To activate it, click Start Experiment and then publish the campaign changes.",
+        };
       }
 
       const experimentId = String(formData.get("experimentId") ?? "").trim();
@@ -1407,7 +1420,10 @@ export const action = async ({
   const shouldSaveTranslationsWithBasics = hasTranslationInputs(formData);
   const parsedTranslations = shouldSaveTranslationsWithBasics
     ? syncBaseCampaignTranslationValues(
-        parseCampaignTranslationsFormData(formData),
+        parseCampaignTranslationsFormData(
+          formData,
+          shopSettings.enabledLocales,
+        ),
         {
           headline: parsed.values.headline,
           subheadline: parsed.values.subheadline,
@@ -1415,6 +1431,7 @@ export const action = async ({
           ctaUrl: parsed.values.ctaUrl,
           expiredText: parsed.values.expiredText,
         },
+        defaultLocale,
       )
     : null;
   const isPublishRequest = intent === "publishCampaign";
@@ -1743,6 +1760,8 @@ export default function EditCampaignPage() {
   const draftPreviewViewModel = useMemo(
     () => ({
       ...designViewModel,
+      offer:
+        buildActionDiscountOfferPreview(actionData) ?? designViewModel.offer,
       type: draftCampaignValues.type,
       timezone: draftCampaignValues.timezone || designViewModel.timezone,
       headline: draftCampaignValues.headline || designViewModel.headline,
@@ -1763,7 +1782,7 @@ export default function EditCampaignPage() {
         ? buildDraftFreeShippingPreview(draftCampaignValues)
         : null,
     }),
-    [designViewModel, draftCampaignValues, hasFreeShippingGoal],
+    [actionData, designViewModel, draftCampaignValues, hasFreeShippingGoal],
   );
   const submittingAction = readNavigationAction(navigation.formData);
   const isSavingDraft = submittingAction === "saveDraft";
@@ -1938,6 +1957,9 @@ export default function EditCampaignPage() {
                     ) : null
                   }
                   messageInitialLocale={defaultLocale}
+                  messageLocales={translationsViewModel.locales.map(
+                    (localeOption) => localeOption.locale,
+                  )}
                   messageResolvedTranslations={
                     translationsViewModel.resolvedValues
                   }
@@ -2129,6 +2151,9 @@ export default function EditCampaignPage() {
                   apiError={marketApiError}
                   errors={actionData?.marketErrors}
                   lockedReason={lockedFeatures.markets}
+                  locales={translationsViewModel.locales.map(
+                    (localeOption) => localeOption.locale,
+                  )}
                   markets={marketOptions}
                   notice={actionData?.marketNotice}
                   rules={marketRules}
@@ -2168,6 +2193,62 @@ export default function EditCampaignPage() {
 }
 
 const campaignDraftSaveBarId = "counterpulse-campaign-draft-save-bar";
+
+function buildActionDiscountOfferPreview(
+  actionData: ActionData | undefined,
+): CampaignViewModel["offer"] | undefined {
+  const discountValues = actionData?.uniqueCodeNotice
+    ? actionData.uniqueCodeValues
+    : actionData?.discountNotice
+      ? actionData.discountValues
+      : undefined;
+
+  if (!discountValues) return undefined;
+
+  return buildDiscountOfferPreviewFromValues(discountValues);
+}
+
+function buildDiscountOfferPreviewFromValues(
+  values: DiscountSettingsValues,
+): CampaignViewModel["offer"] {
+  if (values.mode === "UNIQUE_CODES") {
+    return {
+      method: "UNIQUE_CODE",
+      code: buildPreviewUniqueCode(values.uniqueCodePrefix),
+      isUniqueCode: true,
+      canApply: values.uniqueCodeAutoApply !== false,
+    };
+  }
+
+  if (values.mode === "CREATE_NEW" || values.mode === "LINK_EXISTING") {
+    const code = (
+      values.discountCode ||
+      values.existingCodeOrId ||
+      values.shopifyDiscountId
+    ).trim();
+
+    if (!code) return null;
+
+    return {
+      method: "CODE",
+      code,
+      isUniqueCode: false,
+      canApply: true,
+    };
+  }
+
+  return null;
+}
+
+function buildPreviewUniqueCode(prefix: string | null | undefined) {
+  const normalizedPrefix = (prefix || "PP")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "")
+    .slice(0, 16);
+
+  return `${normalizedPrefix || "PP"}-A1B2C3`;
+}
 
 const campaignTargetingDraftFields = [
   "productSelection",
@@ -3336,6 +3417,10 @@ function toExperimentRow(
   },
   results: ExperimentResults,
 ): ExperimentRow {
+  const variantTrafficSplitById = new Map(
+    experiment.variants.map((variant) => [variant.id, variant.weight]),
+  );
+
   return {
     id: experiment.id,
     name: experiment.name,
@@ -3366,6 +3451,7 @@ function toExperimentRow(
       variants: results.variants.map((variant) => ({
         variantId: variant.variantId,
         variantName: variant.variantName,
+        trafficSplit: variantTrafficSplitById.get(variant.variantId) ?? 0,
         impressions: variant.impressions,
         clicks: variant.clicks,
         ctr: variant.ctr,

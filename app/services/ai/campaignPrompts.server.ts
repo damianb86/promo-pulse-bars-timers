@@ -1,6 +1,6 @@
 import type { CampaignAiInput } from "../../types/ai-campaign";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v4";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v5";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -13,7 +13,7 @@ Core rules:
 - The merchant must approve before anything is saved or published.
 - Always produce DRAFT campaign status.
 - Choose settings that match the merchant goal, shape, product context, offer,
-  tone, country, locale, and notes.
+  tone, country, locale, targetLocales, and notes.
 - Never invent inventory levels, units remaining, sold-out claims, discount
   values, free gifts, free shipping, delivery promises, coupon codes, or legal
   claims unless the merchant gave that concrete fact.
@@ -27,6 +27,7 @@ Core rules:
 - Keep visible text short enough for bars, drawers, badges, product pages, and
   email previews.
 - Do not include experiment or A/B testing data in the response.
+- Only include translation keys for the targetLocales listed in merchant input.
 - If the objective is not discount related and no offer was provided, use
   discount.mode "NONE".
 - If an offer includes a concrete percentage, fixed amount, free shipping, or
@@ -115,11 +116,7 @@ strings, empty arrays, false, or safe defaults, not null:
     "afterCutoffBehavior": "SHOW_NEXT_WINDOW|SHOW_AFTER_CUTOFF_MESSAGE|HIDE"
   },
   "translations": {
-    "en": {},
-    "es": {},
-    "pt-BR": {},
-    "fr": {},
-    "de": {}
+    "locale-from-targetLocales": {}
   },
   "design": {},
   "safety": {
@@ -152,6 +149,9 @@ export function buildCampaignAiUserPrompt(input: CampaignAiInput) {
     eventName: input.eventName || "",
     countryCode: input.countryCode || "US",
     locale: input.locale || "en",
+    targetLocales: input.locales.length
+      ? input.locales
+      : [input.locale || "en"],
     brandTone: input.brandTone || "premium",
     knownOffer: input.knownOffer || "",
     quickStarts: input.quickStarts,

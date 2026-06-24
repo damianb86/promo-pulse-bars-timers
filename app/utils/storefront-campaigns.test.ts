@@ -237,10 +237,18 @@ describe("storefront campaign serialization", () => {
       design: {
         backgroundColor: "#111827",
         textColor: "#F9FAFB",
+        showDiscountCode: false,
+        offerCodeLayout: "STACKED",
+        offerCodeTextColor: "#052E16",
+        offerCodeBackgroundColor: "#DCFCE7",
+        offerCopyBehavior: "HIDE_OFFER",
+        offerApplyBehavior: "CLOSE_CAMPAIGN",
         customCss: ".pp-bar { letter-spacing: 0; }",
         mobileDesign: {
           backgroundColor: "#F97316",
           textColor: "#111827",
+          showDiscountCode: true,
+          offerCodeLayout: "COMPACT",
           customCss: ".pp-bar { font-weight: 700; }",
         },
       },
@@ -254,6 +262,12 @@ describe("storefront campaign serialization", () => {
     ).toMatchObject({
       backgroundColor: "#111827",
       textColor: "#F9FAFB",
+      showDiscountCode: false,
+      offerCodeLayout: "STACKED",
+      offerCodeTextColor: "#052E16",
+      offerCodeBackgroundColor: "#DCFCE7",
+      offerCopyBehavior: "HIDE_OFFER",
+      offerApplyBehavior: "CLOSE_CAMPAIGN",
       customCss: ".pp-bar { letter-spacing: 0; }",
     });
 
@@ -265,6 +279,8 @@ describe("storefront campaign serialization", () => {
     ).toMatchObject({
       backgroundColor: "#F97316",
       textColor: "#111827",
+      showDiscountCode: true,
+      offerCodeLayout: "COMPACT",
       customCss: ".pp-bar { font-weight: 700; }",
     });
 

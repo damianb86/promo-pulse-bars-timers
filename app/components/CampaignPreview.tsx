@@ -416,6 +416,14 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-padding-block": `${design.paddingBlock}px`,
     "--cp-padding-inline": `${design.paddingInline}px`,
     "--cp-gap": `${design.contentGap}px`,
+    "--cp-offer-code-text": design.offerCodeTextColor,
+    "--cp-offer-code-bg": design.offerCodeBackgroundColor,
+    "--cp-offer-code-border": design.offerCodeBorderColor,
+    "--cp-offer-code-size": `${design.offerCodeFontSize}px`,
+    "--cp-offer-code-radius": `${design.offerCodeBorderRadius}px`,
+    "--cp-offer-code-padding-block": `${design.offerCodePaddingBlock}px`,
+    "--cp-offer-code-padding-inline": `${design.offerCodePaddingInline}px`,
+    "--cp-offer-gap": `${design.offerCodeGap}px`,
     "--cp-motion-duration": `${design.animationDurationMs}ms`,
   } as CSSProperties;
 }
@@ -521,6 +529,11 @@ function PromoSurface({
     deliveryPreview?.beforeCutoff || timerState?.isActive,
   );
   const isInline = design.layout === "INLINE";
+  const hasOffer = isOfferVisible(viewModel, design);
+  const hasCta =
+    design.showButton &&
+    viewModel.cartRescue?.showButton !== false &&
+    Boolean(viewModel.ctaText);
 
   return (
     <section
@@ -564,23 +577,14 @@ function PromoSurface({
         />
       ) : null}
 
-      {(viewModel.discountCode ||
-        (design.showButton &&
-          viewModel.cartRescue?.showButton !== false &&
-          viewModel.ctaText)) && (
+      {(hasOffer || hasCta) && (
         <div className="counterpulse-preview-actions">
-          {viewModel.discountCode && (
-            <span className="counterpulse-preview-code">
-              {viewModel.discountCode}
+          <OfferPreview design={design} viewModel={viewModel} />
+          {hasCta && (
+            <span className="counterpulse-preview-cta">
+              {viewModel.ctaText}
             </span>
           )}
-          {design.showButton &&
-            viewModel.cartRescue?.showButton !== false &&
-            viewModel.ctaText && (
-              <span className="counterpulse-preview-cta">
-                {viewModel.ctaText}
-              </span>
-            )}
         </div>
       )}
 
@@ -613,6 +617,63 @@ function PromoSurface({
         </div>
       )}
     </section>
+  );
+}
+
+function OfferPreview({
+  viewModel,
+  design,
+}: {
+  viewModel: CampaignViewModel;
+  design: CampaignDesignValues;
+}) {
+  const offer = viewModel.offer;
+
+  if (!offer || !isOfferVisible(viewModel, design)) return null;
+
+  return (
+    <span
+      className={[
+        "counterpulse-preview-offer",
+        `counterpulse-preview-offer--${design.offerCodeLayout.toLowerCase()}`,
+      ].join(" ")}
+    >
+      {design.showDiscountCode ? (
+        <span className="counterpulse-preview-code-wrap">
+          {design.offerCodeLabel ? (
+            <span className="counterpulse-preview-offer-label">
+              {design.offerCodeLabel}
+            </span>
+          ) : null}
+          <span className="counterpulse-preview-code">{offer.code}</span>
+        </span>
+      ) : null}
+      {design.showCopyCodeButton ? (
+        <span className="counterpulse-preview-code-action">
+          {design.copyCodeLabel}
+        </span>
+      ) : null}
+      {design.showApplyDiscountButton && offer.canApply ? (
+        <span className="counterpulse-preview-cta counterpulse-preview-cta--offer">
+          {design.applyDiscountLabel}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function isOfferVisible(
+  viewModel: CampaignViewModel,
+  design: CampaignDesignValues,
+) {
+  const offer = viewModel.offer;
+
+  if (!offer) return false;
+
+  return Boolean(
+    design.showDiscountCode ||
+    design.showCopyCodeButton ||
+    (design.showApplyDiscountButton && offer.canApply),
   );
 }
 

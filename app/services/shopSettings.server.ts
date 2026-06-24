@@ -2,7 +2,11 @@ import { ConsentMode, type ShopSettings } from "@prisma/client";
 
 import prisma from "../db.server";
 import { invalidateStorefrontCacheForShopId } from "./storefront-cache.server";
-import { supportedStorefrontLocales } from "../types/shop-settings";
+import {
+  defaultShopEnabledLocales,
+  supportedStorefrontLocales,
+} from "../types/shop-settings";
+import { normalizeStorefrontLocaleCode } from "../types/localization";
 
 export type ShopSettingsValues = {
   defaultLocale: string;
@@ -13,9 +17,17 @@ export type ShopSettingsValues = {
   brandName: string;
   supportEmail: string;
   defaultCountry: string;
+  customTopBarSelector: string;
+  customBottomBarSelector: string;
+  customProductPageSelector: string;
+  customProductPageBadgeSelector: string;
+  customCollectionCardSelector: string;
   customCartDrawerSelector: string;
   customCartPageSelector: string;
   customProductFormSelector: string;
+  customThankYouPageSelector: string;
+  customOrderStatusPageSelector: string;
+  customHtmlSlotSelector: string;
   analyticsEnabled: boolean;
   respectDoNotTrack: boolean;
   consentMode: ConsentMode;
@@ -41,9 +53,17 @@ export type PublicShopSettings = Pick<
   | "enableDebugMode"
   | "brandName"
   | "defaultCountry"
+  | "customTopBarSelector"
+  | "customBottomBarSelector"
+  | "customProductPageSelector"
+  | "customProductPageBadgeSelector"
+  | "customCollectionCardSelector"
   | "customCartDrawerSelector"
   | "customCartPageSelector"
   | "customProductFormSelector"
+  | "customThankYouPageSelector"
+  | "customOrderStatusPageSelector"
+  | "customHtmlSlotSelector"
   | "analyticsEnabled"
   | "respectDoNotTrack"
   | "consentMode"
@@ -51,29 +71,49 @@ export type PublicShopSettings = Pick<
 
 export const defaultShopSettingsValues: ShopSettingsValues = {
   defaultLocale: "en",
-  enabledLocales: supportedStorefrontLocales,
+  enabledLocales: defaultShopEnabledLocales,
   defaultTimezone: "UTC",
   defaultCurrency: "USD",
   enableDebugMode: false,
   brandName: "Promo Pulse",
   supportEmail: "",
   defaultCountry: "",
+  customTopBarSelector: "",
+  customBottomBarSelector: "",
+  customProductPageSelector: "",
+  customProductPageBadgeSelector: "",
+  customCollectionCardSelector: "",
   customCartDrawerSelector: "",
   customCartPageSelector: "",
   customProductFormSelector: "",
+  customThankYouPageSelector: "",
+  customOrderStatusPageSelector: "",
+  customHtmlSlotSelector: "",
   analyticsEnabled: true,
   respectDoNotTrack: true,
   consentMode: "BASIC",
 };
+
+const selectorSettingKeys = [
+  "customTopBarSelector",
+  "customBottomBarSelector",
+  "customProductPageSelector",
+  "customProductPageBadgeSelector",
+  "customCollectionCardSelector",
+  "customCartDrawerSelector",
+  "customCartPageSelector",
+  "customProductFormSelector",
+  "customThankYouPageSelector",
+  "customOrderStatusPageSelector",
+  "customHtmlSlotSelector",
+] as const satisfies ReadonlyArray<keyof ShopSettingsValues>;
 
 const maxLengths: Partial<Record<keyof ShopSettingsValues, number>> = {
   defaultTimezone: 80,
   defaultCurrency: 3,
   brandName: 80,
   defaultCountry: 2,
-  customCartDrawerSelector: 255,
-  customCartPageSelector: 255,
-  customProductFormSelector: 255,
+  ...Object.fromEntries(selectorSettingKeys.map((field) => [field, 255])),
 };
 
 export function getOrCreateShopSettings(shopId: string) {
@@ -137,12 +177,35 @@ export function parseShopSettingsFormData(
     brandName: readString(formData, "brandName"),
     supportEmail: readString(formData, "supportEmail"),
     defaultCountry: readString(formData, "defaultCountry").toUpperCase(),
+    customTopBarSelector: readString(formData, "customTopBarSelector"),
+    customBottomBarSelector: readString(formData, "customBottomBarSelector"),
+    customProductPageSelector: readString(
+      formData,
+      "customProductPageSelector",
+    ),
+    customProductPageBadgeSelector: readString(
+      formData,
+      "customProductPageBadgeSelector",
+    ),
+    customCollectionCardSelector: readString(
+      formData,
+      "customCollectionCardSelector",
+    ),
     customCartDrawerSelector: readString(formData, "customCartDrawerSelector"),
     customCartPageSelector: readString(formData, "customCartPageSelector"),
     customProductFormSelector: readString(
       formData,
       "customProductFormSelector",
     ),
+    customThankYouPageSelector: readString(
+      formData,
+      "customThankYouPageSelector",
+    ),
+    customOrderStatusPageSelector: readString(
+      formData,
+      "customOrderStatusPageSelector",
+    ),
+    customHtmlSlotSelector: readString(formData, "customHtmlSlotSelector"),
     analyticsEnabled: readBoolean(formData, "analyticsEnabled"),
     respectDoNotTrack: readBoolean(formData, "respectDoNotTrack"),
     consentMode:
@@ -192,11 +255,7 @@ export function validateShopSettingsValues(values: ShopSettingsValues) {
     errors.defaultCountry = "Country must be a 2-letter ISO code.";
   }
 
-  for (const selectorField of [
-    "customCartDrawerSelector",
-    "customCartPageSelector",
-    "customProductFormSelector",
-  ] as const) {
+  for (const selectorField of selectorSettingKeys) {
     if (
       values[selectorField] &&
       !isReasonableCssSelector(values[selectorField])
@@ -240,9 +299,18 @@ export function toShopSettingsValues(
     brandName: settings.brandName ?? "",
     supportEmail: settings.supportEmail ?? "",
     defaultCountry: settings.defaultCountry ?? "",
+    customTopBarSelector: settings.customTopBarSelector ?? "",
+    customBottomBarSelector: settings.customBottomBarSelector ?? "",
+    customProductPageSelector: settings.customProductPageSelector ?? "",
+    customProductPageBadgeSelector:
+      settings.customProductPageBadgeSelector ?? "",
+    customCollectionCardSelector: settings.customCollectionCardSelector ?? "",
     customCartDrawerSelector: settings.customCartDrawerSelector ?? "",
     customCartPageSelector: settings.customCartPageSelector ?? "",
     customProductFormSelector: settings.customProductFormSelector ?? "",
+    customThankYouPageSelector: settings.customThankYouPageSelector ?? "",
+    customOrderStatusPageSelector: settings.customOrderStatusPageSelector ?? "",
+    customHtmlSlotSelector: settings.customHtmlSlotSelector ?? "",
   };
 }
 
@@ -257,9 +325,17 @@ export function serializePublicShopSettings(
     enableDebugMode: settings.enableDebugMode,
     brandName: settings.brandName,
     defaultCountry: settings.defaultCountry,
+    customTopBarSelector: settings.customTopBarSelector,
+    customBottomBarSelector: settings.customBottomBarSelector,
+    customProductPageSelector: settings.customProductPageSelector,
+    customProductPageBadgeSelector: settings.customProductPageBadgeSelector,
+    customCollectionCardSelector: settings.customCollectionCardSelector,
     customCartDrawerSelector: settings.customCartDrawerSelector,
     customCartPageSelector: settings.customCartPageSelector,
     customProductFormSelector: settings.customProductFormSelector,
+    customThankYouPageSelector: settings.customThankYouPageSelector,
+    customOrderStatusPageSelector: settings.customOrderStatusPageSelector,
+    customHtmlSlotSelector: settings.customHtmlSlotSelector,
     analyticsEnabled: settings.analyticsEnabled,
     respectDoNotTrack: settings.respectDoNotTrack,
     consentMode: settings.consentMode,
@@ -295,9 +371,25 @@ function toPrismaSettingsInput(values: ShopSettingsValues) {
     brandName: nullableString(values.brandName),
     supportEmail: nullableString(values.supportEmail),
     defaultCountry: nullableString(values.defaultCountry),
+    customTopBarSelector: nullableString(values.customTopBarSelector),
+    customBottomBarSelector: nullableString(values.customBottomBarSelector),
+    customProductPageSelector: nullableString(values.customProductPageSelector),
+    customProductPageBadgeSelector: nullableString(
+      values.customProductPageBadgeSelector,
+    ),
+    customCollectionCardSelector: nullableString(
+      values.customCollectionCardSelector,
+    ),
     customCartDrawerSelector: nullableString(values.customCartDrawerSelector),
     customCartPageSelector: nullableString(values.customCartPageSelector),
     customProductFormSelector: nullableString(values.customProductFormSelector),
+    customThankYouPageSelector: nullableString(
+      values.customThankYouPageSelector,
+    ),
+    customOrderStatusPageSelector: nullableString(
+      values.customOrderStatusPageSelector,
+    ),
+    customHtmlSlotSelector: nullableString(values.customHtmlSlotSelector),
     analyticsEnabled: values.analyticsEnabled,
     respectDoNotTrack: values.respectDoNotTrack,
     consentMode: values.consentMode,
@@ -306,7 +398,7 @@ function toPrismaSettingsInput(values: ShopSettingsValues) {
 
 function normalizeEnabledLocales(locales: string[]) {
   const normalized = locales
-    .map((locale) => normalizeLocale(locale, ""))
+    .map((locale) => normalizeStorefrontLocaleCode(locale) ?? "")
     .filter(Boolean)
     .filter((locale) => supportedStorefrontLocales.includes(locale));
 
@@ -314,13 +406,7 @@ function normalizeEnabledLocales(locales: string[]) {
 }
 
 function normalizeLocale(value: string, fallback: string) {
-  const normalized = value.trim().replace("_", "-").toLowerCase();
-
-  if (normalized === "pt-br" || normalized === "pt") return "pt-BR";
-
-  return supportedStorefrontLocales.includes(normalized)
-    ? normalized
-    : fallback;
+  return normalizeStorefrontLocaleCode(value) ?? fallback;
 }
 
 function readString(formData: FormData, key: keyof ShopSettingsValues) {

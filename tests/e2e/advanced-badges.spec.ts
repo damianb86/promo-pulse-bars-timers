@@ -70,4 +70,49 @@ test("product badges are configured from campaign setup and evaluated for storef
       }),
     ]),
   );
+
+  const batchResponse = await page.request.get("/api/storefront/badges", {
+    params: {
+      shop: "demo-shop.myshopify.com",
+      placement: "COLLECTION_CARD",
+      locale: "en",
+      badgeContexts: JSON.stringify([
+        {
+          key: "card-1",
+          productId: "gid://shopify/Product/e2e-simple-badge",
+          productTags: ["vip", "summer"],
+          inventoryQuantity: "3",
+        },
+        {
+          key: "card-2",
+          productId: "gid://shopify/Product/e2e-other",
+          productTags: ["other"],
+          inventoryQuantity: "12",
+        },
+      ]),
+    },
+  });
+  const batchBody = await batchResponse.json();
+
+  expect(batchResponse.ok()).toBe(true);
+  expect(batchBody.badgeGroups).toEqual([
+    expect.objectContaining({
+      key: "card-1",
+      badges: expect.arrayContaining([
+        expect.objectContaining({
+          campaignId,
+          text: "Simple badge",
+        }),
+      ]),
+    }),
+    expect.objectContaining({
+      key: "card-2",
+      badges: expect.arrayContaining([
+        expect.objectContaining({
+          campaignId,
+          text: "Simple badge",
+        }),
+      ]),
+    }),
+  ]);
 });

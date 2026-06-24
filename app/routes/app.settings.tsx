@@ -38,13 +38,30 @@ type ActionData = {
 
 type TextSettingKey =
   | "brandName"
+  | "customTopBarSelector"
+  | "customBottomBarSelector"
+  | "customProductPageSelector"
+  | "customProductPageBadgeSelector"
+  | "customCollectionCardSelector"
   | "customCartDrawerSelector"
   | "customCartPageSelector"
   | "customProductFormSelector"
+  | "customThankYouPageSelector"
+  | "customOrderStatusPageSelector"
+  | "customHtmlSlotSelector"
   | "defaultCountry"
   | "defaultCurrency"
   | "defaultLocale"
   | "defaultTimezone";
+
+type SelectorSettingKey = Exclude<
+  TextSettingKey,
+  | "brandName"
+  | "defaultCountry"
+  | "defaultCurrency"
+  | "defaultLocale"
+  | "defaultTimezone"
+>;
 
 const settingsSaveBarId = "counterpulse-settings-save-bar";
 
@@ -79,6 +96,41 @@ const countryOptions = [
 ];
 
 const selectorOptions = {
+  topBar: [
+    "body",
+    "#shopify-section-header",
+    "header",
+    ".shopify-section-header",
+    "[data-section-type='header']",
+  ],
+  bottomBar: [
+    "body",
+    "#shopify-section-footer",
+    "footer",
+    ".shopify-section-footer",
+    "[data-section-type='footer']",
+  ],
+  productPage: [
+    "product-info",
+    ".product__info-container",
+    ".product-form",
+    "[data-product-information]",
+    "main .product",
+  ],
+  productPageBadge: [
+    "media-gallery",
+    "[id^='MediaGallery-']",
+    "[data-product-media]",
+    ".product__media-wrapper",
+    ".product__media",
+  ],
+  collectionCard: [
+    "[data-product-card]",
+    ".card-wrapper",
+    ".product-card",
+    ".product-grid-item",
+    ".grid__item",
+  ],
   cartDrawer: [
     "#CartDrawer",
     "cart-drawer",
@@ -100,7 +152,117 @@ const selectorOptions = {
     "[data-type='add-to-cart-form']",
     "[data-product-form]",
   ],
+  checkoutExtension: [
+    "[data-promo-pulse-checkout-target]",
+    "[data-extension-target]",
+    ".shopify-checkout__dynamic-content",
+  ],
+  customHtmlSlot: [
+    "[data-promo-pulse-slot]",
+    "#promo-pulse-slot",
+    ".promo-pulse-slot",
+    "main",
+  ],
 };
+
+const themeSelectorSettings: Array<{
+  defaultSelector: string;
+  field: SelectorSettingKey;
+  hint: string;
+  label: string;
+  options: string[];
+  placement: string;
+}> = [
+  {
+    defaultSelector: "body",
+    field: "customTopBarSelector",
+    hint: "Preferred mount point for top-bar campaigns before Promo Pulse falls back to the document body.",
+    label: "Top bar selector",
+    options: selectorOptions.topBar,
+    placement: "TOP_BAR",
+  },
+  {
+    defaultSelector: "body",
+    field: "customBottomBarSelector",
+    hint: "Preferred mount point for bottom-bar campaigns before Promo Pulse falls back to the document body.",
+    label: "Bottom bar selector",
+    options: selectorOptions.bottomBar,
+    placement: "BOTTOM_BAR",
+  },
+  {
+    defaultSelector: "product-info, .product__info-container, .product-form",
+    field: "customProductPageSelector",
+    hint: "Used by product timer, delivery cutoff, and low-stock product-page placements when no block mount point is present.",
+    label: "Product page selector",
+    options: selectorOptions.productPage,
+    placement: "PRODUCT_PAGE",
+  },
+  {
+    defaultSelector:
+      "media-gallery, [id^='MediaGallery-'], [data-product-media]",
+    field: "customProductPageBadgeSelector",
+    hint: "Used to place product-page badges over the product media area.",
+    label: "Product page badge selector",
+    options: selectorOptions.productPageBadge,
+    placement: "PRODUCT_PAGE_BADGE",
+  },
+  {
+    defaultSelector: "[data-product-card], .card-wrapper, .product-card",
+    field: "customCollectionCardSelector",
+    hint: "Used to find each product card inside collection and search grids.",
+    label: "Collection product selector",
+    options: selectorOptions.collectionCard,
+    placement: "COLLECTION_CARD",
+  },
+  {
+    defaultSelector: "#CartDrawer, cart-drawer, .drawer__contents",
+    field: "customCartDrawerSelector",
+    hint: "Used by cart drawer and cart rescue placements when the default drawer is not detected.",
+    label: "Cart drawer selector",
+    options: selectorOptions.cartDrawer,
+    placement: "CART_DRAWER",
+  },
+  {
+    defaultSelector: 'form[action="/cart"], #main-cart-items',
+    field: "customCartPageSelector",
+    hint: "Used as the preferred mount point for cart page campaigns when they render outside a theme block.",
+    label: "Cart page selector",
+    options: selectorOptions.cartPage,
+    placement: "CART_PAGE",
+  },
+  {
+    defaultSelector: 'form[action*="/cart/add"]',
+    field: "customProductFormSelector",
+    hint: "Used to listen for variant changes in product-page campaigns and low-stock widgets.",
+    label: "Product form selector",
+    options: selectorOptions.productForm,
+    placement: "PRODUCT_FORM",
+  },
+  {
+    defaultSelector: "Checkout extension target",
+    field: "customThankYouPageSelector",
+    hint: "Reserved default for thank-you page surfaces when the checkout extension provides a DOM target.",
+    label: "Thank you page selector",
+    options: selectorOptions.checkoutExtension,
+    placement: "THANK_YOU_PAGE",
+  },
+  {
+    defaultSelector: "Checkout extension target",
+    field: "customOrderStatusPageSelector",
+    hint: "Reserved default for order-status page surfaces when the checkout extension provides a DOM target.",
+    label: "Order status page selector",
+    options: selectorOptions.checkoutExtension,
+    placement: "ORDER_STATUS_PAGE",
+  },
+  {
+    defaultSelector: "Campaign selector",
+    field: "customHtmlSlotSelector",
+    hint: "Fallback for custom HTML slot campaigns when the campaign does not define its own selector.",
+    label: "Custom HTML slot selector",
+    options: selectorOptions.customHtmlSlot,
+    placement: "CUSTOM_SELECTOR",
+  },
+];
 
 export const loader = async ({
   request,
@@ -195,6 +357,25 @@ function SettingsForm({
   const [formValues, setFormValues] =
     useState<ShopSettingsValues>(incomingValues);
   const formRef = useRef<HTMLFormElement>(null);
+  const availableLocales = useMemo(
+    () =>
+      supportedStorefrontLocales.filter(
+        (locale) => !formValues.enabledLocales.includes(locale),
+      ),
+    [formValues.enabledLocales],
+  );
+  const selectedLocales = useMemo(
+    () =>
+      supportedStorefrontLocales.filter((locale) =>
+        formValues.enabledLocales.includes(locale),
+      ),
+    [formValues.enabledLocales],
+  );
+  const [localeToAdd, setLocaleToAdd] = useState(availableLocales[0] ?? "");
+  const selectedLocaleToAdd =
+    localeToAdd && availableLocales.includes(localeToAdd)
+      ? localeToAdd
+      : (availableLocales[0] ?? "");
   const currentValuesKey = useMemo(
     () => stringifySettingsValues(formValues),
     [formValues],
@@ -208,7 +389,7 @@ function SettingsForm({
     saving: isSubmitting,
   });
 
-  const updateField = <Key extends keyof ShopSettingsValues,>(
+  const updateField = <Key extends keyof ShopSettingsValues>(
     field: Key,
     value: ShopSettingsValues[Key],
   ) => {
@@ -232,17 +413,31 @@ function SettingsForm({
     }));
   };
 
-  const updateEnabledLocale = (locale: string, enabled: boolean) => {
-    setFormValues((current) => {
-      if (!enabled && locale === current.defaultLocale) return current;
+  const addEnabledLocale = () => {
+    if (!selectedLocaleToAdd) return;
 
-      const enabledLocales = enabled
-        ? Array.from(new Set([...current.enabledLocales, locale]))
-        : current.enabledLocales.filter((item) => item !== locale);
+    setFormValues((current) => ({
+      ...current,
+      enabledLocales: Array.from(
+        new Set([...current.enabledLocales, selectedLocaleToAdd]),
+      ),
+    }));
+  };
+
+  const removeEnabledLocale = (locale: string) => {
+    setFormValues((current) => {
+      if (
+        locale === current.defaultLocale ||
+        current.enabledLocales.length <= 1
+      ) {
+        return current;
+      }
 
       return {
         ...current,
-        enabledLocales,
+        enabledLocales: current.enabledLocales.filter(
+          (item) => item !== locale,
+        ),
       };
     });
   };
@@ -273,6 +468,33 @@ function SettingsForm({
                   : "Basic consent"}
               </span>
             </div>
+          </div>
+        </div>
+
+        <div
+          aria-label="Settings summary"
+          className="counterpulse-settings-summary"
+        >
+          <div>
+            <span>Storefront</span>
+            <strong>{shopifyDomain}</strong>
+          </div>
+          <div>
+            <span>Localization</span>
+            <strong>
+              {formValues.defaultLocale.toUpperCase()} /{" "}
+              {formValues.defaultCurrency || "USD"}
+            </strong>
+          </div>
+          <div>
+            <span>Theme targets</span>
+            <strong>{countConfiguredSelectors(formValues)} configured</strong>
+          </div>
+          <div>
+            <span>Tracking</span>
+            <strong>
+              {formValues.analyticsEnabled ? "Analytics on" : "Analytics off"}
+            </strong>
           </div>
         </div>
 
@@ -391,26 +613,63 @@ function SettingsForm({
                 </span>
               </label>
 
-              <fieldset className="counterpulse-fieldset counterpulse-form-field--full">
+              <fieldset className="counterpulse-fieldset counterpulse-form-field--full counterpulse-locale-manager">
                 <legend>Enabled locales</legend>
-                <div className="counterpulse-toggle-grid">
-                  {supportedStorefrontLocales.map((locale) => (
-                    <label className="counterpulse-toggle" key={locale}>
+                <div className="counterpulse-locale-manager__selected">
+                  {selectedLocales.map((locale) => (
+                    <div className="counterpulse-locale-token" key={locale}>
                       <input
-                        checked={formValues.enabledLocales.includes(locale)}
                         name="enabledLocales"
-                        type="checkbox"
+                        type="hidden"
                         value={locale}
-                        onChange={(event) =>
-                          updateEnabledLocale(
-                            locale,
-                            event.currentTarget.checked,
-                          )
-                        }
                       />
-                      {storefrontLocaleLabels[locale]}
-                    </label>
+                      <span>
+                        <strong>{storefrontLocaleLabels[locale]}</strong>
+                        <small>{locale}</small>
+                      </span>
+                      <button
+                        aria-label={`Remove ${storefrontLocaleLabels[locale]}`}
+                        disabled={
+                          locale === formValues.defaultLocale ||
+                          selectedLocales.length <= 1
+                        }
+                        type="button"
+                        onClick={() => removeEnabledLocale(locale)}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   ))}
+                </div>
+                <div className="counterpulse-locale-manager__add">
+                  <label className="counterpulse-form-field">
+                    Add language
+                    <select
+                      disabled={availableLocales.length === 0}
+                      value={selectedLocaleToAdd}
+                      onChange={(event) =>
+                        setLocaleToAdd(event.currentTarget.value)
+                      }
+                    >
+                      {availableLocales.length === 0 ? (
+                        <option value="">All languages are enabled</option>
+                      ) : (
+                        availableLocales.map((locale) => (
+                          <option key={locale} value={locale}>
+                            {storefrontLocaleLabels[locale]} ({locale})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </label>
+                  <button
+                    className="counterpulse-button-secondary"
+                    disabled={!selectedLocaleToAdd}
+                    type="button"
+                    onClick={addEnabledLocale}
+                  >
+                    Add
+                  </button>
                 </div>
                 {errors.enabledLocales && (
                   <span className="counterpulse-form-error">
@@ -418,8 +677,8 @@ function SettingsForm({
                   </span>
                 )}
                 <span className="counterpulse-form-hint">
-                  The default locale is always kept enabled when settings are
-                  saved.
+                  The default locale stays enabled. To remove it, choose another
+                  default first.
                 </span>
               </fieldset>
             </div>
@@ -449,103 +708,29 @@ function SettingsForm({
           </SettingsPanel>
 
           <SettingsPanel
-            description="Only override these selectors when your theme uses non-standard cart or product markup. Top and bottom bars mount from the app embed and do not require a selector."
+            description="Choose default DOM targets for every campaign placement. Leave a field empty to use Promo Pulse detection, pick a preset from the selector suggestions, or type a custom CSS selector."
             title="Theme selectors"
           >
-            <div className="counterpulse-form-grid">
-              <label className="counterpulse-form-field">
-                Cart drawer selector
-                <input
-                  autoComplete="off"
-                  list="counterpulse-cart-drawer-selectors"
-                  name="customCartDrawerSelector"
-                  placeholder="#CartDrawer"
-                  value={formValues.customCartDrawerSelector}
-                  onChange={(event) =>
-                    updateTextField(
-                      "customCartDrawerSelector",
-                      event.currentTarget.value,
-                    )
-                  }
+            <div className="counterpulse-selector-grid">
+              {themeSelectorSettings.map((setting) => (
+                <SelectorSettingField
+                  defaultSelector={setting.defaultSelector}
+                  error={errors[setting.field]}
+                  field={setting.field}
+                  hint={setting.hint}
+                  key={setting.field}
+                  label={setting.label}
+                  options={setting.options}
+                  placement={setting.placement}
+                  value={formValues[setting.field]}
+                  onChange={(value) => updateTextField(setting.field, value)}
                 />
-                <SelectorDatalist
-                  id="counterpulse-cart-drawer-selectors"
-                  options={selectorOptions.cartDrawer}
-                />
-                {errors.customCartDrawerSelector && (
-                  <span className="counterpulse-form-error">
-                    {errors.customCartDrawerSelector}
-                  </span>
-                )}
-                <span className="counterpulse-form-hint">
-                  Used by cart drawer and cart rescue placements when the
-                  default drawer is not detected.
-                </span>
-              </label>
-
-              <label className="counterpulse-form-field">
-                Cart page selector
-                <input
-                  autoComplete="off"
-                  list="counterpulse-cart-page-selectors"
-                  name="customCartPageSelector"
-                  placeholder='form[action="/cart"]'
-                  value={formValues.customCartPageSelector}
-                  onChange={(event) =>
-                    updateTextField(
-                      "customCartPageSelector",
-                      event.currentTarget.value,
-                    )
-                  }
-                />
-                <SelectorDatalist
-                  id="counterpulse-cart-page-selectors"
-                  options={selectorOptions.cartPage}
-                />
-                {errors.customCartPageSelector && (
-                  <span className="counterpulse-form-error">
-                    {errors.customCartPageSelector}
-                  </span>
-                )}
-                <span className="counterpulse-form-hint">
-                  Used as the preferred mount point for cart page campaigns.
-                </span>
-              </label>
-
-              <label className="counterpulse-form-field counterpulse-form-field--full">
-                Product form selector
-                <input
-                  autoComplete="off"
-                  list="counterpulse-product-form-selectors"
-                  name="customProductFormSelector"
-                  placeholder='form[action*="/cart/add"]'
-                  value={formValues.customProductFormSelector}
-                  onChange={(event) =>
-                    updateTextField(
-                      "customProductFormSelector",
-                      event.currentTarget.value,
-                    )
-                  }
-                />
-                <SelectorDatalist
-                  id="counterpulse-product-form-selectors"
-                  options={selectorOptions.productForm}
-                />
-                {errors.customProductFormSelector && (
-                  <span className="counterpulse-form-error">
-                    {errors.customProductFormSelector}
-                  </span>
-                )}
-                <span className="counterpulse-form-hint">
-                  Used by product page badges and low-stock widgets to listen
-                  for variant changes.
-                </span>
-              </label>
+              ))}
 
               <div className="counterpulse-settings-note counterpulse-form-field--full">
-                Product image, collection card, and custom selector placements
-                are configured per campaign because they depend on the specific
-                surface being targeted.
+                Campaign-level selectors keep priority. These defaults are used
+                only when a campaign or Shopify block does not provide a more
+                specific mount point.
               </div>
             </div>
           </SettingsPanel>
@@ -630,8 +815,8 @@ function SettingsForm({
                   </span>
                 )}
                 <span className="counterpulse-form-hint">
-                  Strict mode suppresses storefront analytics unless the
-                  visitor has granted consent.
+                  Strict mode suppresses storefront analytics unless the visitor
+                  has granted consent.
                 </span>
               </label>
             </div>
@@ -653,7 +838,7 @@ function SettingsPanel({
 }) {
   return (
     <section className="counterpulse-feature-panel counterpulse-settings-panel">
-      <div className="counterpulse-panel-heading counterpulse-panel-heading--compact">
+      <div className="counterpulse-settings-panel__intro">
         <div>
           <h2>{title}</h2>
           <p className="counterpulse-settings-panel__description">
@@ -661,18 +846,60 @@ function SettingsPanel({
           </p>
         </div>
       </div>
-      {children}
+      <div className="counterpulse-settings-panel__body">{children}</div>
     </section>
   );
 }
 
-function SelectorDatalist({
-  id,
+function SelectorSettingField({
+  defaultSelector,
+  error,
+  field,
+  hint,
+  label,
+  onChange,
   options,
+  placement,
+  value,
 }: {
-  id: string;
+  defaultSelector: string;
+  error?: string;
+  field: SelectorSettingKey;
+  hint: string;
+  label: string;
+  onChange: (value: string) => void;
   options: string[];
+  placement: string;
+  value: string;
 }) {
+  const datalistId = `counterpulse-${toKebabCase(field)}-options`;
+
+  return (
+    <label className="counterpulse-form-field counterpulse-selector-field">
+      <span className="counterpulse-selector-field__heading">
+        <span>{label}</span>
+        <em>{placement}</em>
+      </span>
+      <input
+        aria-label={label}
+        autoComplete="off"
+        list={datalistId}
+        name={field}
+        placeholder={defaultSelector}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+      <SelectorDatalist id={datalistId} options={options} />
+      {error && <span className="counterpulse-form-error">{error}</span>}
+      <span className="counterpulse-selector-field__default">
+        Default: <code>{defaultSelector}</code>
+      </span>
+      <span className="counterpulse-form-hint">{hint}</span>
+    </label>
+  );
+}
+
+function SelectorDatalist({ id, options }: { id: string; options: string[] }) {
   return (
     <datalist id={id}>
       {options.map((option) => (
@@ -680,6 +907,15 @@ function SelectorDatalist({
       ))}
     </datalist>
   );
+}
+
+function countConfiguredSelectors(values: ShopSettingsValues) {
+  return themeSelectorSettings.filter((setting) => values[setting.field].trim())
+    .length;
+}
+
+function toKebabCase(value: string) {
+  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
 }
 
 function SettingsSaveBar({

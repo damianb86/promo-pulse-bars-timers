@@ -22,6 +22,15 @@ export type DesignTimerFormatValue = "UNITS" | "COLON";
 export type DesignPositionModeValue = "FLOW" | "OVERLAY";
 export type DesignBannerAnimationValue = "NONE" | "FADE" | "SLIDE" | "POP";
 export type DesignTimerTickAnimationValue = "NONE" | "FADE" | "FLIP" | "PULSE";
+export type DesignOfferCodeLayoutValue = "INLINE" | "STACKED" | "COMPACT";
+export type DesignOfferCopyBehaviorValue =
+  | "FEEDBACK"
+  | "HIDE_OFFER"
+  | "CLOSE_CAMPAIGN";
+export type DesignOfferApplyBehaviorValue =
+  | "SHOW_APPLIED"
+  | "HIDE_OFFER"
+  | "CLOSE_CAMPAIGN";
 export type CampaignDesignIconValue =
   | "FIRE"
   | "CLOCK"
@@ -93,6 +102,25 @@ export type CampaignDesignValues = {
   icon: CampaignDesignIconValue;
   iconSize: number;
   customIconUrl: string;
+  showDiscountCode: boolean;
+  showCopyCodeButton: boolean;
+  showApplyDiscountButton: boolean;
+  offerCodeLayout: DesignOfferCodeLayoutValue;
+  offerCodeLabel: string;
+  copyCodeLabel: string;
+  copiedCodeLabel: string;
+  applyDiscountLabel: string;
+  appliedDiscountMessage: string;
+  offerCodeTextColor: string;
+  offerCodeBackgroundColor: string;
+  offerCodeBorderColor: string;
+  offerCodeFontSize: number;
+  offerCodeBorderRadius: number;
+  offerCodePaddingBlock: number;
+  offerCodePaddingInline: number;
+  offerCodeGap: number;
+  offerCopyBehavior: DesignOfferCopyBehaviorValue;
+  offerApplyBehavior: DesignOfferApplyBehaviorValue;
 };
 
 export type CampaignResponsiveDesignValues = {
@@ -188,6 +216,25 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   icon: "NONE",
   iconSize: 20,
   customIconUrl: "",
+  showDiscountCode: true,
+  showCopyCodeButton: true,
+  showApplyDiscountButton: true,
+  offerCodeLayout: "INLINE",
+  offerCodeLabel: "Discount code",
+  copyCodeLabel: "Copy code",
+  copiedCodeLabel: "Copied",
+  applyDiscountLabel: "Apply discount",
+  appliedDiscountMessage: "Discount applied successfully.",
+  offerCodeTextColor: "#111827",
+  offerCodeBackgroundColor: "#FFFFFF",
+  offerCodeBorderColor: "#D1D5DB",
+  offerCodeFontSize: 13,
+  offerCodeBorderRadius: 4,
+  offerCodePaddingBlock: 5,
+  offerCodePaddingInline: 8,
+  offerCodeGap: 6,
+  offerCopyBehavior: "FEEDBACK",
+  offerApplyBehavior: "SHOW_APPLIED",
 };
 
 export const campaignDesignTemplates: CampaignDesignTemplate[] = [
@@ -594,6 +641,33 @@ export const designIconOptions: Array<{
   { value: "TAG", label: "Tag" },
   { value: "CUSTOM", label: "Custom" },
   { value: "NONE", label: "None" },
+];
+
+export const designOfferCodeLayoutOptions: Array<{
+  value: DesignOfferCodeLayoutValue;
+  label: string;
+}> = [
+  { value: "INLINE", label: "Inline" },
+  { value: "STACKED", label: "Stacked" },
+  { value: "COMPACT", label: "Compact" },
+];
+
+export const designOfferCopyBehaviorOptions: Array<{
+  value: DesignOfferCopyBehaviorValue;
+  label: string;
+}> = [
+  { value: "FEEDBACK", label: "Show copied state" },
+  { value: "HIDE_OFFER", label: "Hide offer after copy" },
+  { value: "CLOSE_CAMPAIGN", label: "Close campaign after copy" },
+];
+
+export const designOfferApplyBehaviorOptions: Array<{
+  value: DesignOfferApplyBehaviorValue;
+  label: string;
+}> = [
+  { value: "SHOW_APPLIED", label: "Show applied message" },
+  { value: "HIDE_OFFER", label: "Hide offer after apply" },
+  { value: "CLOSE_CAMPAIGN", label: "Close campaign after apply" },
 ];
 
 export function findCampaignDesignTemplate(templateKey: string) {

@@ -3,6 +3,7 @@ import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
+import { getStorefrontLocaleOptions } from "../types/localization";
 
 export type MarketOptionRow = {
   id: string;
@@ -40,6 +41,7 @@ type CampaignMarketsEditorProps = {
   apiError?: string;
   errors?: MarketRuleErrors;
   lockedReason?: string;
+  locales?: readonly string[];
   markets: MarketOptionRow[];
   notice?: string;
   rules: MarketRuleRow[];
@@ -49,12 +51,14 @@ export function CampaignMarketsEditor({
   apiError,
   errors,
   lockedReason,
+  locales,
   markets,
   notice,
   rules,
 }: CampaignMarketsEditorProps) {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const localeOptions = getStorefrontLocaleOptions(locales);
   const [deliverySettings, setDeliverySettings] = useState({
     cutoffHour: "",
     maxDeliveryDays: "",
@@ -226,7 +230,21 @@ export function CampaignMarketsEditor({
                     </FieldInfoButton>
                   }
                 >
-                  <input name="marketRuleLocale" placeholder="en or es-ES" />
+                  <input
+                    list="counterpulse-market-rule-locales"
+                    name="marketRuleLocale"
+                    placeholder={localeOptions[0]?.locale ?? "en"}
+                  />
+                  <datalist id="counterpulse-market-rule-locales">
+                    {localeOptions.map((localeOption) => (
+                      <option
+                        key={localeOption.locale}
+                        value={localeOption.locale}
+                      >
+                        {localeOption.label}
+                      </option>
+                    ))}
+                  </datalist>
                 </FormField>
 
                 <FormField

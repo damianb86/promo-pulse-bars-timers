@@ -530,14 +530,58 @@
     var id = placement === "BOTTOM_BAR" ? "pp-bottom-bars" : "pp-top-bars";
     var existing = document.getElementById(id);
     var container;
+    var configuredTarget;
     if (existing) return existing;
+    configuredTarget = querySelectorList(getConfiguredSelector(placement));
     container = document.createElement("div");
     container.id = id;
     container.className =
       "pp-container pp-container--" + placement.toLowerCase().replace("_", "-");
-    if (placement === "BOTTOM_BAR") document.body.appendChild(container);
+    if (placement === "BOTTOM_BAR")
+      (configuredTarget || document.body).appendChild(container);
+    else if (configuredTarget)
+      configuredTarget.insertBefore(container, configuredTarget.firstChild);
     else document.body.insertBefore(container, document.body.firstChild);
     return container;
+  }
+
+  function getConfiguredSelector(placement) {
+    var settings = window.PromoPulseSettings || {};
+
+    if (placement === "TOP_BAR") return settings.customTopBarSelector || "";
+    if (placement === "BOTTOM_BAR")
+      return settings.customBottomBarSelector || "";
+
+    return "";
+  }
+
+  function querySelectorList(selector) {
+    var selectors;
+    var index;
+    var currentSelector;
+    var target;
+
+    if (!selector || typeof selector !== "string") return null;
+
+    selectors = selector
+      .split(",")
+      .map(function (value) {
+        return value.trim();
+      })
+      .filter(Boolean);
+
+    for (index = 0; index < selectors.length; index += 1) {
+      currentSelector = selectors[index];
+
+      try {
+        target = document.querySelector(currentSelector);
+        if (target) return target;
+      } catch {
+        target = null;
+      }
+    }
+
+    return null;
   }
 
   function setDesign(element, design) {
@@ -577,6 +621,38 @@
     );
     element.style.setProperty("--pp-justify", justify(design.alignment));
     element.style.setProperty("--pp-align", align(design.alignment));
+    element.style.setProperty(
+      "--pp-offer-code-text",
+      color(design.offerCodeTextColor, "#111827"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-bg",
+      color(design.offerCodeBackgroundColor, "#ffffff"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-border",
+      color(design.offerCodeBorderColor, "#d1d5db"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-size",
+      clamp(design.offerCodeFontSize, 10, 24, 13) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-radius",
+      clamp(design.offerCodeBorderRadius, 0, 40, 4) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-padding-block",
+      clamp(design.offerCodePaddingBlock, 2, 24, 5) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-padding-inline",
+      clamp(design.offerCodePaddingInline, 4, 32, 8) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-gap",
+      clamp(design.offerCodeGap, 0, 24, 6) + "px",
+    );
   }
 
   function parts(date, timezone) {

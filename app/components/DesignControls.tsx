@@ -9,6 +9,9 @@ import {
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
+  designOfferApplyBehaviorOptions,
+  designOfferCodeLayoutOptions,
+  designOfferCopyBehaviorOptions,
   designTimerTickAnimationOptions,
   designTimerFormatOptions,
   designTimerStyleOptions,
@@ -27,6 +30,7 @@ import {
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
+  hasOffer?: boolean;
   hasTimer?: boolean;
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
@@ -38,6 +42,7 @@ type DesignControlsProps = {
 export function DesignControls({
   values,
   errors = {},
+  hasOffer = false,
   hasTimer = true,
   isProPlan,
   progressStyle,
@@ -704,6 +709,18 @@ export function DesignControls({
         </div>
       </DesignPanel>
 
+      {hasOffer ? (
+        <OfferDesignPanel
+          errors={errors}
+          values={values}
+          onColorChange={updateColor}
+          onNumberChange={updateNumber}
+          onValueChange={updateValue}
+        />
+      ) : (
+        <OfferDesignHiddenInputs values={values} />
+      )}
+
       <DesignPanel title="Behavior">
         <div className="counterpulse-toggle-grid">
           <input
@@ -856,6 +873,331 @@ export function DesignControls({
   );
 }
 
+function OfferDesignPanel({
+  values,
+  errors,
+  onValueChange,
+  onNumberChange,
+  onColorChange,
+}: {
+  values: CampaignDesignValues;
+  errors: CampaignDesignErrors;
+  onValueChange: <Key extends keyof CampaignDesignValues>(
+    key: Key,
+    value: CampaignDesignValues[Key],
+  ) => void;
+  onNumberChange: (key: NumberDesignKey, value: string) => void;
+  onColorChange: (key: ColorDesignKey, value: string) => void;
+}) {
+  return (
+    <DesignPanel title="Offer code">
+      <div className="counterpulse-toggle-grid">
+        <ToggleField
+          checked={values.showDiscountCode}
+          label="Show code"
+          name="showDiscountCode"
+          onChange={(checked) => onValueChange("showDiscountCode", checked)}
+        />
+        <ToggleField
+          checked={values.showCopyCodeButton}
+          label="Show copy button"
+          name="showCopyCodeButton"
+          onChange={(checked) => onValueChange("showCopyCodeButton", checked)}
+        />
+        <ToggleField
+          checked={values.showApplyDiscountButton}
+          label="Show apply button"
+          name="showApplyDiscountButton"
+          onChange={(checked) =>
+            onValueChange("showApplyDiscountButton", checked)
+          }
+        />
+      </div>
+
+      <DesignGroup error={errors.offerCodeLayout} label="Layout">
+        <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+          {designOfferCodeLayoutOptions.map((option) => (
+            <button
+              className={
+                values.offerCodeLayout === option.value ? "is-active" : ""
+              }
+              key={option.value}
+              type="button"
+              onClick={() => onValueChange("offerCodeLayout", option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <input
+          name="offerCodeLayout"
+          type="hidden"
+          value={values.offerCodeLayout}
+        />
+      </DesignGroup>
+
+      <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+        <DesignField label="Code label" error={errors.offerCodeLabel}>
+          <input
+            maxLength={32}
+            name="offerCodeLabel"
+            value={values.offerCodeLabel}
+            onChange={(event) =>
+              onValueChange("offerCodeLabel", event.target.value)
+            }
+          />
+        </DesignField>
+        <DesignField label="Copy label" error={errors.copyCodeLabel}>
+          <input
+            maxLength={24}
+            name="copyCodeLabel"
+            value={values.copyCodeLabel}
+            onChange={(event) =>
+              onValueChange("copyCodeLabel", event.target.value)
+            }
+          />
+        </DesignField>
+        <DesignField label="Copied label" error={errors.copiedCodeLabel}>
+          <input
+            maxLength={24}
+            name="copiedCodeLabel"
+            value={values.copiedCodeLabel}
+            onChange={(event) =>
+              onValueChange("copiedCodeLabel", event.target.value)
+            }
+          />
+        </DesignField>
+        <DesignField label="Apply label" error={errors.applyDiscountLabel}>
+          <input
+            maxLength={28}
+            name="applyDiscountLabel"
+            value={values.applyDiscountLabel}
+            onChange={(event) =>
+              onValueChange("applyDiscountLabel", event.target.value)
+            }
+          />
+        </DesignField>
+        <DesignField
+          label="Applied message"
+          error={errors.appliedDiscountMessage}
+        >
+          <input
+            maxLength={80}
+            name="appliedDiscountMessage"
+            value={values.appliedDiscountMessage}
+            onChange={(event) =>
+              onValueChange("appliedDiscountMessage", event.target.value)
+            }
+          />
+        </DesignField>
+      </div>
+
+      <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+        <ColorField
+          error={errors.offerCodeTextColor}
+          label="Code text"
+          name="offerCodeTextColor"
+          value={values.offerCodeTextColor}
+          onChange={(value) => onColorChange("offerCodeTextColor", value)}
+        />
+        <ColorField
+          error={errors.offerCodeBackgroundColor}
+          label="Code background"
+          name="offerCodeBackgroundColor"
+          value={values.offerCodeBackgroundColor}
+          onChange={(value) => onColorChange("offerCodeBackgroundColor", value)}
+        />
+        <ColorField
+          error={errors.offerCodeBorderColor}
+          label="Code border"
+          name="offerCodeBorderColor"
+          value={values.offerCodeBorderColor}
+          onChange={(value) => onColorChange("offerCodeBorderColor", value)}
+        />
+        <NumberField
+          error={errors.offerCodeFontSize}
+          label="Code text size"
+          max={24}
+          min={10}
+          name="offerCodeFontSize"
+          value={values.offerCodeFontSize}
+          onChange={(value) => onNumberChange("offerCodeFontSize", value)}
+        />
+        <NumberField
+          error={errors.offerCodeBorderRadius}
+          label="Code radius"
+          max={40}
+          min={0}
+          name="offerCodeBorderRadius"
+          value={values.offerCodeBorderRadius}
+          onChange={(value) => onNumberChange("offerCodeBorderRadius", value)}
+        />
+        <NumberField
+          error={errors.offerCodePaddingBlock}
+          label="Code vertical padding"
+          max={24}
+          min={2}
+          name="offerCodePaddingBlock"
+          value={values.offerCodePaddingBlock}
+          onChange={(value) => onNumberChange("offerCodePaddingBlock", value)}
+        />
+        <NumberField
+          error={errors.offerCodePaddingInline}
+          label="Code horizontal padding"
+          max={32}
+          min={4}
+          name="offerCodePaddingInline"
+          value={values.offerCodePaddingInline}
+          onChange={(value) => onNumberChange("offerCodePaddingInline", value)}
+        />
+        <NumberField
+          error={errors.offerCodeGap}
+          label="Offer gap"
+          max={24}
+          min={0}
+          name="offerCodeGap"
+          value={values.offerCodeGap}
+          onChange={(value) => onNumberChange("offerCodeGap", value)}
+        />
+      </div>
+
+      <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+        <DesignField label="After copy" error={errors.offerCopyBehavior}>
+          <select
+            name="offerCopyBehavior"
+            value={values.offerCopyBehavior}
+            onChange={(event) =>
+              onValueChange(
+                "offerCopyBehavior",
+                event.target.value as CampaignDesignValues["offerCopyBehavior"],
+              )
+            }
+          >
+            {designOfferCopyBehaviorOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </DesignField>
+        <DesignField label="After apply" error={errors.offerApplyBehavior}>
+          <select
+            name="offerApplyBehavior"
+            value={values.offerApplyBehavior}
+            onChange={(event) =>
+              onValueChange(
+                "offerApplyBehavior",
+                event.target
+                  .value as CampaignDesignValues["offerApplyBehavior"],
+              )
+            }
+          >
+            {designOfferApplyBehaviorOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </DesignField>
+      </div>
+    </DesignPanel>
+  );
+}
+
+function OfferDesignHiddenInputs({ values }: { values: CampaignDesignValues }) {
+  return (
+    <>
+      <input
+        name="showDiscountCode"
+        type="hidden"
+        value={String(values.showDiscountCode)}
+      />
+      <input
+        name="showCopyCodeButton"
+        type="hidden"
+        value={String(values.showCopyCodeButton)}
+      />
+      <input
+        name="showApplyDiscountButton"
+        type="hidden"
+        value={String(values.showApplyDiscountButton)}
+      />
+      <input
+        name="offerCodeLayout"
+        type="hidden"
+        value={values.offerCodeLayout}
+      />
+      <input
+        name="offerCodeLabel"
+        type="hidden"
+        value={values.offerCodeLabel}
+      />
+      <input name="copyCodeLabel" type="hidden" value={values.copyCodeLabel} />
+      <input
+        name="copiedCodeLabel"
+        type="hidden"
+        value={values.copiedCodeLabel}
+      />
+      <input
+        name="applyDiscountLabel"
+        type="hidden"
+        value={values.applyDiscountLabel}
+      />
+      <input
+        name="appliedDiscountMessage"
+        type="hidden"
+        value={values.appliedDiscountMessage}
+      />
+      <input
+        name="offerCodeTextColor"
+        type="hidden"
+        value={values.offerCodeTextColor}
+      />
+      <input
+        name="offerCodeBackgroundColor"
+        type="hidden"
+        value={values.offerCodeBackgroundColor}
+      />
+      <input
+        name="offerCodeBorderColor"
+        type="hidden"
+        value={values.offerCodeBorderColor}
+      />
+      <input
+        name="offerCodeFontSize"
+        type="hidden"
+        value={values.offerCodeFontSize}
+      />
+      <input
+        name="offerCodeBorderRadius"
+        type="hidden"
+        value={values.offerCodeBorderRadius}
+      />
+      <input
+        name="offerCodePaddingBlock"
+        type="hidden"
+        value={values.offerCodePaddingBlock}
+      />
+      <input
+        name="offerCodePaddingInline"
+        type="hidden"
+        value={values.offerCodePaddingInline}
+      />
+      <input name="offerCodeGap" type="hidden" value={values.offerCodeGap} />
+      <input
+        name="offerCopyBehavior"
+        type="hidden"
+        value={values.offerCopyBehavior}
+      />
+      <input
+        name="offerApplyBehavior"
+        type="hidden"
+        value={values.offerApplyBehavior}
+      />
+    </>
+  );
+}
+
 function ProPlanBadge() {
   return (
     <span className="counterpulse-pro-badge" title="Requires Pro plan">
@@ -890,9 +1232,10 @@ function CustomCssInfoContent() {
           <span>
             Use <code>.pp-message</code>, <code>.pp-countdown</code>,{" "}
             <code>.pp-cta</code>, <code>.pp-close</code>, <code>.pp-icon</code>,{" "}
-            <code>.pp-progress</code>, and <code>.pp-code</code> for text,
-            timer, button, close icon, campaign icon, progress bar, and
-            discount-code styling.
+            <code>.pp-progress</code>, <code>.pp-discount-offer</code>,{" "}
+            <code>.pp-discount-code__value</code>, and <code>.pp-code</code> for
+            text, timer, buttons, close icon, campaign icon, progress bar, offer
+            layout, discount value, and copy-button styling.
           </span>
         </li>
         <li>
@@ -911,7 +1254,9 @@ function CustomCssInfoContent() {
             <code>--pp-button-text</code>, <code>--pp-close</code>,{" "}
             <code>--pp-icon-size</code>, <code>--pp-radius</code>,{" "}
             <code>--pp-padding-block</code>, <code>--pp-padding-inline</code>,
-            and <code>--pp-content-max-width</code>.
+            <code>--pp-content-max-width</code>, <code>--pp-offer-code-bg</code>
+            , <code>--pp-offer-code-text</code>, and <code>--pp-offer-gap</code>
+            .
           </span>
         </li>
         <li>
@@ -2275,20 +2620,27 @@ function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
   if (
     name === "titleFontSize" ||
     name === "subheadingFontSize" ||
-    name === "legendFontSize"
+    name === "legendFontSize" ||
+    name === "offerCodeFontSize"
   ) {
     return "typography";
   }
 
   if (name === "timerFontSize") return "timer";
-  if (name === "timerSurfaceRadius") return "radius";
+  if (name === "timerSurfaceRadius" || name === "offerCodeBorderRadius") {
+    return "radius";
+  }
   if (name === "timerSurfaceBorderSize") return "borderSize";
   if (name === "animationDurationMs") return "duration";
   if (name === "iconSize") return "iconSize";
-  if (name === "contentGap") return "gap";
+  if (name === "contentGap" || name === "offerCodeGap") return "gap";
   if (name === "contentMaxWidth") return "maxWidth";
-  if (name === "paddingBlock") return "verticalPadding";
-  if (name === "paddingInline") return "horizontalPadding";
+  if (name === "paddingBlock" || name === "offerCodePaddingBlock") {
+    return "verticalPadding";
+  }
+  if (name === "paddingInline" || name === "offerCodePaddingInline") {
+    return "horizontalPadding";
+  }
 
   return "maxWidth";
 }

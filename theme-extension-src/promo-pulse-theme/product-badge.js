@@ -5,6 +5,9 @@
     window.PromoPulseBadgeRequestCache || {});
   var pendingRequests = (window.PromoPulseBadgePendingRequests =
     window.PromoPulseBadgePendingRequests || {});
+  var collectionBadgeBatchQueue = [];
+  var collectionBadgeBatchTimer = null;
+  var collectionBadgeBatchSequence = 0;
   var badgeRequestTtlMs = 300000;
 
   [].slice.call(document.querySelectorAll(".pp-product-badge")).forEach(init);
@@ -35,6 +38,10 @@
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       placement: root.dataset.placement || "COLLECTION_CARD",
+      customProductPageBadgeSelector:
+        root.dataset.customProductPageBadgeSelector || "",
+      customCollectionCardSelector:
+        root.dataset.customCollectionCardSelector || "",
       debug: root.dataset.debug === "true",
       apiBaseUrl: root.dataset.apiBaseUrl || window.PromoPulseApiBaseUrl || "",
     };
@@ -162,10 +169,123 @@
   }
 
   function fetchBadges(config) {
+    if (shouldBatchCollectionBadgeRequest(config)) {
+      return fetchCollectionBadgeBatch(config);
+    }
+
     return fetchJson(buildBadgesUrl(config)).then(function (payload) {
       applyStorefrontSettings(config, payload.settings);
       return Array.isArray(payload.badges) ? payload.badges : [];
     });
+  }
+
+  function shouldBatchCollectionBadgeRequest(config) {
+    return (
+      config.placement === "COLLECTION_CARD" &&
+      config.fallbackMode !== "SPECIFIC_CAMPAIGN"
+    );
+  }
+
+  function fetchCollectionBadgeBatch(config) {
+    return new Promise(function (resolve, reject) {
+      collectionBadgeBatchSequence += 1;
+      config.__badgeBatchKey =
+        "collection-card-" + collectionBadgeBatchSequence;
+      collectionBadgeBatchQueue.push({
+        config: config,
+        reject: reject,
+        resolve: resolve,
+      });
+
+      if (collectionBadgeBatchTimer) return;
+
+      collectionBadgeBatchTimer = window.setTimeout(
+        flushCollectionBadgeBatch,
+        0,
+      );
+    });
+  }
+
+  function flushCollectionBadgeBatch() {
+    var batch = collectionBadgeBatchQueue.slice();
+
+    collectionBadgeBatchQueue = [];
+    collectionBadgeBatchTimer = null;
+
+    if (!batch.length) return;
+
+    fetchJson(
+      buildBatchBadgesUrl(
+        batch.map(function (item) {
+          return item.config;
+        }),
+      ),
+    )
+      .then(function (payload) {
+        var badgesByKey = {};
+
+        applyStorefrontSettings(batch[0].config, payload.settings);
+        (Array.isArray(payload.badgeGroups) ? payload.badgeGroups : []).forEach(
+          function (group) {
+            if (!group || !group.key) return;
+
+            badgesByKey[group.key] = Array.isArray(group.badges)
+              ? group.badges
+              : [];
+          },
+        );
+        batch.forEach(function (item) {
+          item.resolve(badgesByKey[item.config.__badgeBatchKey] || []);
+        });
+      })
+      .catch(function (error) {
+        batch.forEach(function (item) {
+          item.reject(error);
+        });
+      });
+  }
+
+  function buildBatchBadgesUrl(configs) {
+    var config = configs[0];
+    var params = buildCommonParams(config);
+
+    [
+      "productId",
+      "productTags",
+      "collectionIds",
+      "vendor",
+      "selectedVariantId",
+      "inventoryQuantity",
+      "price",
+      "compareAtPrice",
+      "discountActive",
+      "metafields",
+      "campaignId",
+    ].forEach(function (key) {
+      params.delete(key);
+    });
+    params.set(
+      "badgeContexts",
+      JSON.stringify(configs.map(buildBatchBadgeContext)),
+    );
+
+    return getBadgesEndpoint(config.apiBaseUrl) + "?" + params.toString();
+  }
+
+  function buildBatchBadgeContext(config) {
+    return {
+      key: config.__badgeBatchKey,
+      productId: config.productId,
+      productTags: config.productTags,
+      collectionIds: config.collectionIds,
+      vendor: config.vendor,
+      selectedVariantId: config.selectedVariantId,
+      inventoryQuantity: config.inventoryQuantity,
+      price: config.price,
+      compareAtPrice: config.compareAtPrice,
+      discountActive: config.discountActive,
+      metafields: config.metafields,
+    };
   }
 
   function fetchJson(url) {
@@ -195,9 +315,10 @@
     }
 
     pendingRequests[url] = fetch(url, {
-        credentials: "same-origin",
-        headers: headers,
-      }).then(function (response) {
+      credentials: "same-origin",
+      headers: headers,
+    })
+      .then(function (response) {
         if (response.status === 304 && stored) {
           return refreshStoredBadgePayload(url, stored, response);
         }
@@ -487,6 +608,7 @@
 
   function findProductPageTarget() {
     return (
+      querySelectorList(getSettingSelector("customProductPageBadgeSelector")) ||
       document.querySelector(
         "media-gallery, [id^='MediaGallery-'], [data-product-media], product-gallery, .product__media-wrapper, .product__media, .product-media-container, .product-gallery, .product__media-list",
       ) ||
@@ -499,19 +621,25 @@
   function findProductCardTargets() {
     var cards = [];
     var seen = new Set();
+    var customCards = querySelectorListAll(
+      getSettingSelector("customCollectionCardSelector"),
+    );
 
     [].slice
       .call(
-        document.querySelectorAll(
-          "[data-product-card], .card-wrapper, .product-card, .product-grid-item, .grid__item, li, a[href*='/products/']",
-        ),
+        customCards.length
+          ? customCards
+          : document.querySelectorAll(
+              "[data-product-card], .card-wrapper, .product-card, .product-grid-item, .grid__item, li, a[href*='/products/']",
+            ),
       )
       .forEach(function (link) {
-        var card = link.matches && link.matches('a[href*="/products/"]')
-          ? link.closest(
-              "[data-product-card], [data-product-id], .card-wrapper, .product-card, .product-grid-item, .grid__item, li",
-            )
-          : link;
+        var card =
+          link.matches && link.matches('a[href*="/products/"]')
+            ? link.closest(
+                "[data-product-card], [data-product-id], .card-wrapper, .product-card, .product-grid-item, .grid__item, li",
+              )
+            : link;
         var productLink =
           card &&
           (card.matches('a[href*="/products/"]')
@@ -533,6 +661,49 @@
       });
 
     return cards.slice(0, 48);
+  }
+
+  function getSettingSelector(key) {
+    var settings = window.PromoPulseSettings || {};
+
+    return settings[key] || "";
+  }
+
+  function querySelectorList(selector) {
+    var matches = querySelectorListAll(selector);
+
+    return matches[0] || null;
+  }
+
+  function querySelectorListAll(selector) {
+    var selectors;
+    var index;
+    var currentSelector;
+    var nodes;
+
+    if (!selector || typeof selector !== "string") return [];
+
+    selectors = selector
+      .split(",")
+      .map(function (value) {
+        return value.trim();
+      })
+      .filter(Boolean);
+
+    nodes = [];
+    for (index = 0; index < selectors.length; index += 1) {
+      currentSelector = selectors[index];
+
+      try {
+        nodes = nodes.concat(
+          [].slice.call(document.querySelectorAll(currentSelector)),
+        );
+      } catch {
+        // Ignore invalid merchant selectors and keep trying the rest.
+      }
+    }
+
+    return nodes;
   }
 
   function findBadgeMountTarget(card) {
@@ -1219,5 +1390,11 @@
     config.locale = config.locale || settings.defaultLocale || "";
     config.country = config.country || settings.defaultCountry || "";
     config.currency = config.currency || settings.defaultCurrency || "";
+    config.customProductPageBadgeSelector =
+      settings.customProductPageBadgeSelector ||
+      config.customProductPageBadgeSelector;
+    config.customCollectionCardSelector =
+      settings.customCollectionCardSelector ||
+      config.customCollectionCardSelector;
   }
 })();

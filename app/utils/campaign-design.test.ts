@@ -16,6 +16,9 @@ import {
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
+  designOfferApplyBehaviorOptions,
+  designOfferCodeLayoutOptions,
+  designOfferCopyBehaviorOptions,
   designPositionModeOptions,
   designTimerFormatOptions,
   designTimerStyleOptions,
@@ -97,9 +100,9 @@ describe("campaign design validation", () => {
       "SLIDE",
       "POP",
     ]);
-    expect(designTimerTickAnimationOptions.map((option) => option.value)).toEqual(
-      ["NONE", "FADE", "FLIP", "PULSE"],
-    );
+    expect(
+      designTimerTickAnimationOptions.map((option) => option.value),
+    ).toEqual(["NONE", "FADE", "FLIP", "PULSE"]);
     expect(designPositionModeOptions.map((option) => option.value)).toEqual([
       "FLOW",
       "OVERLAY",
@@ -118,6 +121,17 @@ describe("campaign design validation", () => {
       "CUSTOM",
       "NONE",
     ]);
+    expect(designOfferCodeLayoutOptions.map((option) => option.value)).toEqual([
+      "INLINE",
+      "STACKED",
+      "COMPACT",
+    ]);
+    expect(
+      designOfferCopyBehaviorOptions.map((option) => option.value),
+    ).toEqual(["FEEDBACK", "HIDE_OFFER", "CLOSE_CAMPAIGN"]);
+    expect(
+      designOfferApplyBehaviorOptions.map((option) => option.value),
+    ).toEqual(["SHOW_APPLIED", "HIDE_OFFER", "CLOSE_CAMPAIGN"]);
 
     for (const values of [
       ...campaignDesignTemplates,
@@ -207,5 +221,30 @@ describe("campaign design validation", () => {
         backgroundImageUrl: "https://cdn.shopify.com/icon.png",
       }),
     ).toEqual({});
+  });
+
+  it("validates offer-code design settings", () => {
+    expect(
+      validateCampaignDesignValues({
+        ...defaultCampaignDesignValues,
+        offerCodeTextColor: "#FFFFFF",
+        offerCodeBackgroundColor: "#F5F5F5",
+        offerCodeLayout: "CAROUSEL" as never,
+        offerCopyBehavior: "DISMISS" as never,
+        offerApplyBehavior: "RESET" as never,
+        offerCodeFontSize: 32,
+        offerCodeGap: 40,
+        appliedDiscountMessage: "",
+      }),
+    ).toMatchObject({
+      offerCodeTextColor:
+        "Offer code text needs stronger contrast with its background.",
+      offerCodeLayout: "Choose a valid offer layout.",
+      offerCopyBehavior: "Choose a valid copy behavior.",
+      offerApplyBehavior: "Choose a valid apply behavior.",
+      offerCodeFontSize: "Offer code font size must be between 10 and 24.",
+      offerCodeGap: "Offer gap must be between 0 and 24.",
+      appliedDiscountMessage: "Applied message is required.",
+    });
   });
 });

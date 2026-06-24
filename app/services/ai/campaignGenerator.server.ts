@@ -53,9 +53,11 @@ import {
 } from "../../types/ai-campaign";
 import {
   campaignTranslationFields,
+  defaultEnabledStorefrontLocales,
   emptyCampaignTranslationValues,
-  storefrontLocales,
+  getStorefrontLocaleOptions,
   type StorefrontLocale,
+  type StorefrontLocaleOption,
 } from "../../types/localization";
 import { normalizeStorefrontLocale } from "../../utils/campaign-localization";
 import {
@@ -125,6 +127,7 @@ const defaultInput: CampaignAiInput = {
   merchantNotes: "",
   followUpAnswers: {},
   ctaUrl: "/collections/all",
+  locales: defaultEnabledStorefrontLocales,
 };
 
 const stockClaimPatterns = [
@@ -190,6 +193,7 @@ export function parseCampaignAiFormData(formData: FormData): {
     merchantNotes: readString(formData, "merchantNotes"),
     followUpAnswers: readAnswerMap(formData, "followUpAnswersJson"),
     ctaUrl: readString(formData, "ctaUrl") || defaultInput.ctaUrl,
+    locales: readLocales(formData, "locales"),
   });
 
   const errors: CampaignAiFormErrors = {};
@@ -781,7 +785,7 @@ function buildTranslations(
   const event = input.eventName || "this promotion";
   const hasOffer = Boolean(offer);
 
-  return {
+  const defaultTranslations: Record<string, CampaignAiTranslation> = {
     en: createTranslation({
       headline: campaign.headline,
       subheadline: campaign.subheadline,
@@ -839,6 +843,15 @@ function buildTranslations(
       badgeText: hasOffer ? offer : "Aktion",
     }),
   };
+
+  return getCampaignAiLocaleOptions(input).reduce(
+    (translations, localeOption) => {
+      translations[localeOption.locale] =
+        defaultTranslations[localeOption.locale] ?? defaultTranslations.en;
+      return translations;
+    },
+    {} as CampaignSuggestion["translations"],
+  );
 }
 
 function buildTimer(input: CampaignAiInput): CampaignAiTimerSettings {
@@ -1496,7 +1509,7 @@ function sanitizeTranslations(
 ): CampaignSuggestion["translations"] {
   const fallback = buildTranslations(input, buildCampaign(input));
 
-  return storefrontLocales.reduce(
+  return getCampaignAiLocaleOptions(input).reduce(
     (normalized, { locale }) => {
       const source = translations[locale] ?? fallback[locale];
       const base = fallback[locale];
@@ -1643,7 +1656,7 @@ function mergeTranslations(
   fallback: CampaignSuggestion["translations"],
   override: Partial<Record<StorefrontLocale, Partial<CampaignAiTranslation>>>,
 ): CampaignSuggestion["translations"] {
-  return storefrontLocales.reduce(
+  return getStorefrontLocaleOptions(Object.keys(fallback)).reduce(
     (translations, { locale }) => {
       translations[locale] = {
         ...fallback[locale],
@@ -1653,6 +1666,12 @@ function mergeTranslations(
     },
     {} as CampaignSuggestion["translations"],
   );
+}
+
+function getCampaignAiLocaleOptions(
+  input: Pick<CampaignAiInput, "locales">,
+): StorefrontLocaleOption[] {
+  return getStorefrontLocaleOptions(input.locales);
 }
 
 function createTranslation(
@@ -1680,8 +1699,15 @@ function createTranslation(
 }
 
 function normalizeCampaignAiInput(input: CampaignAiInputLike): CampaignAiInput {
-  const normalizedLocale =
+  const localeOptions = getStorefrontLocaleOptions(
+    input.locales?.length ? input.locales : defaultInput.locales,
+  );
+  const locales = localeOptions.map((localeOption) => localeOption.locale);
+  const requestedLocale =
     normalizeStorefrontLocale(input.locale ?? "en") ?? "en";
+  const normalizedLocale = locales.includes(requestedLocale)
+    ? requestedLocale
+    : (locales[0] ?? "en");
   const tone = campaignAiTones.includes(input.brandTone as CampaignAiTone)
     ? (input.brandTone as CampaignAiTone)
     : "premium";
@@ -1709,6 +1735,7 @@ function normalizeCampaignAiInput(input: CampaignAiInputLike): CampaignAiInput {
     merchantNotes: normalizeTextInput(input.merchantNotes, 500),
     followUpAnswers: normalizeAnswerMap(input.followUpAnswers),
     ctaUrl: normalizeTextInput(input.ctaUrl, 180) || defaultInput.ctaUrl,
+    locales,
   };
 }
 
@@ -2593,6 +2620,15 @@ function readStringArray(formData: FormData, key: string) {
   } catch {
     return [];
   }
+}
+
+function readLocales(formData: FormData, key: string) {
+  const locales = formData.getAll(key).map(String);
+  if (locales.length === 0) return [];
+
+  return getStorefrontLocaleOptions(locales).map(
+    (localeOption) => localeOption.locale,
+  );
 }
 
 function readAnswerMap(formData: FormData, key: string) {

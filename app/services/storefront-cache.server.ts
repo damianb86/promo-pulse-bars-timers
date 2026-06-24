@@ -4,8 +4,16 @@ import path from "node:path";
 
 import type { Shop } from "@prisma/client";
 
-import type { PublicShopSettings, ShopSettingsValues } from "./shopSettings.server";
-import type { StorefrontCampaignContext, StorefrontCampaignResponseItem, StorefrontCampaignSource } from "../utils/storefront-campaigns";
+import prisma from "../db.server";
+import type {
+  PublicShopSettings,
+  ShopSettingsValues,
+} from "./shopSettings.server";
+import type {
+  StorefrontCampaignContext,
+  StorefrontCampaignResponseItem,
+  StorefrontCampaignSource,
+} from "../utils/storefront-campaigns";
 
 type StorefrontSnapshot = {
   shop: Shop;
@@ -109,10 +117,28 @@ export async function getCachedStorefrontSnapshot(
 export async function invalidateStorefrontCacheForShopId(shopId: string) {
   impressionGateMemory.delete(shopId);
 
-  const shopDomain = shopIdToDomain.get(shopId);
+  const shopDomains = new Set<string>();
+  const cachedShopDomain = shopIdToDomain.get(shopId);
 
-  if (shopDomain) {
-    await invalidateStorefrontCacheForShop(shopDomain);
+  if (cachedShopDomain) {
+    shopDomains.add(cachedShopDomain);
+  }
+
+  const shop = await prisma.shop.findUnique({
+    where: { id: shopId },
+    select: { shopifyDomain: true },
+  });
+
+  if (shop?.shopifyDomain) {
+    shopDomains.add(shop.shopifyDomain);
+  }
+
+  if (shopDomains.size > 0) {
+    await Promise.all(
+      Array.from(shopDomains).map((shopDomain) =>
+        invalidateStorefrontCacheForShop(shopDomain),
+      ),
+    );
     return;
   }
 
@@ -171,10 +197,7 @@ export function clearStorefrontCacheForTests() {
   shopIdToDomain.clear();
 }
 
-export function getCachedStorefrontPayload(
-  cacheKey: string,
-  now = Date.now(),
-) {
+export function getCachedStorefrontPayload(cacheKey: string, now = Date.now()) {
   const memoryEntry = payloadMemory.get(cacheKey);
 
   if (memoryEntry && Date.parse(memoryEntry.expiresAt) > now) {

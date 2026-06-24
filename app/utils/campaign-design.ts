@@ -7,6 +7,9 @@ import {
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
+  designOfferApplyBehaviorOptions,
+  designOfferCodeLayoutOptions,
+  designOfferCopyBehaviorOptions,
   designPositionModeOptions,
   designTimerFormatOptions,
   designTimerTickAnimationOptions,
@@ -34,6 +37,9 @@ const colorFields: Array<keyof CampaignDesignValues> = [
   "legendColor",
   "timerSurfaceColor",
   "timerSurfaceBorderColor",
+  "offerCodeTextColor",
+  "offerCodeBackgroundColor",
+  "offerCodeBorderColor",
 ];
 
 export function isValidHexColor(value: string) {
@@ -304,6 +310,88 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     errors.customIconUrl = "Upload a valid image icon.";
   }
 
+  if (
+    !designOfferCodeLayoutOptions.some(
+      (option) => option.value === values.offerCodeLayout,
+    )
+  ) {
+    errors.offerCodeLayout = "Choose a valid offer layout.";
+  }
+
+  if (
+    !designOfferCopyBehaviorOptions.some(
+      (option) => option.value === values.offerCopyBehavior,
+    )
+  ) {
+    errors.offerCopyBehavior = "Choose a valid copy behavior.";
+  }
+
+  if (
+    !designOfferApplyBehaviorOptions.some(
+      (option) => option.value === values.offerApplyBehavior,
+    )
+  ) {
+    errors.offerApplyBehavior = "Choose a valid apply behavior.";
+  }
+
+  validateTextField(values, errors, "offerCodeLabel", "Code label", 32);
+  validateTextField(values, errors, "copyCodeLabel", "Copy label", 24);
+  validateTextField(values, errors, "copiedCodeLabel", "Copied label", 24);
+  validateTextField(values, errors, "applyDiscountLabel", "Apply label", 28);
+  validateTextField(
+    values,
+    errors,
+    "appliedDiscountMessage",
+    "Applied message",
+    80,
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "offerCodeFontSize",
+    10,
+    24,
+    "Offer code font size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "offerCodeBorderRadius",
+    0,
+    40,
+    "Offer code radius",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "offerCodePaddingBlock",
+    2,
+    24,
+    "Offer vertical padding",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "offerCodePaddingInline",
+    4,
+    32,
+    "Offer horizontal padding",
+  );
+  validateIntegerRange(values, errors, "offerCodeGap", 0, 24, "Offer gap");
+
+  if (
+    isValidHexColor(values.offerCodeTextColor) &&
+    isValidHexColor(values.offerCodeBackgroundColor) &&
+    !hasReadableContrast(
+      values.offerCodeTextColor,
+      values.offerCodeBackgroundColor,
+      3,
+    )
+  ) {
+    errors.offerCodeTextColor =
+      "Offer code text needs stronger contrast with its background.";
+  }
+
   return errors;
 }
 
@@ -358,6 +446,25 @@ function validateLabel(
 
   if (value.length > 12) {
     errors[field] = `${label} must be 12 characters or fewer.`;
+  }
+}
+
+function validateTextField(
+  values: CampaignDesignValues,
+  errors: CampaignDesignErrors,
+  field: keyof CampaignDesignValues,
+  label: string,
+  maxLength: number,
+) {
+  const value = values[field];
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    errors[field] = `${label} is required.`;
+    return;
+  }
+
+  if (value.length > maxLength) {
+    errors[field] = `${label} must be ${maxLength} characters or fewer.`;
   }
 }
 

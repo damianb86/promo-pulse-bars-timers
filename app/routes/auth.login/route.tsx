@@ -1,49 +1,42 @@
-import { AppProvider } from "@shopify/shopify-app-react-router/react";
-import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { redirect } from "react-router";
 
+import { ShopifyReconnectPage } from "../../components/ShopifyReconnectPage";
 import { login } from "../../shopify.server";
-import { loginErrorMessage } from "./error.server";
+import { buildEmbeddedAppRedirect } from "../../utils/shopify-embedded-redirect.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const errors = loginErrorMessage(await login(request));
+  const url = new URL(request.url);
+  const appRedirect = url.searchParams.get("shop")
+    ? null
+    : buildEmbeddedAppRedirect(request, "/auth/login");
 
-  return { errors };
+  if (appRedirect) {
+    throw redirect(appRedirect);
+  }
+
+  await login(request);
+
+  return {};
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const errors = loginErrorMessage(await login(request));
+  const url = new URL(request.url);
+  const appRedirect = url.searchParams.get("shop")
+    ? null
+    : buildEmbeddedAppRedirect(request, "/auth/login");
 
-  return {
-    errors,
-  };
+  if (appRedirect) {
+    throw redirect(appRedirect);
+  }
+
+  await login(request);
+
+  return {};
 };
 
 export default function Auth() {
-  const loaderData = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
-  const [shop, setShop] = useState("");
-  const { errors } = actionData || loaderData;
-
   return (
-    <AppProvider embedded={false}>
-      <s-page inlineSize="large">
-        <Form method="post">
-          <s-section heading="Log in">
-            <s-text-field
-              name="shop"
-              label="Shop domain"
-              details="example.myshopify.com"
-              value={shop}
-              onChange={(e) => setShop(e.currentTarget.value ?? "")}
-              autocomplete="on"
-              error={errors.shop}
-            ></s-text-field>
-            <s-button type="submit">Log in</s-button>
-          </s-section>
-        </Form>
-      </s-page>
-    </AppProvider>
+    <ShopifyReconnectPage message="Open Promo Pulse from your Shopify admin to reconnect the embedded app." />
   );
 }

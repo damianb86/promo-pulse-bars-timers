@@ -7,15 +7,26 @@ import {
   type CampaignTranslationAiProvider,
 } from "./campaignTranslationGenerator.server";
 import {
+  getStorefrontLocaleOptions,
   translationFallbackInputName,
   translationInputName,
 } from "../../types/localization";
+
+const defaultLocaleOptions = getStorefrontLocaleOptions([
+  "en",
+  "es",
+  "pt-BR",
+  "fr",
+  "de",
+]);
 
 describe("AI campaign translation generator", () => {
   it("parses source copy using resolved fallback values", () => {
     const formData = new FormData();
 
     formData.set("_action", "translateCampaignTranslations");
+    formData.append("translationLocale", "en");
+    formData.append("translationLocale", "es");
     formData.set("sourceLocale", "es");
     formData.set(translationInputName("es", "headline"), "");
     formData.set(
@@ -50,6 +61,7 @@ describe("AI campaign translation generator", () => {
 
     const result = await generateCampaignTranslationSuggestions(
       {
+        localeOptions: defaultLocaleOptions,
         sourceLocale: "es",
         sourceValues: {
           headline: "Venta relampago",
@@ -84,6 +96,7 @@ describe("AI campaign translation generator", () => {
   it("uses deterministic mock output for local and E2E flows", async () => {
     const result = await generateCampaignTranslationSuggestions(
       {
+        localeOptions: defaultLocaleOptions,
         sourceLocale: "pt-BR",
         sourceValues: {
           headline: "Oferta de hoje",

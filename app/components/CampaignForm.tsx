@@ -62,15 +62,15 @@ import {
   cartRescueReasonOptions,
   type CartRescueReasonValue,
 } from "../types/cart-rescue";
-import type {
-  CampaignTranslationFormErrors,
-  CampaignTranslationsByLocale,
-  StorefrontLocale,
-} from "../types/localization";
 import {
   campaignTranslationFields,
-  storefrontLocales,
+  getStorefrontLocaleLabel,
+  getStorefrontLocaleOptions,
   translationInputName,
+  type CampaignTranslationFormErrors,
+  type CampaignTranslationsByLocale,
+  type StorefrontLocale,
+  type StorefrontLocaleOption,
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
@@ -100,6 +100,7 @@ type CampaignFormProps = {
   listenForSaveEvents?: boolean;
   messageAddon?: ReactNode;
   messageInitialLocale?: StorefrontLocale;
+  messageLocales?: readonly string[];
   messageResolvedTranslations?: CampaignTranslationsByLocale;
   messageTranslationErrors?: CampaignTranslationFormErrors;
   messageTranslations?: CampaignTranslationsByLocale;
@@ -559,6 +560,7 @@ export function CampaignForm({
   lockedTargetingFeatures,
   messageAddon,
   messageInitialLocale = "en",
+  messageLocales,
   messageResolvedTranslations,
   messageTranslationErrors,
   messageTranslations,
@@ -588,6 +590,14 @@ export function CampaignForm({
     () => new Set(visibleBuilderTabs.map((tab) => tab.key)),
     [visibleBuilderTabs],
   );
+  const messageLocaleOptions = useMemo(
+    () => getStorefrontLocaleOptions(messageLocales),
+    [messageLocales],
+  );
+  const messageLocaleCodes = useMemo(
+    () => messageLocaleOptions.map((localeOption) => localeOption.locale),
+    [messageLocaleOptions],
+  );
   const [activeTab, setActiveTab] = useState<BuilderTabKey>(() =>
     visibleBuilderTabs.some((tab) => tab.key === initialTab)
       ? initialTab
@@ -607,7 +617,7 @@ export function CampaignForm({
   );
   const messageTranslationsRef = useRef(messageTranslations);
   const messageTranslationsSignature = messageTranslations
-    ? getTranslationValuesSignature(messageTranslations)
+    ? getTranslationValuesSignature(messageTranslations, messageLocaleOptions)
     : "";
   const [localDesignValues, setLocalDesignValues] = useState(() => design);
   const [localMobileDesignValues, setLocalMobileDesignValues] = useState(
@@ -712,16 +722,25 @@ export function CampaignForm({
         ? resolveCampaignTranslationValues(
             effectiveMessageTranslations,
             messageResolvedTranslations,
+            messageLocaleOptions,
           )
         : messageResolvedTranslations,
-    [effectiveMessageTranslations, messageResolvedTranslations],
+    [
+      effectiveMessageTranslations,
+      messageLocaleOptions,
+      messageResolvedTranslations,
+    ],
   );
   const syncMessageFieldsFromTranslations = useCallback(
     (
       nextTranslations: CampaignTranslationsByLocale,
       locale: StorefrontLocale,
     ) => {
-      const nextMessage = nextTranslations[locale] ?? nextTranslations.en;
+      const fallbackLocale = messageLocaleOptions[0]?.locale ?? "en";
+      const nextMessage =
+        nextTranslations[locale] ??
+        nextTranslations[fallbackLocale] ??
+        nextTranslations.en;
 
       setLocalMessageTranslations(nextTranslations);
       setFormValues((currentValues) => ({
@@ -733,7 +752,7 @@ export function CampaignForm({
         expiredText: nextMessage.expiredText,
       }));
     },
-    [],
+    [messageLocaleOptions],
   );
   const selectedProductTags = splitCampaignList(formValues.productTags);
   const selectedCountries = splitCampaignList(formValues.countries).map(
@@ -1343,7 +1362,10 @@ export function CampaignForm({
       ),
       { overwrite: true },
     );
-    const nextTranslations = buildCampaignTypeDefaultTranslations(nextValues);
+    const nextTranslations = buildCampaignTypeDefaultTranslations(
+      nextValues,
+      messageLocaleOptions,
+    );
 
     setFormValues(nextValues);
     setLocalMessageTranslations(nextTranslations);
@@ -2006,6 +2028,20 @@ export function CampaignForm({
                           ))}
                         </select>
                       </FormField>
+
+                      {formValues.timerExpiredBehavior ===
+                        "SHOW_CUSTOM_TITLE" && (
+                        <FormField
+                          label="Custom title"
+                          error={errors.expiredText}
+                        >
+                          <input
+                            value={formValues.expiredText}
+                            placeholder="This offer has ended."
+                            onChange={updateField("expiredText")}
+                          />
+                        </FormField>
+                      )}
                     </div>
                   </section>
                 )}
@@ -2741,6 +2777,7 @@ export function CampaignForm({
               effectiveMessageResolvedTranslations ? (
                 <>
                   <CampaignMessageHiddenInputs
+                    localeOptions={messageLocaleOptions}
                     values={formValues}
                     translations={effectiveMessageTranslations}
                   />
@@ -2749,6 +2786,7 @@ export function CampaignForm({
                     errors={messageTranslationErrors}
                     initialLocale={messageInitialLocale}
                     initialValues={effectiveMessageTranslations}
+                    locales={messageLocaleCodes}
                     resolvedValues={effectiveMessageResolvedTranslations}
                     showActions={false}
                     onActiveLocaleChange={syncMessageFieldsFromTranslations}
@@ -3740,8 +3778,11 @@ function isFreeShippingCodeReference(value: string) {
   return /^[A-Z0-9_-]{3,80}$/i.test(trimmed);
 }
 
-function buildCampaignTypeDefaultTranslations(values: CampaignFormValues) {
-  return storefrontLocales.reduce((translations, localeOption) => {
+function buildCampaignTypeDefaultTranslations(
+  values: CampaignFormValues,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions.reduce((translations, localeOption) => {
     translations[localeOption.locale] = {
       ...getDefaultCampaignTranslationValues(
         values.goal,
@@ -3756,36 +3797,46 @@ function buildCampaignTypeDefaultTranslations(values: CampaignFormValues) {
 function resolveCampaignTranslationValues(
   values: CampaignTranslationsByLocale,
   fallbackValues?: CampaignTranslationsByLocale,
+  localeOptions: readonly StorefrontLocaleOption[] = getStorefrontLocaleOptions(),
 ) {
-  return storefrontLocales.reduce((resolvedValues, localeOption) => {
+  const fallbackLocale = localeOptions[0]?.locale ?? "en";
+
+  return localeOptions.reduce((resolvedValues, localeOption) => {
     const locale = localeOption.locale;
 
     campaignTranslationFields.forEach((field) => {
       resolvedValues[locale][field.key] =
-        values[locale][field.key] ||
-        values.en[field.key] ||
+        values[locale]?.[field.key] ||
+        values[fallbackLocale]?.[field.key] ||
+        values.en?.[field.key] ||
         fallbackValues?.[locale]?.[field.key] ||
+        fallbackValues?.[fallbackLocale]?.[field.key] ||
         fallbackValues?.en?.[field.key] ||
         "";
     });
 
     return resolvedValues;
-  }, buildEmptyResolvedTranslations());
+  }, buildEmptyResolvedTranslations(localeOptions));
 }
 
-function buildEmptyResolvedTranslations() {
-  return storefrontLocales.reduce((translations, localeOption) => {
+function buildEmptyResolvedTranslations(
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions.reduce((translations, localeOption) => {
     translations[localeOption.locale] =
-      {} as CampaignTranslationsByLocale["en"];
+      {} as CampaignTranslationsByLocale[string];
     return translations;
   }, {} as CampaignTranslationsByLocale);
 }
 
-function getTranslationValuesSignature(values: CampaignTranslationsByLocale) {
-  return storefrontLocales
+function getTranslationValuesSignature(
+  values: CampaignTranslationsByLocale,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
+  return localeOptions
     .flatMap((localeOption) =>
       campaignTranslationFields.map(
-        (field) => values[localeOption.locale][field.key],
+        (field) => values[localeOption.locale]?.[field.key] ?? "",
       ),
     )
     .join("\u001f");
@@ -4723,9 +4774,7 @@ function buildCampaignErrorSummary(
   pushMessage(translationErrors?.form, "Messages");
   Object.entries(translationErrors?.locales ?? {}).forEach(
     ([locale, localeErrors]) => {
-      const localeLabel =
-        storefrontLocales.find((option) => option.locale === locale)?.label ??
-        locale.toUpperCase();
+      const localeLabel = getStorefrontLocaleLabel(locale);
 
       Object.entries(localeErrors ?? {}).forEach(([field, message]) => {
         pushMessage(
@@ -4779,9 +4828,11 @@ function getShopifyBridge() {
 }
 
 function CampaignMessageHiddenInputs({
+  localeOptions,
   values,
   translations,
 }: {
+  localeOptions: readonly StorefrontLocaleOption[];
   values: CampaignFormValues;
   translations?: CampaignTranslationsByLocale;
 }) {
@@ -4793,16 +4844,22 @@ function CampaignMessageHiddenInputs({
       <input name="ctaUrl" type="hidden" value={values.ctaUrl} />
       <input name="expiredText" type="hidden" value={values.expiredText} />
       {translations
-        ? storefrontLocales.flatMap((localeOption) =>
-            campaignTranslationFields.map((field) => (
+        ? localeOptions.flatMap((localeOption) => [
+            <input
+              key={`${localeOption.locale}-locale`}
+              name="translationLocale"
+              type="hidden"
+              value={localeOption.locale}
+            />,
+            ...campaignTranslationFields.map((field) => (
               <input
                 key={`${localeOption.locale}-${field.key}`}
                 name={translationInputName(localeOption.locale, field.key)}
                 type="hidden"
-                value={translations[localeOption.locale][field.key]}
+                value={translations[localeOption.locale]?.[field.key] ?? ""}
               />
             )),
-          )
+          ])
         : null}
     </>
   );

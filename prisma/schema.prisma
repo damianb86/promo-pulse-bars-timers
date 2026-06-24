@@ -62,23 +62,31 @@ model Shop {
 }
 
 model ShopSettings {
-  shopId                    String      @id
-  defaultLocale             String      @default("en")
-  enabledLocales            Json
-  defaultTimezone           String      @default("UTC")
-  defaultCurrency           String      @default("USD")
-  enableDebugMode           Boolean     @default(false)
-  brandName                 String?
-  supportEmail              String?
-  defaultCountry            String?
-  customCartDrawerSelector  String?
-  customCartPageSelector    String?
-  customProductFormSelector String?
-  analyticsEnabled          Boolean     @default(true)
-  respectDoNotTrack         Boolean     @default(true)
-  consentMode               ConsentMode @default(BASIC)
-  createdAt                 DateTime    @default(now())
-  updatedAt                 DateTime    @updatedAt
+  shopId                         String      @id
+  defaultLocale                  String      @default("en")
+  enabledLocales                 Json
+  defaultTimezone                String      @default("UTC")
+  defaultCurrency                String      @default("USD")
+  enableDebugMode                Boolean     @default(false)
+  brandName                      String?
+  supportEmail                   String?
+  defaultCountry                 String?
+  customTopBarSelector           String?
+  customBottomBarSelector        String?
+  customProductPageSelector      String?
+  customProductPageBadgeSelector String?
+  customCollectionCardSelector   String?
+  customCartDrawerSelector       String?
+  customCartPageSelector         String?
+  customProductFormSelector      String?
+  customThankYouPageSelector     String?
+  customOrderStatusPageSelector  String?
+  customHtmlSlotSelector         String?
+  analyticsEnabled               Boolean     @default(true)
+  respectDoNotTrack              Boolean     @default(true)
+  consentMode                    ConsentMode @default(BASIC)
+  createdAt                      DateTime    @default(now())
+  updatedAt                      DateTime    @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
@@ -182,68 +190,87 @@ model CampaignTargeting {
 }
 
 model CampaignDesign {
-  campaignId              String                   @id
-  templateKey             String                   @default("clean-minimal")
-  layout                  DesignLayout             @default(STANDARD)
-  backgroundType          DesignBackgroundType     @default(SOLID)
-  backgroundColor         String                   @default("#111827")
-  backgroundImageUrl      String                   @default("")
-  gradientStartColor      String                   @default("#252237")
-  gradientEndColor        String                   @default("#4C4861")
-  gradientAngle           Int                      @default(90)
-  textColor               String                   @default("#FFFFFF")
-  accentColor             String                   @default("#22C55E")
-  buttonColor             String                   @default("#FFFFFF")
-  buttonTextColor         String                   @default("#111827")
-  closeButtonColor        String                   @default("#111827")
-  fontSize                Int                      @default(14)
-  borderRadius            Int                      @default(0)
-  borderSize              Int                      @default(0)
-  borderColor             String                   @default("#E5E7EB")
-  fontFamily              DesignFontFamily         @default(THEME)
-  titleFontSize           Int                      @default(22)
-  titleColor              String                   @default("#FFFFFF")
-  subheadingFontSize      Int                      @default(14)
-  subheadingColor         String                   @default("#D1D5DB")
-  timerFontSize           Int                      @default(38)
-  timerColor              String                   @default("#FFFFFF")
-  legendFontSize          Int                      @default(12)
-  legendColor             String                   @default("#D1D5DB")
-  timerStyle              DesignTimerStyle         @default(PLAIN)
-  timerFormat             DesignTimerFormat        @default(UNITS)
-  timerShowLabels         Boolean                  @default(true)
-  timerShowSeconds        Boolean                  @default(true)
-  timerDaysLabel          String                   @default("Days")
-  timerHoursLabel         String                   @default("Hrs")
-  timerMinutesLabel       String                   @default("Mins")
-  timerSecondsLabel       String                   @default("Secs")
-  timerHideZeroDays       Boolean                  @default(true)
-  timerSurfaceColor       String                   @default("#FFFFFF")
-  timerSurfaceBorderColor String                   @default("#D1D5DB")
-  timerSurfaceBorderSize  Int                      @default(0)
-  timerSurfaceRadius      Int                      @default(8)
-  paddingBlock            Int                      @default(20)
-  paddingInline           Int                      @default(24)
-  contentGap              Int                      @default(8)
-  contentMaxWidth         Int                      @default(960)
-  fullWidth               Boolean                  @default(false)
-  positionMode            DesignPositionMode       @default(FLOW)
-  positionSticky          Boolean                  @default(true)
-  entranceAnimation       DesignBannerAnimation    @default(FADE)
-  exitAnimation           DesignBannerAnimation    @default(FADE)
-  animationDurationMs     Int                      @default(220)
-  timerTickAnimation      DesignTimerTickAnimation @default(NONE)
-  customCss               String?
-  mobileEnabled           Boolean                  @default(true)
-  alignment               DesignAlignment          @default(CENTER)
-  showCloseButton         Boolean                  @default(true)
-  showButton              Boolean                  @default(true)
-  showProgressBar         Boolean                  @default(true)
-  showIcon                Boolean                  @default(true)
-  icon                    CampaignDesignIcon       @default(NONE)
-  iconSize                Int                      @default(20)
-  customIconUrl           String                   @default("")
-  mobileDesign            Json?
+  campaignId               String                   @id
+  templateKey              String                   @default("clean-minimal")
+  layout                   DesignLayout             @default(STANDARD)
+  backgroundType           DesignBackgroundType     @default(SOLID)
+  backgroundColor          String                   @default("#111827")
+  backgroundImageUrl       String                   @default("")
+  gradientStartColor       String                   @default("#252237")
+  gradientEndColor         String                   @default("#4C4861")
+  gradientAngle            Int                      @default(90)
+  textColor                String                   @default("#FFFFFF")
+  accentColor              String                   @default("#22C55E")
+  buttonColor              String                   @default("#FFFFFF")
+  buttonTextColor          String                   @default("#111827")
+  closeButtonColor         String                   @default("#111827")
+  fontSize                 Int                      @default(14)
+  borderRadius             Int                      @default(0)
+  borderSize               Int                      @default(0)
+  borderColor              String                   @default("#E5E7EB")
+  fontFamily               DesignFontFamily         @default(THEME)
+  titleFontSize            Int                      @default(22)
+  titleColor               String                   @default("#FFFFFF")
+  subheadingFontSize       Int                      @default(14)
+  subheadingColor          String                   @default("#D1D5DB")
+  timerFontSize            Int                      @default(38)
+  timerColor               String                   @default("#FFFFFF")
+  legendFontSize           Int                      @default(12)
+  legendColor              String                   @default("#D1D5DB")
+  timerStyle               DesignTimerStyle         @default(PLAIN)
+  timerFormat              DesignTimerFormat        @default(UNITS)
+  timerShowLabels          Boolean                  @default(true)
+  timerShowSeconds         Boolean                  @default(true)
+  timerDaysLabel           String                   @default("Days")
+  timerHoursLabel          String                   @default("Hrs")
+  timerMinutesLabel        String                   @default("Mins")
+  timerSecondsLabel        String                   @default("Secs")
+  timerHideZeroDays        Boolean                  @default(true)
+  timerSurfaceColor        String                   @default("#FFFFFF")
+  timerSurfaceBorderColor  String                   @default("#D1D5DB")
+  timerSurfaceBorderSize   Int                      @default(0)
+  timerSurfaceRadius       Int                      @default(8)
+  paddingBlock             Int                      @default(20)
+  paddingInline            Int                      @default(24)
+  contentGap               Int                      @default(8)
+  contentMaxWidth          Int                      @default(960)
+  fullWidth                Boolean                  @default(false)
+  positionMode             DesignPositionMode       @default(FLOW)
+  positionSticky           Boolean                  @default(true)
+  entranceAnimation        DesignBannerAnimation    @default(FADE)
+  exitAnimation            DesignBannerAnimation    @default(FADE)
+  animationDurationMs      Int                      @default(220)
+  timerTickAnimation       DesignTimerTickAnimation @default(NONE)
+  customCss                String?
+  mobileEnabled            Boolean                  @default(true)
+  alignment                DesignAlignment          @default(CENTER)
+  showCloseButton          Boolean                  @default(true)
+  showButton               Boolean                  @default(true)
+  showProgressBar          Boolean                  @default(true)
+  showIcon                 Boolean                  @default(true)
+  icon                     CampaignDesignIcon       @default(NONE)
+  iconSize                 Int                      @default(20)
+  customIconUrl            String                   @default("")
+  showDiscountCode         Boolean                  @default(true)
+  showCopyCodeButton       Boolean                  @default(true)
+  showApplyDiscountButton  Boolean                  @default(true)
+  offerCodeLayout          DesignOfferCodeLayout    @default(INLINE)
+  offerCodeLabel           String                   @default("Discount code")
+  copyCodeLabel            String                   @default("Copy code")
+  copiedCodeLabel          String                   @default("Copied")
+  applyDiscountLabel       String                   @default("Apply discount")
+  appliedDiscountMessage   String                   @default("Discount applied successfully.")
+  offerCodeTextColor       String                   @default("#111827")
+  offerCodeBackgroundColor String                   @default("#FFFFFF")
+  offerCodeBorderColor     String                   @default("#D1D5DB")
+  offerCodeFontSize        Int                      @default(13)
+  offerCodeBorderRadius    Int                      @default(4)
+  offerCodePaddingBlock    Int                      @default(5)
+  offerCodePaddingInline   Int                      @default(8)
+  offerCodeGap             Int                      @default(6)
+  offerCopyBehavior        DesignOfferCopyBehavior  @default(FEEDBACK)
+  offerApplyBehavior       DesignOfferApplyBehavior @default(SHOW_APPLIED)
+  mobileDesign             Json?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -1108,6 +1135,24 @@ enum DesignTimerTickAnimation {
   FADE
   FLIP
   PULSE
+}
+
+enum DesignOfferCodeLayout {
+  INLINE
+  STACKED
+  COMPACT
+}
+
+enum DesignOfferCopyBehavior {
+  FEEDBACK
+  HIDE_OFFER
+  CLOSE_CAMPAIGN
+}
+
+enum DesignOfferApplyBehavior {
+  SHOW_APPLIED
+  HIDE_OFFER
+  CLOSE_CAMPAIGN
 }
 
 enum CampaignDesignIcon {

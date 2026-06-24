@@ -17,10 +17,13 @@ test("experiment results can auto-detect and apply a winning variant", async ({
 
   await expect(page.getByText("Experiment Results")).toBeVisible();
   await expect(
-    page.getByRole("row", { name: /Treatment 100 40 40\.0%/ }),
+    page.getByRole("columnheader", { name: "Traffic split" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("row", { name: /Control 100 10 10\.0%/ }),
+    page.getByRole("row", { name: /Treatment 50\.0% 100 40 40\.0%/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /Control 50\.0% 100 10 10\.0%/ }),
   ).toBeVisible();
 
   await Promise.all([
@@ -31,8 +34,14 @@ test("experiment results can auto-detect and apply a winning variant", async ({
     ),
     page.getByRole("button", { name: "Auto declare winner" }).click(),
   ]);
+  const completedExperiment = page
+    .locator(".counterpulse-experiment-history-card")
+    .filter({ hasText: "E2E Auto Winner Test" });
   await expect(
-    page.getByRole("cell", { name: "Treatment (winner)" }),
+    completedExperiment.getByText("Treatment won on CTR."),
+  ).toBeVisible();
+  await expect(
+    completedExperiment.getByRole("button", { name: "Apply winner" }),
   ).toBeVisible();
 
   await Promise.all([
@@ -41,7 +50,7 @@ test("experiment results can auto-detect and apply a winning variant", async ({
         response.url().includes("/app/campaigns/") &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Apply winner" }).click(),
+    completedExperiment.getByRole("button", { name: "Apply winner" }).click(),
   ]);
   await page.reload();
   await page.getByRole("tab", { name: "Campaign" }).click();

@@ -14,6 +14,9 @@ import {
   type DesignTimerStyleValue,
   type CampaignDesignIconValue,
   type DesignAlignmentValue,
+  type DesignOfferApplyBehaviorValue,
+  type DesignOfferCodeLayoutValue,
+  type DesignOfferCopyBehaviorValue,
 } from "../types/campaign-design";
 import {
   hasCampaignDesignErrors,
@@ -208,6 +211,61 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.iconSize,
     ),
     customIconUrl: readString(formData, "customIconUrl").slice(0, 150_000),
+    showDiscountCode: readBoolean(formData, "showDiscountCode"),
+    showCopyCodeButton: readBoolean(formData, "showCopyCodeButton"),
+    showApplyDiscountButton: readBoolean(formData, "showApplyDiscountButton"),
+    offerCodeLayout: readOfferCodeLayout(formData),
+    offerCodeLabel:
+      readString(formData, "offerCodeLabel") ||
+      defaultCampaignDesignValues.offerCodeLabel,
+    copyCodeLabel:
+      readString(formData, "copyCodeLabel") ||
+      defaultCampaignDesignValues.copyCodeLabel,
+    copiedCodeLabel:
+      readString(formData, "copiedCodeLabel") ||
+      defaultCampaignDesignValues.copiedCodeLabel,
+    applyDiscountLabel:
+      readString(formData, "applyDiscountLabel") ||
+      defaultCampaignDesignValues.applyDiscountLabel,
+    appliedDiscountMessage:
+      readString(formData, "appliedDiscountMessage") ||
+      defaultCampaignDesignValues.appliedDiscountMessage,
+    offerCodeTextColor:
+      readString(formData, "offerCodeTextColor") ||
+      defaultCampaignDesignValues.offerCodeTextColor,
+    offerCodeBackgroundColor:
+      readString(formData, "offerCodeBackgroundColor") ||
+      defaultCampaignDesignValues.offerCodeBackgroundColor,
+    offerCodeBorderColor:
+      readString(formData, "offerCodeBorderColor") ||
+      defaultCampaignDesignValues.offerCodeBorderColor,
+    offerCodeFontSize: readInteger(
+      formData,
+      "offerCodeFontSize",
+      defaultCampaignDesignValues.offerCodeFontSize,
+    ),
+    offerCodeBorderRadius: readInteger(
+      formData,
+      "offerCodeBorderRadius",
+      defaultCampaignDesignValues.offerCodeBorderRadius,
+    ),
+    offerCodePaddingBlock: readInteger(
+      formData,
+      "offerCodePaddingBlock",
+      defaultCampaignDesignValues.offerCodePaddingBlock,
+    ),
+    offerCodePaddingInline: readInteger(
+      formData,
+      "offerCodePaddingInline",
+      defaultCampaignDesignValues.offerCodePaddingInline,
+    ),
+    offerCodeGap: readInteger(
+      formData,
+      "offerCodeGap",
+      defaultCampaignDesignValues.offerCodeGap,
+    ),
+    offerCopyBehavior: readOfferCopyBehavior(formData),
+    offerApplyBehavior: readOfferApplyBehavior(formData),
   };
 
   const errors = validateCampaignDesignValues(values);
@@ -459,4 +517,46 @@ function readIcon(formData: FormData): CampaignDesignIconValue {
   }
 
   return defaultCampaignDesignValues.icon;
+}
+
+function readOfferCodeLayout(formData: FormData): DesignOfferCodeLayoutValue {
+  const value = readString(formData, "offerCodeLayout");
+
+  if (value === "INLINE" || value === "STACKED" || value === "COMPACT") {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.offerCodeLayout;
+}
+
+function readOfferCopyBehavior(
+  formData: FormData,
+): DesignOfferCopyBehaviorValue {
+  const value = readString(formData, "offerCopyBehavior");
+
+  if (
+    value === "FEEDBACK" ||
+    value === "HIDE_OFFER" ||
+    value === "CLOSE_CAMPAIGN"
+  ) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.offerCopyBehavior;
+}
+
+function readOfferApplyBehavior(
+  formData: FormData,
+): DesignOfferApplyBehaviorValue {
+  const value = readString(formData, "offerApplyBehavior");
+
+  if (
+    value === "SHOW_APPLIED" ||
+    value === "HIDE_OFFER" ||
+    value === "CLOSE_CAMPAIGN"
+  ) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.offerApplyBehavior;
 }

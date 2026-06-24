@@ -864,10 +864,7 @@ function matchesAny(allowedValues: string[], actualValues: string[]) {
   );
 }
 
-function findTranslation(
-  translations: CampaignTranslation[],
-  locale: "en" | "es" | "pt-BR" | "fr" | "de",
-) {
+function findTranslation(translations: CampaignTranslation[], locale: string) {
   return translations.find(
     (translation) => normalizeStorefrontLocale(translation.locale) === locale,
   );

@@ -66,6 +66,12 @@ type AdvancedBadgeRuleSource = Awaited<
   ReturnType<typeof findActiveAdvancedBadgeRules>
 >[number];
 
+type BadgeBatchContext = {
+  key: string;
+  context: StorefrontCampaignContext;
+  productContext: BadgeProductContext;
+};
+
 export async function loadStorefrontBadgesResponse(request: Request) {
   return loadStorefrontBadgesPayload(request);
 }
@@ -125,8 +131,29 @@ export async function loadStorefrontBadgesPayload(
     );
   }
 
+  const batchContexts = parseBadgeBatchContexts(url, context);
   const productContext = parseBadgeProductContext(url, context);
   const advancedGate = canUsePremiumFeature(shop, "ADVANCED_BADGES");
+
+  if (batchContexts.length > 0) {
+    const badgeGroups = await loadBadgeGroups({
+      advancedAllowed: advancedGate.allowed,
+      batchContexts,
+      placementType,
+      shop,
+    });
+
+    return jsonResponse(
+      {
+        badgeGroups,
+        settings: publicSettings,
+        gated: !advancedGate.allowed,
+        requiredPlan: advancedGate.requiredPlan,
+      },
+      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
+    );
+  }
+
   const badges = advancedGate.allowed
     ? await loadAdvancedBadges({
         context,
@@ -182,6 +209,75 @@ export function parseBadgeProductContext(
   };
 }
 
+function parseBadgeBatchContexts(
+  url: URL,
+  baseContext: StorefrontCampaignContext,
+): BadgeBatchContext[] {
+  const raw = url.searchParams.get("badgeContexts");
+  let parsed: unknown;
+
+  if (!raw) return [];
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .slice(0, 64)
+    .map((item, index) => parseBadgeBatchContextItem(item, index, baseContext))
+    .filter((item): item is BadgeBatchContext => item !== null);
+}
+
+function parseBadgeBatchContextItem(
+  value: unknown,
+  index: number,
+  baseContext: StorefrontCampaignContext,
+): BadgeBatchContext | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const input = value as Record<string, unknown>;
+  const price = readContextNumber(input.price);
+  const compareAtPrice = readContextNumber(input.compareAtPrice);
+  const context = {
+    ...baseContext,
+    collectionIds: readContextList(input.collectionIds),
+    country: readContextString(input.country) || baseContext.country,
+    locale: readContextString(input.locale) || baseContext.locale,
+    market: readContextString(input.market) || baseContext.market,
+    productId: readContextString(input.productId),
+    productTags: readContextList(input.productTags),
+  };
+
+  return {
+    context,
+    key: readContextString(input.key) || `context-${index + 1}`,
+    productContext: {
+      productId: context.productId,
+      productTags: context.productTags,
+      collectionIds: context.collectionIds,
+      vendor: readContextString(input.vendor),
+      inventoryQuantity: readContextNumber(input.inventoryQuantity),
+      discountActive:
+        readContextBoolean(input.discountActive) ??
+        (price !== null && compareAtPrice !== null
+          ? compareAtPrice > price
+          : undefined),
+      price,
+      compareAtPrice,
+      metafields: readContextMetafields(input.metafields),
+      market: context.market,
+      country: context.country,
+      locale: context.locale,
+    },
+  };
+}
+
 async function loadAdvancedBadges({
   context,
   placementType,
@@ -194,6 +290,89 @@ async function loadAdvancedBadges({
   shop: { id: string; plan: ShopPlan };
 }) {
   const rules = await findActiveAdvancedBadgeRules(shop.id, placementType);
+  const eligibleRules = rules.filter((rule) =>
+    isRuleCampaignEligible(rule, context, shop, placementType),
+  );
+  const ruleById = new Map(eligibleRules.map((rule) => [rule.id, rule]));
+  const evaluated = evaluateBadgeRules(
+    productContext,
+    eligibleRules.map((rule) => ({
+      id: rule.id,
+      campaignId: rule.campaignId,
+      priority: rule.priority,
+      status: rule.status,
+      conditions: rule.conditions,
+      design: rule.design,
+    })),
+  );
+
+  return evaluated
+    .map((badge) => {
+      const rule = ruleById.get(badge.id);
+
+      return rule ? toAdvancedStorefrontBadge(badge, rule, context) : null;
+    })
+    .filter((badge): badge is StorefrontBadge => badge !== null);
+}
+
+async function loadBadgeGroups({
+  advancedAllowed,
+  batchContexts,
+  placementType,
+  shop,
+}: {
+  advancedAllowed: boolean;
+  batchContexts: BadgeBatchContext[];
+  placementType: PlacementType | undefined;
+  shop: { id: string; plan: ShopPlan };
+}) {
+  const [rules, fallbackCampaigns] = await Promise.all([
+    advancedAllowed
+      ? findActiveAdvancedBadgeRules(shop.id, placementType)
+      : Promise.resolve([]),
+    loadSimpleBadgeFallbackCampaigns({ placementType, shop }),
+  ]);
+
+  return batchContexts.map(({ context, key, productContext }) => {
+    const badges = advancedAllowed
+      ? buildAdvancedBadgesForContext({
+          context,
+          placementType,
+          productContext,
+          rules,
+          shop,
+        })
+      : [];
+    const fallbackBadges =
+      badges.length > 0
+        ? []
+        : buildSimpleBadgeFallback({
+            campaigns: fallbackCampaigns,
+            context,
+            placementType,
+            shop,
+          });
+
+    return {
+      badges: badges.length > 0 ? badges : fallbackBadges,
+      key,
+    };
+  });
+}
+
+function buildAdvancedBadgesForContext({
+  context,
+  placementType,
+  productContext,
+  rules,
+  shop,
+}: {
+  context: StorefrontCampaignContext;
+  placementType: PlacementType | undefined;
+  productContext: BadgeProductContext;
+  rules: AdvancedBadgeRuleSource[];
+  shop: { plan: ShopPlan };
+}) {
   const eligibleRules = rules.filter((rule) =>
     isRuleCampaignEligible(rule, context, shop, placementType),
   );
@@ -279,19 +458,44 @@ async function loadSimpleBadgeFallback({
   placementType: PlacementType | undefined;
   shop: { id: string; plan: ShopPlan };
 }) {
+  const campaigns = await loadSimpleBadgeFallbackCampaigns({
+    placementType,
+    shop,
+  });
+
+  return buildSimpleBadgeFallback({ campaigns, context, placementType, shop });
+}
+
+async function loadSimpleBadgeFallbackCampaigns({
+  placementType,
+  shop,
+}: {
+  placementType: PlacementType | undefined;
+  shop: { id: string; plan: ShopPlan };
+}) {
   const campaigns = await getActiveCampaignsForShop(
     shop.id,
     new Date(),
     placementType,
   );
-  const serializedCampaigns = serializeStorefrontCampaigns(
-    campaigns.filter(
-      (campaign) =>
-        campaign.type === CampaignType.PRODUCT_BADGE &&
-        isCampaignAllowedByPlan(shop, campaign, placementType),
-    ),
-    context,
+
+  return campaigns.filter(
+    (campaign) =>
+      campaign.type === CampaignType.PRODUCT_BADGE &&
+      isCampaignAllowedByPlan(shop, campaign, placementType),
   );
+}
+
+function buildSimpleBadgeFallback({
+  campaigns,
+  context,
+}: {
+  campaigns: Awaited<ReturnType<typeof loadSimpleBadgeFallbackCampaigns>>;
+  context: StorefrontCampaignContext;
+  placementType: PlacementType | undefined;
+  shop: { id: string; plan: ShopPlan };
+}) {
+  const serializedCampaigns = serializeStorefrontCampaigns(campaigns, context);
 
   return serializedCampaigns
     .filter((campaign) => campaign.badge)
@@ -442,6 +646,54 @@ function readBadgePosition(value: string | undefined) {
     value === "BOTTOM_RIGHT"
     ? value
     : "TOP_RIGHT";
+}
+
+function readContextString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readContextList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => readContextString(item))
+      .filter((item) => item.length > 0);
+  }
+
+  return readContextString(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function readContextNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  return readNumber(readContextString(value));
+}
+
+function readContextBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+
+  return readBoolean(readContextString(value));
+}
+
+function readContextMetafields(value: unknown) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value).reduce<Record<string, string>>(
+      (metafields, [key, metafieldValue]) => {
+        if (typeof metafieldValue === "string") {
+          metafields[key] = metafieldValue;
+        }
+
+        return metafields;
+      },
+      {},
+    );
+  }
+
+  return readMetafields(readContextString(value));
 }
 
 function readMetafields(value: string | null) {

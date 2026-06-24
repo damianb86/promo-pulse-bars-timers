@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppAlert, AppToast } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
@@ -12,7 +12,7 @@ import {
 } from "../types/ai-campaign";
 import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
-import { storefrontLocales } from "../types/localization";
+import { getStorefrontLocaleOptions } from "../types/localization";
 import { AiGenerateIcon } from "./AiGenerateIcon";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 
@@ -20,6 +20,7 @@ type AiCampaignBuilderProps = {
   errors?: CampaignAiFormErrors;
   followUpQuestions?: CampaignAiFollowUpQuestion[];
   lockedReason?: string;
+  locales?: readonly string[];
   onApplied?: () => void;
   suggestion?: CampaignSuggestion | null;
   templateSourceName?: string;
@@ -546,12 +547,22 @@ export function AiCampaignBuilder({
   errors = {},
   followUpQuestions = [],
   lockedReason,
+  locales,
   onApplied,
   suggestion,
   templateSourceName,
   values,
 }: AiCampaignBuilderProps) {
   const navigation = useNavigation();
+  const localeOptions = useMemo(
+    () => getStorefrontLocaleOptions(locales),
+    [locales],
+  );
+  const activeLocales = useMemo(
+    () => localeOptions.map((localeOption) => localeOption.locale),
+    [localeOptions],
+  );
+  const activeLocalesKey = activeLocales.join("|");
   const suggestionPreviewRef = useRef<HTMLDivElement | null>(null);
   const [applied, setApplied] = useState(false);
   const [formValues, setFormValues] = useState(values);
@@ -662,6 +673,23 @@ export function AiCampaignBuilder({
   }, [values]);
 
   useEffect(() => {
+    if (activeLocales.includes(formValues.locale)) return undefined;
+
+    const syncLocale = window.setTimeout(() => {
+      setFormValues((current) =>
+        activeLocales.includes(current.locale)
+          ? current
+          : {
+              ...current,
+              locale: activeLocales[0] ?? "en",
+            },
+      );
+    }, 0);
+
+    return () => window.clearTimeout(syncLocale);
+  }, [activeLocales, activeLocalesKey, formValues.locale]);
+
+  useEffect(() => {
     if (!suggestion) return undefined;
 
     const scrollToSuggestion = window.setTimeout(() => {
@@ -753,6 +781,9 @@ export function AiCampaignBuilder({
               type="hidden"
               value={isAnsweringFollowUp ? "answered" : "initial"}
             />
+            {activeLocales.map((locale) => (
+              <input key={locale} name="locales" type="hidden" value={locale} />
+            ))}
 
             <div className="counterpulse-ai-step">
               <div>
@@ -961,7 +992,7 @@ export function AiCampaignBuilder({
                       )
                     }
                   >
-                    {storefrontLocales.map((locale) => (
+                    {localeOptions.map((locale) => (
                       <option key={locale.locale} value={locale.locale}>
                         {locale.label}
                       </option>
@@ -1129,7 +1160,7 @@ export function AiCampaignBuilder({
                       )
                     }
                   >
-                    {storefrontLocales.map((locale) => (
+                    {localeOptions.map((locale) => (
                       <option key={locale.locale} value={locale.locale}>
                         {locale.label}
                       </option>

@@ -822,7 +822,10 @@
       "--pp-font-size",
       clamp(design.fontSize, 10, 24, 14) + "px",
     );
-    element.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
+    element.style.setProperty(
+      "--pp-font-family",
+      fontFamily(design.fontFamily),
+    );
     element.style.setProperty(
       "--pp-radius",
       clamp(design.borderRadius, 0, 999, 0) + "px",
@@ -912,13 +915,47 @@
       clamp(design.iconSize, 12, 64, 20) + "px",
     );
     element.style.setProperty(
+      "--pp-offer-code-text",
+      color(design.offerCodeTextColor, "#111827"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-bg",
+      color(design.offerCodeBackgroundColor, "#ffffff"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-border",
+      color(design.offerCodeBorderColor, "#d1d5db"),
+    );
+    element.style.setProperty(
+      "--pp-offer-code-size",
+      clamp(design.offerCodeFontSize, 10, 24, 13) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-radius",
+      clamp(design.offerCodeBorderRadius, 0, 40, 4) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-padding-block",
+      clamp(design.offerCodePaddingBlock, 2, 24, 5) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-code-padding-inline",
+      clamp(design.offerCodePaddingInline, 4, 32, 8) + "px",
+    );
+    element.style.setProperty(
+      "--pp-offer-gap",
+      clamp(design.offerCodeGap, 0, 24, 6) + "px",
+    );
+    element.style.setProperty(
       "--pp-motion-duration",
       clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
     );
   }
 
   function normalizeLayout(value) {
-    var layout = String(value || "STANDARD").toLowerCase().replace(/_/g, "-");
+    var layout = String(value || "STANDARD")
+      .toLowerCase()
+      .replace(/_/g, "-");
 
     if (
       layout === "balanced" ||

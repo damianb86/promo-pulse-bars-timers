@@ -2,6 +2,7 @@ import {
   campaignTranslationFields,
   createEmptyCampaignTranslationsByLocale,
   emptyCampaignTranslationValues,
+  getStorefrontLocaleOptions,
   storefrontLocales,
   translationFallbackInputName,
   translationInputName,
@@ -9,6 +10,7 @@ import {
   type CampaignTranslationValues,
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
+  type StorefrontLocaleOption,
 } from "../../types/localization";
 
 type CampaignTranslationAiProviderOutput = Partial<
@@ -23,6 +25,7 @@ export type CampaignTranslationAiProvider = {
 };
 
 export type CampaignTranslationAiInput = {
+  localeOptions: StorefrontLocaleOption[];
   sourceLocale: StorefrontLocale;
   sourceValues: CampaignTranslationValues;
   values: CampaignTranslationsByLocale;
@@ -52,12 +55,17 @@ const localeLabels = new Map(
 
 export function parseCampaignTranslationAiFormData(
   formData: FormData,
+  locales?: readonly string[],
 ): ParsedCampaignTranslationAiForm {
-  const sourceLocale = readStorefrontLocale(formData.get("sourceLocale"));
-  const values = createEmptyCampaignTranslationsByLocale();
+  const localeOptions = readTranslationLocaleOptions(formData, locales);
+  const sourceLocale = readStorefrontLocale(
+    formData.get("sourceLocale"),
+    localeOptions,
+  );
+  const values = createEmptyCampaignTranslationsByLocale(localeOptions);
   const sourceValues = { ...emptyCampaignTranslationValues };
 
-  for (const localeOption of storefrontLocales) {
+  for (const localeOption of localeOptions) {
     for (const field of campaignTranslationFields) {
       const value = readString(
         formData,
@@ -88,6 +96,7 @@ export function parseCampaignTranslationAiFormData(
           form: `Add source copy in ${localeLabels.get(sourceLocale) ?? sourceLocale} before translating.`,
         },
     input: {
+      localeOptions,
       sourceLocale,
       sourceValues,
       values,
@@ -116,7 +125,7 @@ export function createMockCampaignTranslationAiProvider(): CampaignTranslationAi
   return {
     source: "mock",
     async translate(input) {
-      return storefrontLocales.reduce((translations, localeOption) => {
+      return input.localeOptions.reduce((translations, localeOption) => {
         translations[localeOption.locale] = {
           ...input.sourceValues,
           ctaUrl: input.sourceValues.ctaUrl,
@@ -219,7 +228,7 @@ async function requestOpenAiTranslationJson(
 }
 
 function buildTranslationPrompt(input: CampaignTranslationAiInput) {
-  const localeInstructions = storefrontLocales
+  const localeInstructions = input.localeOptions
     .map((localeOption) => {
       const dialect =
         localeOption.locale === "en"
@@ -258,9 +267,11 @@ function sanitizeTranslationOutput(
   input: CampaignTranslationAiInput,
   output: CampaignTranslationAiProviderOutput,
 ): CampaignTranslationsByLocale {
-  const translations = createEmptyCampaignTranslationsByLocale();
+  const translations = createEmptyCampaignTranslationsByLocale(
+    input.localeOptions,
+  );
 
-  for (const localeOption of storefrontLocales) {
+  for (const localeOption of input.localeOptions) {
     const locale = localeOption.locale;
     const rawTranslation = output[locale] ?? {};
     const fallback =
@@ -290,14 +301,15 @@ function sanitizeText(value: unknown, fallback: string) {
   return resolved.slice(0, 500);
 }
 
-function readStorefrontLocale(value: FormDataEntryValue | null) {
+function readStorefrontLocale(
+  value: FormDataEntryValue | null,
+  localeOptions: readonly StorefrontLocaleOption[],
+) {
   const locale = String(value ?? "").trim();
 
-  return storefrontLocales.some(
-    (localeOption) => localeOption.locale === locale,
-  )
+  return localeOptions.some((localeOption) => localeOption.locale === locale)
     ? (locale as StorefrontLocale)
-    : "en";
+    : (localeOptions[0]?.locale ?? "en");
 }
 
 function readString(formData: FormData, key: string) {
@@ -305,4 +317,15 @@ function readString(formData: FormData, key: string) {
   const value = values.length > 0 ? values[values.length - 1] : "";
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readTranslationLocaleOptions(
+  formData: FormData,
+  locales?: readonly string[],
+) {
+  if (locales) return getStorefrontLocaleOptions(locales);
+
+  const formLocales = formData.getAll("translationLocale").map(String);
+
+  return getStorefrontLocaleOptions(formLocales);
 }

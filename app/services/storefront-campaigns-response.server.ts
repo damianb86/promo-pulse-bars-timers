@@ -111,18 +111,19 @@ export async function loadStorefrontCampaignsResponse(
   });
 
   if (!snapshot) {
-    return jsonResponse(
-      buildStorefrontPayload([], null),
-      {
-        cacheControl: getCacheControlHeader(context),
-        rateLimit,
-        access,
-      },
-    );
+    return jsonResponse(buildStorefrontPayload([], null), {
+      cacheControl: getCacheControlHeader(context),
+      rateLimit,
+      access,
+    });
   }
 
-  const { campaigns: publishedCampaigns, publicSettings, settings: shopSettings, shop } =
-    snapshot;
+  const {
+    campaigns: publishedCampaigns,
+    publicSettings,
+    settings: shopSettings,
+    shop,
+  } = snapshot;
   context = applySettingsToStorefrontContext(context, shopSettings);
 
   const placementTypes = getPlacementTypes(context.placements ?? []);
@@ -133,14 +134,11 @@ export async function loadStorefrontCampaignsResponse(
     context.placement &&
     placementTypes.length !== (context.placements ?? []).length
   ) {
-    return jsonResponse(
-      buildStorefrontPayload([], publicSettings),
-      {
-        cacheControl: getCacheControlHeader(context),
-        rateLimit,
-        access,
-      },
-    );
+    return jsonResponse(buildStorefrontPayload([], publicSettings), {
+      cacheControl: getCacheControlHeader(context),
+      rateLimit,
+      access,
+    });
   }
 
   if (
@@ -148,14 +146,11 @@ export async function loadStorefrontCampaignsResponse(
       hasReachedMonthlyImpressions(shop),
     )
   ) {
-    return jsonResponse(
-      buildStorefrontPayload([], publicSettings),
-      {
-        cacheControl: "no-store",
-        rateLimit,
-        access,
-      },
-    );
+    return jsonResponse(buildStorefrontPayload([], publicSettings), {
+      cacheControl: "no-store",
+      rateLimit,
+      access,
+    });
   }
 
   const now = new Date();
@@ -187,8 +182,8 @@ export async function loadStorefrontCampaignsResponse(
       })
     : "";
   const cachedPayload = payloadCacheKey
-    ? getCachedStorefrontPayload(payloadCacheKey) ??
-      (await getCachedStorefrontPayloadFromFile(payloadCacheKey))
+    ? (getCachedStorefrontPayload(payloadCacheKey) ??
+      (await getCachedStorefrontPayloadFromFile(payloadCacheKey)))
     : null;
 
   if (cachedPayload) {
@@ -264,18 +259,15 @@ export async function loadStorefrontCampaignsResponse(
     }
   }
 
-  return jsonResponse(
-    payload,
-    {
-      cacheControl: getCacheControlHeader(
-        context,
-        behaviorLookbackDays > 0 || hasActiveExperiment,
-      ),
-      rateLimit,
-      access,
-      headers: cacheEntry ? storefrontCacheHeaders(cacheEntry) : undefined,
-    },
-  );
+  return jsonResponse(payload, {
+    cacheControl: getCacheControlHeader(
+      context,
+      behaviorLookbackDays > 0 || hasActiveExperiment,
+    ),
+    rateLimit,
+    access,
+    headers: cacheEntry ? storefrontCacheHeaders(cacheEntry) : undefined,
+  });
 }
 
 export async function handleStorefrontCampaignsAction(
@@ -361,12 +353,10 @@ function getCacheControlHeader(
     return "no-store";
   }
 
-  return "public, max-age=45, stale-while-revalidate=30";
+  return "no-cache, max-age=0, must-revalidate";
 }
 
-function getMaxBehaviorLookbackDays(
-  campaigns: StorefrontCampaignSource[],
-) {
+function getMaxBehaviorLookbackDays(campaigns: StorefrontCampaignSource[]) {
   return campaigns.reduce((maxLookbackDays, campaign) => {
     const behaviorRules = campaign.targeting?.behaviorRules;
 

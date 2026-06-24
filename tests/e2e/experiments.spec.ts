@@ -54,9 +54,7 @@ function trackPendingStorefrontBadgeRequests(page: Page) {
   });
 
   return () =>
-    expect
-      .poll(() => pendingRequests.size, { timeout: 5_000 })
-      .toBe(0);
+    expect.poll(() => pendingRequests.size, { timeout: 5_000 }).toBe(0);
 }
 
 async function findVisitorIdForVariant(
@@ -233,6 +231,14 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(
     controlVariantCard.locator(".counterpulse-variant-changes__toggle"),
   ).toHaveCount(0);
+  await expect(
+    controlVariantCard.locator(".counterpulse-variant-preview"),
+  ).toBeVisible();
+  const controlPreviewBox = await controlVariantCard
+    .locator(".counterpulse-variant-preview")
+    .boundingBox();
+  expect(controlPreviewBox).not.toBeNull();
+  expect(controlPreviewBox!.height).toBeLessThan(340);
   await createExperimentForm
     .getByLabel("Experiment name")
     .fill("E2E A/B Experiment");
@@ -277,6 +283,14 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
     .filter({ hasText: "E2E A/B Experiment" });
   await expect(
     savedExperiment.getByRole("heading", { name: "E2E A/B Experiment" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Experiment created as draft", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "To activate it, click Start Experiment and then publish the campaign changes.",
+    ),
   ).toBeVisible();
   await expect(createExperimentForm).toHaveCount(0);
   await expect(
@@ -565,7 +579,7 @@ test("experiment results aggregate commerce events across campaigns and choose w
   ).toBeVisible();
   await expect(
     page.getByRole("row", {
-      name: /Treatment 40 8 20\.0% 20 3 \$300\.00/,
+      name: /Treatment 50\.0% 40 8 20\.0% 20 3 \$300\.00/,
     }),
   ).toBeVisible();
   const atcTreatmentRow = page.locator("tr", {
@@ -573,7 +587,9 @@ test("experiment results aggregate commerce events across campaigns and choose w
   });
   await expect(atcTreatmentRow.getByText("Recommended")).toBeVisible();
   await expect(
-    page.getByRole("row", { name: /Control 40 4 10\.0% 4 0 \$0\.00/ }),
+    page.getByRole("row", {
+      name: /Control 50\.0% 40 4 10\.0% 4 0 \$0\.00/,
+    }),
   ).toBeVisible();
   const atcControlRow = page.locator("tr", {
     has: page.getByRole("cell", { name: "Control" }),
@@ -614,7 +630,9 @@ test("experiment results aggregate commerce events across campaigns and choose w
   await page.reload();
   await page.getByRole("tab", { name: "Experiments" }).click();
   await expect(
-    page.getByRole("row", { name: /Control 40 4 10\.0% 5 1 \$45\.00/ }),
+    page.getByRole("row", {
+      name: /Control 50\.0% 40 4 10\.0% 5 1 \$45\.00/,
+    }),
   ).toBeVisible();
 
   await Promise.all([
@@ -645,12 +663,12 @@ test("experiment results aggregate commerce events across campaigns and choose w
   ).toBeVisible();
   await expect(
     page.getByRole("row", {
-      name: /Checkout Control 40 6 15\.0% 25 0 \$0\.00/,
+      name: /Checkout Control 50\.0% 40 6 15\.0% 25 0 \$0\.00/,
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("row", {
-      name: /Checkout Treatment 40 8 20\.0% 14 1 \$90\.00/,
+      name: /Checkout Treatment 50\.0% 40 8 20\.0% 14 1 \$90\.00/,
     }),
   ).toBeVisible();
 
@@ -773,6 +791,12 @@ test("experiment variant copy is prefilled and design preview updates live", asy
     previewSurface.locator(".counterpulse-preview-message strong"),
   ).toHaveCSS("font-size", "34px");
 
+  const previewCta = previewSurface.locator(".counterpulse-preview-cta");
+  await variantDrawer.locator('input[name="buttonColor"]').fill("#123456");
+  await expect(previewCta).toHaveCSS("background-color", "rgb(18, 52, 86)");
+  await variantDrawer.locator('input[name="buttonTextColor"]').fill("#fedcba");
+  await expect(previewCta).toHaveCSS("color", "rgb(254, 220, 186)");
+
   await variantDrawer.getByRole("button", { name: "Boxes" }).click();
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
@@ -885,9 +909,7 @@ test("AI variant drawer generates a reviewable experiment variant", async ({
     aiDrawer.getByRole("button", { name: "Generate variant" }).click(),
   ]);
 
-  const aiSuggestion = aiDrawer.locator(
-    ".counterpulse-ai-variant-suggestion",
-  );
+  const aiSuggestion = aiDrawer.locator(".counterpulse-ai-variant-suggestion");
   await expect(aiDrawer.getByText("Suggested variant")).toBeVisible();
   await expect(aiSuggestion).toBeInViewport({ ratio: 0.35 });
   await expect(aiDrawer.getByText("Hypothesis", { exact: true })).toBeVisible();

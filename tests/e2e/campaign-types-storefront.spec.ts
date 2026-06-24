@@ -280,15 +280,18 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   page,
   resetDb,
 }) => {
+  const collectionCardBadgeRequests: string[] = [];
   let productPageBadgeRequests = 0;
 
   page.on("request", (request) => {
     const url = new URL(request.url());
 
-    if (
-      url.pathname === "/apps/promo-pulse/api/storefront/badges" &&
-      url.searchParams.get("placement") === "PRODUCT_PAGE_BADGE"
-    ) {
+    if (url.pathname !== "/apps/promo-pulse/api/storefront/badges") return;
+
+    if (url.searchParams.get("placement") === "COLLECTION_CARD") {
+      collectionCardBadgeRequests.push(url.toString());
+    }
+    if (url.searchParams.get("placement") === "PRODUCT_PAGE_BADGE") {
       productPageBadgeRequests += 1;
     }
   });
@@ -307,6 +310,17 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   await expect(
     page.locator(".e2e-product-card").first().locator(".pp-countdown"),
   ).toBeVisible();
+  expect(collectionCardBadgeRequests).toHaveLength(1);
+  expect(
+    JSON.parse(
+      new URL(collectionCardBadgeRequests[0]).searchParams.get(
+        "badgeContexts",
+      ) || "[]",
+    ),
+  ).toHaveLength(3);
+  expect(
+    new URL(collectionCardBadgeRequests[0]).searchParams.has("productId"),
+  ).toBe(false);
 
   await page.goto("/__test/storefront-product");
   await expect(page.locator(".pp-badge")).toHaveCount(1);

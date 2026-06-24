@@ -15,7 +15,7 @@ test("storefront events are saved and visible in analytics admin", async ({
   await expect(page.locator(".pp-bar").first()).toContainText("Sale ends soon");
 
   await page
-    .locator(".pp-cta")
+    .locator(".pp-cta:not(.pp-cta--offer)")
     .first()
     .evaluate((element) => {
       element.addEventListener("click", (event) => event.preventDefault(), {
@@ -49,6 +49,19 @@ test("storefront events are saved and visible in analytics admin", async ({
   await expect(page.locator(".counterpulse-analytics-date-button")).toHaveCount(
     0,
   );
+  await expect(page.getByRole("button", { name: /Daily/i })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Performance over time" }),
+  ).toBeVisible();
+
+  for (const metric of ["Impressions", "Clicks", "CTR"]) {
+    await page.locator(`[data-info-label="${metric}"]`).click();
+    const dialog = page.getByRole("dialog", { name: metric });
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(metric);
+    await dialog.getByRole("button", { name: "Close" }).click();
+  }
 
   await page.getByRole("link", { name: "30 days" }).click();
   await expect(page).toHaveURL(/range=30/);
@@ -69,6 +82,9 @@ test("storefront events are saved and visible in analytics admin", async ({
   const exportHref = await exportButton.getAttribute("data-export-href");
 
   expect(exportHref).toBe("/app/analytics/csv?range=90");
+  await expect(
+    exportButton.locator("svg.counterpulse-analytics-export__icon"),
+  ).toBeVisible();
   const csvResponse = await page.request.get(exportHref!);
 
   expect(csvResponse.ok()).toBe(true);

@@ -163,7 +163,7 @@ export default function ReportsPage() {
                 type="button"
                 onClick={handleExport}
               >
-                <span aria-hidden="true" />
+                <CsvDownloadIcon />
                 {isExporting ? "Exporting..." : "Export CSV"}
               </button>
             </div>
@@ -188,7 +188,6 @@ export default function ReportsPage() {
             {report ? (
               <>
                 <SummarySection report={report} />
-                <TrendSection report={report} />
                 <section className="counterpulse-reports-breakdown-grid">
                   <BreakdownCard
                     heading="Performance by placement"
@@ -353,35 +352,46 @@ function SummarySection({ report }: { report: AdvancedReports }) {
       className="counterpulse-reports-metrics"
     >
       <ReportMetricCard
+        icon="impressions"
         label="Impressions"
         value={formatNumber(summary.impressions)}
       />
       <ReportMetricCard
         caption={`CTR ${formatPercent(summary.ctr)}`}
+        icon="clicks"
         label="Clicks"
         value={formatNumber(summary.clicks)}
       />
-      <ReportMetricCard label="Orders" value={formatNumber(summary.orders)} />
       <ReportMetricCard
+        icon="orders"
+        label="Orders"
+        value={formatNumber(summary.orders)}
+      />
+      <ReportMetricCard
+        icon="revenue"
         label="Revenue"
         value={formatCurrency(summary.revenue, summary.currencyCode)}
       />
       <ReportMetricCard
         caption={`${summary.visitors} visitors`}
+        icon="visitor"
         label="Revenue per visitor"
         value={formatCurrency(summary.revenuePerVisitor, summary.currencyCode)}
       />
       <ReportMetricCard
+        icon="conversion"
         label="Conversion rate"
         value={formatPercent(summary.conversionRate)}
       />
       <ReportMetricCard
         caption={`${summary.addToCart} ATC events`}
+        icon="cart"
         label="Add-to-cart rate"
         value={formatPercent(summary.addToCartRate)}
       />
       <ReportMetricCard
         caption={`${summary.checkoutStarted} checkouts`}
+        icon="checkout"
         label="Checkout started rate"
         value={formatPercent(summary.checkoutStartedRate)}
       />
@@ -389,10 +399,12 @@ function SummarySection({ report }: { report: AdvancedReports }) {
         caption={`${formatPercent(
           report.discountCodes.totals.conversionRate,
         )} used`}
+        icon="discount"
         label="Unique codes"
         value={`${report.discountCodes.totals.used} / ${report.discountCodes.totals.assigned}`}
       />
       <ReportMetricCard
+        icon="email"
         label="Email timer views"
         value={formatNumber(report.revenue.emailTimerViews)}
       />
@@ -402,17 +414,24 @@ function SummarySection({ report }: { report: AdvancedReports }) {
 
 function ReportMetricCard({
   caption = "-",
+  icon,
   label,
   value,
 }: {
   caption?: string;
+  icon: ReportMetricIconType;
   label: string;
   value: string;
 }) {
   return (
     <article className="counterpulse-reports-metric">
       <div>
-        <span aria-hidden="true" />
+        <span
+          aria-hidden="true"
+          className={`counterpulse-reports-metric__icon counterpulse-reports-metric__icon--${icon}`}
+        >
+          <ReportMetricIcon icon={icon} />
+        </span>
         <p>{label}</p>
       </div>
       <strong>{value}</strong>
@@ -421,128 +440,146 @@ function ReportMetricCard({
   );
 }
 
-function TrendSection({ report }: { report: AdvancedReports }) {
+type ReportMetricIconType =
+  | "impressions"
+  | "clicks"
+  | "orders"
+  | "revenue"
+  | "visitor"
+  | "conversion"
+  | "cart"
+  | "checkout"
+  | "discount"
+  | "email";
+
+function ReportMetricIcon({ icon }: { icon: ReportMetricIconType }) {
+  if (icon === "impressions") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M2.5 10s2.7-4.5 7.5-4.5S17.5 10 17.5 10s-2.7 4.5-7.5 4.5S2.5 10 2.5 10Z" />
+        <circle cx="10" cy="10" r="2.2" />
+      </svg>
+    );
+  }
+
+  if (icon === "clicks") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M6 2.8 14.6 10l-4.1.9 2.2 4.6-2.2 1-2.1-4.6-2.4 3Z" />
+      </svg>
+    );
+  }
+
+  if (icon === "orders") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M5 6.5h10l-1 10H6z" />
+        <path d="M7.4 6.5a2.6 2.6 0 1 1 5.2 0" fill="none" />
+      </svg>
+    );
+  }
+
+  if (icon === "revenue") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <circle cx="10" cy="10" r="7" />
+        <path d="M10 5.8v8.4M12.4 7.3H8.9a1.5 1.5 0 0 0 0 3h2.2a1.5 1.5 0 0 1 0 3H7.6" />
+      </svg>
+    );
+  }
+
+  if (icon === "visitor") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <circle cx="10" cy="7" r="3" />
+        <path d="M4.8 16.2c.8-2.7 2.5-4 5.2-4s4.4 1.3 5.2 4" />
+      </svg>
+    );
+  }
+
+  if (icon === "conversion") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M4 11.5 8 15l8-9" />
+        <path d="M4 5.5h7" />
+      </svg>
+    );
+  }
+
+  if (icon === "cart") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M3 4h2l1.4 8.2h7.8L16 6.5H6" />
+        <circle cx="8" cy="15.5" r="1.2" />
+        <circle cx="14" cy="15.5" r="1.2" />
+      </svg>
+    );
+  }
+
+  if (icon === "checkout") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <rect x="4" y="5" width="12" height="10" rx="2" />
+        <path d="M7 9h6M7 12h4" />
+      </svg>
+    );
+  }
+
+  if (icon === "discount") {
+    return (
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M3.8 8.4V4.8h3.6l8.8 8.8-3.6 3.6z" />
+        <circle cx="6.8" cy="6.8" r="1" />
+      </svg>
+    );
+  }
+
   return (
-    <section className="counterpulse-reports-panel counterpulse-reports-trend">
-      <div className="counterpulse-reports-panel__header">
-        <div>
-          <h2>Performance trend</h2>
-          <div className="counterpulse-reports-legend">
-            <span>
-              <i className="counterpulse-reports-legend__solid" />
-              Impressions
-            </span>
-            <span>
-              <i className="counterpulse-reports-legend__dotted" />
-              Clicks
-            </span>
-          </div>
-        </div>
-        <button className="counterpulse-reports-period" type="button">
-          Daily <span aria-hidden="true">v</span>
-        </button>
-      </div>
-      <ReportsTrendChart rows={report.trend.rows} />
-    </section>
+    <svg viewBox="0 0 20 20" focusable="false">
+      <rect x="4" y="5" width="12" height="10" rx="2" />
+      <path d="M4.5 6.2 10 10l5.5-3.8" />
+    </svg>
   );
 }
 
-function ReportsTrendChart({
-  rows,
-}: {
-  rows: AdvancedReports["trend"]["rows"];
-}) {
-  const impressionPoints = getReportChartPoints(
-    rows.map((row) => row.impressions),
-    900,
-    170,
-    18,
-  );
-  const clickPoints = getReportChartPoints(
-    rows.map((row) => row.clicks),
-    900,
-    170,
-    18,
-  );
-  const impressionPath = impressionPoints
-    .map((point) => `${point.x},${point.y}`)
-    .join(" ");
-  const clickPath = clickPoints
-    .map((point) => `${point.x},${point.y}`)
-    .join(" ");
-  const areaPath =
-    impressionPoints.length > 0
-      ? [
-          `M ${impressionPoints[0].x} 202`,
-          ...impressionPoints.map((point) => `L ${point.x} ${point.y}`),
-          `L ${impressionPoints[impressionPoints.length - 1].x} 202 Z`,
-        ].join(" ")
-      : "";
-  const maxValue = Math.max(
-    1,
-    ...rows.flatMap((row) => [row.impressions, row.clicks]),
-  );
-  const labels = selectTrendLabels(rows);
-
+function CsvDownloadIcon() {
   return (
-    <div className="counterpulse-reports-chart">
-      <svg role="img" viewBox="0 0 960 250">
-        <title>Performance trend</title>
-        <defs>
-          <linearGradient id="reportsTrendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#008060" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#008060" stopOpacity="0.04" />
-          </linearGradient>
-        </defs>
-        {[18, 74, 130, 186].map((y) => (
-          <line
-            className="counterpulse-reports-chart__grid"
-            key={y}
-            x1="44"
-            x2="944"
-            y1={y}
-            y2={y}
-          />
-        ))}
-        {[
-          maxValue,
-          Math.round(maxValue * 0.66),
-          Math.round(maxValue * 0.33),
-          0,
-        ].map((tick, index) => (
-          <text
-            className="counterpulse-reports-chart__tick"
-            key={`${tick}-${index}`}
-            x="8"
-            y={24 + index * 56}
-          >
-            {tick}
-          </text>
-        ))}
-        {areaPath ? <path d={areaPath} fill="url(#reportsTrendFill)" /> : null}
-        <polyline
-          className="counterpulse-reports-chart__line"
-          fill="none"
-          points={impressionPath}
-        />
-        <polyline
-          className="counterpulse-reports-chart__line counterpulse-reports-chart__line--clicks"
-          fill="none"
-          points={clickPath}
-        />
-        {labels.map((label) => (
-          <text
-            className="counterpulse-reports-chart__label"
-            key={`${label.x}-${label.text}`}
-            textAnchor="middle"
-            x={label.x}
-            y="236"
-          >
-            {label.text}
-          </text>
-        ))}
-      </svg>
-    </div>
+    <svg
+      aria-hidden="true"
+      className="counterpulse-reports-export__icon"
+      focusable="false"
+      viewBox="0 0 20 20"
+    >
+      <path
+        d="M5.5 2.75h6.1L15 6.15v11.1H5.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M11.5 2.95v3.4h3.25"
+        fill="none"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M10.25 7.75v5.1m0 0 2.05-2.05m-2.05 2.05L8.2 10.8"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M7.6 15.2h5.3"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
   );
 }
 
@@ -711,50 +748,10 @@ async function loadCampaignOptions(shopId: string): Promise<CampaignOption[]> {
   });
 }
 
-function getReportChartPoints(
-  values: number[],
-  width: number,
-  height: number,
-  offset: number,
-) {
-  const maxValue = Math.max(1, ...values);
-  const denominator = Math.max(values.length - 1, 1);
-
-  return values.map((value, index) => ({
-    x: 44 + (index / denominator) * width,
-    y: offset + (1 - value / maxValue) * height,
-  }));
-}
-
-function selectTrendLabels(rows: AdvancedReports["trend"]["rows"]) {
-  if (rows.length === 0) return [];
-  const maxLabels = rows.length > 14 ? 7 : rows.length;
-  const step = Math.max(1, Math.ceil(rows.length / maxLabels));
-
-  return rows
-    .map((row, index) => ({
-      index,
-      text: formatDateShort(row.date),
-      x: 44 + (index / Math.max(rows.length - 1, 1)) * 900,
-    }))
-    .filter(
-      (label, index, labels) =>
-        label.index % step === 0 || index === labels.length - 1,
-    );
-}
-
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
-}
-
-function formatDateShort(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function formatDateKey(value: string) {

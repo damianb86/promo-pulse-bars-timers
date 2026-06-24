@@ -33,9 +33,6 @@ export type BuildVisitorBehaviorProfileInput = {
     consentGranted?: boolean | null;
   };
   lookbackDays?: number;
-  inactiveCartMinutes?: number;
-  highIntentMinEvents?: number;
-  highIntentWindowMinutes?: number;
   now?: Date;
 };
 
@@ -46,27 +43,24 @@ export async function buildVisitorBehaviorProfile({
   settings,
   privacy = {},
   lookbackDays = defaultBehaviorProfileOptions.lookbackDays,
-  inactiveCartMinutes = defaultBehaviorProfileOptions.inactiveCartMinutes,
-  highIntentMinEvents = defaultBehaviorProfileOptions.highIntentMinEvents,
-  highIntentWindowMinutes = defaultBehaviorProfileOptions.highIntentWindowMinutes,
   now = new Date(),
 }: BuildVisitorBehaviorProfileInput): Promise<VisitorBehaviorProfile> {
   const privacyGate = getBehaviorPrivacyGate(settings, privacy);
 
   if (!privacyGate.allowed) {
-    return emptyVisitorBehaviorProfile(privacyGate.reason);
+    return emptyVisitorBehaviorProfile(privacyGate.reason, now);
   }
 
   const identityFilters = buildIdentityFilters(visitorId, sessionId);
 
   if (identityFilters.length === 0) {
-    return emptyVisitorBehaviorProfile("missing_identity");
+    return emptyVisitorBehaviorProfile("missing_identity", now);
   }
 
   const since = new Date(
     now.getTime() - normalizeDays(lookbackDays) * 24 * 60 * 60 * 1000,
   );
-  const [touches, usedCodes] = await Promise.all([
+  const [touches, codes] = await Promise.all([
     prisma.attributionTouch.findMany({
       where: {
         shopId,
@@ -78,24 +72,39 @@ export async function buildVisitorBehaviorProfile({
     prisma.uniqueDiscountCode.findMany({
       where: {
         shopId,
-        OR: identityFilters,
-        status: UniqueDiscountCodeStatus.USED,
-        usedAt: { gte: since, lte: now },
+        AND: [
+          { OR: identityFilters },
+          {
+            OR: [
+              {
+                status: UniqueDiscountCodeStatus.USED,
+                usedAt: { gte: since, lte: now },
+              },
+              {
+                status: UniqueDiscountCodeStatus.ASSIGNED,
+                assignedAt: { gte: since, lte: now },
+              },
+            ],
+          },
+        ],
       },
       select: {
         campaignId: true,
+        status: true,
       },
     }),
   ]);
 
   return createProfileFromEvents({
     touches,
-    usedUniqueCodeCampaignIds: usedCodes.map((code) => code.campaignId),
+    usedUniqueCodeCampaignIds: codes
+      .filter((code) => code.status === UniqueDiscountCodeStatus.USED)
+      .map((code) => code.campaignId),
+    assignedUniqueCodeCampaignIds: codes
+      .filter((code) => code.status === UniqueDiscountCodeStatus.ASSIGNED)
+      .map((code) => code.campaignId),
     visitorId: visitorId?.trim() || null,
     sessionId: sessionId?.trim() || null,
-    inactiveCartMinutes,
-    highIntentMinEvents,
-    highIntentWindowMinutes,
     now,
   });
 }
@@ -103,20 +112,16 @@ export async function buildVisitorBehaviorProfile({
 function createProfileFromEvents({
   touches,
   usedUniqueCodeCampaignIds,
+  assignedUniqueCodeCampaignIds,
   visitorId,
   sessionId,
-  inactiveCartMinutes,
-  highIntentMinEvents,
-  highIntentWindowMinutes,
   now,
 }: {
   touches: AttributionTouch[];
   usedUniqueCodeCampaignIds: string[];
+  assignedUniqueCodeCampaignIds: string[];
   visitorId: string | null;
   sessionId: string | null;
-  inactiveCartMinutes: number;
-  highIntentMinEvents: number;
-  highIntentWindowMinutes: number;
   now: Date;
 }): VisitorBehaviorProfile {
   const firstTouch = touches[0] ?? null;
@@ -124,57 +129,40 @@ function createProfileFromEvents({
   const sessionIds = new Set(
     touches.map((touch) => touch.sessionId).filter(Boolean) as string[],
   );
-  const latestProductViewedAt = latestEventTime(
-    touches,
-    AnalyticsEventType.PRODUCT_VIEWED,
+  const priorSessionIds = new Set(
+    Array.from(sessionIds).filter((value) => value !== sessionId),
   );
-  const latestAddToCartAt = latestEventTime(
-    touches,
-    AnalyticsEventType.ADD_TO_CART,
-  );
-  const latestCheckoutStartedAt = latestEventTime(
-    touches,
-    AnalyticsEventType.CHECKOUT_STARTED,
-  );
-  const latestOrderAt = latestEventTime(
-    touches,
-    AnalyticsEventType.ORDER_ATTRIBUTED,
-  );
-  const inactiveCartAfter = new Date(
-    now.getTime() - normalizeMinutes(inactiveCartMinutes, 15, 10080) * 60_000,
-  );
-  const highIntentSince = new Date(
-    now.getTime() -
-      normalizeMinutes(highIntentWindowMinutes, 5, 1440) * 60_000,
-  );
-  const highIntentEventCount = touches.filter(
-    (touch) =>
-      touch.occurredAt >= highIntentSince &&
-      highIntentEventTypes.has(touch.eventType),
-  ).length;
 
   return {
     canUseBehaviorTargeting: true,
     reason: "",
     visitorId,
     sessionId,
+    generatedAt: now,
     firstSeenAt: firstTouch?.occurredAt ?? null,
     lastSeenAt: lastTouch?.occurredAt ?? null,
     totalTouches: touches.length,
     sessionCount: sessionIds.size,
-    newVisitor: touches.length === 0 && usedUniqueCodeCampaignIds.length === 0,
-    returningVisitor:
-      Boolean(visitorId) &&
-      Array.from(sessionIds).some((value) => value !== sessionId),
-    viewedProductNoAddToCart: Boolean(
-      latestProductViewedAt &&
-        (!latestAddToCartAt || latestAddToCartAt < latestProductViewedAt),
+    priorSessionCount: priorSessionIds.size,
+    productViewCount: touches.filter(
+      (touch) => touch.eventType === AnalyticsEventType.PRODUCT_VIEWED,
+    ).length,
+    latestProductViewedAt: latestEventTime(
+      touches,
+      AnalyticsEventType.PRODUCT_VIEWED,
     ),
-    addedToCartNoCheckout: Boolean(
-      latestAddToCartAt &&
-        (!latestCheckoutStartedAt || latestCheckoutStartedAt < latestAddToCartAt),
+    latestAddToCartAt: latestEventTime(touches, AnalyticsEventType.ADD_TO_CART),
+    latestCheckoutStartedAt: latestEventTime(
+      touches,
+      AnalyticsEventType.CHECKOUT_STARTED,
     ),
-    checkoutStarted: Boolean(latestCheckoutStartedAt),
+    latestOrderAt: latestEventTime(
+      touches,
+      AnalyticsEventType.ORDER_ATTRIBUTED,
+    ),
+    intentEventTimes: touches
+      .filter((touch) => highIntentEventTypes.has(touch.eventType))
+      .map((touch) => touch.occurredAt),
     sawCampaignIds: uniqueCampaignIds(
       touches.filter((touch) => impressionEventTypes.has(touch.eventType)),
     ),
@@ -182,14 +170,8 @@ function createProfileFromEvents({
       touches.filter((touch) => clickEventTypes.has(touch.eventType)),
     ),
     usedUniqueCodeCampaignIds: Array.from(new Set(usedUniqueCodeCampaignIds)),
-    highIntentVisitor:
-      highIntentEventCount >=
-      normalizeInteger(highIntentMinEvents, 2, 20),
-    inactiveCart: Boolean(
-      latestAddToCartAt &&
-        latestAddToCartAt <= inactiveCartAfter &&
-        (!latestCheckoutStartedAt || latestCheckoutStartedAt < latestAddToCartAt) &&
-        (!latestOrderAt || latestOrderAt < latestAddToCartAt),
+    assignedUniqueCodeCampaignIds: Array.from(
+      new Set(assignedUniqueCodeCampaignIds),
     ),
   };
 }
@@ -236,15 +218,7 @@ function uniqueCampaignIds(touches: AttributionTouch[]) {
 }
 
 function normalizeDays(value: number) {
-  return normalizeInteger(value, 1, 365);
-}
-
-function normalizeMinutes(value: number, min: number, max: number) {
-  return normalizeInteger(value, min, max);
-}
-
-function normalizeInteger(value: number, min: number, max: number) {
-  return Number.isInteger(value) ? Math.min(max, Math.max(min, value)) : min;
+  return Number.isInteger(value) ? Math.min(365, Math.max(1, value)) : 1;
 }
 
 const impressionEventTypes = new Set<AnalyticsEventType>([

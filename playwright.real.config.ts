@@ -61,6 +61,7 @@ export default defineConfig({
         "**/15.order-create.spec.ts",
         "**/18.offers-discounts-email.spec.ts",
         "**/19.experiments-winner-analytics.spec.ts",
+        "**/23.behavior-targeting-editor.spec.ts",
         "**/99.cleanup.spec.ts",
       ],
       use: {
@@ -83,6 +84,7 @@ export default defineConfig({
         "**/16.placement-matrix.spec.ts",
         "**/17.campaign-types-targeting-schedule.spec.ts",
         "**/21.checkout-discount-order-attribution.spec.ts",
+        "**/22.behavior-targeting-segments.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],

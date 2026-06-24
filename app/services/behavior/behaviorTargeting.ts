@@ -57,7 +57,7 @@ function segmentMatchesProfile(
 ) {
   const now = profile.generatedAt;
 
-  if (segment === "NEW_VISITOR") return matchesNewVisitor(profile, rules, now);
+  if (segment === "NEW_VISITOR") return matchesNewVisitor(profile);
   if (segment === "RETURNING_VISITOR") {
     return matchesReturningVisitor(profile, rules, now);
   }
@@ -90,25 +90,13 @@ function segmentMatchesProfile(
   return false;
 }
 
-function matchesNewVisitor(
-  profile: VisitorBehaviorProfile,
-  rules: BehaviorTargetingRules,
-  now: Date,
-) {
-  const isNew =
+function matchesNewVisitor(profile: VisitorBehaviorProfile) {
+  // A new visitor has no recorded Promo Pulse history within the lookback
+  // window and has not been assigned or used a unique discount code.
+  return (
     profile.totalTouches === 0 &&
     profile.usedUniqueCodeCampaignIds.length === 0 &&
-    profile.assignedUniqueCodeCampaignIds.length === 0;
-
-  if (!isNew) return false;
-  if (rules.newVisitorWithinMinutes <= 0) return true;
-
-  // When a freshness window is configured, only count visitors whose first
-  // observed activity is recent enough to be considered a brand-new session.
-  if (!profile.firstSeenAt) return true;
-
-  return (
-    minutesBetween(profile.firstSeenAt, now) <= rules.newVisitorWithinMinutes
+    profile.assignedUniqueCodeCampaignIds.length === 0
   );
 }
 

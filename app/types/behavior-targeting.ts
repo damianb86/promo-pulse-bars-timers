@@ -30,7 +30,6 @@ export type BehaviorTargetingRules = {
   lookbackDays: number;
 
   // Visitor state
-  newVisitorWithinMinutes: number;
   returningMinPriorSessions: number;
   returningMinDaysSinceFirstSeen: number;
 
@@ -52,7 +51,6 @@ export type BehaviorTargetingRules = {
 
 export const behaviorTargetingBounds = {
   lookbackDays: { min: 1, max: 365 },
-  newVisitorWithinMinutes: { min: 0, max: 1440 },
   returningMinPriorSessions: { min: 1, max: 50 },
   returningMinDaysSinceFirstSeen: { min: 0, max: 365 },
   viewedProductMinViews: { min: 1, max: 50 },
@@ -70,7 +68,6 @@ export const defaultBehaviorTargetingRules: BehaviorTargetingRules = {
   campaignIds: [],
   lookbackDays: 30,
 
-  newVisitorWithinMinutes: 0,
   returningMinPriorSessions: 1,
   returningMinDaysSinceFirstSeen: 0,
 
@@ -110,10 +107,6 @@ export function normalizeBehaviorTargetingRules(
     campaignIds: legacyCampaignIds,
     lookbackDays: readBound(input.lookbackDays, "lookbackDays"),
 
-    newVisitorWithinMinutes: readBound(
-      input.newVisitorWithinMinutes,
-      "newVisitorWithinMinutes",
-    ),
     returningMinPriorSessions: readBound(
       input.returningMinPriorSessions,
       "returningMinPriorSessions",

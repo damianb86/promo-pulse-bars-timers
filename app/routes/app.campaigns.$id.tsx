@@ -2666,15 +2666,13 @@ function parseBehaviorTargetingFormData(formData: FormData): {
       errors,
     );
 
+  const segments = formData.getAll("behaviorSegments").map(String);
+
   const rawValues = {
     enabled: isFormCheckboxChecked(formData, "behaviorEnabled"),
-    segments: formData.getAll("behaviorSegments").map(String),
+    segments,
     lookbackDays: readInt("behaviorLookbackDays", "lookbackDays"),
 
-    newVisitorWithinMinutes: readInt(
-      "behaviorNewVisitorWithinMinutes",
-      "newVisitorWithinMinutes",
-    ),
     returningMinPriorSessions: readInt(
       "behaviorReturningMinPriorSessions",
       "returningMinPriorSessions",
@@ -2700,10 +2698,15 @@ function parseBehaviorTargetingFormData(formData: FormData): {
       "behaviorCheckoutStartedDelayMinutes",
       "checkoutStartedDelayMinutes",
     ),
-    checkoutStartedExcludePurchasers: isFormCheckboxChecked(
-      formData,
-      "behaviorCheckoutStartedExcludePurchasers",
-    ),
+    // The checkbox only renders when CHECKOUT_STARTED is selected, so an
+    // absent value when the segment is not in play must keep the default
+    // rather than be read as an explicit "false".
+    checkoutStartedExcludePurchasers: segments.includes("CHECKOUT_STARTED")
+      ? isFormCheckboxChecked(
+          formData,
+          "behaviorCheckoutStartedExcludePurchasers",
+        )
+      : d.checkoutStartedExcludePurchasers,
     inactiveCartMinutes: readInt(
       "behaviorInactiveCartMinutes",
       "inactiveCartMinutes",

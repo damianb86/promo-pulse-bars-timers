@@ -13,7 +13,6 @@ import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 export type BehaviorTargetingErrors = {
   form?: string;
   lookbackDays?: string;
-  newVisitorWithinMinutes?: string;
   returningMinPriorSessions?: string;
   returningMinDaysSinceFirstSeen?: string;
   viewedProductMinViews?: string;
@@ -260,13 +259,11 @@ export function BehaviorTargetingEditor({
                           </small>
                         </label>
                         {isChecked && (
-                          <div className="counterpulse-choice-card__panel">
-                            <SegmentPanel
-                              segment={option.key}
-                              values={values}
-                              errors={errors}
-                            />
-                          </div>
+                          <SegmentPanel
+                            segment={option.key}
+                            values={values}
+                            errors={errors}
+                          />
                         )}
                       </div>
                     );
@@ -297,30 +294,23 @@ function SegmentPanel({
   values: BehaviorTargetingRules;
   errors?: BehaviorTargetingErrors;
 }) {
+  const fields = renderSegmentFields(segment, values, errors);
+
+  if (!fields) return null;
+
+  return <div className="counterpulse-choice-card__panel">{fields}</div>;
+}
+
+function renderSegmentFields(
+  segment: BehaviorSegmentKey,
+  values: BehaviorTargetingRules,
+  errors?: BehaviorTargetingErrors,
+): ReactNode {
   switch (segment) {
     case "NEW_VISITOR":
-      return (
-        <NumberSubField
-          name="behaviorNewVisitorWithinMinutes"
-          label="First seen within (minutes)"
-          bound={behaviorTargetingBounds.newVisitorWithinMinutes}
-          value={values.newVisitorWithinMinutes}
-          error={errors?.newVisitorWithinMinutes}
-          hint="0 = any brand-new visitor. Set a value to only match visitors whose very first activity happened within this many minutes."
-          info={{
-            title: "New visitor freshness",
-            intro:
-              "Controls how recent the visitor's first observed activity must be to still count as new.",
-            items: [
-              ["0", "Match any visitor with no prior Promo Pulse history."],
-              [
-                "Example",
-                "30 only matches truly fresh sessions started in the last 30 minutes.",
-              ],
-            ],
-          }}
-        />
-      );
+      // A new visitor is defined purely by the absence of prior history, so
+      // there is nothing further to configure.
+      return null;
     case "RETURNING_VISITOR":
       return (
         <div className="counterpulse-subfield-grid">

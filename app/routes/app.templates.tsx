@@ -52,7 +52,6 @@ type TemplateRow = {
   previewViewModel: CampaignViewModel;
   sourceLabel: string;
   subheadline: string;
-  aiUrl: string;
 };
 
 type LoaderData = {
@@ -143,7 +142,6 @@ export const loader = async ({
           ? "System library"
           : "Saved from campaign",
         subheadline: texts.subheadline,
-        aiUrl: template.aiUrl,
       };
     }),
     sourceCampaigns: sourceCampaigns.map((campaign) => ({
@@ -560,9 +558,6 @@ function TemplateCard({ template }: { template: TemplateRow }) {
               Use template
             </button>
           </Form>
-          <Link className="counterpulse-button-secondary" to={template.aiUrl}>
-            Generate variants
-          </Link>
         </div>
       </div>
     </article>

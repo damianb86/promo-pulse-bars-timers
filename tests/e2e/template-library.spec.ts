@@ -18,6 +18,21 @@ test("merchant filters templates and creates a draft campaign", async ({
   await expect(
     page.getByRole("heading", { exact: true, name: "Template Library" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Generate variants" }),
+  ).toHaveCount(0);
+
+  const applyBox = await page
+    .getByRole("button", { name: "Apply" })
+    .boundingBox();
+  const clearBox = await page
+    .getByRole("link", { name: "Clear" })
+    .boundingBox();
+  expect(applyBox).not.toBeNull();
+  expect(clearBox).not.toBeNull();
+  expect(Math.abs((applyBox?.y ?? 0) - (clearBox?.y ?? 0))).toBeLessThan(4);
+  expect(clearBox?.x ?? 0).toBeGreaterThan(applyBox?.x ?? 0);
+
   const blackFridayTemplate = page
     .locator(".counterpulse-template-card")
     .filter({ hasText: "US / en" })
@@ -58,6 +73,27 @@ test("template cards render real and distinct campaign previews", async ({
   await expect(
     cards.first().locator(".counterpulse-preview-shell"),
   ).toBeVisible();
+  const previewOverflow = await cards
+    .first()
+    .locator(".counterpulse-template-card__preview--real")
+    .evaluate((element) => {
+      const shell = element.querySelector(".counterpulse-preview-shell");
+      const storefront = element.querySelector(
+        ".counterpulse-preview-storefront",
+      );
+
+      return {
+        shellOverflowY: shell
+          ? window.getComputedStyle(shell).overflowY
+          : "",
+        storefrontOverflowY: storefront
+          ? window.getComputedStyle(storefront).overflowY
+          : "",
+      };
+    });
+
+  expect(previewOverflow.shellOverflowY).toBe("hidden");
+  expect(previewOverflow.storefrontOverflowY).toBe("hidden");
 
   const previewSignatures = await page
     .locator(

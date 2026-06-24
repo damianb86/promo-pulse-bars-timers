@@ -10282,8 +10282,9 @@ s-page::part(page) {
 
 .counterpulse-template-filters__form {
   grid-template-columns:
-    minmax(220px, 1.25fr) repeat(5, minmax(150px, 1fr))
+    minmax(200px, 1.35fr) repeat(6, minmax(112px, 0.85fr))
     auto auto;
+  gap: 10px;
 }
 
 .counterpulse-template-filters__search {
@@ -10413,6 +10414,12 @@ s-page::part(page) {
   border-radius: 0;
   padding: 0;
   background: #f1f2f4;
+  overflow: hidden;
+}
+
+.counterpulse-template-card__preview--real .counterpulse-preview-storefront,
+.counterpulse-template-card__preview--real .counterpulse-preview-product-page,
+.counterpulse-template-card__preview--real .counterpulse-preview-cart-page {
   overflow: hidden;
 }
 
@@ -10628,7 +10635,7 @@ s-page::part(page) {
 
 .counterpulse-template-card__actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 

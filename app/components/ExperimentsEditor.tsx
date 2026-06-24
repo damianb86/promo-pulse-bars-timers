@@ -433,6 +433,93 @@ const designOverrideKeys: Array<keyof CampaignDesignValues> = [
   "mobileEnabled",
 ];
 
+const backgroundDesignKeys: Array<keyof CampaignDesignValues> = [
+  "backgroundType",
+  "backgroundColor",
+  "backgroundImageUrl",
+  "gradientStartColor",
+  "gradientEndColor",
+  "gradientAngle",
+];
+
+const cardDesignKeys: Array<keyof CampaignDesignValues> = [
+  "alignment",
+  "borderRadius",
+  "borderSize",
+  "borderColor",
+  "paddingBlock",
+  "paddingInline",
+  "contentGap",
+  "contentMaxWidth",
+  "fullWidth",
+  "positionMode",
+  "positionSticky",
+];
+
+const typographyDesignKeys: Array<keyof CampaignDesignValues> = [
+  "fontFamily",
+  "fontSize",
+  "textColor",
+  "titleFontSize",
+  "titleColor",
+  "subheadingFontSize",
+  "subheadingColor",
+];
+
+const timerDesignKeys: Array<keyof CampaignDesignValues> = [
+  "timerStyle",
+  "timerFormat",
+  "timerFontSize",
+  "timerColor",
+  "legendFontSize",
+  "legendColor",
+  "timerShowLabels",
+  "timerShowSeconds",
+  "timerDaysLabel",
+  "timerHoursLabel",
+  "timerMinutesLabel",
+  "timerSecondsLabel",
+  "timerHideZeroDays",
+  "timerSurfaceColor",
+  "timerSurfaceBorderColor",
+  "timerSurfaceBorderSize",
+  "timerSurfaceRadius",
+];
+
+const elementDesignKeys: Array<keyof CampaignDesignValues> = [
+  "accentColor",
+  "buttonColor",
+  "buttonTextColor",
+  "closeButtonColor",
+  "showCloseButton",
+  "showButton",
+  "showProgressBar",
+  "showIcon",
+  "icon",
+  "iconSize",
+  "customIconUrl",
+  "mobileEnabled",
+];
+
+const motionDesignKeys: Array<keyof CampaignDesignValues> = [
+  "entranceAnimation",
+  "exitAnimation",
+  "animationDurationMs",
+  "timerTickAnimation",
+];
+
+const summarizedDesignKeys: Array<keyof CampaignDesignValues> = [
+  "templateKey",
+  "layout",
+  "customCss",
+  ...backgroundDesignKeys,
+  ...cardDesignKeys,
+  ...typographyDesignKeys,
+  ...timerDesignKeys,
+  ...elementDesignKeys,
+  ...motionDesignKeys,
+];
+
 const variantPreviewFontFamilies: Record<
   CampaignDesignValues["fontFamily"],
   string
@@ -1439,7 +1526,9 @@ function VariantCard({
             className={`counterpulse-variant-dot counterpulse-variant-dot--${index % 6}`}
             aria-hidden="true"
           />
-          <h4>{variant.name || `Variant ${index + 1}`}</h4>
+          <h4 title={variant.name || `Variant ${index + 1}`}>
+            {variant.name || `Variant ${index + 1}`}
+          </h4>
           {index === 0 && <span>Baseline</span>}
         </div>
         {!isControl && (
@@ -3922,77 +4011,205 @@ function describeVariantChanges(
     changes.push(`Custom selector: ${placementOverride.customSelector}`);
   }
 
-  for (const key of designOverrideKeys) {
-    if (variant.design[key] !== baseDesign[key]) {
-      changes.push(
-        `${formatDesignKey(key)}: ${formatDesignValue(key, variant.design[key])}`,
-      );
-    }
-  }
+  changes.push(...describeDesignChanges(variant.design, baseDesign));
 
   return changes.length > 0
     ? changes
     : ["No copy, placement, or design changes yet."];
 }
 
-function formatDesignKey(key: keyof CampaignDesignValues) {
-  const labels: Partial<Record<keyof CampaignDesignValues, string>> = {
-    templateKey: "Preset",
-    backgroundType: "Background type",
-    backgroundColor: "Background color",
-    backgroundImageUrl: "Background image",
-    gradientStartColor: "Gradient start",
-    gradientEndColor: "Gradient end",
-    gradientAngle: "Gradient angle",
-    textColor: "Text color",
-    accentColor: "Accent color",
-    buttonColor: "Button color",
-    buttonTextColor: "Button text color",
-    closeButtonColor: "Close button color",
-    fontSize: "Base font size",
-    borderRadius: "Border radius",
-    borderSize: "Border size",
-    borderColor: "Border color",
-    fontFamily: "Font family",
-    titleFontSize: "Title font size",
-    titleColor: "Title color",
-    subheadingFontSize: "Subheading font size",
-    subheadingColor: "Subheading color",
-    timerFontSize: "Timer font size",
-    timerColor: "Timer color",
-    legendFontSize: "Timer label font size",
-    legendColor: "Timer label color",
-    timerShowLabels: "Timer labels",
-    timerShowSeconds: "Timer seconds",
-    timerHideZeroDays: "Hide zero days",
-    timerSurfaceColor: "Timer surface color",
-    timerSurfaceBorderColor: "Timer surface border",
-    timerSurfaceBorderSize: "Timer surface border size",
-    timerSurfaceRadius: "Timer surface radius",
-    paddingBlock: "Vertical padding",
-    paddingInline: "Horizontal padding",
-    contentGap: "Content gap",
-    contentMaxWidth: "Content max width",
-    fullWidth: "Full width",
-    positionMode: "Position mode",
-    positionSticky: "Sticky position",
-    entranceAnimation: "Entrance animation",
-    exitAnimation: "Exit animation",
-    animationDurationMs: "Animation duration",
-    timerTickAnimation: "Timer tick animation",
-    customCss: "Custom CSS",
-    showCloseButton: "Close button",
-    showButton: "CTA button",
-    showProgressBar: "Progress bar",
-    showIcon: "Icon",
-    iconSize: "Icon size",
-    customIconUrl: "Custom icon",
-    mobileEnabled: "Show on mobile",
-  };
+function describeDesignChanges(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  const changes: string[] = [];
 
-  return (
-    labels[key] ?? formatEnum(String(key).replace(/([a-z])([A-Z])/g, "$1_$2"))
+  if (isDesignValueChanged("templateKey", design, baseDesign)) {
+    changes.push(`Preset: ${formatDesignValue("templateKey", design.templateKey)}`);
+  }
+
+  if (isDesignValueChanged("layout", design, baseDesign)) {
+    changes.push(`Layout: ${formatDesignValue("layout", design.layout)}`);
+  }
+
+  if (hasDesignChanges(backgroundDesignKeys, design, baseDesign)) {
+    changes.push(formatBackgroundDesignChange(design));
+  }
+
+  if (hasDesignChanges(cardDesignKeys, design, baseDesign)) {
+    changes.push(formatCardDesignChange(design, baseDesign));
+  }
+
+  if (hasDesignChanges(typographyDesignKeys, design, baseDesign)) {
+    changes.push(formatTypographyDesignChange(design, baseDesign));
+  }
+
+  if (hasDesignChanges(timerDesignKeys, design, baseDesign)) {
+    changes.push(formatTimerDesignChange(design, baseDesign));
+  }
+
+  if (hasDesignChanges(elementDesignKeys, design, baseDesign)) {
+    changes.push(formatElementDesignChange(design, baseDesign));
+  }
+
+  if (hasDesignChanges(motionDesignKeys, design, baseDesign)) {
+    changes.push(formatMotionDesignChange(design, baseDesign));
+  }
+
+  if (isDesignValueChanged("customCss", design, baseDesign)) {
+    changes.push("Custom CSS: Updated");
+  }
+
+  const hasUncategorizedDesignChange = designOverrideKeys.some(
+    (key) =>
+      !summarizedDesignKeys.includes(key) &&
+      isDesignValueChanged(key, design, baseDesign),
   );
+
+  if (hasUncategorizedDesignChange) {
+    changes.push("Design settings updated");
+  }
+
+  return changes;
+}
+
+function hasDesignChanges(
+  keys: Array<keyof CampaignDesignValues>,
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  return keys.some((key) => isDesignValueChanged(key, design, baseDesign));
+}
+
+function isDesignValueChanged(
+  key: keyof CampaignDesignValues,
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  return design[key] !== baseDesign[key];
+}
+
+function formatBackgroundDesignChange(design: CampaignDesignValues) {
+  if (design.backgroundType === "IMAGE") return "Background: Image";
+  if (design.backgroundType === "GRADIENT") return "Background: Gradient";
+
+  return "Background: Single color";
+}
+
+function formatCardDesignChange(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  if (isDesignValueChanged("alignment", design, baseDesign)) {
+    return `Card: ${formatDesignValue("alignment", design.alignment)} alignment`;
+  }
+
+  if (
+    isDesignValueChanged("positionMode", design, baseDesign) ||
+    isDesignValueChanged("positionSticky", design, baseDesign)
+  ) {
+    return "Card: Positioning updated";
+  }
+
+  return "Card: Spacing and borders updated";
+}
+
+function formatTypographyDesignChange(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  if (isDesignValueChanged("fontFamily", design, baseDesign)) {
+    return `Typography: ${formatDesignValue("fontFamily", design.fontFamily)}`;
+  }
+
+  return "Typography: Text styling updated";
+}
+
+function formatTimerDesignChange(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  if (isDesignValueChanged("timerStyle", design, baseDesign)) {
+    return `Timer: ${formatDesignValue("timerStyle", design.timerStyle)} style`;
+  }
+
+  if (isDesignValueChanged("timerFormat", design, baseDesign)) {
+    return `Timer: ${formatDesignValue("timerFormat", design.timerFormat)} format`;
+  }
+
+  return "Timer: Display updated";
+}
+
+function formatElementDesignChange(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  const details = [
+    isDesignValueChanged("showButton", design, baseDesign)
+      ? design.showButton
+        ? "CTA shown"
+        : "CTA hidden"
+      : "",
+    isDesignValueChanged("showIcon", design, baseDesign) ||
+    isDesignValueChanged("icon", design, baseDesign) ||
+    isDesignValueChanged("customIconUrl", design, baseDesign)
+      ? design.showIcon && design.icon !== "NONE"
+        ? `${formatDesignValue("icon", design.icon)} icon`
+        : "Icon updated"
+      : "",
+    isDesignValueChanged("showProgressBar", design, baseDesign)
+      ? design.showProgressBar
+        ? "Progress shown"
+        : "Progress hidden"
+      : "",
+    isDesignValueChanged("showCloseButton", design, baseDesign)
+      ? design.showCloseButton
+        ? "Close button shown"
+        : "Close button hidden"
+      : "",
+    hasDesignChanges(
+      ["accentColor", "buttonColor", "buttonTextColor", "closeButtonColor"],
+      design,
+      baseDesign,
+    )
+      ? "CTA colors updated"
+      : "",
+    isDesignValueChanged("mobileEnabled", design, baseDesign)
+      ? "Mobile visibility updated"
+      : "",
+  ].filter(Boolean);
+
+  return `Elements: ${compactChangeDetails(details) || "Visibility updated"}`;
+}
+
+function formatMotionDesignChange(
+  design: CampaignDesignValues,
+  baseDesign: CampaignDesignValues,
+) {
+  const details = [
+    isDesignValueChanged("entranceAnimation", design, baseDesign)
+      ? `${formatDesignValue("entranceAnimation", design.entranceAnimation)} entrance`
+      : "",
+    isDesignValueChanged("exitAnimation", design, baseDesign)
+      ? `${formatDesignValue("exitAnimation", design.exitAnimation)} exit`
+      : "",
+    isDesignValueChanged("timerTickAnimation", design, baseDesign)
+      ? `${formatDesignValue("timerTickAnimation", design.timerTickAnimation)} timer`
+      : "",
+    isDesignValueChanged("animationDurationMs", design, baseDesign)
+      ? "Timing updated"
+      : "",
+  ].filter(Boolean);
+
+  return `Motion: ${compactChangeDetails(details) || "Animation updated"}`;
+}
+
+function compactChangeDetails(details: string[], visibleCount = 2) {
+  if (details.length <= visibleCount) return details.join(", ");
+
+  return `${details.slice(0, visibleCount).join(", ")} +${
+    details.length - visibleCount
+  } more`;
 }
 
 function formatDesignValue(key: keyof CampaignDesignValues, value: unknown) {

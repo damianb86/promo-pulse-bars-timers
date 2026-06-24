@@ -5,11 +5,15 @@ import {
   CampaignRecommendationType,
   CampaignStatus,
   CampaignType,
+  CartRescueReason,
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
   PlacementType,
   Prisma,
+  TimerExpiredBehavior,
+  TimerMode,
+  TimerResetBehavior,
   UniqueDiscountCodeStatus,
   type AnalyticsEvent,
   type Campaign,
@@ -36,6 +40,8 @@ export type RecommendationEngineOptions = {
   uniqueCodeLowUseRate?: number;
   countryMinVisitors?: number;
   countryConversionRate?: number;
+  minCartIntentEvents?: number;
+  lowCartConversionThreshold?: number;
 };
 
 export type RecommendationActionPayload =
@@ -52,6 +58,9 @@ export type RecommendationPayload = RecommendationActionPayload & {
   ruleKey: RecommendationRuleKey;
   fingerprint: string;
   metrics: Record<string, number | string | null>;
+  evidence?: RecommendationEvidence[];
+  insight?: string;
+  recommendedAction?: string;
 };
 
 type RecommendationRuleKey =
@@ -61,7 +70,15 @@ type RecommendationRuleKey =
   | "LOW_PERFORMANCE_AB_TEST"
   | "PRODUCT_TRAFFIC_NO_CAMPAIGN"
   | "MARKET_LOCALIZATION"
-  | "UNIQUE_CODES_LOW_USE";
+  | "UNIQUE_CODES_LOW_USE"
+  | "CART_INTENT_NO_CART_CAMPAIGN"
+  | "SCALE_WINNING_PLACEMENT";
+
+type RecommendationEvidence = {
+  label: string;
+  value: string;
+  detail?: string;
+};
 
 type DraftCampaignPayload = {
   name: string;
@@ -77,6 +94,7 @@ type DraftCampaignPayload = {
   productPath?: string | null;
   freeShippingThreshold?: string | null;
   currencyCode?: string | null;
+  timerDurationMinutes?: number | null;
 };
 
 type DraftExperimentPayload = {
@@ -120,6 +138,7 @@ type EventForRecommendation = Pick<
   | "country"
   | "locale"
   | "path"
+  | "placementType"
   | "occurredAt"
 > & {
   campaign: Pick<Campaign, "id" | "name" | "type"> | null;
@@ -135,6 +154,12 @@ type CampaignMetrics = {
   conversionRate: number;
   averageOrderValue: number;
   currencyCode: string;
+  placementBreakdown: Array<{
+    placementType: PlacementType | "UNKNOWN";
+    impressions: number;
+    clicks: number;
+    ctr: number;
+  }>;
   visitors: number;
 };
 
@@ -149,6 +174,8 @@ const defaultOptions = {
   uniqueCodeLowUseRate: 0.08,
   countryMinVisitors: 50,
   countryConversionRate: 0.04,
+  minCartIntentEvents: 30,
+  lowCartConversionThreshold: 0.06,
 } satisfies Required<Omit<RecommendationEngineOptions, "now">>;
 
 const impressionEvents = new Set<AnalyticsEventType>([
@@ -186,7 +213,9 @@ export async function generateRecommendationsForShop(
     ]);
   const existingFingerprints = new Set(
     existing
-      .map((recommendation) => readRecommendationPayload(recommendation.payload))
+      .map((recommendation) =>
+        readRecommendationPayload(recommendation.payload),
+      )
       .map((payload) => payload?.fingerprint)
       .filter(Boolean) as string[],
   );
@@ -239,7 +268,15 @@ export function listRecommendationsForShop(shopId: string) {
     },
     include: {
       campaign: {
-        select: { id: true, name: true, type: true },
+        select: {
+          id: true,
+          name: true,
+          placements: {
+            where: { enabled: true },
+            select: { placementType: true },
+          },
+          type: true,
+        },
       },
     },
     orderBy: [{ confidence: "desc" }, { createdAt: "desc" }],
@@ -342,9 +379,11 @@ function buildRecommendationCandidates({
     ...recommendFreeShippingThreshold(metrics, options),
     ...recommendDeliveryCutoffPlacement(metrics, options),
     ...recommendAbTests(metrics, options),
+    ...recommendPlacementScaleWinners(metrics, options),
     ...recommendProductTraffic(campaigns, events, options),
     ...recommendMarketLocalization(events, marketRules, options),
     ...recommendUniqueCodeChanges(uniqueCodes, options),
+    ...recommendCartIntentCampaign(campaigns, events, options),
   ].sort(
     (first, second) =>
       second.confidence - first.confidence ||
@@ -371,7 +410,8 @@ function recommendLowCtrCopy(
       )} CTR, which is below the ${formatPercent(
         options.lowCtrThreshold,
       )} recommendation threshold.`,
-      impact: "A clearer headline or CTA can lift click-through rate without changing the offer.",
+      impact:
+        "A clearer headline or CTA can lift click-through rate without changing the offer.",
       confidence: confidenceFromRateGap(
         options.lowCtrThreshold,
         row.ctr,
@@ -381,8 +421,18 @@ function recommendLowCtrCopy(
         action: "CREATE_DRAFT_EXPERIMENT",
         ruleKey: "LOW_CTR_COPY",
         fingerprint: fingerprint("LOW_CTR_COPY", row.campaign.id),
+        insight:
+          "The campaign is getting enough visibility, but shoppers are not engaging with the message.",
+        recommendedAction:
+          "Create a draft A/B test with a clearer headline and CTA before changing the live campaign.",
+        evidence: [
+          evidence("Impressions", formatInteger(row.impressions)),
+          evidence("CTR", formatPercent(row.ctr), "Below the copy threshold"),
+          evidence("Clicks", formatInteger(row.clicks)),
+        ],
         metrics: {
           impressions: row.impressions,
+          clicks: row.clicks,
           ctr: row.ctr,
         },
         experiment: {
@@ -418,7 +468,8 @@ function recommendFreeShippingThreshold(
     .filter(
       (row) =>
         row.campaign.type === CampaignType.FREE_SHIPPING_GOAL &&
-        row.impressions >= Math.max(20, Math.floor(options.minImpressions / 2)) &&
+        row.impressions >=
+          Math.max(20, Math.floor(options.minImpressions / 2)) &&
         row.campaign.freeShippingSettings,
     )
     .flatMap((row) => {
@@ -439,8 +490,7 @@ function recommendFreeShippingThreshold(
         row.averageOrderValue < threshold
           ? Math.max(1, Math.round(row.averageOrderValue / 5) * 5)
           : Math.round((threshold * 1.1) / 5) * 5;
-      const direction =
-        suggestedThreshold < threshold ? "lowering" : "raising";
+      const direction = suggestedThreshold < threshold ? "lowering" : "raising";
 
       return [
         {
@@ -463,7 +513,28 @@ function recommendFreeShippingThreshold(
           payload: {
             action: "CREATE_DRAFT_CAMPAIGN",
             ruleKey: "FREE_SHIPPING_THRESHOLD",
-            fingerprint: fingerprint("FREE_SHIPPING_THRESHOLD", row.campaign.id),
+            fingerprint: fingerprint(
+              "FREE_SHIPPING_THRESHOLD",
+              row.campaign.id,
+            ),
+            insight:
+              "Attributed order value is close enough to the current threshold that a small adjustment is testable.",
+            recommendedAction:
+              "Create a draft cart-drawer free-shipping goal with the suggested threshold.",
+            evidence: [
+              evidence(
+                "Current threshold",
+                formatCurrency(threshold, settings.currencyCode),
+              ),
+              evidence(
+                "Attributed AOV",
+                formatCurrency(row.averageOrderValue, row.currencyCode),
+              ),
+              evidence(
+                "Suggested threshold",
+                formatCurrency(suggestedThreshold, settings.currencyCode),
+              ),
+            ],
             metrics: {
               threshold,
               suggestedThreshold,
@@ -495,7 +566,8 @@ function recommendDeliveryCutoffPlacement(
     .filter(
       (row) =>
         row.campaign.type === CampaignType.DELIVERY_CUTOFF &&
-        row.impressions >= Math.max(20, Math.floor(options.minImpressions / 2)) &&
+        row.impressions >=
+          Math.max(20, Math.floor(options.minImpressions / 2)) &&
         row.ctr >= options.strongCtrThreshold &&
         !row.campaign.placements.some(
           (placement) => placement.placementType === PlacementType.PRODUCT_PAGE,
@@ -516,7 +588,23 @@ function recommendDeliveryCutoffPlacement(
       payload: {
         action: "CREATE_DRAFT_CAMPAIGN",
         ruleKey: "DELIVERY_CUTOFF_PRODUCT_PAGE",
-        fingerprint: fingerprint("DELIVERY_CUTOFF_PRODUCT_PAGE", row.campaign.id),
+        fingerprint: fingerprint(
+          "DELIVERY_CUTOFF_PRODUCT_PAGE",
+          row.campaign.id,
+        ),
+        insight:
+          "The delivery promise is earning clicks, but it is not shown at the product decision point.",
+        recommendedAction:
+          "Create a product-page draft so the delivery cutoff is visible before shoppers add to cart.",
+        evidence: [
+          evidence(
+            "CTR",
+            formatPercent(row.ctr),
+            "Above the strong-engagement threshold",
+          ),
+          evidence("Impressions", formatInteger(row.impressions)),
+          evidence("Current placement", placementList(row.campaign.placements)),
+        ],
         metrics: {
           ctr: row.ctr,
           impressions: row.impressions,
@@ -562,6 +650,23 @@ function recommendAbTests(
         action: "CREATE_DRAFT_EXPERIMENT",
         ruleKey: "LOW_PERFORMANCE_AB_TEST",
         fingerprint: fingerprint("LOW_PERFORMANCE_AB_TEST", row.campaign.id),
+        insight:
+          "Both click-through and conversion are weak, so a controlled copy test is safer than directly editing the campaign.",
+        recommendedAction:
+          "Create a draft experiment and compare the current copy against an urgency-focused treatment.",
+        evidence: [
+          evidence(
+            "CTR",
+            formatPercent(row.ctr),
+            "Below the engagement threshold",
+          ),
+          evidence(
+            "Conversion",
+            formatPercent(row.conversionRate),
+            "Below the conversion threshold",
+          ),
+          evidence("Impressions", formatInteger(row.impressions)),
+        ],
         metrics: {
           ctr: row.ctr,
           conversionRate: row.conversionRate,
@@ -592,6 +697,93 @@ function recommendAbTests(
     }));
 }
 
+function recommendPlacementScaleWinners(
+  metrics: CampaignMetrics[],
+  options: Required<Omit<RecommendationEngineOptions, "now">>,
+): RecommendationCandidate[] {
+  return metrics
+    .filter(
+      (row) =>
+        row.impressions >= options.minImpressions &&
+        row.ctr >= options.strongCtrThreshold &&
+        row.conversionRate >= options.countryConversionRate &&
+        row.orders >= 2 &&
+        isCampaignTypePortableToCart(row.campaign.type) &&
+        !row.campaign.placements.some(
+          (placement) => placement.placementType === PlacementType.CART_DRAWER,
+        ),
+    )
+    .map((row) => {
+      const bestPlacement =
+        [...row.placementBreakdown]
+          .filter((placement) => placement.impressions >= 20)
+          .sort(
+            (first, second) =>
+              second.ctr - first.ctr || second.impressions - first.impressions,
+          )[0] ?? null;
+
+      return {
+        campaignId: row.campaign.id,
+        type: CampaignRecommendationType.PLACEMENT,
+        title: `Extend ${row.campaign.name} into the cart drawer`,
+        description: `${row.campaign.name} has a ${formatPercent(
+          row.ctr,
+        )} CTR and a ${formatPercent(
+          row.conversionRate,
+        )} conversion rate, but it does not currently appear in the cart drawer.`,
+        impact:
+          "Scaling a proven message into cart intent can keep the offer visible when shoppers are closer to checkout.",
+        confidence: clampConfidence(0.64 + row.ctr + row.conversionRate),
+        payload: {
+          action: "CREATE_DRAFT_CAMPAIGN" as const,
+          ruleKey: "SCALE_WINNING_PLACEMENT" as const,
+          fingerprint: fingerprint("SCALE_WINNING_PLACEMENT", row.campaign.id),
+          insight:
+            "This is a scaling recommendation: the campaign is already performing, and the missing surface is closer to checkout intent.",
+          recommendedAction:
+            "Create a cart-drawer draft that reuses the campaign goal with checkout-focused copy.",
+          evidence: [
+            evidence(
+              "CTR",
+              formatPercent(row.ctr),
+              "Above the strong-engagement threshold",
+            ),
+            evidence("Conversion", formatPercent(row.conversionRate)),
+            evidence(
+              "Best placement",
+              bestPlacement
+                ? formatPlacement(bestPlacement.placementType)
+                : "Mixed",
+              bestPlacement
+                ? `${formatPercent(bestPlacement.ctr)} CTR on ${formatInteger(
+                    bestPlacement.impressions,
+                  )} impressions`
+                : undefined,
+            ),
+          ],
+          metrics: {
+            ctr: row.ctr,
+            conversionRate: row.conversionRate,
+            impressions: row.impressions,
+            orders: row.orders,
+          },
+          campaign: {
+            name: `${row.campaign.name} cart-drawer draft`,
+            type: row.campaign.type,
+            goal: row.campaign.goal,
+            placementType: PlacementType.CART_DRAWER,
+            headline: "Your offer is still available",
+            subheadline:
+              "Keep the promotion visible while shoppers review the cart.",
+            ctaText: "Review offer",
+            ctaUrl: "/cart",
+            timerDurationMinutes: 120,
+          },
+        },
+      };
+    });
+}
+
 function recommendProductTraffic(
   campaigns: CampaignForRecommendation[],
   events: EventForRecommendation[],
@@ -615,34 +807,78 @@ function recommendProductTraffic(
   return Array.from(productViewsByPath.entries())
     .filter(([, rows]) => rows.length >= options.highTrafficProductViews)
     .filter(([path]) => !hasProductCampaignForPath(campaigns, path))
-    .map(([path, rows]) => ({
-      type: CampaignRecommendationType.CAMPAIGN_TEMPLATE,
-      title: `Add a product promotion on ${path}`,
-      description: `${path} had ${rows.length} product views in the analysis window, but no active product timer or badge campaign targets that product path.`,
-      impact:
-        "A product timer or badge can focus high-intent traffic without claiming fake scarcity.",
-      confidence: clampConfidence(0.6 + rows.length / 1000),
-      payload: {
-        action: "CREATE_DRAFT_CAMPAIGN",
-        ruleKey: "PRODUCT_TRAFFIC_NO_CAMPAIGN",
-        fingerprint: fingerprint("PRODUCT_TRAFFIC_NO_CAMPAIGN", path),
-        metrics: {
-          productViews: rows.length,
-          productPath: path,
+    .map(([path, rows]) => {
+      const relatedRows = events.filter((event) => event.path === path);
+      const addToCarts = countEvents(
+        relatedRows,
+        AnalyticsEventType.ADD_TO_CART,
+      );
+      const checkouts = countEvents(
+        relatedRows,
+        AnalyticsEventType.CHECKOUT_STARTED,
+      );
+      const orders = countUniqueOrders(relatedRows);
+      const topCountry = mostCommon(
+        relatedRows.map((event) => event.country).filter(Boolean) as string[],
+      );
+      const productViews = rows.length;
+      const addToCartRate = safeRate(addToCarts, productViews);
+
+      return {
+        type: CampaignRecommendationType.CAMPAIGN_TEMPLATE,
+        title: `Launch a product-page offer for ${lastPathSegment(path)}`,
+        description: `${path} had ${productViews} product views in the analysis window, but no active product timer or badge campaign targets that product path.`,
+        impact:
+          "A product-page campaign can focus high-intent traffic using real product interest instead of invented urgency.",
+        confidence: clampConfidence(
+          0.58 + productViews / 1200 + addToCartRate * 0.2,
+        ),
+        payload: {
+          action: "CREATE_DRAFT_CAMPAIGN",
+          ruleKey: "PRODUCT_TRAFFIC_NO_CAMPAIGN",
+          fingerprint: fingerprint("PRODUCT_TRAFFIC_NO_CAMPAIGN", path),
+          insight:
+            "This product has enough recent attention to justify a product-specific draft.",
+          recommendedAction:
+            "Create a product-page timer draft targeted to this URL, then review copy and offer details before publishing.",
+          evidence: [
+            evidence("Product views", formatInteger(productViews)),
+            evidence("Add-to-cart rate", formatPercent(addToCartRate)),
+            evidence(
+              "Downstream intent",
+              `${formatInteger(addToCarts)} ATC / ${formatInteger(checkouts)} checkout`,
+              orders > 0
+                ? `${formatInteger(orders)} attributed orders`
+                : undefined,
+            ),
+            ...(topCountry ? [evidence("Top country", topCountry)] : []),
+          ],
+          metrics: {
+            productViews,
+            addToCarts,
+            addToCartRate,
+            checkouts,
+            orders,
+            productPath: path,
+            topCountry,
+          },
+          campaign: {
+            name: `Product promotion for ${lastPathSegment(path)}`,
+            type: CampaignType.PRODUCT_TIMER,
+            goal: CampaignGoal.FLASH_SALE,
+            placementType: PlacementType.PRODUCT_PAGE,
+            headline: "Product offer available today",
+            subheadline:
+              "Show a verified promotion to shoppers viewing this item.",
+            ctaText: "View offer",
+            ctaUrl: path,
+            productPath: path,
+            country: topCountry,
+            timerDurationMinutes: 240,
+          },
         },
-        campaign: {
-          name: `Product promotion for ${lastPathSegment(path)}`,
-          type: CampaignType.PRODUCT_TIMER,
-          goal: CampaignGoal.FLASH_SALE,
-          placementType: PlacementType.PRODUCT_PAGE,
-          headline: "Limited-time product offer",
-          subheadline: "Show a verified product promotion to engaged shoppers.",
-          ctaText: "View offer",
-          ctaUrl: path,
-          productPath: path,
-        },
-      },
-    }));
+      };
+    });
 }
 
 function recommendMarketLocalization(
@@ -669,10 +905,22 @@ function recommendMarketLocalization(
     const visitors = countVisitors(rows);
     const orders = new Set(
       rows
-        .filter((event) => event.eventType === AnalyticsEventType.ORDER_ATTRIBUTED)
+        .filter(
+          (event) => event.eventType === AnalyticsEventType.ORDER_ATTRIBUTED,
+        )
         .map((event) => event.orderId)
         .filter(Boolean),
     ).size;
+    const revenue = rows
+      .filter(
+        (event) => event.eventType === AnalyticsEventType.ORDER_ATTRIBUTED,
+      )
+      .reduce((total, event) => total + Number(event.revenueAmount ?? 0), 0);
+    const currencyCode =
+      rows.find((event) => event.currencyCode)?.currencyCode ?? "USD";
+    const locale = mostCommon(
+      rows.map((event) => event.locale).filter(Boolean) as string[],
+    );
     const conversionRate = safeRate(orders, visitors);
 
     if (
@@ -698,10 +946,25 @@ function recommendMarketLocalization(
           action: "CREATE_DRAFT_CAMPAIGN",
           ruleKey: "MARKET_LOCALIZATION",
           fingerprint: fingerprint("MARKET_LOCALIZATION", country),
+          insight:
+            "This market is already converting without a dedicated market rule, so localization is a low-risk optimization.",
+          recommendedAction:
+            "Create a localized top-bar draft and review country, locale, copy, and threshold settings.",
+          evidence: [
+            evidence("Visitors", formatInteger(visitors)),
+            evidence("Conversion", formatPercent(conversionRate)),
+            evidence(
+              "Attributed revenue",
+              formatCurrency(revenue, currencyCode),
+            ),
+            ...(locale ? [evidence("Observed locale", locale)] : []),
+          ],
           metrics: {
             country,
+            locale,
             visitors,
             conversionRate,
+            revenue,
           },
           campaign: {
             name: `${country} localized promotion`,
@@ -709,10 +972,13 @@ function recommendMarketLocalization(
             goal: CampaignGoal.FLASH_SALE,
             placementType: PlacementType.TOP_BAR,
             headline: `Special offer for ${country}`,
-            subheadline: "Localized campaign draft based on recent conversion data.",
+            subheadline:
+              "Localized campaign draft based on recent conversion data.",
             ctaText: "Shop offer",
             ctaUrl: "/collections/all",
             country,
+            locale,
+            timerDurationMinutes: 240,
           },
         },
       },
@@ -740,13 +1006,11 @@ function recommendUniqueCodeChanges(
   >();
 
   for (const code of uniqueCodes) {
-    const row =
-      rowsByCampaign.get(code.campaignId) ??
-      {
-        campaignName: code.campaign.name,
-        assigned: 0,
-        used: 0,
-      };
+    const row = rowsByCampaign.get(code.campaignId) ?? {
+      campaignName: code.campaign.name,
+      assigned: 0,
+      used: 0,
+    };
 
     if (code.assignedAt) row.assigned += 1;
     if (code.status === UniqueDiscountCodeStatus.USED && code.usedAt) {
@@ -785,6 +1049,19 @@ function recommendUniqueCodeChanges(
           action: "CREATE_DRAFT_CAMPAIGN",
           ruleKey: "UNIQUE_CODES_LOW_USE",
           fingerprint: fingerprint("UNIQUE_CODES_LOW_USE", campaignId),
+          insight:
+            "Codes are being assigned, but too few shoppers complete the action with the code.",
+          recommendedAction:
+            "Create a draft with clearer private-code copy and a shorter reviewable timer before changing the live offer.",
+          evidence: [
+            evidence("Assigned codes", formatInteger(row.assigned)),
+            evidence("Used codes", formatInteger(row.used)),
+            evidence(
+              "Use rate",
+              formatPercent(useRate),
+              "Below the unique-code threshold",
+            ),
+          ],
           metrics: {
             assigned: row.assigned,
             used: row.used,
@@ -800,10 +1077,104 @@ function recommendUniqueCodeChanges(
               "Test clearer copy or duration before changing the live campaign.",
             ctaText: "Shop with code",
             ctaUrl: "/collections/all",
+            timerDurationMinutes: 90,
           },
         },
       };
     });
+}
+
+function recommendCartIntentCampaign(
+  campaigns: CampaignForRecommendation[],
+  events: EventForRecommendation[],
+  options: Required<Omit<RecommendationEngineOptions, "now">>,
+): RecommendationCandidate[] {
+  if (hasActiveCartCampaign(campaigns)) return [];
+
+  const intentRows = events.filter(
+    (event) =>
+      event.eventType === AnalyticsEventType.ADD_TO_CART ||
+      event.eventType === AnalyticsEventType.CHECKOUT_STARTED,
+  );
+  const addToCarts = countEvents(intentRows, AnalyticsEventType.ADD_TO_CART);
+  const checkoutStarts = countEvents(
+    intentRows,
+    AnalyticsEventType.CHECKOUT_STARTED,
+  );
+  const orders = countUniqueOrders(events);
+  const visitors = countVisitors(intentRows);
+  const intentEvents = addToCarts + checkoutStarts;
+  const conversionRate = safeRate(orders, visitors);
+
+  if (
+    intentEvents < options.minCartIntentEvents ||
+    visitors < Math.max(10, Math.floor(options.minCartIntentEvents / 2)) ||
+    conversionRate > options.lowCartConversionThreshold
+  ) {
+    return [];
+  }
+
+  const topCountry = mostCommon(
+    intentRows.map((event) => event.country).filter(Boolean) as string[],
+  );
+
+  return [
+    {
+      type: CampaignRecommendationType.TIMING,
+      title: "Add a cart rescue reminder",
+      description: `${formatInteger(
+        intentEvents,
+      )} recent cart-intent events led to a ${formatPercent(
+        conversionRate,
+      )} attributed conversion rate, and there is no active cart campaign.`,
+      impact:
+        "A cart-drawer reminder keeps the offer visible at the highest-intent surface without changing product-page messaging.",
+      confidence: confidenceFromRateGap(
+        options.lowCartConversionThreshold,
+        conversionRate,
+        intentEvents,
+      ),
+      payload: {
+        action: "CREATE_DRAFT_CAMPAIGN",
+        ruleKey: "CART_INTENT_NO_CART_CAMPAIGN",
+        fingerprint: fingerprint(
+          "CART_INTENT_NO_CART_CAMPAIGN",
+          topCountry ?? "all",
+        ),
+        insight:
+          "The store is seeing cart intent, but no cart-surface campaign is present to support shoppers before checkout.",
+        recommendedAction:
+          "Create a cart-drawer reminder draft and review the copy, timer duration, and targeting before publishing.",
+        evidence: [
+          evidence("Add to cart", formatInteger(addToCarts)),
+          evidence("Checkout starts", formatInteger(checkoutStarts)),
+          evidence("Attributed conversion", formatPercent(conversionRate)),
+          ...(topCountry ? [evidence("Top country", topCountry)] : []),
+        ],
+        metrics: {
+          addToCarts,
+          checkoutStarts,
+          conversionRate,
+          intentEvents,
+          orders,
+          visitors,
+          topCountry,
+        },
+        campaign: {
+          name: "Cart rescue reminder",
+          type: CampaignType.CART_TIMER,
+          goal: CampaignGoal.CART_RESCUE,
+          placementType: PlacementType.CART_DRAWER,
+          headline: "Complete your order today",
+          subheadline: "Keep the offer visible while shoppers review the cart.",
+          ctaText: "Return to cart",
+          ctaUrl: "/cart",
+          country: topCountry,
+          timerDurationMinutes: 120,
+        },
+      },
+    },
+  ];
 }
 
 function buildCampaignMetrics(
@@ -830,14 +1201,14 @@ function buildCampaignMetrics(
     const orderRows = rows.filter(
       (row) => row.eventType === AnalyticsEventType.ORDER_ATTRIBUTED,
     );
-    const orders = new Set(
-      orderRows.map((row) => row.orderId).filter(Boolean),
-    ).size;
+    const orders = new Set(orderRows.map((row) => row.orderId).filter(Boolean))
+      .size;
     const revenue = orderRows.reduce(
       (total, row) => total + Number(row.revenueAmount ?? 0),
       0,
     );
     const visitors = countVisitors(rows);
+    const placementBreakdown = buildPlacementBreakdown(rows);
 
     return {
       campaign,
@@ -848,10 +1219,39 @@ function buildCampaignMetrics(
       ctr: safeRate(clicks, impressions),
       conversionRate: safeRate(orders, visitors),
       averageOrderValue: safeRate(revenue, orders),
-      currencyCode: orderRows.find((row) => row.currencyCode)?.currencyCode ?? "USD",
+      currencyCode:
+        orderRows.find((row) => row.currencyCode)?.currencyCode ?? "USD",
+      placementBreakdown,
       visitors,
     };
   });
+}
+
+function buildPlacementBreakdown(events: EventForRecommendation[]) {
+  const rowsByPlacement = new Map<
+    PlacementType | "UNKNOWN",
+    { impressions: number; clicks: number }
+  >();
+
+  for (const event of events) {
+    const placementType = event.placementType ?? "UNKNOWN";
+    const row = rowsByPlacement.get(placementType) ?? {
+      clicks: 0,
+      impressions: 0,
+    };
+
+    if (impressionEvents.has(event.eventType)) row.impressions += 1;
+    if (clickEvents.has(event.eventType)) row.clicks += 1;
+
+    rowsByPlacement.set(placementType, row);
+  }
+
+  return Array.from(rowsByPlacement.entries()).map(([placementType, row]) => ({
+    placementType,
+    impressions: row.impressions,
+    clicks: row.clicks,
+    ctr: safeRate(row.clicks, row.impressions),
+  }));
 }
 
 function hasProductCampaignForPath(
@@ -861,16 +1261,54 @@ function hasProductCampaignForPath(
   return campaigns.some((campaign) => {
     if (
       campaign.status !== CampaignStatus.ACTIVE ||
-      campaign.type !== CampaignType.PRODUCT_BADGE &&
-      campaign.type !== CampaignType.PRODUCT_TIMER
+      (campaign.type !== CampaignType.PRODUCT_BADGE &&
+        campaign.type !== CampaignType.PRODUCT_TIMER)
     ) {
       return false;
     }
 
-    return campaign.placements.some(
-      (placement) => placement.placementType === PlacementType.PRODUCT_PAGE,
-    ) || campaign.name.toLowerCase().includes(lastPathSegment(path).toLowerCase());
+    return (
+      campaign.placements.some(
+        (placement) => placement.placementType === PlacementType.PRODUCT_PAGE,
+      ) ||
+      campaign.name.toLowerCase().includes(lastPathSegment(path).toLowerCase())
+    );
   });
+}
+
+function hasActiveCartCampaign(campaigns: CampaignForRecommendation[]) {
+  return campaigns.some((campaign) => {
+    if (campaign.status !== CampaignStatus.ACTIVE) return false;
+    if (
+      campaign.type === CampaignType.CART_TIMER ||
+      campaign.type === CampaignType.FREE_SHIPPING_GOAL
+    ) {
+      return true;
+    }
+
+    return campaign.placements.some(
+      (placement) =>
+        placement.enabled &&
+        (placement.placementType === PlacementType.CART_DRAWER ||
+          placement.placementType === PlacementType.CART_PAGE),
+    );
+  });
+}
+
+function isCampaignTypePortableToCart(type: CampaignType) {
+  return (
+    type === CampaignType.COUNTDOWN_BAR ||
+    type === CampaignType.CART_TIMER ||
+    type === CampaignType.PRODUCT_TIMER
+  );
+}
+
+function isTimerCampaignType(type: CampaignType) {
+  return (
+    type === CampaignType.COUNTDOWN_BAR ||
+    type === CampaignType.PRODUCT_TIMER ||
+    type === CampaignType.CART_TIMER
+  );
 }
 
 async function loadCampaigns(shopId: string) {
@@ -984,6 +1422,30 @@ async function createDraftCampaignFromPayload(
           templateKey: "recommendation-draft",
         },
       },
+      ...(isTimerCampaignType(campaign.type)
+        ? {
+            timerSettings: {
+              create: {
+                mode: TimerMode.EVERGREEN_SESSION,
+                durationMinutes: campaign.timerDurationMinutes ?? 240,
+                recurringDays: [],
+                resetBehavior: TimerResetBehavior.NEVER,
+                expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,
+              },
+            },
+          }
+        : {}),
+      ...(campaign.type === CampaignType.CART_TIMER
+        ? {
+            cartRescueSettings: {
+              create: {
+                rescueReason: CartRescueReason.CHECKOUT_REMINDER,
+                showButton: true,
+                showTimer: true,
+              },
+            },
+          }
+        : {}),
       ...(campaign.type === CampaignType.FREE_SHIPPING_GOAL
         ? {
             freeShippingSettings: {
@@ -1049,7 +1511,9 @@ async function createDraftCampaignFromPayload(
   });
 }
 
-function readRecommendationPayload(value: unknown): RecommendationPayload | null {
+function readRecommendationPayload(
+  value: unknown,
+): RecommendationPayload | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 
   const input = value as Partial<RecommendationPayload>;
@@ -1071,14 +1535,51 @@ function countVisitors(events: EventForRecommendation[]) {
     .map((event) => event.sessionId ?? event.orderId ?? event.path)
     .filter(Boolean) as string[];
 
-  return Math.max(new Set(keys).size, events.filter((event) => impressionEvents.has(event.eventType)).length);
+  return Math.max(
+    new Set(keys).size,
+    events.filter((event) => impressionEvents.has(event.eventType)).length,
+  );
+}
+
+function countEvents(
+  events: EventForRecommendation[],
+  eventType: AnalyticsEventType,
+) {
+  return events.filter((event) => event.eventType === eventType).length;
+}
+
+function countUniqueOrders(events: EventForRecommendation[]) {
+  return new Set(
+    events
+      .filter(
+        (event) => event.eventType === AnalyticsEventType.ORDER_ATTRIBUTED,
+      )
+      .map((event) => event.orderId)
+      .filter(Boolean),
+  ).size;
+}
+
+function evidence(
+  label: string,
+  value: string,
+  detail?: string,
+): RecommendationEvidence {
+  return {
+    label,
+    value,
+    ...(detail ? { detail } : {}),
+  };
 }
 
 function fingerprint(ruleKey: RecommendationRuleKey, target: string) {
   return `${ruleKey}:${target}`;
 }
 
-function confidenceFromRateGap(target: number, actual: number, sampleSize: number) {
+function confidenceFromRateGap(
+  target: number,
+  actual: number,
+  sampleSize: number,
+) {
   const gap = Math.max(0, target - actual);
   return clampConfidence(0.55 + gap * 4 + Math.min(sampleSize, 500) / 2500);
 }
@@ -1095,13 +1596,55 @@ function formatPercent(value: number) {
   return `${Math.round(value * 1000) / 10}%`;
 }
 
-function formatCurrency(value: number, currencyCode: string | null | undefined) {
+function formatInteger(value: number) {
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatCurrency(
+  value: number,
+  currencyCode: string | null | undefined,
+) {
   return new Intl.NumberFormat("en", {
     currency: currencyCode || "USD",
     style: "currency",
   }).format(value);
 }
 
+function placementList(placements: CampaignPlacement[]) {
+  const enabledPlacements = placements
+    .filter((placement) => placement.enabled)
+    .map((placement) => formatPlacement(placement.placementType));
+
+  return enabledPlacements.length > 0 ? enabledPlacements.join(", ") : "None";
+}
+
+function formatPlacement(placementType: PlacementType | "UNKNOWN") {
+  if (placementType === "UNKNOWN") return "Unknown";
+
+  return placementType
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function lastPathSegment(path: string) {
   return path.split("/").filter(Boolean).at(-1) ?? "product";
+}
+
+function mostCommon(values: string[]) {
+  const counts = new Map<string, number>();
+
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  return (
+    Array.from(counts.entries()).sort(
+      (first, second) =>
+        second[1] - first[1] || first[0].localeCompare(second[0]),
+    )[0]?.[0] ?? null
+  );
 }

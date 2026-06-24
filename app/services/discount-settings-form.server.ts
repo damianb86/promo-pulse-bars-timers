@@ -47,6 +47,10 @@ export function parseDiscountSettingsFormData(
     ),
     uniqueCodeExpiresMinutes: readString(formData, "uniqueCodeExpiresMinutes"),
     uniqueCodeAutoApply: readBoolean(formData, "uniqueCodeAutoApply"),
+    uniqueCodeReassignExpired: readBoolean(
+      formData,
+      "uniqueCodeReassignExpired",
+    ),
   };
   const errors: DiscountSettingsErrors = {};
   const discountValue = Number(values.value);

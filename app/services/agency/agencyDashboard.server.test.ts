@@ -371,6 +371,7 @@ function campaignCopySource() {
       uniqueCodePrefix: null,
       uniqueCodeExpiresMinutes: null,
       uniqueCodeAutoApply: false,
+      uniqueCodeReassignExpired: false,
       uniqueCodeStartsAt: null,
       uniqueCodeEndsAt: null,
       createdAt: now,

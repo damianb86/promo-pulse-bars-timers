@@ -13,6 +13,7 @@ import {
 import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
 import { storefrontLocales } from "../types/localization";
+import { AiGenerateIcon } from "./AiGenerateIcon";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 
 type AiCampaignBuilderProps = {
@@ -691,15 +692,15 @@ export function AiCampaignBuilder({
           {templateSourceName && (
             <AppAlert tone="info" title="Template context loaded">
               <s-paragraph>
-                Generate variants from {templateSourceName}, then review before
-                applying or saving.
+                Generate a campaign draft from {templateSourceName}, then review
+                before applying or saving.
               </s-paragraph>
             </AppAlert>
           )}
 
           <div className="counterpulse-ai-builder__intro">
             <span className="counterpulse-ai-builder__icon" aria-hidden="true">
-              <AiSparkIcon />
+              <AiGenerateIcon />
             </span>
             <div>
               <strong>Start with intent, not copywriting</strong>
@@ -1181,14 +1182,20 @@ export function AiCampaignBuilder({
             </details>
 
             <div className="counterpulse-actions">
-              <button className="counterpulse-ai-submit" type="submit">
-                {isGenerating
-                  ? "Generating..."
-                  : isAnsweringFollowUp
-                    ? "Generate campaign with these answers"
-                    : templateSourceName
-                      ? "Generate variants from template"
-                      : "Generate with AI"}
+              <button
+                className="counterpulse-ai-action-button counterpulse-ai-submit"
+                type="submit"
+              >
+                <AiGenerateIcon />
+                <span>
+                  {isGenerating
+                    ? "Generating..."
+                    : isAnsweringFollowUp
+                      ? "Generate campaign with these answers"
+                      : templateSourceName
+                        ? "Generate campaign from template"
+                        : "Generate with AI"}
+                </span>
               </button>
             </div>
           </Form>
@@ -1260,26 +1267,28 @@ export function AiCampaignBuilder({
                   />
                 </div>
 
-                <s-box paddingBlockStart="base">
-                  <table className="counterpulse-table">
-                    <thead>
-                      <tr>
-                        <th>Variant</th>
-                        <th>Headline</th>
-                        <th>Weight</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {suggestion.variants.map((variant) => (
-                        <tr key={variant.name}>
-                          <td>{variant.name}</td>
-                          <td>{variant.headline}</td>
-                          <td>{variant.weight}</td>
+                {suggestion.variants.length > 0 && (
+                  <s-box paddingBlockStart="base">
+                    <table className="counterpulse-table">
+                      <thead>
+                        <tr>
+                          <th>Variant</th>
+                          <th>Headline</th>
+                          <th>Weight</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </s-box>
+                      </thead>
+                      <tbody>
+                        {suggestion.variants.map((variant) => (
+                          <tr key={variant.name}>
+                            <td>{variant.name}</td>
+                            <td>{variant.headline}</td>
+                            <td>{variant.weight}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </s-box>
+                )}
 
                 <div className="counterpulse-actions">
                   <button
@@ -1308,15 +1317,6 @@ export function AiCampaignBuilder({
         </>
       )}
     </div>
-  );
-}
-
-function AiSparkIcon() {
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-      <path d="M12 2.5 13.6 8l5.6 1.6-5.6 1.6L12 16.7l-1.6-5.5-5.6-1.6L10.4 8 12 2.5Z" />
-      <path d="M18.5 14.2 19.4 17l2.9.9-2.9.9-.9 2.8-.9-2.8-2.8-.9 2.8-.9.9-2.8Z" />
-    </svg>
   );
 }
 

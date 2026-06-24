@@ -125,6 +125,7 @@ describe("storefront campaign serialization", () => {
         shopifyDiscountId: null,
         uniqueCodeAutoApply: true,
         uniqueCodeExpiresMinutes: 45,
+        uniqueCodeReassignExpired: true,
         uniqueCodePrefix: "VIP",
         value: "77",
       },
@@ -138,6 +139,7 @@ describe("storefront campaign serialization", () => {
         endpoint: "/api/storefront/unique-code/assign",
         autoApply: true,
         expiresMinutes: 45,
+        reassignExpired: true,
       },
     });
     expect(JSON.stringify(serialized)).not.toContain("uniqueCodePrefix");
@@ -836,6 +838,7 @@ function buildCampaign(
       shopifyDiscountId: string | null;
       uniqueCodeAutoApply?: boolean;
       uniqueCodeExpiresMinutes?: number | null;
+      uniqueCodeReassignExpired?: boolean;
       uniqueCodePrefix?: string | null;
       showCodeOnStorefront?: boolean;
       value?: string | null;
@@ -978,6 +981,7 @@ function buildCampaign(
           uniqueCodePrefix: null,
           uniqueCodeExpiresMinutes: null,
           uniqueCodeAutoApply: false,
+          uniqueCodeReassignExpired: false,
           uniqueCodeStartsAt: null,
           uniqueCodeEndsAt: null,
           showCodeOnStorefront: true,

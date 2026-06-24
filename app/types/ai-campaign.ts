@@ -127,6 +127,7 @@ export type CampaignAiDiscountSettings = {
   uniqueCodePrefix: string;
   uniqueCodeExpiresMinutes: string;
   uniqueCodeAutoApply: boolean;
+  uniqueCodeReassignExpired: boolean;
 };
 
 export type CampaignAiFreeShippingSettings = {

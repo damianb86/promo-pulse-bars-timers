@@ -905,6 +905,7 @@ async function createUniqueDiscountCampaign(
           uniqueCodePrefix: "E2E",
           uniqueCodeExpiresMinutes: 60,
           uniqueCodeAutoApply: true,
+          uniqueCodeReassignExpired: false,
           uniqueCodeStartsAt: new Date(now.getTime() - 60 * 1000),
           uniqueCodeEndsAt: endsAt,
         },

@@ -77,9 +77,10 @@ type CampaignAiProviderOutput = {
     Record<StorefrontLocale, Partial<CampaignAiTranslation>>
   >;
   design?: Partial<CampaignDesignValues>;
-  variants?: Array<Partial<CampaignAiVariant>>;
   safety?: Partial<CampaignSuggestion["safety"]>;
 };
+
+type CampaignAiExperimentVariantOutput = Array<Partial<CampaignAiVariant>>;
 
 export type CampaignAiProvider = {
   source: CampaignSuggestionSource;
@@ -93,7 +94,7 @@ export type CampaignAiProvider = {
   generateExperimentVariants?(
     input: CampaignAiInput,
     campaign: CampaignSuggestionCampaign,
-  ): Promise<CampaignAiProviderOutput["variants"]>;
+  ): Promise<CampaignAiExperimentVariantOutput>;
 };
 
 type CampaignAiGenerationOptions = {
@@ -160,7 +161,6 @@ const openAiJsonKeys = [
   "deliveryCutoff",
   "translations",
   "design",
-  "variants",
 ];
 
 export function buildDefaultCampaignAiInput(
@@ -546,7 +546,6 @@ export function parseAppliedCampaignSuggestion(
         deliveryCutoff: parsed.deliveryCutoff,
         translations: parsed.translations,
         design: parsed.design,
-        variants: parsed.variants,
         safety: parsed.safety,
       },
       parsed.source === "provider" ? "provider" : "mock",
@@ -653,7 +652,14 @@ async function requestOpenAiJson(
     throw new Error("OpenAI provider returned no JSON text.");
   }
 
-  const parsed = JSON.parse(text) as CampaignAiProviderOutput;
+  const parsed = JSON.parse(text) as CampaignAiProviderOutput & {
+    variants?: unknown;
+  };
+
+  if (Object.prototype.hasOwnProperty.call(parsed, "variants")) {
+    throw new Error("OpenAI provider returned an unsupported variants field.");
+  }
+
   const hasExpectedKey = openAiJsonKeys.some((key) =>
     Object.prototype.hasOwnProperty.call(parsed, key),
   );
@@ -696,15 +702,7 @@ function completeCampaignSuggestion(
       output.translations ?? {},
     ),
     design: sanitizeAiDesign(output.design, fallback.design),
-    variants:
-      output.variants && output.variants.length > 0
-        ? output.variants.map((variant, index) =>
-            mergeVariant(
-              fallback.variants[index] ?? fallback.variants[0],
-              variant,
-            ),
-          )
-        : fallback.variants,
+    variants: [],
     safety: {
       warnings: [...(output.safety?.warnings ?? [])],
       blockedClaims: [...(output.safety?.blockedClaims ?? [])],
@@ -732,7 +730,7 @@ function buildMockCampaignSuggestion(
     deliveryCutoff: buildDeliveryCutoff(input),
     translations: buildTranslations(input, campaign),
     design: buildDesign(input),
-    variants: buildVariants(input, campaign),
+    variants: [],
     safety: {
       warnings: [],
       blockedClaims: [],
@@ -1147,13 +1145,6 @@ function sanitizeCampaignSuggestion(
     suggestion.translations,
     blockedClaims,
   );
-  const variants = sanitizeVariants(
-    suggestion.input,
-    suggestion.variants,
-    buildVariants(suggestion.input, campaign),
-    blockedClaims,
-  );
-
   if (blockedClaims.length > suggestion.safety.blockedClaims.length) {
     warnings.push(
       "Some generated claims were replaced because they mentioned stock or unsupported discounts.",
@@ -1165,7 +1156,7 @@ function sanitizeCampaignSuggestion(
     campaign,
     translations,
     design: sanitizeAiDesign(suggestion.design, buildDesign(suggestion.input)),
-    variants,
+    variants: [],
     safety: {
       warnings: uniqueStrings(warnings),
       blockedClaims: uniqueStrings(blockedClaims),
@@ -1351,6 +1342,10 @@ function sanitizeDiscountSettings(
       typeof discount?.uniqueCodeAutoApply === "boolean"
         ? discount.uniqueCodeAutoApply
         : fallback.uniqueCodeAutoApply,
+    uniqueCodeReassignExpired:
+      typeof discount?.uniqueCodeReassignExpired === "boolean"
+        ? discount.uniqueCodeReassignExpired
+        : fallback.uniqueCodeReassignExpired,
   };
 }
 
@@ -1658,20 +1653,6 @@ function mergeTranslations(
     },
     {} as CampaignSuggestion["translations"],
   );
-}
-
-function mergeVariant(
-  fallback: CampaignAiVariant,
-  override: Partial<CampaignAiVariant>,
-): CampaignAiVariant {
-  return {
-    ...fallback,
-    ...override,
-    designOverride: {
-      ...(fallback.designOverride ?? {}),
-      ...(override.designOverride ?? {}),
-    },
-  };
 }
 
 function createTranslation(
@@ -2012,6 +1993,8 @@ function defaultAiDiscount(): CampaignAiDiscountSettings {
     uniqueCodeExpiresMinutes:
       defaultDiscountSettingsValues.uniqueCodeExpiresMinutes,
     uniqueCodeAutoApply: defaultDiscountSettingsValues.uniqueCodeAutoApply,
+    uniqueCodeReassignExpired:
+      defaultDiscountSettingsValues.uniqueCodeReassignExpired,
   };
 }
 

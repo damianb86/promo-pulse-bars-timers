@@ -67,14 +67,14 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   );
   await page.getByRole("tab", { name: "Experiments" }).click();
   const experimentsPanel = page.locator("#campaign-editor-panel-experiments");
-  await expect(
-    experimentsPanel.getByText("AI suggested variants"),
-  ).toBeVisible();
+  await expect(experimentsPanel.getByText("AI suggested variants")).toHaveCount(
+    0,
+  );
   await expect(
     experimentsPanel
       .locator(".counterpulse-experiment-status")
       .filter({ hasText: "Draft" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

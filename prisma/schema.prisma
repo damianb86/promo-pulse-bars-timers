@@ -40,24 +40,25 @@ model Shop {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  campaigns             Campaign[]
-  analyticsEvents       AnalyticsEvent[]
-  discountCodeGrants    DiscountCodeGrant[]
-  uniqueDiscountCodes   UniqueDiscountCode[]
-  discountCodePools     DiscountCodePool[]
-  experiments           Experiment[]
-  attributionTouches    AttributionTouch[]
-  conversions           AttributionConversion[]
-  emailTimers           EmailTimer[]
-  advancedDiscountRules AdvancedDiscountRule[]
-  advancedBadgeRules    AdvancedBadgeRule[]
-  marketCampaignRules   MarketCampaignRule[]
-  recommendations       CampaignRecommendation[]
-  campaignTemplates     CampaignTemplate[]
-  agencyShopAccesses    AgencyShopAccess[]
-  contactRequests       ContactRequest[]
-  onboardingChecklist   ShopOnboardingChecklist?
-  settings              ShopSettings?
+  campaigns                     Campaign[]
+  analyticsEvents               AnalyticsEvent[]
+  discountCodeGrants            DiscountCodeGrant[]
+  uniqueDiscountCodes           UniqueDiscountCode[]
+  uniqueDiscountCodeAssignments UniqueDiscountCodeAssignment[]
+  discountCodePools             DiscountCodePool[]
+  experiments                   Experiment[]
+  attributionTouches            AttributionTouch[]
+  conversions                   AttributionConversion[]
+  emailTimers                   EmailTimer[]
+  advancedDiscountRules         AdvancedDiscountRule[]
+  advancedBadgeRules            AdvancedBadgeRule[]
+  marketCampaignRules           MarketCampaignRule[]
+  recommendations               CampaignRecommendation[]
+  campaignTemplates             CampaignTemplate[]
+  agencyShopAccesses            AgencyShopAccess[]
+  contactRequests               ContactRequest[]
+  onboardingChecklist           ShopOnboardingChecklist?
+  settings                      ShopSettings?
 }
 
 model ShopSettings {
@@ -112,31 +113,32 @@ model Campaign {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  shop                   Shop                     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  placements             CampaignPlacement[]
-  targeting              CampaignTargeting?
-  design                 CampaignDesign?
-  timerSettings          TimerSettings?
-  cartRescueSettings     CartRescueSettings?
-  freeShippingSettings   FreeShippingSettings?
-  deliveryCutoffSettings DeliveryCutoffSettings?
-  lowStockSettings       LowStockSettings?
-  badgeSettings          BadgeSettings?
-  discountSync           DiscountSync?
-  discountCodeGrants     DiscountCodeGrant[]
-  uniqueDiscountCodes    UniqueDiscountCode[]
-  discountCodePools      DiscountCodePool[]
-  experiments            Experiment[]
-  experimentVariants     ExperimentVariant[]
-  attributionTouches     AttributionTouch[]
-  conversions            AttributionConversion[]
-  emailTimers            EmailTimer[]
-  advancedDiscountRules  AdvancedDiscountRule[]
-  advancedBadgeRules     AdvancedBadgeRule[]
-  marketCampaignRules    MarketCampaignRule[]
-  recommendations        CampaignRecommendation[]
-  translations           CampaignTranslation[]
-  analyticsEvents        AnalyticsEvent[]
+  shop                          Shop                           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  placements                    CampaignPlacement[]
+  targeting                     CampaignTargeting?
+  design                        CampaignDesign?
+  timerSettings                 TimerSettings?
+  cartRescueSettings            CartRescueSettings?
+  freeShippingSettings          FreeShippingSettings?
+  deliveryCutoffSettings        DeliveryCutoffSettings?
+  lowStockSettings              LowStockSettings?
+  badgeSettings                 BadgeSettings?
+  discountSync                  DiscountSync?
+  discountCodeGrants            DiscountCodeGrant[]
+  uniqueDiscountCodes           UniqueDiscountCode[]
+  uniqueDiscountCodeAssignments UniqueDiscountCodeAssignment[]
+  discountCodePools             DiscountCodePool[]
+  experiments                   Experiment[]
+  experimentVariants            ExperimentVariant[]
+  attributionTouches            AttributionTouch[]
+  conversions                   AttributionConversion[]
+  emailTimers                   EmailTimer[]
+  advancedDiscountRules         AdvancedDiscountRule[]
+  advancedBadgeRules            AdvancedBadgeRule[]
+  marketCampaignRules           MarketCampaignRule[]
+  recommendations               CampaignRecommendation[]
+  translations                  CampaignTranslation[]
+  analyticsEvents               AnalyticsEvent[]
 
   @@index([shopId, status])
   @@index([shopId, type])
@@ -169,7 +171,7 @@ model CampaignTargeting {
   productTags          Json
   customerTags         Json
   urlContains          Json
-  excludedUrlContains  Json                     @default("[]")
+  excludedUrlContains  Json   @default("[]")
   utmSources           Json
   devices              Json
   excludeProductIds    Json
@@ -313,23 +315,24 @@ model BadgeSettings {
 }
 
 model DiscountSync {
-  campaignId               String                 @id
-  shopifyDiscountId        String?
-  discountCode             String?
-  method                   DiscountSyncMethod
-  syncStartEnd             Boolean                @default(true)
-  lastSyncedAt             DateTime?
-  title                    String?
-  valueType                DiscountCodeValueType?
-  value                    Decimal?
-  minimumSubtotal          Decimal?
-  appliesOncePerCustomer   Boolean                @default(false)
-  showCodeOnStorefront     Boolean                @default(true)
-  uniqueCodePrefix         String?
-  uniqueCodeExpiresMinutes Int?
-  uniqueCodeAutoApply      Boolean                @default(false)
-  uniqueCodeStartsAt       DateTime?
-  uniqueCodeEndsAt         DateTime?
+  campaignId                String                 @id
+  shopifyDiscountId         String?
+  discountCode              String?
+  method                    DiscountSyncMethod
+  syncStartEnd              Boolean                @default(true)
+  lastSyncedAt              DateTime?
+  title                     String?
+  valueType                 DiscountCodeValueType?
+  value                     Decimal?
+  minimumSubtotal           Decimal?
+  appliesOncePerCustomer    Boolean                @default(false)
+  showCodeOnStorefront      Boolean                @default(true)
+  uniqueCodePrefix          String?
+  uniqueCodeExpiresMinutes  Int?
+  uniqueCodeAutoApply       Boolean                @default(false)
+  uniqueCodeReassignExpired Boolean                @default(false)
+  uniqueCodeStartsAt        DateTime?
+  uniqueCodeEndsAt          DateTime?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -428,8 +431,9 @@ model UniqueDiscountCode {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
 
-  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shop        Shop                           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign    Campaign                       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignments UniqueDiscountCodeAssignment[]
 
   @@unique([shopId, code])
   @@index([campaignId, status])
@@ -437,6 +441,31 @@ model UniqueDiscountCode {
   @@index([sessionId])
   @@index([orderId])
   @@index([expiresAt])
+}
+
+model UniqueDiscountCodeAssignment {
+  id         String    @id @default(cuid())
+  shopId     String
+  campaignId String
+  codeId     String
+  visitorId  String
+  sessionId  String?
+  code       String
+  assignedAt DateTime
+  expiresAt  DateTime?
+  expiredAt  DateTime?
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  shop       Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uniqueCode UniqueDiscountCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, campaignId, visitorId])
+  @@index([campaignId, expiresAt])
+  @@index([campaignId, codeId])
+  @@index([visitorId])
 }
 
 model DiscountCodePool {

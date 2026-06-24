@@ -23,6 +23,8 @@
   var campaignCache = {};
   var pendingFetches = {};
   var renderedCampaigns = {};
+  var currentRenderScope = "";
+  var currentRenderFingerprints = {};
   var cacheTtlMs = 30000;
   var globalPlacements = "TOP_BAR,BOTTOM_BAR,CUSTOM_SELECTOR";
 
@@ -36,7 +38,9 @@
     "Embed JS cargado. Consultando placements globales; cart drawer, free shipping y delivery cutoff los manejan assets dedicados.",
   );
 
-  fetchCampaigns(globalPlacements)
+  fetchCampaigns(globalPlacements, "", function (campaigns) {
+    renderCampaignsForScope(globalPlacements, "", campaigns);
+  })
     .then(function (campaigns) {
       updateDebug(
         root,
@@ -44,9 +48,7 @@
           campaigns.length +
           " campana(s) recibidas para placements globales.",
       );
-      campaigns.forEach(function (campaign) {
-        renderCampaign(campaign);
-      });
+      renderCampaignsForScope(globalPlacements, "", campaigns);
     })
     .catch(function (error) {
       updateDebug(root, "Error global del embed: " + error.message);
@@ -55,7 +57,7 @@
 
   renderInlineSnippets();
 
-  function fetchCampaigns(placement, campaignId) {
+  function fetchCampaigns(placement, campaignId, onRevalidate) {
     var url = buildCampaignUrl(placement, campaignId);
     var cached = campaignCache[url];
     var now = Date.now();
@@ -66,21 +68,14 @@
       return window
         .PromoPulseFetchCampaigns(config, placement, {
           campaignId: campaignId || "",
+          onRevalidate: function (payload) {
+            if (typeof onRevalidate === "function") {
+              onRevalidate(normalizeCampaignPayload(payload, placement, url));
+            }
+          },
         })
         .then(function (payload) {
-          applyStorefrontSettings(payload.settings);
-          var campaigns = Array.isArray(payload.campaigns)
-            ? payload.campaigns.map(applyExperiment)
-            : [];
-          updateDebug(
-            root,
-            "API OK para " +
-              placement +
-              ": " +
-              campaigns.length +
-              " campana(s).",
-            payload.url || url,
-          );
+          var campaigns = normalizeCampaignPayload(payload, placement, url);
           return campaigns;
         })
         .catch(function (error) {
@@ -156,6 +151,21 @@
     return pendingFetches[url];
   }
 
+  function normalizeCampaignPayload(payload, placement, url) {
+    applyStorefrontSettings(payload.settings);
+    var campaigns = Array.isArray(payload.campaigns)
+      ? payload.campaigns.map(applyExperiment)
+      : [];
+
+    updateDebug(
+      root,
+      "API OK para " + placement + ": " + campaigns.length + " campana(s).",
+      payload.url || url,
+    );
+
+    return campaigns;
+  }
+
   function buildCampaignUrl(placement, campaignId) {
     var params = new URLSearchParams({
       shop: config.shop,
@@ -229,14 +239,118 @@
         slot.dataset.promoPulseRenderStarted = "true";
         slot.dataset.promoPulseSlotIndex = String(index);
 
-        fetchCampaigns("CUSTOM_SELECTOR", campaignId).then(
-          function (campaigns) {
-            if (campaigns[0]) {
-              renderCampaign(campaigns[0], slot);
-            }
-          },
-        );
+        fetchCampaigns("CUSTOM_SELECTOR", campaignId, function (campaigns) {
+          renderCampaignsForScope(
+            "CUSTOM_SELECTOR",
+            campaignId,
+            campaigns,
+            slot,
+          );
+        }).then(function (campaigns) {
+          renderCampaignsForScope(
+            "CUSTOM_SELECTOR",
+            campaignId,
+            campaigns,
+            slot,
+          );
+        });
       });
+  }
+
+  function renderCampaignsForScope(
+    placement,
+    campaignId,
+    campaigns,
+    targetContainer,
+  ) {
+    var scopeKey = getRenderScopeKey(placement, campaignId, targetContainer);
+    var activeKeys = {};
+    var nextFingerprints = {};
+    var previousScope = currentRenderScope;
+    var previousFingerprints = currentRenderFingerprints;
+
+    campaigns.forEach(function (campaign) {
+      var renderKey = getRenderKey(campaign, targetContainer);
+      var existing;
+      var fingerprint;
+
+      if (!renderKey) return;
+
+      fingerprint = getCampaignFingerprint(campaign);
+      activeKeys[renderKey] = true;
+      nextFingerprints[renderKey] = fingerprint;
+      existing = renderedCampaigns[renderKey];
+
+      if (existing && existing.fingerprint !== fingerprint) {
+        removeRenderedCampaign(renderKey);
+      }
+    });
+
+    currentRenderScope = scopeKey;
+    currentRenderFingerprints = nextFingerprints;
+    campaigns.forEach(function (campaign) {
+      renderCampaign(campaign, targetContainer);
+    });
+    currentRenderScope = previousScope;
+    currentRenderFingerprints = previousFingerprints;
+
+    reconcileRenderedCampaigns(scopeKey, activeKeys);
+  }
+
+  function getRenderScopeKey(placement, campaignId, targetContainer) {
+    if (targetContainer) {
+      return (
+        "snippet:" +
+        targetContainer.dataset.promoPulseSlotIndex +
+        ":" +
+        (campaignId || "")
+      );
+    }
+
+    return placement + ":" + (campaignId || "");
+  }
+
+  function getRenderKey(campaign, targetContainer) {
+    var base;
+
+    if (!campaign || !campaign.id || !campaign.placement) return "";
+
+    base = targetContainer
+      ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
+      : campaign.placement;
+
+    return (
+      base + (campaign.type === "PRODUCT_BADGE" ? ":badge:" : ":") + campaign.id
+    );
+  }
+
+  function getCampaignFingerprint(campaign) {
+    try {
+      return JSON.stringify(campaign);
+    } catch {
+      return String(Date.now());
+    }
+  }
+
+  function reconcileRenderedCampaigns(scopeKey, activeKeys) {
+    Object.keys(renderedCampaigns).forEach(function (renderKey) {
+      var rendered = renderedCampaigns[renderKey];
+
+      if (rendered.scopeKey === scopeKey && !activeKeys[renderKey]) {
+        removeRenderedCampaign(renderKey);
+      }
+    });
+  }
+
+  function removeRenderedCampaign(renderKey) {
+    var rendered = renderedCampaigns[renderKey];
+    var element = rendered && rendered.element;
+
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+
+    delete renderedCampaigns[renderKey];
   }
 
   function renderCampaign(campaign, targetContainer) {
@@ -260,12 +374,7 @@
       return;
     }
 
-    var renderKey =
-      (targetContainer
-        ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
-        : campaign.placement) +
-      ":" +
-      campaign.id;
+    var renderKey = getRenderKey(campaign, targetContainer);
 
     if (renderedCampaigns[renderKey]) return;
 
@@ -350,7 +459,11 @@
     }
 
     container.appendChild(bar);
-    renderedCampaigns[renderKey] = true;
+    renderedCampaigns[renderKey] = {
+      element: bar,
+      scopeKey: currentRenderScope || renderKey,
+      fingerprint: currentRenderFingerprints[renderKey] || "",
+    };
     startCountdown(bar, campaign);
     emitImpression(campaign);
   }
@@ -358,12 +471,7 @@
   function renderProductBadgeCampaign(campaign, targetContainer, timerState) {
     var design = campaign.design || {};
     var badgeSettings = campaign.badge || {};
-    var renderKey =
-      (targetContainer
-        ? "snippet:" + targetContainer.dataset.promoPulseSlotIndex
-        : campaign.placement) +
-      ":badge:" +
-      campaign.id;
+    var renderKey = getRenderKey(campaign, targetContainer);
     var container = targetContainer
       ? getSnippetContainer(targetContainer, campaign.placementStyle)
       : getPlacementContainer(
@@ -424,7 +532,11 @@
 
     rootEl.appendChild(badgeEl);
     container.appendChild(rootEl);
-    renderedCampaigns[renderKey] = true;
+    renderedCampaigns[renderKey] = {
+      element: rootEl,
+      scopeKey: currentRenderScope || renderKey,
+      fingerprint: currentRenderFingerprints[renderKey] || "",
+    };
     startCountdown(rootEl, campaign);
     emitImpression(campaign);
   }

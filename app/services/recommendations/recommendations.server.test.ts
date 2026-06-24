@@ -140,6 +140,72 @@ describe("recommendations engine", () => {
     expect(prismaMock.campaignRecommendation.create).not.toHaveBeenCalled();
   });
 
+  it("recommends scaling a proven campaign into the cart drawer", async () => {
+    prismaMock.analyticsEvent.findMany.mockResolvedValue([
+      ...events(120, AnalyticsEventType.IMPRESSION),
+      ...events(14, AnalyticsEventType.CLICK),
+      ...attributedOrders(6),
+    ]);
+
+    const result = await generateRecommendationsForShop("shop-1", {
+      countryMinVisitors: 1000,
+      minImpressions: 50,
+      now,
+    });
+
+    expect(result.created).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          campaignId: "campaign-1",
+          type: CampaignRecommendationType.PLACEMENT,
+          title: "Extend Flash Sale into the cart drawer",
+          payload: expect.objectContaining({
+            action: "CREATE_DRAFT_CAMPAIGN",
+            fingerprint: "SCALE_WINNING_PLACEMENT:campaign-1",
+            ruleKey: "SCALE_WINNING_PLACEMENT",
+            evidence: expect.arrayContaining([
+              expect.objectContaining({ label: "CTR" }),
+              expect.objectContaining({ label: "Conversion" }),
+            ]),
+            campaign: expect.objectContaining({
+              placementType: PlacementType.CART_DRAWER,
+              timerDurationMinutes: 120,
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("recommends a cart rescue campaign when cart intent has no cart placement", async () => {
+    prismaMock.analyticsEvent.findMany.mockResolvedValue([
+      ...shopEvents(36, AnalyticsEventType.ADD_TO_CART),
+      ...shopEvents(12, AnalyticsEventType.CHECKOUT_STARTED),
+    ]);
+
+    const result = await generateRecommendationsForShop("shop-1", {
+      minCartIntentEvents: 20,
+      now,
+    });
+
+    expect(result.created).toEqual([
+      expect.objectContaining({
+        campaignId: null,
+        type: CampaignRecommendationType.TIMING,
+        title: "Add a cart rescue reminder",
+        payload: expect.objectContaining({
+          action: "CREATE_DRAFT_CAMPAIGN",
+          fingerprint: "CART_INTENT_NO_CART_CAMPAIGN:US",
+          ruleKey: "CART_INTENT_NO_CART_CAMPAIGN",
+          campaign: expect.objectContaining({
+            placementType: PlacementType.CART_DRAWER,
+            type: CampaignType.CART_TIMER,
+          }),
+        }),
+      }),
+    ]);
+  });
+
   it("dismisses a recommendation for the current shop", async () => {
     prismaMock.campaignRecommendation.findFirst.mockResolvedValue({
       id: "rec-1",
@@ -192,7 +258,9 @@ describe("recommendations engine", () => {
           status: CampaignStatus.DRAFT,
           type: CampaignType.PRODUCT_TIMER,
           placements: {
-            create: [{ placementType: PlacementType.PRODUCT_PAGE, enabled: true }],
+            create: [
+              { placementType: PlacementType.PRODUCT_PAGE, enabled: true },
+            ],
           },
           targeting: expect.objectContaining({
             create: expect.objectContaining({
@@ -251,5 +319,51 @@ function events(count: number, eventType: AnalyticsEventType) {
       name: "Flash Sale",
       type: CampaignType.COUNTDOWN_BAR,
     },
+  }));
+}
+
+function attributedOrders(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `event-order-${index}`,
+    shopId: "shop-1",
+    campaignId: "campaign-1",
+    eventType: AnalyticsEventType.ORDER_ATTRIBUTED,
+    placementType: PlacementType.TOP_BAR,
+    sessionId: `session-order-${index}`,
+    cartToken: null,
+    orderId: `order-${index}`,
+    revenueAmount: 100,
+    currencyCode: "USD",
+    country: "US",
+    locale: "en",
+    path: "/",
+    userAgent: "Mozilla/5.0",
+    occurredAt: now,
+    campaign: {
+      id: "campaign-1",
+      name: "Flash Sale",
+      type: CampaignType.COUNTDOWN_BAR,
+    },
+  }));
+}
+
+function shopEvents(count: number, eventType: AnalyticsEventType) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `event-shop-${eventType}-${index}`,
+    shopId: "shop-1",
+    campaignId: null,
+    eventType,
+    placementType: null,
+    sessionId: `shop-session-${eventType}-${index}`,
+    cartToken: null,
+    orderId: null,
+    revenueAmount: null,
+    currencyCode: "USD",
+    country: "US",
+    locale: "en",
+    path: "/cart",
+    userAgent: "Mozilla/5.0",
+    occurredAt: now,
+    campaign: null,
   }));
 }

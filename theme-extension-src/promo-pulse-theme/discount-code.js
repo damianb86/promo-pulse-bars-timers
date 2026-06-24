@@ -3,6 +3,7 @@
 
   var visitorIdStorageKey = "promo_pulse_visitor_id";
   var sessionIdStorageKey = "promo_pulse_session_id";
+  var appliedDiscountStoragePrefix = "promo_pulse_applied_discount_";
   var attributionStorageKey = "promo_pulse_last_seen_campaign";
   var lastSeenCampaignIdStorageKey = "promo_pulse_last_seen_campaign_id";
   var lastSeenExperimentIdStorageKey = "promo_pulse_last_seen_experiment_id";
@@ -166,6 +167,7 @@
     button.textContent = code;
     button.onclick = function () {
       window.PromoPulseCopyCode(code, campaign);
+      showCopyFeedback(button);
     };
     return button;
   };
@@ -331,6 +333,14 @@
     loading.textContent = "Loading code";
     wrapper.appendChild(loading);
 
+    if (hasAppliedDiscount(campaign)) {
+      loading.textContent = "Discount applied successfully.";
+      window.setTimeout(function () {
+        renderAppliedDiscountState(wrapper);
+      }, 0);
+      return wrapper;
+    }
+
     requestUniqueCode(campaign, config)
       .then(function (payload) {
         renderAssignedUniqueCode(wrapper, campaign, config, payload);
@@ -434,6 +444,7 @@
     copyButton.setAttribute("aria-label", "Copy code " + payload.code);
     copyButton.addEventListener("click", function () {
       window.PromoPulseCopyCode(payload.code, campaign);
+      showCopyFeedback(copyButton);
     });
     wrapper.appendChild(copyButton);
 
@@ -445,6 +456,11 @@
       applyLink.setAttribute("aria-label", "Apply discount " + payload.code);
       applyLink.addEventListener("click", function () {
         window.PromoPulseTrackEvent("APPLY_CODE_CLICKED", campaign);
+        markDiscountApplied(campaign, payload.code);
+        showApplyFeedback(applyLink);
+        window.setTimeout(function () {
+          renderAppliedDiscountState(wrapper);
+        }, 80);
       });
       wrapper.appendChild(applyLink);
     }
@@ -521,6 +537,92 @@
     expired.textContent =
       texts.expiredText || "This code is no longer available.";
     wrapper.replaceChildren(expired);
+  }
+
+  function showCopyFeedback(button) {
+    var originalText = button.textContent || "Copy code";
+
+    button.classList.remove("pp-code--copied");
+    void button.offsetWidth;
+    button.classList.add("pp-code--copied");
+    button.textContent = "Copied";
+
+    window.setTimeout(function () {
+      button.classList.remove("pp-code--copied");
+      button.textContent = originalText;
+    }, 1600);
+  }
+
+  function showApplyFeedback(link) {
+    link.classList.remove("pp-cta--applied");
+    void link.offsetWidth;
+    link.classList.add("pp-cta--applied");
+    link.textContent = "Applied";
+  }
+
+  function markDiscountApplied(campaign, code) {
+    var storage = safeLocalStorage();
+    var key = getAppliedDiscountStorageKey(campaign);
+
+    if (!storage || !key) return;
+
+    try {
+      storage.setItem(
+        key,
+        JSON.stringify({
+          code: code || "",
+          appliedAt: Date.now(),
+        }),
+      );
+    } catch {
+      return;
+    }
+  }
+
+  function hasAppliedDiscount(campaign) {
+    var storage = safeLocalStorage();
+    var key = getAppliedDiscountStorageKey(campaign);
+    var value;
+
+    if (!storage || !key) return false;
+
+    try {
+      value = storage.getItem(key);
+    } catch {
+      return false;
+    }
+
+    return Boolean(value);
+  }
+
+  function getAppliedDiscountStorageKey(campaign) {
+    var campaignId = campaign && (campaign.id || campaign.campaignId);
+    var visitorId = getVisitorId();
+
+    if (!campaignId || !visitorId) return "";
+
+    return appliedDiscountStoragePrefix + campaignId + "_" + visitorId;
+  }
+
+  function renderAppliedDiscountState(anchor) {
+    var target =
+      anchor &&
+      anchor.closest &&
+      anchor.closest(".pp-bar, .pp-product-card, .pp-cart-card, .pp-root");
+    var message = document.createElement("div");
+
+    message.className = "pp-discount-applied-message";
+    message.setAttribute("role", "status");
+    message.setAttribute("aria-live", "polite");
+    message.textContent = "Discount applied successfully.";
+
+    if (!target) {
+      anchor.replaceChildren(message);
+      return;
+    }
+
+    target.classList.add("pp-discount-applied");
+    target.replaceChildren(message);
   }
 
   function getStorefrontApiPath(root, endpoint) {
@@ -612,19 +714,18 @@
     window.PromoPulseFetchCampaigns = function (config, placement, options) {
       options = options || {};
 
-      return fetchStorefrontCampaignPayload(config || {}).then(
-        function (payload) {
-          return {
-            campaigns: selectStorefrontCampaigns(
-              payload,
-              placement,
-              options,
-            ),
-            settings: payload.settings || null,
-            url: payload.__promoPulseUrl || "",
-          };
-        },
-      );
+      return fetchStorefrontCampaignPayload(config || {}, {
+        onRevalidate:
+          typeof options.onRevalidate === "function"
+            ? function (payload) {
+                options.onRevalidate(
+                  buildStorefrontCampaignResult(payload, placement, options),
+                );
+              }
+            : null,
+      }).then(function (payload) {
+        return buildStorefrontCampaignResult(payload, placement, options);
+      });
     };
 
     window.PromoPulseClearCampaignCache = function () {
@@ -633,12 +734,18 @@
     };
   }
 
-  function fetchStorefrontCampaignPayload(config) {
+  function buildStorefrontCampaignResult(payload, placement, options) {
+    return {
+      campaigns: selectStorefrontCampaigns(payload, placement, options),
+      settings: payload.settings || null,
+      url: payload.__promoPulseUrl || "",
+    };
+  }
+
+  function fetchStorefrontCampaignPayload(config, options) {
     var url = buildStorefrontCampaignsUrl(config);
     var cached = storefrontCampaignRequestCache[url];
     var stored = readStorefrontPayloadCache(url);
-    var request;
-    var headers;
     var now = Date.now();
 
     if (cached && cached.expiresAt > now) {
@@ -651,8 +758,34 @@
         payload: clonePlainObject(stored.payload),
       };
 
+      revalidateStorefrontCampaignPayload(url, stored, options);
+
       return Promise.resolve(stored.payload).then(clonePlainObject);
     }
+
+    return requestStorefrontCampaignPayload(url, stored);
+  }
+
+  function revalidateStorefrontCampaignPayload(url, stored, options) {
+    if (!stored || !options || typeof options.onRevalidate !== "function") {
+      return;
+    }
+
+    window.setTimeout(function () {
+      requestStorefrontCampaignPayload(url, stored)
+        .then(function (payload) {
+          if (payload && payload.__promoPulseFetchFailed) return;
+          options.onRevalidate(clonePlainObject(payload));
+        })
+        .catch(function (error) {
+          debug(getRoot(), error);
+        });
+    }, 0);
+  }
+
+  function requestStorefrontCampaignPayload(url, stored) {
+    var request;
+    var headers;
 
     if (storefrontCampaignPendingRequests[url]) {
       return storefrontCampaignPendingRequests[url].then(clonePlainObject);
@@ -693,7 +826,12 @@
       })
       .catch(function (error) {
         debug(getRoot(), error);
-        return { campaigns: [], settings: null, __promoPulseUrl: url };
+        return {
+          campaigns: [],
+          settings: null,
+          __promoPulseUrl: url,
+          __promoPulseFetchFailed: true,
+        };
       })
       .finally(function () {
         delete storefrontCampaignPendingRequests[url];
@@ -751,7 +889,8 @@
   function refreshStoredStorefrontPayload(url, stored, response) {
     var metadata = readStorefrontCacheMetadata(response);
     var payload = clonePlainObject(stored.payload);
-    var expiresAt = metadata.expiresAt || Date.now() + storefrontCampaignRequestTtlMs;
+    var expiresAt =
+      metadata.expiresAt || Date.now() + storefrontCampaignRequestTtlMs;
     var etag = metadata.etag || stored.etag || "";
 
     if (metadata.noStore) {

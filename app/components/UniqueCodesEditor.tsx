@@ -337,6 +337,38 @@ export function UniqueCodesEditor({
                     />
                   </FormField>
                 </div>
+                <div className="counterpulse-toggle counterpulse-offer-toggle-row">
+                  <label className="counterpulse-toggle-label">
+                    <input
+                      name="uniqueCodeReassignExpired"
+                      type="checkbox"
+                      defaultChecked={values.uniqueCodeReassignExpired}
+                    />
+                    <span>Reassign unused expired codes</span>
+                  </label>
+                  <FieldInfoButton
+                    label="Reassign unused expired codes"
+                    title="Reassign expired unused codes"
+                  >
+                    <UniqueCodeInfoContent
+                      intro="When a visitor lets their assigned code expire without using it, Promo Pulse can return that code to the pool for another visitor."
+                      items={[
+                        [
+                          "Original visitor",
+                          "The visitor who missed the window stops seeing codes for this campaign.",
+                        ],
+                        [
+                          "Unused codes",
+                          "Expired unused codes can be assigned again with a fresh validity window.",
+                        ],
+                        [
+                          "Used codes",
+                          "Redeemed codes stay used and are never returned to the pool.",
+                        ],
+                      ]}
+                    />
+                  </FieldInfoButton>
+                </div>
               </article>
 
               <article className="counterpulse-offer-card">

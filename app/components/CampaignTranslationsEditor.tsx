@@ -13,6 +13,7 @@ import {
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
 } from "../types/localization";
+import { AiGenerateIcon } from "./AiGenerateIcon";
 
 type CampaignTranslationsEditorProps = {
   embedded?: boolean;
@@ -238,7 +239,7 @@ export function CampaignTranslationsEditor({
               </small>
             </div>
             <button
-              className="counterpulse-button-secondary counterpulse-ai-translation-button"
+              className="counterpulse-ai-action-button counterpulse-ai-translation-button"
               disabled={
                 isAiTranslating ||
                 !hasTranslationSourceCopy(
@@ -250,10 +251,12 @@ export function CampaignTranslationsEditor({
               type="button"
               onClick={() => translateFromLocale(localeOption.locale)}
             >
-              <AiTranslationIcon />
-              {isAiTranslating && translatingLocale === localeOption.locale
-                ? "Translating..."
-                : `Translate from ${localeOption.shortLabel}`}
+              <AiGenerateIcon />
+              <span>
+                {isAiTranslating && translatingLocale === localeOption.locale
+                  ? "Translating..."
+                  : `Translate from ${localeOption.shortLabel}`}
+              </span>
             </button>
           </div>
 
@@ -502,22 +505,4 @@ function localeLabel(locale: StorefrontLocale) {
   return storefrontLocales.find(
     (localeOption) => localeOption.locale === locale,
   )?.label;
-}
-
-function AiTranslationIcon() {
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20">
-      <path
-        d="M10 2.5 11.2 6.8 15.5 8l-4.3 1.2L10 13.5 8.8 9.2 4.5 8l4.3-1.2L10 2.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M15.3 12.2 16 14.1l1.9.6-1.9.6-.7 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
 }

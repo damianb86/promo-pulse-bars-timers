@@ -11,6 +11,7 @@ import {
   shouldAskCampaignAiFollowUpQuestions,
   type CampaignAiProvider,
 } from "./campaignGenerator.server";
+import { AI_CAMPAIGN_SYSTEM_PROMPT } from "./campaignPrompts.server";
 
 describe("AI campaign generator", () => {
   it("generates deterministic mock campaign suggestions", async () => {
@@ -30,7 +31,12 @@ describe("AI campaign generator", () => {
     expect(suggestion.campaign.headline).toContain("15% off");
     expect(suggestion.design.templateKey).toBe("flash-sale");
     expect(suggestion.translations.es.headline).toContain("running shoes");
-    expect(suggestion.variants).toHaveLength(3);
+    expect(suggestion.variants).toHaveLength(0);
+  });
+
+  it("does not ask the campaign assistant provider for variants", () => {
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).not.toContain('"variants"');
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).not.toContain("variants");
   });
 
   it("does not apply a suggestion when the save form has no reviewed payload", () => {
@@ -209,22 +215,6 @@ describe("AI campaign generator", () => {
               ctaText: "Get discount",
             },
           },
-          variants: [
-            {
-              name: "Only 3 left",
-              headline: "Only 3 left",
-              subheadline: "50% off now",
-              ctaText: "Get discount",
-              weight: 50,
-            },
-            {
-              name: "Low stock",
-              headline: "Low stock",
-              subheadline: "Free gift today",
-              ctaText: "Get discount",
-              weight: 50,
-            },
-          ],
         };
       },
     };
@@ -243,16 +233,11 @@ describe("AI campaign generator", () => {
       suggestion.translations.en.headline,
       suggestion.translations.en.subheadline,
       suggestion.translations.en.ctaText,
-      ...suggestion.variants.flatMap((variant) => [
-        variant.name,
-        variant.headline,
-        variant.subheadline,
-        variant.ctaText,
-      ]),
     ]
       .join(" ")
       .toLowerCase();
 
+    expect(suggestion.variants).toHaveLength(0);
     expect(visibleCopy).not.toContain("only 3 left");
     expect(visibleCopy).not.toContain("50% off");
     expect(visibleCopy).not.toContain("low stock");

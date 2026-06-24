@@ -1,6 +1,6 @@
 import type { CampaignAiInput } from "../../types/ai-campaign";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v2";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v4";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -26,8 +26,7 @@ Core rules:
   the first placementType must be the primary placementType.
 - Keep visible text short enough for bars, drawers, badges, product pages, and
   email previews.
-- Create 2 or 3 A/B variants. Variants may change copy, designOverride, and
-  placementOverride, but do not invent a different offer.
+- Do not include experiment or A/B testing data in the response.
 - If the objective is not discount related and no offer was provided, use
   discount.mode "NONE".
 - If an offer includes a concrete percentage, fixed amount, free shipping, or
@@ -83,7 +82,8 @@ strings, empty arrays, false, or safe defaults, not null:
     "appliesOncePerCustomer": false,
     "uniqueCodePrefix": "PP",
     "uniqueCodeExpiresMinutes": "60",
-    "uniqueCodeAutoApply": true
+    "uniqueCodeAutoApply": true,
+    "uniqueCodeReassignExpired": false
   },
   "freeShipping": {
     "thresholdAmount": "75.00",
@@ -122,7 +122,6 @@ strings, empty arrays, false, or safe defaults, not null:
     "de": {}
   },
   "design": {},
-  "variants": [],
   "safety": {
     "warnings": [],
     "blockedClaims": [],

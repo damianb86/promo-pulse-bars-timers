@@ -855,6 +855,7 @@ export const action = async ({
           uniqueCodePrefix: parsed.values.uniqueCodePrefix,
           uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
           uniqueCodeAutoApply: parsed.values.uniqueCodeAutoApply,
+          uniqueCodeReassignExpired: parsed.values.uniqueCodeReassignExpired,
           uniqueCodeStartsAt: parsed.startsAt,
           uniqueCodeEndsAt: parsed.endsAt,
         });
@@ -1009,6 +1010,7 @@ export const action = async ({
         uniqueCodePrefix: parsed.values.uniqueCodePrefix,
         uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
         uniqueCodeAutoApply: parsed.values.uniqueCodeAutoApply,
+        uniqueCodeReassignExpired: parsed.values.uniqueCodeReassignExpired,
         uniqueCodeStartsAt: parsed.startsAt,
         uniqueCodeEndsAt: parsed.endsAt,
       });
@@ -4275,6 +4277,7 @@ function toDiscountSettingsValues(
     uniqueCodePrefix?: string | null;
     uniqueCodeExpiresMinutes?: number | null;
     uniqueCodeAutoApply?: boolean | null;
+    uniqueCodeReassignExpired?: boolean | null;
     uniqueCodeStartsAt?: Date | string | null;
     uniqueCodeEndsAt?: Date | string | null;
   } | null,
@@ -4305,6 +4308,9 @@ function toDiscountSettingsValues(
       uniqueCodeAutoApply:
         settings.uniqueCodeAutoApply ??
         defaultDiscountSettingsValues.uniqueCodeAutoApply,
+      uniqueCodeReassignExpired:
+        settings.uniqueCodeReassignExpired ??
+        defaultDiscountSettingsValues.uniqueCodeReassignExpired,
     };
   }
 

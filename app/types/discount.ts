@@ -33,6 +33,7 @@ export type DiscountSettingsValues = {
   uniqueCodePrefix: string;
   uniqueCodeExpiresMinutes: string;
   uniqueCodeAutoApply: boolean;
+  uniqueCodeReassignExpired: boolean;
 };
 
 export type DiscountSettingsErrors = Partial<
@@ -57,4 +58,5 @@ export const defaultDiscountSettingsValues: DiscountSettingsValues = {
   uniqueCodePrefix: "PP",
   uniqueCodeExpiresMinutes: "60",
   uniqueCodeAutoApply: true,
+  uniqueCodeReassignExpired: false,
 };

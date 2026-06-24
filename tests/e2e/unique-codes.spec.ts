@@ -66,6 +66,10 @@ test("unique codes can be generated and assigned per visitor", async ({
   const widget = page.locator(".pp-unique-code").first();
   await expect(widget.locator(".pp-unique-code__value")).toHaveText(/^STG2-/);
   const codeA = (await widget.locator(".pp-unique-code__value").textContent())!;
+  await expect(widget.locator(".pp-cta")).toHaveAttribute(
+    "href",
+    new RegExp("^/discount/" + escapeRegExp(codeA)),
+  );
 
   await widget.getByRole("button", { name: /Copy code/i }).click();
   await widget.locator(".pp-cta").evaluate((element) => {
@@ -87,25 +91,22 @@ test("unique codes can be generated and assigned per visitor", async ({
   expect(codeB).not.toBe(codeA);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
-  await expect(page.locator(".pp-unique-code__value").first()).toHaveText(
-    codeA,
+  await expect(page.getByRole("status")).toContainText(
+    "Discount applied successfully.",
   );
-  await expect(page.locator(".pp-unique-code .pp-cta").first()).toHaveAttribute(
-    "href",
-    new RegExp("^/discount/" + escapeRegExp(codeA)),
-  );
+  await expect(page.locator(".pp-unique-code__value")).toHaveCount(0);
 
   const expireResponse = await page.request.post("/__test/stage2", {
     data: {
       action: "expireUniqueCode",
       shop: demoShopDomain,
       campaignId,
-      visitorId: "stage2-visitor-a",
+      visitorId: "stage2-visitor-b",
     },
   });
   expect(expireResponse.ok()).toBe(true);
 
-  await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
+  await gotoStorefront(page, "stage2-visitor-b", "stage2-session-b");
   await expect(page.locator(".pp-unique-code__expired").first()).toContainText(
     /ended|no longer available/i,
   );

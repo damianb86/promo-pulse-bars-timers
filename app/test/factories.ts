@@ -430,6 +430,7 @@ function createDiscountSync(
     uniqueCodePrefix: null,
     uniqueCodeExpiresMinutes: null,
     uniqueCodeAutoApply: false,
+    uniqueCodeReassignExpired: false,
     uniqueCodeStartsAt: null,
     uniqueCodeEndsAt: null,
     ...overrides,

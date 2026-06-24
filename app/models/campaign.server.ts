@@ -135,6 +135,7 @@ type DiscountSyncInput = {
   uniqueCodePrefix?: string | null;
   uniqueCodeExpiresMinutes?: number | null;
   uniqueCodeAutoApply?: boolean;
+  uniqueCodeReassignExpired?: boolean;
   uniqueCodeStartsAt?: Date | null;
   uniqueCodeEndsAt?: Date | null;
 };
@@ -521,6 +522,7 @@ export async function updateDiscountSyncForShop(
         uniqueCodePrefix: input.uniqueCodePrefix ?? null,
         uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
         uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
+        uniqueCodeReassignExpired: input.uniqueCodeReassignExpired ?? false,
         uniqueCodeStartsAt: input.uniqueCodeStartsAt ?? null,
         uniqueCodeEndsAt: input.uniqueCodeEndsAt ?? null,
       },
@@ -539,6 +541,7 @@ export async function updateDiscountSyncForShop(
         uniqueCodePrefix: input.uniqueCodePrefix ?? null,
         uniqueCodeExpiresMinutes: input.uniqueCodeExpiresMinutes ?? null,
         uniqueCodeAutoApply: input.uniqueCodeAutoApply ?? false,
+        uniqueCodeReassignExpired: input.uniqueCodeReassignExpired ?? false,
         uniqueCodeStartsAt: input.uniqueCodeStartsAt ?? null,
         uniqueCodeEndsAt: input.uniqueCodeEndsAt ?? null,
       },
@@ -1130,6 +1133,8 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 uniqueCodeExpiresMinutes:
                   campaign.discountSync.uniqueCodeExpiresMinutes,
                 uniqueCodeAutoApply: campaign.discountSync.uniqueCodeAutoApply,
+                uniqueCodeReassignExpired:
+                  campaign.discountSync.uniqueCodeReassignExpired,
                 uniqueCodeStartsAt: campaign.discountSync.uniqueCodeStartsAt,
                 uniqueCodeEndsAt: campaign.discountSync.uniqueCodeEndsAt,
               },

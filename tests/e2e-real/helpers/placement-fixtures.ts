@@ -327,6 +327,7 @@ export async function createPublishedPlacementCampaign(
                   uniqueCodePrefix,
                   uniqueCodeExpiresMinutes: 60,
                   uniqueCodeAutoApply: true,
+                  uniqueCodeReassignExpired: false,
                   uniqueCodeStartsAt: new Date(now.getTime() - 60 * 1000),
                   uniqueCodeEndsAt: endsAt,
                 },

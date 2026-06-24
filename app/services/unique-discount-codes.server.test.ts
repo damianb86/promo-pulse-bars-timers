@@ -291,6 +291,7 @@ function uniqueCampaign(
       uniqueCodePrefix: "VIP",
       uniqueCodeExpiresMinutes: 30,
       uniqueCodeAutoApply: true,
+      uniqueCodeReassignExpired: false,
       uniqueCodeStartsAt: null,
       uniqueCodeEndsAt: null,
     },

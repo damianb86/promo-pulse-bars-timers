@@ -99,7 +99,10 @@ type CampaignForUniqueCodes = Pick<
   "id" | "shopId" | "name" | "startsAt" | "endsAt"
 > & {
   shop: Pick<Shop, "plan">;
-  discountSync: Pick<DiscountSync, "uniqueCodeExpiresMinutes"> | null;
+  discountSync: Pick<
+    DiscountSync,
+    "uniqueCodeExpiresMinutes" | "uniqueCodeReassignExpired"
+  > | null;
 };
 
 type UniqueCodesPrismaClient = typeof prisma | Prisma.TransactionClient;
@@ -243,7 +246,13 @@ export async function assignCodeToVisitor({
   assertUniqueCodesAllowed(campaign);
 
   return prisma.$transaction(async (tx) => {
-    await expireCampaignCodes(tx, { shopId, campaignId, now });
+    await expireCampaignCodes(tx, {
+      shopId,
+      campaignId,
+      now,
+      reassignExpiredCodes:
+        campaign.discountSync?.uniqueCodeReassignExpired === true,
+    });
 
     const existingCode = await findReusableVisitorCode(tx, {
       shopId,
@@ -253,8 +262,23 @@ export async function assignCodeToVisitor({
     });
 
     if (existingCode) {
+      await upsertVisitorAssignment(tx, {
+        code: existingCode,
+        visitorId: normalizedVisitorId,
+        sessionId,
+        assignedAt: existingCode.assignedAt ?? now,
+        expiresAt: existingCode.expiresAt,
+      });
+
       return { code: existingCode, reused: true };
     }
+
+    await assertVisitorCanReceiveUniqueCode(tx, {
+      shopId,
+      campaignId,
+      visitorId: normalizedVisitorId,
+      now,
+    });
 
     const pool = await loadPoolForAssignment(tx, {
       shopId,
@@ -324,6 +348,14 @@ export async function assignCodeToVisitor({
       throw new UniqueCodesError("Assigned code could not be loaded.", 500);
     }
 
+    await upsertVisitorAssignment(tx, {
+      code: assignedCode,
+      visitorId: normalizedVisitorId,
+      sessionId,
+      assignedAt: now,
+      expiresAt: assignedExpiresAt,
+    });
+
     return { code: assignedCode, reused: false };
   });
 }
@@ -348,17 +380,46 @@ export async function expireVisitorCode({
   visitorId,
   now = new Date(),
 }: VisitorCodeLookupInput) {
-  return prisma.uniqueDiscountCode.updateMany({
-    where: {
-      shopId,
-      campaignId,
-      visitorId: normalizeVisitorId(visitorId),
-      status: UniqueDiscountCodeStatus.ASSIGNED,
-    },
-    data: {
-      status: UniqueDiscountCodeStatus.EXPIRED,
-      expiresAt: now,
-    },
+  const normalizedVisitorId = normalizeVisitorId(visitorId);
+  const campaign = await loadCampaignForUniqueCodes(shopId, campaignId);
+  const reassignExpiredCodes =
+    campaign.discountSync?.uniqueCodeReassignExpired === true;
+
+  return prisma.$transaction(async (tx) => {
+    await tx.uniqueDiscountCodeAssignment.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        visitorId: normalizedVisitorId,
+        expiredAt: null,
+        usedAt: null,
+      },
+      data: {
+        expiresAt: now,
+        expiredAt: now,
+      },
+    });
+
+    return tx.uniqueDiscountCode.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        visitorId: normalizedVisitorId,
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+      },
+      data: reassignExpiredCodes
+        ? {
+            status: UniqueDiscountCodeStatus.AVAILABLE,
+            visitorId: null,
+            sessionId: null,
+            assignedAt: null,
+            expiresAt: null,
+          }
+        : {
+            status: UniqueDiscountCodeStatus.EXPIRED,
+            expiresAt: now,
+          },
+    });
   });
 }
 
@@ -395,6 +456,18 @@ export async function markCodeUsed({
       orderId: normalizeNullableText(orderId),
     },
   });
+
+  if (usedCode.visitorId) {
+    await prisma.uniqueDiscountCodeAssignment.updateMany({
+      where: {
+        shopId,
+        campaignId: usedCode.campaignId,
+        visitorId: usedCode.visitorId,
+        codeId: usedCode.id,
+      },
+      data: { usedAt: now },
+    });
+  }
 
   await incrementPoolCounterForCode(usedCode, "totalUsed");
 
@@ -448,24 +521,33 @@ export async function getUniqueCodeStatsForCampaign(
   shopId: string,
   campaignId: string,
 ) {
-  const [poolTotals, totalExpired] = await Promise.all([
-    prisma.discountCodePool.aggregate({
-      where: { shopId, campaignId },
-      _sum: {
-        totalAssigned: true,
-        totalUsed: true,
-      },
-    }),
-    prisma.uniqueDiscountCode.count({
-      where: {
-        shopId,
-        campaignId,
-        status: UniqueDiscountCodeStatus.EXPIRED,
-      },
-    }),
-  ]);
+  const [poolTotals, totalExpiredCodes, totalExpiredAssignments] =
+    await Promise.all([
+      prisma.discountCodePool.aggregate({
+        where: { shopId, campaignId },
+        _sum: {
+          totalAssigned: true,
+          totalUsed: true,
+        },
+      }),
+      prisma.uniqueDiscountCode.count({
+        where: {
+          shopId,
+          campaignId,
+          status: UniqueDiscountCodeStatus.EXPIRED,
+        },
+      }),
+      prisma.uniqueDiscountCodeAssignment.count({
+        where: {
+          shopId,
+          campaignId,
+          expiredAt: { not: null },
+        },
+      }),
+    ]);
   const totalAssigned = poolTotals._sum.totalAssigned ?? 0;
   const totalUsed = poolTotals._sum.totalUsed ?? 0;
+  const totalExpired = Math.max(totalExpiredCodes, totalExpiredAssignments);
 
   return {
     totalAssigned,
@@ -563,7 +645,12 @@ async function loadCampaignForUniqueCodes(shopId: string, campaignId: string) {
       startsAt: true,
       endsAt: true,
       shop: { select: { plan: true } },
-      discountSync: { select: { uniqueCodeExpiresMinutes: true } },
+      discountSync: {
+        select: {
+          uniqueCodeExpiresMinutes: true,
+          uniqueCodeReassignExpired: true,
+        },
+      },
     },
   });
 
@@ -738,12 +825,72 @@ async function expireCampaignCodes(
     shopId,
     campaignId,
     now,
+    reassignExpiredCodes,
   }: {
     shopId: string;
     campaignId: string;
     now: Date;
+    reassignExpiredCodes: boolean;
   },
 ) {
+  const expiredAssignedCodes = await client.uniqueDiscountCode.findMany({
+    where: {
+      shopId,
+      campaignId,
+      status: UniqueDiscountCodeStatus.ASSIGNED,
+      expiresAt: { lte: now },
+    },
+    select: {
+      visitorId: true,
+    },
+  });
+  const expiredVisitorIds = expiredAssignedCodes
+    .map((code) => code.visitorId)
+    .filter((value): value is string => Boolean(value));
+
+  if (expiredVisitorIds.length > 0) {
+    await client.uniqueDiscountCodeAssignment.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        visitorId: { in: expiredVisitorIds },
+        expiredAt: null,
+        usedAt: null,
+      },
+      data: { expiredAt: now },
+    });
+  }
+
+  if (reassignExpiredCodes) {
+    await client.uniqueDiscountCode.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+        expiresAt: { lte: now },
+      },
+      data: {
+        status: UniqueDiscountCodeStatus.AVAILABLE,
+        visitorId: null,
+        sessionId: null,
+        assignedAt: null,
+        expiresAt: null,
+      },
+    });
+
+    await client.uniqueDiscountCode.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        status: UniqueDiscountCodeStatus.AVAILABLE,
+        expiresAt: { lte: now },
+      },
+      data: { status: UniqueDiscountCodeStatus.EXPIRED },
+    });
+
+    return;
+  }
+
   await client.uniqueDiscountCode.updateMany({
     where: {
       shopId,
@@ -758,6 +905,57 @@ async function expireCampaignCodes(
     },
     data: { status: UniqueDiscountCodeStatus.EXPIRED },
   });
+}
+
+async function assertVisitorCanReceiveUniqueCode(
+  client: UniqueCodesPrismaClient,
+  {
+    shopId,
+    campaignId,
+    visitorId,
+    now,
+  }: {
+    shopId: string;
+    campaignId: string;
+    visitorId: string;
+    now: Date;
+  },
+) {
+  const assignment = await client.uniqueDiscountCodeAssignment.findUnique({
+    where: {
+      shopId_campaignId_visitorId: {
+        shopId,
+        campaignId,
+        visitorId,
+      },
+    },
+  });
+
+  if (!assignment) return;
+
+  if (assignment.usedAt) {
+    throw new UniqueCodesError(
+      "Unique discount code has already been used.",
+      409,
+    );
+  }
+
+  if (
+    assignment.expiredAt ||
+    (assignment.expiresAt && assignment.expiresAt <= now)
+  ) {
+    if (!assignment.expiredAt) {
+      await client.uniqueDiscountCodeAssignment.update({
+        where: { id: assignment.id },
+        data: { expiredAt: now },
+      });
+    }
+
+    throw new UniqueCodesError(
+      "Your unique discount code opportunity has expired.",
+      410,
+    );
+  }
 }
 
 function findReusableVisitorCode(
@@ -783,6 +981,52 @@ function findReusableVisitorCode(
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     orderBy: [{ assignedAt: "desc" }, { createdAt: "desc" }],
+  });
+}
+
+function upsertVisitorAssignment(
+  client: UniqueCodesPrismaClient,
+  {
+    code,
+    visitorId,
+    sessionId,
+    assignedAt,
+    expiresAt,
+  }: {
+    code: UniqueDiscountCode;
+    visitorId: string;
+    sessionId?: string | null;
+    assignedAt: Date;
+    expiresAt: Date | null;
+  },
+) {
+  return client.uniqueDiscountCodeAssignment.upsert({
+    where: {
+      shopId_campaignId_visitorId: {
+        shopId: code.shopId,
+        campaignId: code.campaignId,
+        visitorId,
+      },
+    },
+    create: {
+      shopId: code.shopId,
+      campaignId: code.campaignId,
+      codeId: code.id,
+      visitorId,
+      sessionId: normalizeNullableText(sessionId),
+      code: code.code,
+      assignedAt,
+      expiresAt,
+    },
+    update: {
+      codeId: code.id,
+      sessionId: normalizeNullableText(sessionId),
+      code: code.code,
+      assignedAt,
+      expiresAt,
+      expiredAt: null,
+      usedAt: null,
+    },
   });
 }
 

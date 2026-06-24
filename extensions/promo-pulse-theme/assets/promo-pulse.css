@@ -339,6 +339,11 @@
   font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease,
+    background-color 160ms ease;
 }
 
 .pp-code {
@@ -353,10 +358,31 @@
   font-size: 0.84em;
   font-weight: 800;
   letter-spacing: 0;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 .pp-code:hover {
   background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.pp-code:active,
+.pp-cta:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.pp-code--copied,
+.pp-cta--applied {
+  animation: pp-button-click-pop 420ms ease;
+}
+
+.pp-code--copied {
+  background: var(--pp-accent, #22c55e);
+  color: var(--pp-button-text, #111827);
 }
 
 .pp-unique-code {
@@ -392,8 +418,40 @@
 }
 
 .pp-cta:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.16);
   color: var(--pp-button-text, #111827);
   text-decoration: none;
+}
+
+.pp-cta--applied {
+  filter: brightness(0.94);
+}
+
+.pp-discount-applied {
+  justify-items: center;
+}
+
+.pp-discount-applied-message {
+  color: var(--pp-title-color, var(--pp-text, #ffffff));
+  font: inherit;
+  font-size: var(--pp-title-size, 18px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+@keyframes pp-button-click-pop {
+  0% {
+    transform: scale(0.96);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .pp-cta:focus-visible,

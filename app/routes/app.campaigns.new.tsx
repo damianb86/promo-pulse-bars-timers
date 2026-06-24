@@ -1,12 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
 import { useEffect, useState } from "react";
-import {
-  ExperimentPrimaryMetric,
-  ExperimentVariantStatus,
-  type Prisma,
-} from "@prisma/client";
+import { type Prisma } from "@prisma/client";
 
+import { AiGenerateIcon } from "../components/AiGenerateIcon";
 import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
 import { CampaignForm } from "../components/CampaignForm";
 import {
@@ -42,7 +39,6 @@ import {
 } from "../services/campaign-form.server";
 import { buildCampaignPersistenceError } from "../services/campaign-save-errors.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
-import { createExperiment } from "../services/experiments";
 import {
   canCreateCampaign,
   canUseFeature,
@@ -553,11 +549,11 @@ export default function CreateCampaignPage() {
             errors={actionData?.errors}
             topbarActions={
               <button
-                className="counterpulse-ai-launch-button"
+                className="counterpulse-ai-action-button counterpulse-ai-launch-button"
                 type="button"
                 onClick={() => setIsAiDrawerOpen(true)}
               >
-                <AiSparkIcon />
+                <AiGenerateIcon />
                 <span>AI campaign</span>
               </button>
             }
@@ -606,16 +602,6 @@ export default function CreateCampaignPage() {
   );
 }
 
-function AiSparkIcon() {
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-      <path d="M12 2.5 13.6 8l5.6 1.6-5.6 1.6L12 16.7l-1.6-5.5-5.6-1.6L10.4 8 12 2.5Z" />
-      <path d="M18.5 14.2 19.4 17l2.9.9-2.9.9-.9 2.8-.9-2.8-2.8-.9 2.8-.9.9-2.8Z" />
-      <path d="M5.3 15.4 6 17.5l2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" />
-    </svg>
-  );
-}
-
 async function applyAiSuggestionToCampaign({
   campaignId,
   formValues,
@@ -638,27 +624,6 @@ async function applyAiSuggestionToCampaign({
     formValues,
     shopId,
     suggestion,
-  });
-
-  if (suggestion.variants.length < 2) return;
-
-  await createExperiment({
-    shopId,
-    campaignId,
-    name: "AI suggested variants",
-    primaryMetric: ExperimentPrimaryMetric.CLICK_RATE,
-    variants: suggestion.variants.map((variant) => ({
-      name: variant.name,
-      weight: variant.weight,
-      status: ExperimentVariantStatus.DRAFT,
-      textOverride: {
-        headline: variant.headline,
-        subheadline: variant.subheadline,
-        ctaText: variant.ctaText,
-      },
-      designOverride: variant.designOverride,
-      placementOverride: variant.placementOverride,
-    })),
   });
 }
 
@@ -761,6 +726,8 @@ async function applyAiGeneratedSettingsToCampaign({
           suggestion.discount.uniqueCodeExpiresMinutes,
         ),
         uniqueCodeAutoApply: suggestion.discount.uniqueCodeAutoApply,
+        uniqueCodeReassignExpired:
+          suggestion.discount.uniqueCodeReassignExpired,
         uniqueCodeStartsAt: null,
         uniqueCodeEndsAt: null,
       }),

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Form, useFetcher, useNavigation } from "react-router";
 
+import { AiGenerateIcon } from "./AiGenerateIcon";
 import { DesignControls } from "./DesignControls";
 import { AppAlert, FieldInfoButton } from "./Notifications";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -223,7 +224,8 @@ const aiVariantDesignIntensityOptions: Array<{
   {
     value: "copy_only",
     label: "Copy only",
-    description: "Change text and CTA while keeping the campaign design stable.",
+    description:
+      "Change text and CTA while keeping the campaign design stable.",
   },
   {
     value: "bold",
@@ -251,7 +253,8 @@ const aiVariantPlacementIntentOptions: Array<{
   {
     value: "product",
     label: "Product-page focus",
-    description: "Bias the variant toward product detail page decision moments.",
+    description:
+      "Bias the variant toward product detail page decision moments.",
   },
   {
     value: "cart",
@@ -756,7 +759,9 @@ function CompletedExperimentCard({
     (variant) => variant.status !== "ARCHIVED",
   );
   const winnerVariant =
-    visibleVariants.find((variant) => variant.id === experiment.winnerVariantId) ??
+    visibleVariants.find(
+      (variant) => variant.id === experiment.winnerVariantId,
+    ) ??
     visibleVariants[0] ??
     null;
   const winnerResult =
@@ -785,7 +790,10 @@ function CompletedExperimentCard({
     <article className="counterpulse-experiment-history-card">
       <div className="counterpulse-experiment-history-card__winner">
         <div className="counterpulse-experiment-history-card__preview">
-          <VariantMiniPreview design={previewVariant.design} viewModel={preview} />
+          <VariantMiniPreview
+            design={previewVariant.design}
+            viewModel={preview}
+          />
         </div>
         <div className="counterpulse-experiment-history-card__winner-copy">
           <div className="counterpulse-experiment-history-card__badges">
@@ -822,7 +830,9 @@ function CompletedExperimentCard({
       <dl className="counterpulse-experiment-history-card__stats">
         <div>
           <dt>Winner conversion</dt>
-          <dd>{winnerResult ? formatPercent(winnerResult.conversionRate) : "-"}</dd>
+          <dd>
+            {winnerResult ? formatPercent(winnerResult.conversionRate) : "-"}
+          </dd>
         </div>
         <div>
           <dt>{formatMetric(experiment.primaryMetric)} lift</dt>
@@ -1376,11 +1386,12 @@ function ExperimentComposer({
         </div>
         <div className="counterpulse-experiment-board-header__actions">
           <button
-            className="counterpulse-ai-variant-button"
+            className="counterpulse-ai-action-button counterpulse-ai-variant-button"
             type="button"
             onClick={openAiDrawer}
           >
-            Generate with AI
+            <AiGenerateIcon />
+            <span>Generate with AI</span>
           </button>
           <button
             className="counterpulse-button-secondary"
@@ -2019,8 +2030,8 @@ function AiVariantDrawer({
             <div>
               <h4>Testing direction</h4>
               <p>
-                Choose the hypothesis you want to explore. AI will keep the
-                same offer, targeting, market, and schedule.
+                Choose the hypothesis you want to explore. AI will keep the same
+                offer, targeting, market, and schedule.
               </p>
             </div>
             <div className="counterpulse-ai-variant-option-grid">
@@ -2126,12 +2137,13 @@ function AiVariantDrawer({
               </div>
             )}
             <button
-              className="counterpulse-button"
+              className="counterpulse-ai-action-button counterpulse-ai-variant-generate-button"
               disabled={isGenerating}
               type="button"
               onClick={onGenerate}
             >
-              {isGenerating ? "Generating..." : "Generate variant"}
+              <AiGenerateIcon />
+              <span>{isGenerating ? "Generating..." : "Generate variant"}</span>
             </button>
           </section>
 
@@ -4025,7 +4037,9 @@ function describeDesignChanges(
   const changes: string[] = [];
 
   if (isDesignValueChanged("templateKey", design, baseDesign)) {
-    changes.push(`Preset: ${formatDesignValue("templateKey", design.templateKey)}`);
+    changes.push(
+      `Preset: ${formatDesignValue("templateKey", design.templateKey)}`,
+    );
   }
 
   if (isDesignValueChanged("layout", design, baseDesign)) {

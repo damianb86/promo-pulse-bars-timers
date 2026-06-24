@@ -701,6 +701,7 @@ describe("advanced campaign settings form parsing", () => {
           title: "VIP unique discount",
           uniqueCodePrefix: "vip sale!",
           uniqueCodeExpiresMinutes: "30",
+          uniqueCodeReassignExpired: "on",
           value: "15",
           valueType: "PERCENTAGE",
         }),
@@ -711,6 +712,7 @@ describe("advanced campaign settings form parsing", () => {
       values: {
         mode: "UNIQUE_CODES",
         uniqueCodePrefix: "VIPSALE",
+        uniqueCodeReassignExpired: true,
       },
     });
 

@@ -1,1 +1,1 @@
-export { action, loader } from "./api.storefront.campaigns";
+export { action, loader } from "./apps.promo-pulse";

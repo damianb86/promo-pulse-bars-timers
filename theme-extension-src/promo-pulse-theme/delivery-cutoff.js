@@ -156,12 +156,51 @@
 
   function fetchCampaigns(config, placement, debugRoot) {
     var url = buildUrl(config, placement);
+    var campaignId =
+      config.fallbackMode === "SPECIFIC_CAMPAIGN" ? config.campaignId : "";
 
     updateDebug(
       debugRoot,
       "Consultando DELIVERY_CUTOFF " + placement + ".",
       url,
     );
+
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, placement, {
+          campaignId: campaignId,
+        })
+        .then(function (payload) {
+          applyStorefrontSettings(config, payload.settings);
+          return (Array.isArray(payload.campaigns) ? payload.campaigns : [])
+            .map(applyExperiment)
+            .filter(function (campaign) {
+              return campaign.type === "DELIVERY_CUTOFF";
+            });
+        })
+        .then(function (campaigns) {
+          updateDebug(
+            debugRoot,
+            "API OK: " +
+              campaigns.length +
+              " campana(s) DELIVERY_CUTOFF para " +
+              placement +
+              ".",
+            url,
+          );
+          return campaigns;
+        })
+        .catch(function (error) {
+          updateDebug(
+            debugRoot,
+            "Error DELIVERY_CUTOFF " + placement + ": " + error.message,
+            url,
+          );
+          if (config.debug && window.console)
+            console.log("[CP delivery]", error);
+          return [];
+        });
+    }
 
     return fetch(url, {
       credentials: "same-origin",

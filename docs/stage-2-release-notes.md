@@ -39,18 +39,16 @@ screenshots, and production URLs.
   device filters, plus CSV export.
 - Behavior targeting, recommendations, campaign template library, and a simple
   multi-store agency dashboard.
-- Premium and Agency plan gates for Stage 2 features.
+- Growth and Pro plan gates for Stage 2 features.
 
 ## Plan Packaging
 
 | Plan    | Stage 2 positioning                                                                                                         |
 | ------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Free    | Stage 1 basics only.                                                                                                        |
-| Starter | Basic campaigns, scheduling, templates, recurring timers, and basic targeting.                                              |
-| Growth  | Cart drawer, delivery cutoff, discount sync, analytics, and multi-language campaigns.                                       |
-| Pro     | Advanced targeting, advanced badges, custom CSS, better attribution, reports, behavior targeting, and recommendations.      |
-| Premium | Unique codes, A/B testing, auto-winner, advanced discounts, email timers, advanced reports, market overrides, and AI draft. |
-| Agency  | Multi-store dashboard, shared/copy workflows, and higher limits.                                                            |
+| Free    | Real trial usage with basic campaigns, unique codes, one A/B test, and 7-day analytics. |
+| Starter | Basic paid usage with templates, more campaigns, basic reports, and standard support.   |
+| Growth  | Recommended optimization plan with advanced reports, CSV, Markets, email timers, AI, and custom CSS. |
+| Pro     | Everything included: all placements, auto-winner, advanced discounts, multi-store tools, and priority support. |
 
 ## Verified Scope Status
 

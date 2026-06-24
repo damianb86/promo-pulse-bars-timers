@@ -26,7 +26,7 @@ Audited Stage 2 storefront and attribution surfaces:
 - Cart drawer rendering is debounced and rate-limited. The drawer observer
   ignores Promo Pulse DOM updates and falls back cleanly if `/cart.js` or the
   app proxy returns storefront HTML.
-- Premium behavior is gated at runtime: unique-code network calls only happen
+- Paid-plan behavior is gated at runtime: unique-code network calls only happen
   when a rendered campaign contains `discount.uniqueCode`, and experiment
   assignment only happens for `RUNNING` experiments with assignable variants.
 - Email countdown timers do not load storefront JavaScript; they are public

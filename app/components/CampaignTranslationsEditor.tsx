@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppAlert, ConfirmModal, useConfirmSubmit } from "./Notifications";
 import { Form, useFetcher, useNavigation, useSubmit } from "react-router";
 
@@ -67,6 +67,8 @@ export function CampaignTranslationsEditor({
   const [translationNotice, setTranslationNotice] =
     useState<TranslationNotice | null>(null);
   const [values, setValues] = useState(initialValues);
+  const initialValuesRef = useRef(initialValues);
+  const initialValuesSignature = getTranslationValuesSignature(initialValues);
   const isSubmitting = navigation.state === "submitting";
   const isAiTranslating = aiTranslationFetcher.state !== "idle";
   const confirmSubmit = useConfirmSubmit({
@@ -117,12 +119,16 @@ export function CampaignTranslationsEditor({
   };
 
   useEffect(() => {
+    initialValuesRef.current = initialValues;
+  }, [initialValues]);
+
+  useEffect(() => {
     const syncValues = window.setTimeout(() => {
-      setValues(initialValues);
+      setValues(initialValuesRef.current);
     }, 0);
 
     return () => window.clearTimeout(syncValues);
-  }, [initialValues]);
+  }, [initialValuesSignature]);
 
   useEffect(() => {
     const data = aiTranslationFetcher.data;
@@ -422,6 +428,16 @@ function copyEnglishToAll(values: CampaignTranslationsByLocale) {
         : ({ ...values.en } as CampaignTranslationValues);
     return nextValues;
   }, {} as CampaignTranslationsByLocale);
+}
+
+function getTranslationValuesSignature(values: CampaignTranslationsByLocale) {
+  return storefrontLocales
+    .flatMap((localeOption) =>
+      campaignTranslationFields.map(
+        (field) => values[localeOption.locale][field.key],
+      ),
+    )
+    .join("\u001f");
 }
 
 function buildAiTranslationFormData(

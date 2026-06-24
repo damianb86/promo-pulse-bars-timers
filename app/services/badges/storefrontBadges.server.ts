@@ -15,6 +15,7 @@ import {
   serializeStorefrontCampaign,
   serializeStorefrontCampaigns,
   serializeDesign,
+  shouldBypassStorefrontCache,
   type StorefrontCampaignContext,
   type StorefrontCampaignResponseItem,
 } from "../../utils/storefront-campaigns";
@@ -29,6 +30,11 @@ import {
   getShopSettingsOrDefaults,
   serializePublicShopSettings,
 } from "../shopSettings.server";
+import {
+  buildCorsHeaders,
+  type StorefrontAccessOptions,
+  verifyStorefrontAccess,
+} from "../storefront-security.server";
 import {
   evaluateBadgeRules,
   readDesign,
@@ -61,13 +67,21 @@ type AdvancedBadgeRuleSource = Awaited<
 >[number];
 
 export async function loadStorefrontBadgesResponse(request: Request) {
+  return loadStorefrontBadgesPayload(request);
+}
+
+export async function loadStorefrontBadgesPayload(
+  request: Request,
+  accessOptions: StorefrontAccessOptions = {},
+) {
   const url = new URL(request.url);
   let context = parseStorefrontCampaignContext(url);
+  const access = verifyStorefrontAccess(request, context.shop, accessOptions);
 
-  if (!context.shop) {
+  if (!access.ok) {
     return jsonResponse(
-      { error: "The shop query parameter is required." },
-      { status: 400, cacheControl: "no-store" },
+      { error: access.error },
+      { status: access.status, cacheControl: "no-store", access },
     );
   }
 
@@ -78,7 +92,7 @@ export async function loadStorefrontBadgesResponse(request: Request) {
   if (!rateLimit.allowed) {
     return jsonResponse(
       { error: "Too many requests. Try again shortly." },
-      { status: 429, cacheControl: "no-store", rateLimit },
+      { status: 429, cacheControl: "no-store", rateLimit, access },
     );
   }
 
@@ -87,7 +101,7 @@ export async function loadStorefrontBadgesResponse(request: Request) {
   if (!shop) {
     return jsonResponse(
       { badges: [], settings: null },
-      { cacheControl: getBadgeCacheControl(context), rateLimit },
+      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
     );
   }
 
@@ -100,14 +114,14 @@ export async function loadStorefrontBadgesResponse(request: Request) {
   if (context.placement && !placementType) {
     return jsonResponse(
       { badges: [], settings: publicSettings },
-      { cacheControl: getBadgeCacheControl(context), rateLimit },
+      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
     );
   }
 
   if (await hasReachedMonthlyImpressions(shop)) {
     return jsonResponse(
       { badges: [], settings: publicSettings },
-      { cacheControl: "no-store", rateLimit },
+      { cacheControl: "no-store", rateLimit, access },
     );
   }
 
@@ -137,7 +151,7 @@ export async function loadStorefrontBadgesResponse(request: Request) {
       gated: !advancedGate.allowed,
       requiredPlan: advancedGate.requiredPlan,
     },
-    { cacheControl: getBadgeCacheControl(context), rateLimit },
+    { cacheControl: getBadgeCacheControl(context), rateLimit, access },
   );
 }
 
@@ -373,15 +387,11 @@ function getCampaignPlacement(
 }
 
 function getBadgeCacheControl(context: StorefrontCampaignContext) {
-  if (
-    context.productId ||
-    context.productTags.length > 0 ||
-    context.collectionIds.length > 0
-  ) {
+  if (shouldBypassStorefrontCache(context)) {
     return "no-store";
   }
 
-  return "public, max-age=45, stale-while-revalidate=30";
+  return "public, max-age=300, stale-while-revalidate=60";
 }
 
 function jsonResponse(
@@ -390,13 +400,13 @@ function jsonResponse(
     status?: number;
     cacheControl: string;
     rateLimit?: ReturnType<typeof checkStorefrontRateLimit>;
+    access?: ReturnType<typeof verifyStorefrontAccess>;
   },
 ) {
   const headers = new Headers({
-    "Access-Control-Allow-Origin": "*",
     "Cache-Control": options.cacheControl,
     "Content-Type": "application/json; charset=utf-8",
-    Vary: "Origin",
+    ...buildCorsHeaders(options.access),
   });
 
   if (options.rateLimit) {

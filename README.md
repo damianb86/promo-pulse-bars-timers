@@ -6,7 +6,7 @@ producto y carrito, goal bars de envio gratis, delivery cutoffs, mensajes de
 stock bajo, badges, targeting, sincronizacion basica con descuentos nativos de
 Shopify, multi-idioma y analytics operativo.
 
-Etapa 2 agrega features premium para campanas promocionales inteligentes:
+Etapa 2 agrega features de optimizacion para campanas promocionales inteligentes:
 codigos unicos por visitante, A/B testing, auto-winner, Shopify Functions para
 descuentos avanzados, checkout/thank-you/order-status extensions, email
 countdown timers, badges avanzados, Shopify Markets avanzado, AI Campaign
@@ -82,9 +82,9 @@ El callback OAuth esperado por este template es `/auth/callback`.
 - `SHOP_CUSTOM_DOMAIN`: dominio custom opcional para shops especificos.
 - `DATABASE_URL`: SQLite local por defecto, `file:./dev.sqlite`.
 - `PROMO_PULSE_DEV_PLAN`: override local opcional (`FREE`, `STARTER`,
-  `GROWTH`, `PRO`, `PREMIUM`, `AGENCY`) para probar plan gating sin cambiar la
-  base de datos. En `NODE_ENV=development`, si no hay override valido, el plan
-  efectivo por defecto es `AGENCY`.
+  `GROWTH`, `PRO`) para probar plan gating sin cambiar la base de datos. En
+  `NODE_ENV=development`, si no hay override valido, el plan efectivo por
+  defecto es `PRO`.
 
 Para produccion con Postgres, cambia el datasource Prisma a `postgresql`,
 configura `DATABASE_URL` con la URL administrada y genera una migracion dedicada.
@@ -130,7 +130,7 @@ Etapa 1 incluye admin embebido, CRUD de campanas, editor de diseno y preview,
 traducciones, targeting, Theme App Extension, App Embed, Product/Cart blocks,
 Web Pixel, analytics basico, onboarding, plan gating y tests de logica critica.
 
-Etapa 2 suma features premium y de agencia con cobertura E2E en modo mock:
+Etapa 2 suma features de optimizacion y multi-store con cobertura E2E en modo mock:
 unique codes, experiments, auto-winner, email timers, checkout/post-purchase
 extensions, advanced badges, market overrides, AI builder, advanced reports,
 behavior targeting, recommendations, template library y agency dashboard.

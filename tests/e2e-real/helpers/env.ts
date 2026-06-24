@@ -17,6 +17,7 @@ export type RealE2EConfig = {
   cleanup: boolean;
   debug: boolean;
   enabled: boolean;
+  existingDiscountCode: string;
   headless: boolean;
   localThemeAssetsFallback: boolean;
   plan: string;
@@ -82,6 +83,7 @@ export function getConfig(): RealE2EConfig {
     cleanup: readBooleanEnv("REAL_E2E_CLEANUP", false),
     debug: readBooleanEnv("REAL_E2E_DEBUG", false),
     enabled: readBooleanEnv("REAL_E2E_ENABLED", false),
+    existingDiscountCode: readEnv("REAL_E2E_EXISTING_DISCOUNT_CODE"),
     headless: readBooleanEnv("REAL_E2E_HEADLESS", true),
     localThemeAssetsFallback: readBooleanEnv(
       "REAL_E2E_LOCAL_THEME_ASSET_FALLBACK",

@@ -753,8 +753,6 @@ enum ShopPlan {
   STARTER
   GROWTH
   PRO
-  PREMIUM
-  AGENCY
 }
 
 enum ConsentMode {

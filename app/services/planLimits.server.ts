@@ -12,11 +12,13 @@ export type PlanFeatureKey =
   | "advanced_analytics"
   | "advanced_targeting"
   | "basic_targeting"
+  | "behavioral_targeting"
   | "cart_drawer"
   | "cart_timer"
   | "checkout_extensions"
   | "countdown_bar"
   | "custom_css"
+  | "custom_selectors"
   | "delivery_cutoff"
   | "discount_sync"
   | "free_shipping_goal"
@@ -41,7 +43,17 @@ export type PlanLimits = {
   plan: ShopPlan;
   monthlyPriceUsd: number;
   activeCampaignLimit: number | null;
+  activeAbTestLimit: number | null;
+  abTestVariantLimit: number | null;
+  analyticsRetentionDays: number;
+  discountSyncCampaignLimit: number | null;
+  draftCampaignLimit: number | null;
+  emailCountdownTimerLimit: number | null;
+  monthlyUniqueCodeLimit: number | null;
   monthlyImpressionLimit: number | null;
+  storefrontLanguageLimit: number | null;
+  aiCampaignBuilder: "none" | "limited" | "full";
+  supportLevel: string;
   features: Record<PlanFeatureKey, boolean>;
 };
 
@@ -61,19 +73,31 @@ const planOrder: Record<ShopPlan, number> = {
   STARTER: 1,
   GROWTH: 2,
   PRO: 3,
-  PREMIUM: 4,
-  AGENCY: 5,
+};
+
+export const publicPlanOrder = [
+  ShopPlan.FREE,
+  ShopPlan.STARTER,
+  ShopPlan.GROWTH,
+  ShopPlan.PRO,
+] as const;
+
+const legacyPlanAliases: Record<string, ShopPlan> = {
+  AGENCY: ShopPlan.PRO,
+  PREMIUM: ShopPlan.PRO,
 };
 
 const allFeatures: Record<PlanFeatureKey, boolean> = {
   advanced_analytics: false,
   advanced_targeting: false,
   basic_targeting: false,
+  behavioral_targeting: false,
   cart_drawer: false,
   cart_timer: false,
   checkout_extensions: false,
   countdown_bar: false,
   custom_css: false,
+  custom_selectors: false,
   delivery_cutoff: false,
   discount_sync: false,
   free_shipping_goal: false,
@@ -93,94 +117,81 @@ const baseLimitsByPlan: Record<ShopPlan, PlanLimits> = {
   FREE: {
     plan: "FREE",
     monthlyPriceUsd: 0,
-    activeCampaignLimit: 1,
-    monthlyImpressionLimit: 5_000,
+    activeCampaignLimit: 2,
+    activeAbTestLimit: 1,
+    abTestVariantLimit: 2,
+    analyticsRetentionDays: 7,
+    discountSyncCampaignLimit: 1,
+    draftCampaignLimit: null,
+    emailCountdownTimerLimit: 0,
+    monthlyImpressionLimit: 10_000,
+    monthlyUniqueCodeLimit: 25,
+    storefrontLanguageLimit: 2,
+    aiCampaignBuilder: "none",
+    supportLevel: "Docs and basic support",
     features: {
       ...allFeatures,
+      basic_targeting: true,
+      cart_drawer: true,
       countdown_bar: true,
+      delivery_cutoff: true,
+      discount_sync: true,
       free_shipping_goal: true,
+      multi_language: true,
+      product_badges: true,
       product_timer: true,
+      unique_discount_codes: true,
     },
   },
   STARTER: {
     plan: "STARTER",
     monthlyPriceUsd: 9,
     activeCampaignLimit: 5,
+    activeAbTestLimit: 2,
+    abTestVariantLimit: 2,
+    analyticsRetentionDays: 30,
+    discountSyncCampaignLimit: 3,
+    draftCampaignLimit: null,
+    emailCountdownTimerLimit: 0,
     monthlyImpressionLimit: 50_000,
+    monthlyUniqueCodeLimit: 500,
+    storefrontLanguageLimit: 3,
+    aiCampaignBuilder: "none",
+    supportLevel: "Standard email support",
     features: {
       ...allFeatures,
-      basic_targeting: true,
-      countdown_bar: true,
-      free_shipping_goal: true,
-      low_stock: true,
-      product_timer: true,
-      recurring_timers: true,
-      scheduling: true,
-      templates: true,
-      unique_discount_codes: false,
-    },
-  },
-  GROWTH: {
-    plan: "GROWTH",
-    monthlyPriceUsd: 19,
-    activeCampaignLimit: 100,
-    monthlyImpressionLimit: 250_000,
-    features: {
-      ...allFeatures,
-      advanced_analytics: true,
       basic_targeting: true,
       cart_drawer: true,
       cart_timer: true,
-      checkout_extensions: true,
       countdown_bar: true,
       delivery_cutoff: true,
       discount_sync: true,
       free_shipping_goal: true,
-      geo_market_targeting: true,
-      low_stock: true,
-      multi_language: true,
-      product_timer: true,
-      recurring_timers: true,
-      scheduling: true,
-      templates: true,
-      unique_discount_codes: false,
-    },
-  },
-  PRO: {
-    plan: "PRO",
-    monthlyPriceUsd: 39,
-    activeCampaignLimit: null,
-    monthlyImpressionLimit: 1_000_000,
-    features: {
-      ...allFeatures,
-      advanced_analytics: true,
-      advanced_targeting: true,
-      basic_targeting: true,
-      cart_drawer: true,
-      cart_timer: true,
-      checkout_extensions: true,
-      countdown_bar: true,
-      custom_css: true,
-      delivery_cutoff: true,
-      discount_sync: true,
-      free_shipping_goal: true,
-      geo_market_targeting: true,
       low_stock: true,
       multi_language: true,
       product_badges: true,
       product_timer: true,
       recurring_timers: true,
       scheduling: true,
-      stronger_attribution: true,
       templates: true,
-      unique_discount_codes: false,
+      unique_discount_codes: true,
     },
   },
-  PREMIUM: {
-    plan: "PREMIUM",
-    monthlyPriceUsd: 79,
-    activeCampaignLimit: null,
-    monthlyImpressionLimit: 2_500_000,
+  GROWTH: {
+    plan: "GROWTH",
+    monthlyPriceUsd: 19,
+    activeCampaignLimit: 25,
+    activeAbTestLimit: 10,
+    abTestVariantLimit: 3,
+    analyticsRetentionDays: 90,
+    discountSyncCampaignLimit: null,
+    draftCampaignLimit: null,
+    emailCountdownTimerLimit: 5,
+    monthlyImpressionLimit: 250_000,
+    monthlyUniqueCodeLimit: 5_000,
+    storefrontLanguageLimit: null,
+    aiCampaignBuilder: "limited",
+    supportLevel: "Basic priority email support",
     features: {
       ...allFeatures,
       advanced_analytics: true,
@@ -188,7 +199,6 @@ const baseLimitsByPlan: Record<ShopPlan, PlanLimits> = {
       basic_targeting: true,
       cart_drawer: true,
       cart_timer: true,
-      checkout_extensions: true,
       countdown_bar: true,
       custom_css: true,
       delivery_cutoff: true,
@@ -206,21 +216,33 @@ const baseLimitsByPlan: Record<ShopPlan, PlanLimits> = {
       unique_discount_codes: true,
     },
   },
-  AGENCY: {
-    plan: "AGENCY",
-    monthlyPriceUsd: 149,
+  PRO: {
+    plan: "PRO",
+    monthlyPriceUsd: 39,
     activeCampaignLimit: null,
-    monthlyImpressionLimit: null,
+    activeAbTestLimit: null,
+    abTestVariantLimit: null,
+    analyticsRetentionDays: 365,
+    discountSyncCampaignLimit: null,
+    draftCampaignLimit: null,
+    emailCountdownTimerLimit: null,
+    monthlyImpressionLimit: 1_500_000,
+    monthlyUniqueCodeLimit: 50_000,
+    storefrontLanguageLimit: null,
+    aiCampaignBuilder: "full",
+    supportLevel: "Priority support, setup help, and early access",
     features: {
       ...allFeatures,
       advanced_analytics: true,
       advanced_targeting: true,
       basic_targeting: true,
+      behavioral_targeting: true,
       cart_drawer: true,
       cart_timer: true,
       checkout_extensions: true,
       countdown_bar: true,
       custom_css: true,
+      custom_selectors: true,
       delivery_cutoff: true,
       discount_sync: true,
       free_shipping_goal: true,
@@ -367,16 +389,27 @@ export class PlanGateError extends Error {
   }
 }
 
-export function getPlanLimits(plan: ShopPlan): PlanLimits {
-  return limitsByPlan[plan];
+export function normalizeShopPlan(plan: ShopPlan | string): ShopPlan {
+  const value = String(plan).trim().toUpperCase();
+
+  if (legacyPlanAliases[value]) return legacyPlanAliases[value];
+
+  return Object.values(ShopPlan).includes(value as ShopPlan)
+    ? (value as ShopPlan)
+    : ShopPlan.FREE;
+}
+
+export function getPlanLimits(plan: ShopPlan | string): PlanLimits {
+  return limitsByPlan[normalizeShopPlan(plan)];
 }
 
 export function getEffectiveShopPlan(shop: Pick<Shop, "plan">): ShopPlan {
   const override = readDevPlanOverride();
+  const plan = normalizeShopPlan(shop.plan);
 
-  if (!override) return shop.plan;
+  if (!override) return plan;
 
-  return planOrder[override] > planOrder[shop.plan] ? override : shop.plan;
+  return planOrder[override] > planOrder[plan] ? override : plan;
 }
 
 export async function canCreateCampaign(
@@ -462,11 +495,12 @@ export async function hasReachedMonthlyImpressions(
 }
 
 export function evaluateCanActivateCampaign(
-  plan: ShopPlan,
+  plan: ShopPlan | string,
   activeCampaignCount: number,
   monthlyImpressionsReached: boolean,
 ): PlanGateCheck {
-  const limits = getPlanLimits(plan);
+  const effectivePlan = normalizeShopPlan(plan);
+  const limits = getPlanLimits(effectivePlan);
 
   if (monthlyImpressionsReached) {
     return {
@@ -481,10 +515,10 @@ export function evaluateCanActivateCampaign(
   ) {
     return {
       allowed: false,
-      reason: `${formatPlanName(plan)} allows ${limits.activeCampaignLimit} active campaign${
+      reason: `${formatPlanName(effectivePlan)} allows ${limits.activeCampaignLimit} active campaign${
         limits.activeCampaignLimit === 1 ? "" : "s"
       }. Upgrade to activate more.`,
-      requiredPlan: getNextPlan(plan),
+      requiredPlan: getNextPlan(effectivePlan),
     };
   }
 
@@ -547,6 +581,14 @@ export async function validateCampaignPlanAccess(
 
   if (usesAdvancedTargeting(campaign.targeting)) {
     const featureGate = canUseFeature(shop, "advanced_targeting");
+
+    if (!featureGate.allowed) {
+      errors.push(featureGate.reason);
+    }
+  }
+
+  if (hasBehaviorTargetingRules(campaign.targeting?.behaviorRules)) {
+    const featureGate = canUseFeature(shop, "behavioral_targeting");
 
     if (!featureGate.allowed) {
       errors.push(featureGate.reason);
@@ -641,6 +683,9 @@ export function getCampaignPlanViolations(
   if (usesAdvancedTargeting(campaign.targeting)) {
     features.add("advanced_targeting");
   }
+  if (hasBehaviorTargetingRules(campaign.targeting?.behaviorRules)) {
+    features.add("behavioral_targeting");
+  }
   if (usesRecurringTimer(campaign.timerSettings)) {
     features.add("recurring_timers");
   }
@@ -697,7 +742,7 @@ export function getRequiredCampaignFeatures(campaign: {
     features.add("checkout_extensions");
   }
   if (campaign.placementType === "CUSTOM_SELECTOR") {
-    features.add("advanced_targeting");
+    features.add("custom_selectors");
   }
 
   return Array.from(features);
@@ -713,9 +758,6 @@ export function getLockedFeatureReason(
 }
 
 export function formatPlanName(plan: ShopPlan) {
-  if (plan === "AGENCY") return "Agency";
-  if (plan === "PREMIUM") return "Premium";
-
   return plan.charAt(0) + plan.slice(1).toLowerCase();
 }
 
@@ -735,11 +777,13 @@ function readDevPlanOverride() {
     ?.trim()
     .toUpperCase();
 
-  return Object.values(ShopPlan).includes(value as ShopPlan)
-    ? (value as ShopPlan)
-    : process.env.NODE_ENV === "development"
-      ? ShopPlan.AGENCY
-      : null;
+  if (value) {
+    const plan = normalizeShopPlan(value);
+
+    return Object.values(ShopPlan).includes(plan) ? plan : null;
+  }
+
+  return process.env.NODE_ENV === "development" ? ShopPlan.PRO : null;
 }
 
 function getMonthStart(now: Date) {
@@ -774,7 +818,7 @@ function usesAdvancedTargeting(
       targeting?.excludedUrlContains,
       targeting?.excludeProductIds,
       targeting?.excludeCollectionIds,
-    ].some(jsonHasValues) || hasBehaviorTargetingRules(targeting?.behaviorRules)
+    ].some(jsonHasValues)
   );
 }
 

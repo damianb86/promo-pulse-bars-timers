@@ -11,7 +11,7 @@ test("mock AI builder generates a reviewed draft without auto-publishing", async
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
   await page.getByRole("button", { name: "AI campaign" }).click();
@@ -87,7 +87,7 @@ test("AI builder asks one optional follow-up batch before generation", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
   await page.getByRole("button", { name: "AI campaign" }).click();

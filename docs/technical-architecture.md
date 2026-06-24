@@ -76,10 +76,10 @@ Entidades principales:
 La implementacion debe mantener reglas testeables en `app/services` y
 `app/utils`, evitando acoplar logica de negocio directamente a componentes.
 
-## Stage 2 Premium Architecture
+## Stage 2 Optimization Architecture
 
-Stage 2 agrega una capa premium por encima de las campanas existentes, sin
-modificar el contrato base de Stage 1. Las features nuevas deben entrar por
+Stage 2 agrega una capa de optimizacion por encima de las campanas existentes,
+sin modificar el contrato base de Stage 1. Las features nuevas deben entrar por
 feature flag interno y por plan gate antes de exponerse en UI o storefront.
 
 Tipos y flags:

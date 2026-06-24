@@ -38,8 +38,8 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
 - Web Pixel Extension: fuente primaria de eventos de comportamiento y
   atribucion.
 - Prisma: migraciones aditivas, con tablas nuevas antes de usar rutas o UI.
-- Billing: `PREMIUM` agrupa optimizacion avanzada, `AGENCY` agrupa multi-store,
-  y `PRO` conserva targeting/reportes base.
+- Billing: Growth agrupa optimizacion y reporting, mientras Pro agrupa todo lo
+  implementado, incluido multi-store y automatizacion avanzada.
 - E2E: toda dependencia de Shopify real debe tener mock o bypass solo bajo
   `E2E_TEST_MODE=true` y nunca en produccion.
 
@@ -94,17 +94,14 @@ permisos Shopify validos o mocks bajo `E2E_TEST_MODE=true`.
 
 ## Planes Afectados
 
-- `FREE`: sin cambios de Stage 2. Mantiene limites y features basicas de Stage
-  1.
-- `STARTER`: campanas basicas, scheduling, templates y targeting basico.
-- `GROWTH`: cart drawer, delivery cutoff, discount sync, analytics y
-  multi-idioma.
-- `PRO`: advanced targeting, product badges, custom CSS, mejor atribucion,
-  reports, checkout extensions, recommendations y behavior targeting.
-- `PREMIUM`: unique codes, A/B testing, auto-winner, advanced discounts, email
-  timers, advanced reports, Markets avanzado y AI Campaign Builder limitado.
-- `AGENCY`: multi-store, templates compartidos, agency dashboard y limites
-  superiores.
+- `FREE`: prueba real con limites estrictos, campanas basicas, codigos unicos y
+  analytics de 7 dias.
+- `STARTER`: primera conversion paga con mas volumen, templates, reports
+  basicos y soporte email.
+- `GROWTH`: plan recomendado con optimizacion, Markets avanzado, reports
+  avanzados, CSV, email timers, AI limitado y custom CSS.
+- `PRO`: todo incluido, auto-winner, descuentos avanzados, checkout placements,
+  multi-store, templates compartidos, soporte prioritario y early access.
 
 ## Feature Flags Internos
 

@@ -31,7 +31,7 @@ Promo Pulse is designed for transparent urgency. It does not fake stock counts
 when inventory is unavailable, and timers require explicit campaign dates or
 merchant-configured evergreen settings.
 
-Premium tools help merchants optimize campaigns with unique discount codes per
+Optimization tools help merchants improve campaigns with unique discount codes per
 visitor, A/B testing, conservative auto-winner detection, email countdown timer
 images, market-specific overrides, advanced product badge rules, AI-assisted
 draft creation, recommendations, and multi-store agency workflows.
@@ -71,7 +71,7 @@ attributed orders when Shopify data allows.
 - Desktop/mobile live preview.
 - Basic analytics and premium reports.
 - Guided onboarding checklist.
-- Plan gating for Free, Starter, Growth, Pro, Premium, and Agency tiers.
+- Plan gating for Free, Starter, Growth, and Pro tiers.
 
 ## Suggested Pricing
 
@@ -84,11 +84,11 @@ attributed orders when Shopify data allows.
 - Pro: $39/month, unlimited reasonable views, advanced targeting, custom CSS,
   product badges, behavior targeting, recommendations, stronger attribution,
   reports, and priority support label.
-- Premium: $79/month, unique codes, A/B testing, auto-winner, advanced
-  discounts, email timers, advanced reports, market overrides, and limited AI
-  Campaign Builder.
-- Agency: $149+/month, multi-store dashboard, shared/copy workflows, agency
-  campaign management, and higher limits.
+- Growth: $19/month, optimization tools, advanced reports, CSV export, market
+  overrides, email timers, limited AI Campaign Builder, and custom CSS.
+- Pro: $39/month, everything included, all placements, auto-winner, advanced
+  discounts, high usage limits, multi-store tools, priority support, setup help,
+  and early access.
 
 ## Keywords
 
@@ -114,8 +114,8 @@ extension
 - Market override editor showing US and ES thresholds/copy.
 - Advanced reports with filters and CSV export.
 - AI Campaign Builder preview before applying as draft.
-- Agency dashboard with multiple connected shops.
-- Billing plan cards with Premium and Agency.
+- Multi-store dashboard with multiple connected shops.
+- Billing plan cards for Free, Starter, Growth, and Pro.
 
 ## Review Notes
 

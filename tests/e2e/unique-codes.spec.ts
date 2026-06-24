@@ -19,7 +19,7 @@ test("unique codes can be generated and assigned per visitor", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Stage 2 Unique Codes",
@@ -134,15 +134,18 @@ async function gotoStorefront(
       { timeout: 1500 },
     )
     .catch(() => null);
+  const optionalTopBarResponse = page
+    .waitForResponse(
+      (response) =>
+        isStorefrontCampaignResponse(response, visitorId, "TOP_BAR"),
+      { timeout: 1500 },
+    )
+    .catch(() => null);
 
-  await Promise.all([
-    page.waitForResponse((response) =>
-      isStorefrontCampaignResponse(response, visitorId, "TOP_BAR"),
-    ),
-    page.goto(
-      `/__test/storefront?visitorId=${visitorId}&sessionId=${sessionId}`,
-    ),
-  ]);
+  await page.goto(
+    `/__test/storefront?visitorId=${visitorId}&sessionId=${sessionId}`,
+  );
+  await optionalTopBarResponse;
   await optionalCartDrawerResponse;
   await optionalBottomBarResponse;
 }

@@ -41,9 +41,7 @@ npx shopify app build --no-color
 
 ## 3. Unique Codes
 
-- Set the dev shop to a Premium or Agency plan. In local development the
-  effective default is `AGENCY`; use `PROMO_PULSE_DEV_PLAN=PREMIUM` only when
-  you need to QA Premium without Agency features.
+- Set the dev shop to Pro. In local development the effective default is `PRO`.
 - Create an active campaign with unique codes enabled.
 - Create a pool with a short, recognizable prefix and a real discount value.
 - Generate codes through the admin UI.
@@ -111,8 +109,8 @@ npx shopify app build --no-color
 - Simulate API failure or disable the campaign and confirm checkout still loads
   and payment is not blocked.
 - Confirm no misleading discount, stock, or delivery claim appears.
-- Confirm Pro, Premium, and Agency shops can use the block and lower plans are
-  gated in the admin/API.
+- Confirm Pro shops can use the block and lower plans are gated in the
+  admin/API.
 
 ## 8. Market Overrides
 
@@ -142,7 +140,7 @@ npx shopify app build --no-color
 
 ## 10. AI Builder
 
-- Set the shop to Premium or Agency.
+- Set the shop to Growth or Pro.
 - Open `Create campaign` and fill objective, product/category, event,
   country/language, brand tone, real offer, and target URL.
 - Generate with AI.
@@ -156,9 +154,9 @@ npx shopify app build --no-color
   experiment.
 - Test missing API key/dev mode and confirm mock output works for QA.
 
-## 11. Agency Dashboard
+## 11. Multi-store Dashboard
 
-- Set the shop to Agency or seed the E2E agency scenario.
+- Set the shop to Pro or seed the E2E multi-store scenario.
 - Open `/app/agency`.
 - Confirm only shops granted through `AgencyShopAccess` appear.
 - Confirm active campaigns, attributed revenue, and recommendations are grouped

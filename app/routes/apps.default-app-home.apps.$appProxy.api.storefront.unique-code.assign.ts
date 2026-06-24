@@ -1,1 +1,1 @@
-export { action, loader } from "./api.storefront.unique-code.assign";
+export { action, loader } from "./apps.promo-pulse.api.storefront.unique-code.assign";

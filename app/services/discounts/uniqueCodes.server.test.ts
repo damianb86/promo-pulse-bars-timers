@@ -15,7 +15,6 @@ import {
   generateCodeBatch,
   getAssignedCodeForVisitor,
   getUniqueCodeStatsForCampaign,
-  UniqueCodesError,
 } from "./uniqueCodes.server";
 
 const prismaMock = vi.hoisted(() => ({
@@ -82,7 +81,7 @@ describe("Stage 2 unique discount code pools", () => {
     vi.unstubAllEnvs();
   });
 
-  it("creates a gated active pool for a Premium campaign", async () => {
+  it("creates a gated active pool for a Free campaign", async () => {
     await expect(
       createDiscountCodePool({
         shopId: "shop-1",
@@ -398,9 +397,9 @@ describe("Stage 2 unique discount code pools", () => {
     ).rejects.toThrow("Code has already been taken");
   });
 
-  it("blocks pool creation below Premium", async () => {
+  it("allows pool creation on Free", async () => {
     prismaMock.campaign.findFirst.mockResolvedValue(
-      campaign({ plan: ShopPlan.GROWTH }),
+      campaign({ plan: ShopPlan.FREE }),
     );
 
     await expect(
@@ -411,7 +410,10 @@ describe("Stage 2 unique discount code pools", () => {
         discountType: DiscountCodeValueType.PERCENTAGE,
         value: 10,
       }),
-    ).rejects.toBeInstanceOf(UniqueCodesError);
+    ).resolves.toMatchObject({
+      prefix: "VIP",
+      status: DiscountCodePoolStatus.ACTIVE,
+    });
   });
 });
 
@@ -422,7 +424,7 @@ function campaign(overrides: { plan?: ShopPlan } = {}) {
     name: "VIP Sale",
     startsAt: new Date("2026-06-18T14:00:00.000Z"),
     endsAt: new Date("2026-06-18T17:00:00.000Z"),
-    shop: { plan: overrides.plan ?? ShopPlan.PREMIUM },
+    shop: { plan: overrides.plan ?? ShopPlan.FREE },
     discountSync: { uniqueCodeExpiresMinutes: 45 },
   };
 }

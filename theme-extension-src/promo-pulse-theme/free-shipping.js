@@ -164,6 +164,36 @@
 
     updateDebug(root, "Consultando FREE_SHIPPING_GOAL global.", url);
 
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, "TOP_BAR,BOTTOM_BAR")
+        .then(function (payload) {
+          applyStorefrontSettings(config, payload.settings);
+          return (Array.isArray(payload.campaigns) ? payload.campaigns : [])
+            .map(applyExperiment)
+            .filter(function (campaign) {
+              return campaign.type === "FREE_SHIPPING_GOAL";
+            });
+        })
+        .then(function (campaigns) {
+          updateDebug(
+            root,
+            "API OK: " + campaigns.length + " FREE_SHIPPING_GOAL globales.",
+            url,
+          );
+          return campaigns;
+        })
+        .catch(function (error) {
+          updateDebug(
+            root,
+            "Error FREE_SHIPPING_GOAL global: " + error.message,
+            url,
+          );
+          debug(error);
+          return [];
+        });
+    }
+
     return window
       .fetch(url, {
         credentials: "same-origin",
@@ -278,20 +308,57 @@
     }
 
     container = getPlacementContainer(campaign.placement);
-    bar = buildBar(campaign);
-    bar.id = slotId;
-
     if (existing) {
-      if (existing.__promoPulseTimerInterval) {
-        window.clearInterval(existing.__promoPulseTimerInterval);
-      }
-      existing.replaceWith(bar);
-    } else {
-      container.appendChild(bar);
+      updateExistingBar(existing, campaign);
+      emitImpressionOnce(campaign);
+      return;
     }
 
+    bar = buildBar(campaign);
+    bar.id = slotId;
+    container.appendChild(bar);
     startCountdown(bar, campaign);
     emitImpressionOnce(campaign);
+  }
+
+  function updateExistingBar(bar, campaign) {
+    var progress = calculateProgress(campaign);
+    var detail = bar.querySelector(
+      ".pp-message-copy > span:not(.pp-countdown)",
+    );
+    var countdown = bar.querySelector(".pp-countdown");
+    var timerState = calculateTimerState(campaign, new Date());
+
+    if (detail) {
+      updateText(detail, buildMessage(campaign, progress));
+    }
+
+    updateProgress(bar, campaign, progress, detail ? detail.textContent : "");
+
+    if (countdown && timerState.isActive) {
+      updateCountdownElement(
+        countdown,
+        timerState.remainingMs,
+        campaign.design || {},
+        countdown.classList.contains("pp-countdown--compact"),
+      );
+      replayCountdownTick(countdown);
+    }
+
+    if (timerState.isExpired) {
+      countdown && countdown.remove();
+      bar.classList.add("pp-bar--expired");
+
+      if (shouldHideExpiredCampaign(campaign)) {
+        removeBar(bar, campaign.design || {});
+      }
+    }
+  }
+
+  function updateText(element, value) {
+    if (element && element.textContent !== value) {
+      element.textContent = value;
+    }
   }
   function updateDebug(element, message, url) {
     var status;
@@ -472,6 +539,27 @@
     wrapper.appendChild(track);
 
     return wrapper;
+  }
+
+  function updateProgress(bar, campaign, progress, label) {
+    var wrapper = bar.querySelector(".pp-progress");
+    var track = wrapper && wrapper.querySelector(".pp-progress__track");
+    var fill = wrapper && wrapper.querySelector(".pp-progress__fill");
+    var percentage = Math.max(0, Math.min(100, progress.percentage));
+
+    if (!wrapper) return;
+
+    wrapper.className = progressClassName("pp-progress", campaign);
+    wrapper.classList.toggle("is-unlocked", progress.unlocked);
+    wrapper.style.setProperty("--pp-progress", percentage + "%");
+
+    if (track) {
+      track.setAttribute("aria-label", label || "Free shipping progress");
+      track.setAttribute("aria-valuenow", String(Math.round(percentage)));
+    }
+    if (fill) {
+      fill.style.width = percentage + "%";
+    }
   }
 
   function progressClassName(baseClass, campaign) {

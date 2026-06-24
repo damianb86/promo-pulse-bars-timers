@@ -69,7 +69,7 @@ describe("agency dashboard service", () => {
     mockAgencyAccess();
     prismaMock.agencyAccount.create.mockResolvedValue({
       id: "agency-1",
-      name: "E2E Promo Agency",
+      name: "E2E Promo Workspace",
     });
     prismaMock.agencyShopAccess.findMany.mockResolvedValue([
       agencyAccess("shop-1", "demo-shop.myshopify.com", AgencyShopRole.OWNER),
@@ -144,7 +144,7 @@ describe("agency dashboard service", () => {
     );
   });
 
-  it("blocks access to shops without AgencyShopAccess", async () => {
+  it("blocks access to shops without workspace access", async () => {
     await expect(
       copyCampaignToAgencyShop(currentShop, {
         campaignId: "campaign-1",
@@ -174,14 +174,14 @@ describe("agency dashboard service", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           shop: { connect: { id: "shop-2" } },
-          name: "Agency Source agency copy",
+          name: "Multi-store Source agency copy",
           status: CampaignStatus.DRAFT,
           type: CampaignType.COUNTDOWN_BAR,
           translations: {
             create: [
               expect.objectContaining({
                 locale: "en",
-                headline: "Agency source campaign",
+                headline: "Multi-store source campaign",
               }),
             ],
           },
@@ -217,7 +217,7 @@ function mockAgencyAccess() {
           role: AgencyShopRole.OWNER,
           agency: {
             id: "agency-1",
-            name: "E2E Promo Agency",
+            name: "E2E Promo Workspace",
           },
           createdAt: now,
         });
@@ -297,7 +297,7 @@ function campaignCopySource() {
   return {
     id: "campaign-1",
     shopId: "shop-1",
-    name: "Agency Source",
+    name: "Multi-store Source",
     status: CampaignStatus.ACTIVE,
     type: CampaignType.COUNTDOWN_BAR,
     goal: CampaignGoal.FLASH_SALE,
@@ -382,7 +382,7 @@ function campaignCopySource() {
         id: "translation-1",
         campaignId: "campaign-1",
         locale: "en",
-        headline: "Agency source campaign",
+        headline: "Multi-store source campaign",
         subheadline: "Cross-store copy source.",
         ctaText: "Shop source",
         ctaUrl: "/collections/sale",

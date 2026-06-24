@@ -103,7 +103,7 @@ const privacyStoredItems = [
   "Campaigns, placements, targeting, design, translations, timer settings, shipping settings, badge settings, and discount sync settings.",
   "Analytics events, attribution touches, attribution conversions, recommendations, reports source data, and experiment state.",
   "Unique discount-code pools and assignments, email timer records, advanced discounts, market rules, and advanced badge rules.",
-  "Agency access rows and contact requests submitted from this page.",
+  "Multi-store access rows and contact requests submitted from this page.",
 ];
 
 const privacyDeletedItems = [
@@ -556,7 +556,7 @@ function buildDataSummaryMessage(
     `- Advanced rules: ${counts.advancedRules}`,
     `- Market rules: ${counts.marketRules}`,
     `- Recommendations: ${counts.recommendations}`,
-    `- Agency access rows: ${counts.agencyAccesses}`,
+    `- Multi-store access rows: ${counts.agencyAccesses}`,
     `- Contact requests: ${counts.contactRequests}`,
     "",
     "Promo Pulse stores app-owned configuration and campaign performance records. The in-app delete action removes shop-owned app data and sessions for this shop.",

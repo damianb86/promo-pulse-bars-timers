@@ -54,19 +54,9 @@
       requestUrl,
     );
 
-    fetch(requestUrl, {
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    })
+    fetchCampaigns(config, requestUrl)
       .then(function (response) {
-        if (!response.ok) throw new Error(response.status);
-        return response.json();
-      })
-      .then(function (payload) {
-        applyStorefrontSettings(config, payload.settings);
-        var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns.map(applyExperiment)
-          : [];
+        var campaigns = response.campaigns;
         var campaign = campaigns[0] || null;
         if (campaign) {
           updateDebug(
@@ -95,6 +85,43 @@
         );
         if (config.debugMode && window.console)
           console.log("[CP product]", error);
+      });
+  }
+
+  function fetchCampaigns(config, fallbackUrl) {
+    var campaignId =
+      config.fallbackMode === "SPECIFIC_CAMPAIGN" ? config.campaignId : "";
+
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, "PRODUCT_PAGE", {
+          campaignId: campaignId,
+        })
+        .then(function (payload) {
+          applyStorefrontSettings(config, payload.settings);
+          return {
+            campaigns: Array.isArray(payload.campaigns)
+              ? payload.campaigns.map(applyExperiment)
+              : [],
+          };
+        });
+    }
+
+    return fetch(fallbackUrl, {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        applyStorefrontSettings(config, payload.settings);
+        return {
+          campaigns: Array.isArray(payload.campaigns)
+            ? payload.campaigns.map(applyExperiment)
+            : [],
+        };
       });
   }
 

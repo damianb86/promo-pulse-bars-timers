@@ -35,6 +35,7 @@ import {
   getCampaignPlanViolations,
   isCampaignAllowedByPlan,
 } from "../services/planLimits.server";
+import { clearStorefrontCacheForTests } from "../services/storefront-cache.server";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import {
   serializeStorefrontCampaign,
@@ -111,6 +112,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
   beforeEach(() => {
     vi.stubEnv("PROMO_PULSE_DEV_PLAN", "");
     vi.clearAllMocks();
+    clearStorefrontCacheForTests();
 
     prismaMock.shop.findUnique.mockResolvedValue({
       ...createTestShop({ plan: ShopPlan.GROWTH }),
@@ -353,6 +355,10 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         ctaText: "Comprar oferta",
       },
     });
+    expect(eligibleBody.placements.TOP_BAR[0]).toMatchObject({
+      id: activeCampaign.id,
+      placement: PlacementType.TOP_BAR,
+    });
     expect(eligibleBody.campaigns[0]).not.toHaveProperty("shopId");
 
     const mismatchResponse = await storefrontCampaignsLoader(
@@ -451,6 +457,38 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     );
 
     expect(missingShopResponse.status).toBe(400);
+
+    const crossShopResponse = await storefrontCampaignsLoader(
+      createLoaderArgs(
+        new Request(
+          "https://app.test/api/storefront/campaigns?shop=example.myshopify.com&placement=TOP_BAR",
+          {
+            headers: {
+              origin: "https://attacker.example",
+              "x-forwarded-for": "203.0.113.251",
+            },
+          },
+        ),
+      ),
+    );
+
+    expect(crossShopResponse.status).toBe(403);
+
+    const sameShopOriginResponse = await storefrontCampaignsLoader(
+      createLoaderArgs(
+        new Request(
+          "https://app.test/api/storefront/campaigns?shop=example.myshopify.com&placement=TOP_BAR",
+          {
+            headers: {
+              origin: "https://example.myshopify.com",
+              "x-forwarded-for": "203.0.113.252",
+            },
+          },
+        ),
+      ),
+    );
+
+    expect(sameShopOriginResponse.status).toBe(200);
 
     const dynamicResponse = await storefrontCampaignsLoader(
       createLoaderArgs(
@@ -799,10 +837,10 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     );
   });
 
-  it("blocks Stage 1 premium features according to plan limits", () => {
+  it("blocks Stage 1 paid features according to plan limits", () => {
     const freeShop = createTestShop({ plan: ShopPlan.FREE });
     const proShop = createTestShop({ plan: ShopPlan.PRO });
-    const premiumCampaign = createTestCampaign({
+    const paidFeatureCampaign = createTestCampaign({
       type: CampaignType.PRODUCT_BADGE,
       goal: CampaignGoal.PRODUCT_BADGE,
       startsAt: null,
@@ -810,29 +848,25 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       design: { customCss: ".pp-badge { letter-spacing: 0; }" },
     });
 
-    expect(evaluateCanActivateCampaign(ShopPlan.FREE, 1, false)).toMatchObject({
+    expect(evaluateCanActivateCampaign(ShopPlan.FREE, 2, false)).toMatchObject({
       allowed: false,
       requiredPlan: ShopPlan.STARTER,
     });
     expect(canUseFeature(freeShop, "custom_css")).toMatchObject({
       allowed: false,
-      requiredPlan: ShopPlan.PRO,
+      requiredPlan: ShopPlan.GROWTH,
     });
     expect(
       getCampaignPlanViolations(
         freeShop,
-        premiumCampaign,
+        paidFeatureCampaign,
         PlacementType.CART_DRAWER,
       ),
-    ).toEqual([
-      "Product Badges requires the Pro plan.",
-      "Cart Drawer requires the Growth plan.",
-      "Custom CSS requires the Pro plan.",
-    ]);
+    ).toEqual(["Custom CSS requires the Growth plan."]);
     expect(
       isCampaignAllowedByPlan(
         proShop,
-        premiumCampaign,
+        paidFeatureCampaign,
         PlacementType.CART_DRAWER,
       ),
     ).toBe(true);

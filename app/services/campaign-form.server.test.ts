@@ -109,7 +109,7 @@ describe("campaign form parsing and validation", () => {
       borderRadius: "Border radius must be 0 or greater.",
       buttonTextColor:
         "Button text color needs stronger contrast with button color.",
-      customCss: "Custom CSS requires the Pro plan.",
+      customCss: "Custom CSS requires the Growth plan.",
       fontSize: "Font size must be between 10 and 24.",
       iconSize: "Icon size must be between 12 and 64.",
       textColor: "Text color needs stronger contrast with background.",

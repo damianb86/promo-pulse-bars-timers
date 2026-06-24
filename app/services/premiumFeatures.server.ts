@@ -35,17 +35,17 @@ export const defaultStage2FeatureFlags = applyStage2FeatureFlagOverrides(
 );
 
 const baseMinimumPlanByPremiumFeature = {
-  UNIQUE_CODES: ShopPlan.PREMIUM,
-  AB_TESTING: ShopPlan.PREMIUM,
-  AUTO_WINNER: ShopPlan.PREMIUM,
-  ADVANCED_DISCOUNTS: ShopPlan.PREMIUM,
+  UNIQUE_CODES: ShopPlan.FREE,
+  AB_TESTING: ShopPlan.FREE,
+  AUTO_WINNER: ShopPlan.PRO,
+  ADVANCED_DISCOUNTS: ShopPlan.PRO,
   CHECKOUT_EXTENSIONS: ShopPlan.PRO,
-  EMAIL_TIMERS: ShopPlan.PREMIUM,
-  ADVANCED_BADGES: ShopPlan.PRO,
-  MARKETS_ADVANCED: ShopPlan.PREMIUM,
-  AI_CAMPAIGN_BUILDER: ShopPlan.PREMIUM,
-  AGENCY_DASHBOARD: ShopPlan.AGENCY,
-  ADVANCED_REPORTING: ShopPlan.PREMIUM,
+  EMAIL_TIMERS: ShopPlan.GROWTH,
+  ADVANCED_BADGES: ShopPlan.GROWTH,
+  MARKETS_ADVANCED: ShopPlan.GROWTH,
+  AI_CAMPAIGN_BUILDER: ShopPlan.GROWTH,
+  AGENCY_DASHBOARD: ShopPlan.PRO,
+  ADVANCED_REPORTING: ShopPlan.GROWTH,
   BEHAVIORAL_TARGETING: ShopPlan.PRO,
   RECOMMENDATIONS: ShopPlan.PRO,
   CAMPAIGN_LIBRARY: ShopPlan.STARTER,
@@ -60,8 +60,6 @@ const planRank = {
   STARTER: 1,
   GROWTH: 2,
   PRO: 3,
-  PREMIUM: 4,
-  AGENCY: 5,
 } satisfies Record<ShopPlan, number>;
 
 export function canUsePremiumFeature(

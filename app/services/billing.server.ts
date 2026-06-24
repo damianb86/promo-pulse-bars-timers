@@ -18,8 +18,6 @@ const billingPlanNames: Record<BillingPlanKey, string> = {
   STARTER: "Promo Pulse Starter",
   GROWTH: "Promo Pulse Growth",
   PRO: "Promo Pulse Pro",
-  PREMIUM: "Promo Pulse Premium",
-  AGENCY: "Promo Pulse Agency",
 };
 
 export function requirePlan(

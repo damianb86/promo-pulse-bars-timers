@@ -17,6 +17,9 @@ import {
   DiscountCodePoolStatus,
   DiscountCodeValueType,
   DiscountSyncMethod,
+  ExperimentPrimaryMetric,
+  ExperimentStatus,
+  ExperimentVariantStatus,
   FreeShippingProgressStyle,
   PlacementType,
   Prisma,
@@ -58,15 +61,90 @@ type PlacementCampaignOptions = {
     fullWidth?: boolean;
     layout?: DesignLayout;
   };
+  deliveryCutoff?: Partial<{
+    afterCutoffBehavior:
+      | "HIDE"
+      | "SHOW_AFTER_CUTOFF_MESSAGE"
+      | "SHOW_NEXT_WINDOW";
+    countryRules: Prisma.InputJsonValue;
+    cutoffHour: number;
+    cutoffMinute: number;
+    maxDeliveryDays: number;
+    minDeliveryDays: number;
+    processingDays: number;
+  }>;
   discountCode?: string;
+  experiment?: {
+    name?: string;
+    primaryMetric?: ExperimentPrimaryMetric;
+    status?: ExperimentStatus;
+    variants: Array<{
+      designOverride?: Prisma.InputJsonValue;
+      discountOverride?: Prisma.InputJsonValue;
+      name: string;
+      placementOverride?: Prisma.InputJsonValue;
+      status?: ExperimentVariantStatus;
+      textOverride?: Prisma.InputJsonValue;
+      weight: number;
+    }>;
+  };
+  freeShipping?: Partial<{
+    currencyCode: string;
+    emptyCartMessage: string;
+    successMessage: string;
+    thresholdAmount: number;
+    thresholdRules: Prisma.InputJsonValue;
+  }>;
   goal?: CampaignGoal;
   headline: string;
+  lowStock?: Partial<{
+    fallbackMessage: string;
+    showExactQuantity: boolean;
+    threshold: number;
+  }>;
+  marketRules?: Array<{
+    countryCode?: string | null;
+    currencyCode?: string | null;
+    deliverySettings?: Prisma.InputJsonValue | null;
+    enabled?: boolean;
+    locale?: string | null;
+    marketId?: string | null;
+    textOverrides?: Prisma.InputJsonValue | null;
+    thresholdAmount?: number | null;
+  }>;
   name?: string;
   placement: PlacementType;
+  startsAt?: Date;
   subheadline?: string;
+  targeting?: Partial<{
+    behaviorRules: Prisma.InputJsonValue | null;
+    collectionIds: string[];
+    countries: string[];
+    customerTags: string[];
+    devices: string[];
+    excludeCollectionIds: string[];
+    excludeProductIds: string[];
+    excludedUrlContains: string[];
+    locales: string[];
+    markets: string[];
+    productIds: string[];
+    productTags: string[];
+    urlContains: string[];
+    utmSources: string[];
+  }>;
+  translations?: Array<{
+    badgeText?: string;
+    ctaText?: string;
+    ctaUrl?: string;
+    expiredText?: string;
+    headline?: string;
+    locale: string;
+    subheadline?: string;
+  }>;
   type?: CampaignType;
   uniqueCodeCount?: number;
   uniqueCodePrefix?: string;
+  endsAt?: Date;
 };
 
 export async function findRealE2EShopId() {
@@ -83,7 +161,8 @@ export async function createPublishedPlacementCampaign(
   options: PlacementCampaignOptions,
 ): Promise<PublishedPlacementCampaign> {
   const now = new Date();
-  const endsAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+  const startsAt = options.startsAt ?? new Date(now.getTime() - 60 * 1000);
+  const endsAt = options.endsAt ?? new Date(now.getTime() + 4 * 60 * 60 * 1000);
   const placement = options.placement;
   const type = options.type ?? typeForPlacement(placement);
   const goal = options.goal ?? goalForType(type);
@@ -97,7 +176,7 @@ export async function createPublishedPlacementCampaign(
       status: CampaignStatus.DRAFT,
       type,
       goal,
-      startsAt: new Date(now.getTime() - 60 * 1000),
+      startsAt,
       endsAt,
       timezone: "UTC",
       priority: await nextCampaignPriority(shopId),
@@ -117,6 +196,13 @@ export async function createPublishedPlacementCampaign(
           },
         ],
       },
+      ...(options.targeting
+        ? {
+            targeting: {
+              create: targetingData(options.targeting),
+            },
+          }
+        : {}),
       design: { create: designDataForFixture(design, options.design) },
       timerSettings: {
         create: {
@@ -140,13 +226,64 @@ export async function createPublishedPlacementCampaign(
         ? {
             freeShippingSettings: {
               create: {
-                thresholdAmount: new Prisma.Decimal(75),
-                currencyCode: "USD",
+                thresholdAmount: new Prisma.Decimal(
+                  options.freeShipping?.thresholdAmount ?? 75,
+                ),
+                currencyCode: options.freeShipping?.currencyCode ?? "USD",
                 includeDiscountedSubtotal: true,
-                emptyCartMessage: "Add items to unlock free shipping.",
-                successMessage: "Free shipping unlocked.",
+                emptyCartMessage:
+                  options.freeShipping?.emptyCartMessage ??
+                  "Add items to unlock free shipping.",
+                successMessage:
+                  options.freeShipping?.successMessage ??
+                  "Free shipping unlocked.",
                 progressStyle: FreeShippingProgressStyle.BAR,
-                thresholdRules: Prisma.JsonNull,
+                thresholdRules:
+                  options.freeShipping?.thresholdRules ?? Prisma.JsonNull,
+              },
+            },
+          }
+        : {}),
+      ...(type === CampaignType.DELIVERY_CUTOFF
+        ? {
+            deliveryCutoffSettings: {
+              create: {
+                cutoffHour: options.deliveryCutoff?.cutoffHour ?? 15,
+                cutoffMinute: options.deliveryCutoff?.cutoffMinute ?? 0,
+                processingDays: options.deliveryCutoff?.processingDays ?? 1,
+                minDeliveryDays: options.deliveryCutoff?.minDeliveryDays ?? 2,
+                maxDeliveryDays: options.deliveryCutoff?.maxDeliveryDays ?? 5,
+                workingDays: [1, 2, 3, 4, 5],
+                holidays: [],
+                countryRules:
+                  options.deliveryCutoff?.countryRules ?? Prisma.JsonNull,
+                afterCutoffBehavior:
+                  options.deliveryCutoff?.afterCutoffBehavior ??
+                  "SHOW_NEXT_WINDOW",
+              },
+            },
+          }
+        : {}),
+      ...(type === CampaignType.LOW_STOCK
+        ? {
+            lowStockSettings: {
+              create: {
+                threshold: options.lowStock?.threshold ?? 5,
+                showExactQuantity: options.lowStock?.showExactQuantity ?? true,
+                fallbackMessage:
+                  options.lowStock?.fallbackMessage ??
+                  "Only a few left in stock.",
+              },
+            },
+          }
+        : {}),
+      ...(type === CampaignType.CART_TIMER
+        ? {
+            cartRescueSettings: {
+              create: {
+                rescueReason: "CART_RESERVED",
+                showTimer: true,
+                showButton: true,
               },
             },
           }
@@ -197,22 +334,58 @@ export async function createPublishedPlacementCampaign(
             }
           : {}),
       translations: {
-        create: [
-          {
-            locale: "en",
-            headline: options.headline,
-            subheadline:
-              options.subheadline ??
-              `Real E2E placement check for ${placement}.`,
-            ctaText: options.ctaText ?? "Shop now",
-            ctaUrl: options.ctaUrl ?? "/collections/all",
-            expiredText: "This test offer has ended.",
-            badgeText: options.badgeText ?? options.headline,
-          },
-        ],
+        create: translationData(options, placement),
       },
+      ...(options.marketRules?.length
+        ? {
+            marketCampaignRules: {
+              create: options.marketRules.map((rule) => ({
+                shopId,
+                enabled: rule.enabled ?? true,
+                marketId: rule.marketId ?? null,
+                countryCode: rule.countryCode ?? null,
+                locale: rule.locale ?? null,
+                currencyCode: rule.currencyCode ?? null,
+                thresholdAmount:
+                  rule.thresholdAmount == null
+                    ? null
+                    : new Prisma.Decimal(rule.thresholdAmount),
+                deliverySettings: rule.deliverySettings ?? Prisma.JsonNull,
+                textOverrides: rule.textOverrides ?? Prisma.JsonNull,
+              })),
+            },
+          }
+        : {}),
     },
   });
+
+  if (options.experiment) {
+    await prisma.experiment.create({
+      data: {
+        shopId,
+        campaignId: campaign.id,
+        name: options.experiment.name ?? uniqueName("Experiment"),
+        status: options.experiment.status ?? ExperimentStatus.RUNNING,
+        primaryMetric:
+          options.experiment.primaryMetric ??
+          ExperimentPrimaryMetric.CLICK_RATE,
+        startsAt,
+        endsAt,
+        variants: {
+          create: options.experiment.variants.map((variant) => ({
+            campaignId: campaign.id,
+            name: variant.name,
+            weight: variant.weight,
+            status: variant.status ?? ExperimentVariantStatus.ACTIVE,
+            designOverride: variant.designOverride ?? Prisma.JsonNull,
+            textOverride: variant.textOverride ?? Prisma.JsonNull,
+            discountOverride: variant.discountOverride ?? Prisma.JsonNull,
+            placementOverride: variant.placementOverride ?? Prisma.JsonNull,
+          })),
+        },
+      },
+    });
+  }
 
   if (options.uniqueCodeCount) {
     await seedUniqueCodes({
@@ -233,6 +406,60 @@ export async function createPublishedPlacementCampaign(
     name: published.name,
     placement,
   };
+}
+
+function targetingData(
+  targeting: NonNullable<PlacementCampaignOptions["targeting"]>,
+) {
+  return {
+    countries: targeting.countries ?? [],
+    markets: targeting.markets ?? [],
+    locales: targeting.locales ?? [],
+    productIds: targeting.productIds ?? [],
+    collectionIds: targeting.collectionIds ?? [],
+    productTags: targeting.productTags ?? [],
+    customerTags: targeting.customerTags ?? [],
+    urlContains: targeting.urlContains ?? [],
+    excludedUrlContains: targeting.excludedUrlContains ?? [],
+    utmSources: targeting.utmSources ?? [],
+    devices: targeting.devices ?? [],
+    excludeProductIds: targeting.excludeProductIds ?? [],
+    excludeCollectionIds: targeting.excludeCollectionIds ?? [],
+    behaviorRules: targeting.behaviorRules ?? Prisma.JsonNull,
+  };
+}
+
+function translationData(
+  options: PlacementCampaignOptions,
+  placement: PlacementType,
+) {
+  const translations = options.translations?.length
+    ? options.translations
+    : [
+        {
+          locale: "en",
+          headline: options.headline,
+          subheadline:
+            options.subheadline ?? `Real E2E placement check for ${placement}.`,
+          ctaText: options.ctaText ?? "Shop now",
+          ctaUrl: options.ctaUrl ?? "/collections/all",
+          expiredText: "This test offer has ended.",
+          badgeText: options.badgeText ?? options.headline,
+        },
+      ];
+
+  return translations.map((translation) => ({
+    locale: translation.locale,
+    headline: translation.headline ?? options.headline,
+    subheadline:
+      translation.subheadline ??
+      options.subheadline ??
+      `Real E2E placement check for ${placement}.`,
+    ctaText: translation.ctaText ?? options.ctaText ?? "Shop now",
+    ctaUrl: translation.ctaUrl ?? options.ctaUrl ?? "/collections/all",
+    expiredText: translation.expiredText ?? "This test offer has ended.",
+    badgeText: translation.badgeText ?? options.badgeText ?? options.headline,
+  }));
 }
 
 function buildFixtureDesign(
@@ -391,8 +618,11 @@ function goalForType(type: CampaignType) {
   if (type === CampaignType.PRODUCT_TIMER) return CampaignGoal.FLASH_SALE;
   if (type === CampaignType.PRODUCT_BADGE) return CampaignGoal.PRODUCT_BADGE;
   if (type === CampaignType.CART_TIMER) return CampaignGoal.CART_RESCUE;
+  if (type === CampaignType.DELIVERY_CUTOFF)
+    return CampaignGoal.DELIVERY_CUTOFF;
   if (type === CampaignType.FREE_SHIPPING_GOAL)
     return CampaignGoal.FREE_SHIPPING;
+  if (type === CampaignType.LOW_STOCK) return CampaignGoal.LOW_STOCK_URGENCY;
 
   return CampaignGoal.ANNOUNCEMENT;
 }

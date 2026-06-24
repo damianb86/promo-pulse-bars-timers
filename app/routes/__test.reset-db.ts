@@ -60,7 +60,7 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "delivery-cutoff-after" ||
     value === "cart-drawer" ||
     value === "analytics" ||
-    value === "premium" ||
+    value === "pro" ||
     value === "ab-test" ||
     value === "experiment-metrics" ||
     value === "auto-winner" ||
@@ -74,6 +74,8 @@ function readScenario(value: string | null): E2ETestScenario {
   ) {
     return value;
   }
+
+  if (value === "premium") return "pro";
 
   return "empty";
 }

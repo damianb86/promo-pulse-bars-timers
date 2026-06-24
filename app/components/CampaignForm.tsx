@@ -605,6 +605,10 @@ export function CampaignForm({
   const [localMessageTranslations, setLocalMessageTranslations] = useState(
     () => messageTranslations,
   );
+  const messageTranslationsRef = useRef(messageTranslations);
+  const messageTranslationsSignature = messageTranslations
+    ? getTranslationValuesSignature(messageTranslations)
+    : "";
   const [localDesignValues, setLocalDesignValues] = useState(() => design);
   const [localMobileDesignValues, setLocalMobileDesignValues] = useState(
     () => mobileDesign,
@@ -1403,12 +1407,16 @@ export function CampaignForm({
   }, [design, mobileDesign, onDesignChange]);
 
   useEffect(() => {
+    messageTranslationsRef.current = messageTranslations;
+  }, [messageTranslations]);
+
+  useEffect(() => {
     const syncTranslations = window.setTimeout(() => {
-      setLocalMessageTranslations(messageTranslations);
+      setLocalMessageTranslations(messageTranslationsRef.current);
     }, 0);
 
     return () => window.clearTimeout(syncTranslations);
-  }, [messageTranslations]);
+  }, [messageTranslationsSignature]);
 
   useEffect(() => {
     onValuesChange?.(formValues);
@@ -3771,6 +3779,16 @@ function buildEmptyResolvedTranslations() {
       {} as CampaignTranslationsByLocale["en"];
     return translations;
   }, {} as CampaignTranslationsByLocale);
+}
+
+function getTranslationValuesSignature(values: CampaignTranslationsByLocale) {
+  return storefrontLocales
+    .flatMap((localeOption) =>
+      campaignTranslationFields.map(
+        (field) => values[localeOption.locale][field.key],
+      ),
+    )
+    .join("\u001f");
 }
 
 function getCampaignTypeChoiceKey(values: CampaignFormValues) {

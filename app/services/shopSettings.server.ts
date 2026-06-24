@@ -1,6 +1,7 @@
 import { ConsentMode, type ShopSettings } from "@prisma/client";
 
 import prisma from "../db.server";
+import { invalidateStorefrontCacheForShopId } from "./storefront-cache.server";
 import { supportedStorefrontLocales } from "../types/shop-settings";
 
 export type ShopSettingsValues = {
@@ -106,6 +107,8 @@ export async function updateShopSettings(
       ...toPrismaSettingsInput(values),
     },
   });
+
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return toShopSettingsValues(settings);
 }

@@ -79,15 +79,26 @@ test("billing page shows plan cards and local billing placeholder", async ({
   await expect(
     page.getByRole("heading", { exact: true, name: "Billing" }),
   ).toBeVisible();
-  await expect(page.getByText("Current: Agency")).toBeVisible();
-  await expect(page.getByText("Free", { exact: true })).toBeVisible();
-  await expect(page.getByText("Starter", { exact: true })).toBeVisible();
-  await expect(page.getByText("Growth", { exact: true })).toBeVisible();
-  await expect(page.getByText("Pro", { exact: true })).toBeVisible();
-  await expect(page.getByText("Premium", { exact: true })).toBeVisible();
+  await expect(page.getByText("Current: Pro")).toBeVisible();
+
+  const planNames = page.locator(".counterpulse-plan-card__name");
+  await expect(planNames).toHaveText(["Free", "Starter", "Growth", "Pro"]);
+  await expect(planNames.filter({ hasText: "Premium" })).toHaveCount(0);
+  await expect(planNames.filter({ hasText: "Agency" })).toHaveCount(0);
   await expect(
-    page.locator(".counterpulse-plan-card__name").filter({ hasText: "Agency" }),
+    page
+      .locator(".counterpulse-plan-card")
+      .filter({ has: page.getByText("Growth", { exact: true }) })
+      .getByText("Recommended"),
   ).toBeVisible();
+  await expect(
+    page
+      .locator(".counterpulse-plan-card")
+      .filter({ has: page.getByText("Pro", { exact: true }) })
+      .getByText("Everything included", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Feature comparison" }))
+    .toBeVisible();
 
   await Promise.all([
     page.waitForResponse(

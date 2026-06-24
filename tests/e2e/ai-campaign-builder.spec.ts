@@ -11,7 +11,7 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
   await page.getByRole("button", { name: "AI campaign" }).click();

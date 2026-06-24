@@ -134,21 +134,34 @@ describe("unique discount codes", () => {
     expect(prismaMock.discountCodeGrant.create).not.toHaveBeenCalled();
   });
 
-  it("blocks unique code issuing below Premium", async () => {
-    prismaMock.campaign.findFirst.mockResolvedValue(
-      uniqueCampaign({ shopPlan: ShopPlan.GROWTH }),
-    );
+  it("allows basic unique code issuing on Free", async () => {
+    const campaign = uniqueCampaign({ shopPlan: ShopPlan.FREE });
+    const createRemoteDiscount = vi.fn(async () => ({ id: "remote-free" }));
+
+    prismaMock.campaign.findFirst.mockResolvedValue(campaign);
+    prismaMock.discountCodeGrant.create.mockResolvedValue({
+      id: "grant-free",
+      code: "FREE-ABC123",
+      expiresAt: null,
+    });
+    prismaMock.discountCodeGrant.update.mockResolvedValue({
+      id: "grant-free",
+      code: "FREE-ABC123",
+      expiresAt: null,
+    });
 
     await expect(
       issueUniqueDiscountCode({
         shopDomain: "example.myshopify.com",
-        campaignId: "campaign-1",
+        campaignId: campaign.id,
         visitorId: "visitor-123",
         now,
+        createCode: () => "FREE-ABC123",
+        createRemoteDiscount,
       }),
-    ).rejects.toMatchObject({
-      status: 403,
-      message: "Unique Discount Codes requires the Premium plan.",
+    ).resolves.toMatchObject({
+      code: "FREE-ABC123",
+      reused: false,
     });
   });
 
@@ -261,7 +274,7 @@ function uniqueCampaign(
     createdAt: new Date("2026-06-18T13:00:00.000Z"),
     updatedAt: new Date("2026-06-18T13:00:00.000Z"),
     shop: {
-      plan: overrides.shopPlan ?? ShopPlan.PREMIUM,
+      plan: overrides.shopPlan ?? ShopPlan.FREE,
     },
     discountSync: {
       campaignId: "campaign-1",

@@ -5,6 +5,10 @@ import {
   recordAnalyticsEvent,
   validateAnalyticsEventPayload,
 } from "../models/analytics.server";
+import {
+  buildCorsHeaders,
+  verifyStorefrontAccess,
+} from "../services/storefront-security.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (request.method === "OPTIONS") {
@@ -42,6 +46,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
   }
 
+  const access = verifyStorefrontAccess(request, validation.payload.shop);
+
+  if (!access.ok) {
+    return analyticsJsonResponse(
+      { error: access.error },
+      { status: access.status, access },
+    );
+  }
+
   try {
     const result = await recordAnalyticsEvent(validation.payload);
 
@@ -54,13 +67,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         reason: result.reason,
         eventId: result.eventId,
       },
-      { status: result.saved ? 201 : 202 },
+      { status: result.saved ? 201 : 202, access },
     );
   } catch (error) {
     if (error instanceof AnalyticsIngestionError) {
       return analyticsJsonResponse(
         { error: error.message },
-        { status: error.status },
+        { status: error.status, access },
       );
     }
 
@@ -68,7 +81,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     return analyticsJsonResponse(
       { error: "Analytics event could not be recorded." },
-      { status: 500 },
+      { status: 500, access },
     );
   }
 };
@@ -85,13 +98,17 @@ async function readJsonBody(request: Request) {
   }
 }
 
-function analyticsJsonResponse(body: unknown, options: { status: number }) {
+function analyticsJsonResponse(
+  body: unknown,
+  options: {
+    status: number;
+    access?: ReturnType<typeof verifyStorefrontAccess>;
+  },
+) {
   const headers = new Headers({
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    Vary: "Origin",
+    ...buildCorsHeaders(options.access),
   });
 
   if (body !== null) {

@@ -13,7 +13,7 @@ test("merchant can create and copy an email timer image URL", async ({
   page,
   resetDb,
 }) => {
-  await resetDb("premium");
+  await resetDb("pro");
   await loginAsDemoShop();
   const campaignId = await createCampaignViaUI({
     name: "E2E Email Timer Campaign",

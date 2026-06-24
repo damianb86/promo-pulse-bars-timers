@@ -5,6 +5,7 @@ import {
   defaultStage2FeatureFlags,
   isPremiumFeatureFlagEnabled,
 } from "./premiumFeatures.server";
+import { premiumFeatureKeys } from "../types/stage2";
 
 describe("premium Stage 2 feature gates", () => {
   beforeEach(() => {
@@ -31,16 +32,7 @@ describe("premium Stage 2 feature gates", () => {
 
   it("requires the configured plan after a flag is enabled", () => {
     expect(
-      canUsePremiumFeature({ plan: "PRO" }, "AB_TESTING", {
-        AB_TESTING: true,
-      }),
-    ).toMatchObject({
-      allowed: false,
-      enabled: true,
-      requiredPlan: "PREMIUM",
-    });
-    expect(
-      canUsePremiumFeature({ plan: "PREMIUM" }, "AB_TESTING", {
+      canUsePremiumFeature({ plan: "FREE" }, "AB_TESTING", {
         AB_TESTING: true,
       }),
     ).toEqual({
@@ -48,6 +40,56 @@ describe("premium Stage 2 feature gates", () => {
       enabled: true,
       reason: "",
     });
+  });
+
+  it("reserves auto-winner for Pro", () => {
+    expect(
+      canUsePremiumFeature({ plan: "GROWTH" }, "AUTO_WINNER", {
+        AUTO_WINNER: true,
+      }),
+    ).toMatchObject({
+      allowed: false,
+      enabled: true,
+      requiredPlan: "PRO",
+    });
+    expect(
+      canUsePremiumFeature({ plan: "PRO" }, "AUTO_WINNER", {
+        AUTO_WINNER: true,
+      }),
+    ).toEqual({
+      allowed: true,
+      enabled: true,
+      reason: "",
+    });
+  });
+
+  it("blocks AI, advanced reports, and auto-winner on Free", () => {
+    expect(
+      canUsePremiumFeature({ plan: "FREE" }, "AI_CAMPAIGN_BUILDER"),
+    ).toMatchObject({
+      allowed: false,
+      requiredPlan: "GROWTH",
+    });
+    expect(
+      canUsePremiumFeature({ plan: "FREE" }, "ADVANCED_REPORTING"),
+    ).toMatchObject({
+      allowed: false,
+      requiredPlan: "GROWTH",
+    });
+    expect(canUsePremiumFeature({ plan: "FREE" }, "AUTO_WINNER"))
+      .toMatchObject({
+        allowed: false,
+        requiredPlan: "PRO",
+      });
+  });
+
+  it("allows every premium feature on Pro", () => {
+    for (const featureKey of premiumFeatureKeys) {
+      expect(canUsePremiumFeature({ plan: "PRO" }, featureKey)).toMatchObject({
+        allowed: true,
+        enabled: true,
+      });
+    }
   });
 
   it("allows unflagged planning-only premium features by plan", () => {
@@ -77,23 +119,39 @@ describe("premium Stage 2 feature gates", () => {
     });
   });
 
-  it("reserves agency dashboard for Agency plans", () => {
+  it("unlocks optimization features on Growth", () => {
     expect(
-      canUsePremiumFeature({ plan: "PREMIUM" }, "AGENCY_DASHBOARD"),
+      canUsePremiumFeature({ plan: "GROWTH" }, "ADVANCED_REPORTING"),
+    ).toEqual({
+      allowed: true,
+      enabled: true,
+      reason: "",
+    });
+    expect(canUsePremiumFeature({ plan: "GROWTH" }, "AI_CAMPAIGN_BUILDER"))
+      .toMatchObject({
+        allowed: true,
+        enabled: true,
+      });
+  });
+
+  it("reserves multi-store workspace tools for Pro", () => {
+    expect(
+      canUsePremiumFeature({ plan: "GROWTH" }, "AGENCY_DASHBOARD"),
     ).toMatchObject({
       allowed: false,
       enabled: true,
-      requiredPlan: "AGENCY",
+      requiredPlan: "PRO",
     });
     expect(
-      canUsePremiumFeature({ plan: "AGENCY" }, "AGENCY_DASHBOARD"),
+      canUsePremiumFeature({ plan: "PRO" }, "AGENCY_DASHBOARD"),
     ).toEqual({
       allowed: true,
       enabled: true,
       reason: "",
     });
   });
-  it("treats local development as Agency for premium feature gates", () => {
+
+  it("treats local development as Pro for premium feature gates", () => {
     vi.stubEnv("NODE_ENV", "development");
 
     expect(canUsePremiumFeature({ plan: "FREE" }, "AGENCY_DASHBOARD")).toEqual({

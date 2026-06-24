@@ -7,6 +7,8 @@ import {
   getEffectiveShopPlan,
   getPlanLimits,
   isCampaignAllowedByPlan,
+  normalizeShopPlan,
+  publicPlanOrder,
   validateCampaignPlanAccess,
 } from "./planLimits.server";
 
@@ -19,40 +21,88 @@ describe("plan limits", () => {
     vi.unstubAllEnvs();
   });
 
+  it("only exposes the four public plans", () => {
+    expect(publicPlanOrder).toEqual(["FREE", "STARTER", "GROWTH", "PRO"]);
+  });
+
   it("defines Free active campaign and impression limits", () => {
     expect(getPlanLimits("FREE")).toMatchObject({
-      activeCampaignLimit: 1,
-      monthlyImpressionLimit: 5000,
+      activeCampaignLimit: 2,
+      activeAbTestLimit: 1,
+      abTestVariantLimit: 2,
+      analyticsRetentionDays: 7,
+      monthlyImpressionLimit: 10_000,
+      monthlyUniqueCodeLimit: 25,
       monthlyPriceUsd: 0,
     });
   });
 
-  it("unlocks custom CSS only on Pro", () => {
-    expect(canUseFeature({ plan: "GROWTH" }, "custom_css")).toMatchObject({
-      allowed: false,
-      requiredPlan: "PRO",
+  it("defines Starter, Growth, and Pro limits", () => {
+    expect(getPlanLimits("STARTER")).toMatchObject({
+      activeCampaignLimit: 5,
+      activeAbTestLimit: 2,
+      abTestVariantLimit: 2,
+      analyticsRetentionDays: 30,
+      discountSyncCampaignLimit: 3,
+      monthlyImpressionLimit: 50_000,
+      monthlyUniqueCodeLimit: 500,
+      monthlyPriceUsd: 9,
     });
-    expect(canUseFeature({ plan: "PRO" }, "custom_css")).toMatchObject({
+    expect(getPlanLimits("GROWTH")).toMatchObject({
+      activeCampaignLimit: 25,
+      activeAbTestLimit: 10,
+      abTestVariantLimit: 3,
+      analyticsRetentionDays: 90,
+      discountSyncCampaignLimit: null,
+      emailCountdownTimerLimit: 5,
+      monthlyImpressionLimit: 250_000,
+      monthlyUniqueCodeLimit: 5_000,
+      monthlyPriceUsd: 19,
+    });
+    expect(getPlanLimits("PRO")).toMatchObject({
+      activeCampaignLimit: null,
+      activeAbTestLimit: null,
+      analyticsRetentionDays: 365,
+      emailCountdownTimerLimit: null,
+      monthlyImpressionLimit: 1_500_000,
+      monthlyUniqueCodeLimit: 50_000,
+      monthlyPriceUsd: 39,
+    });
+  });
+
+  it("unlocks custom CSS on Growth and Pro", () => {
+    expect(canUseFeature({ plan: "STARTER" }, "custom_css")).toMatchObject({
+      allowed: false,
+      requiredPlan: "GROWTH",
+    });
+    expect(canUseFeature({ plan: "GROWTH" }, "custom_css")).toMatchObject({
       allowed: true,
     });
   });
 
-  it("unlocks unique visitor discount codes only on Premium", () => {
-    expect(
-      canUseFeature({ plan: "PRO" }, "unique_discount_codes"),
-    ).toMatchObject({
+  it("blocks custom CSS on Free", () => {
+    expect(canUseFeature({ plan: "FREE" }, "custom_css")).toMatchObject({
       allowed: false,
-      requiredPlan: "PREMIUM",
+      requiredPlan: "GROWTH",
     });
+  });
+
+  it("includes every plan-limit feature on Pro", () => {
+    expect(Object.values(getPlanLimits("PRO").features).every(Boolean)).toBe(
+      true,
+    );
+  });
+
+  it("allows basic unique visitor discount codes on Free", () => {
     expect(
-      canUseFeature({ plan: "PREMIUM" }, "unique_discount_codes"),
+      canUseFeature({ plan: "FREE" }, "unique_discount_codes"),
     ).toMatchObject({
       allowed: true,
     });
   });
 
   it("blocks a second active campaign on Free", () => {
-    expect(evaluateCanActivateCampaign("FREE", 1, false)).toMatchObject({
+    expect(evaluateCanActivateCampaign("FREE", 2, false)).toMatchObject({
       allowed: false,
       requiredPlan: "STARTER",
     });
@@ -79,19 +129,20 @@ describe("plan limits", () => {
       allowed: true,
     });
   });
-  it("does not let a development override downgrade Agency", () => {
-    expect(getPlanLimits("AGENCY").monthlyPriceUsd).toBe(149);
-    expect(
-      canUseFeature({ plan: "AGENCY" }, "unique_discount_codes"),
-    ).toMatchObject({
-      allowed: true,
+
+  it("maps old Premium and Agency plan values to Pro", () => {
+    expect(normalizeShopPlan("PREMIUM")).toBe("PRO");
+    expect(normalizeShopPlan("AGENCY")).toBe("PRO");
+    expect(getPlanLimits("AGENCY")).toMatchObject({
+      plan: "PRO",
+      monthlyPriceUsd: 39,
     });
   });
 
-  it("treats local development as Agency when no override is configured", () => {
+  it("treats local development as Pro when no override is configured", () => {
     vi.stubEnv("NODE_ENV", "development");
 
-    expect(getEffectiveShopPlan({ plan: "FREE" })).toBe("AGENCY");
+    expect(getEffectiveShopPlan({ plan: "FREE" })).toBe("PRO");
     expect(canUseFeature({ plan: "FREE" }, "product_badges")).toMatchObject({
       allowed: true,
     });
@@ -113,11 +164,7 @@ describe("plan limits", () => {
           type: "PRODUCT_BADGE",
         },
       ),
-    ).resolves.toEqual([
-      "Scheduling requires the Starter plan.",
-      "Product Badges requires the Pro plan.",
-      "Cart Drawer requires the Growth plan.",
-    ]);
+    ).resolves.toEqual(["Scheduling requires the Starter plan."]);
   });
 
   it("reports storefront campaign violations for locked runtime features", () => {
@@ -125,21 +172,22 @@ describe("plan limits", () => {
       getCampaignPlanViolations(
         { plan: "FREE" },
         {
-          type: "PRODUCT_BADGE",
-          placements: [{ enabled: true, placementType: "CART_DRAWER" }],
+          type: "CART_TIMER",
+          design: { customCss: ".pp-bar { letter-spacing: 0; }" },
+          placements: [{ enabled: true, placementType: "TOP_BAR" }],
         },
-        "CART_DRAWER",
+        "TOP_BAR",
       ),
     ).toEqual([
-      "Product Badges requires the Pro plan.",
-      "Cart Drawer requires the Growth plan.",
+      "Cart Timer requires the Starter plan.",
+      "Custom CSS requires the Growth plan.",
     ]);
   });
 
   it("allows Pro storefront campaigns that use premium features", () => {
     expect(
       isCampaignAllowedByPlan(
-        { plan: "PREMIUM" },
+        { plan: "PRO" },
         {
           type: "PRODUCT_BADGE",
           placements: [{ enabled: true, placementType: "CART_DRAWER" }],
@@ -153,7 +201,7 @@ describe("plan limits", () => {
     ).toBe(true);
   });
 
-  it("blocks advanced targeting below Pro", () => {
+  it("allows Growth advanced targeting", () => {
     expect(
       getCampaignPlanViolations(
         { plan: "GROWTH" },
@@ -164,7 +212,7 @@ describe("plan limits", () => {
         },
         "TOP_BAR",
       ),
-    ).toEqual(["Advanced Targeting requires the Pro plan."]);
+    ).toEqual([]);
   });
 
   it("blocks active behavior targeting below Pro but ignores disabled rules", () => {
@@ -183,7 +231,7 @@ describe("plan limits", () => {
         },
         "TOP_BAR",
       ),
-    ).toEqual(["Advanced Targeting requires the Pro plan."]);
+    ).toEqual(["Behavioral Targeting requires the Pro plan."]);
 
     expect(
       getCampaignPlanViolations(

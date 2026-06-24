@@ -14,11 +14,25 @@
   var uniqueCodeRequestTtlMs = 30000;
   var commerceEventDedupeMs = 3000;
   var attributionMaxAgeMs = 24 * 60 * 60 * 1000;
+  var storefrontCampaignRequestCache = {};
+  var storefrontCampaignPendingRequests = {};
+  var storefrontCampaignRequestTtlMs = 30000;
+  var storefrontCampaignPlacements = [
+    "TOP_BAR",
+    "BOTTOM_BAR",
+    "CUSTOM_SELECTOR",
+    "PRODUCT_PAGE",
+    "PRODUCT_PAGE_BADGE",
+    "COLLECTION_CARD",
+    "CART_PAGE",
+    "CART_DRAWER",
+  ];
   var memoryVisitorId = "";
   var memorySessionId = "";
   var lastRememberedCampaign = null;
 
   installFetchGuard();
+  installStorefrontCampaignBroker();
 
   if (!window.PromoPulseAnalyticsReady) {
     window.PromoPulseAnalyticsReady = true;
@@ -590,6 +604,463 @@
     if (!/^https?:\/\//i.test(value)) return "";
 
     return value;
+  }
+
+  function installStorefrontCampaignBroker() {
+    if (window.PromoPulseFetchCampaigns) return;
+
+    window.PromoPulseFetchCampaigns = function (config, placement, options) {
+      options = options || {};
+
+      return fetchStorefrontCampaignPayload(config || {}).then(
+        function (payload) {
+          return {
+            campaigns: selectStorefrontCampaigns(
+              payload,
+              placement,
+              options,
+            ),
+            settings: payload.settings || null,
+            url: payload.__promoPulseUrl || "",
+          };
+        },
+      );
+    };
+
+    window.PromoPulseClearCampaignCache = function () {
+      storefrontCampaignRequestCache = {};
+      storefrontCampaignPendingRequests = {};
+    };
+  }
+
+  function fetchStorefrontCampaignPayload(config) {
+    var url = buildStorefrontCampaignsUrl(config);
+    var cached = storefrontCampaignRequestCache[url];
+    var stored = readStorefrontPayloadCache(url);
+    var request;
+    var headers;
+    var now = Date.now();
+
+    if (cached && cached.expiresAt > now) {
+      return Promise.resolve(cached.payload).then(clonePlainObject);
+    }
+
+    if (stored && stored.expiresAt > now) {
+      storefrontCampaignRequestCache[url] = {
+        expiresAt: stored.expiresAt,
+        payload: clonePlainObject(stored.payload),
+      };
+
+      return Promise.resolve(stored.payload).then(clonePlainObject);
+    }
+
+    if (storefrontCampaignPendingRequests[url]) {
+      return storefrontCampaignPendingRequests[url].then(clonePlainObject);
+    }
+
+    headers = { Accept: "application/json" };
+    if (stored && stored.etag) {
+      headers["If-None-Match"] = stored.etag;
+    }
+
+    request = window
+      .fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: headers,
+      })
+      .then(function (response) {
+        if (response.status === 304 && stored) {
+          return refreshStoredStorefrontPayload(url, stored, response);
+        }
+        if (!response.ok) throw new Error(response.status);
+        assertStorefrontJsonResponse(response, url);
+        return response.json().then(function (payload) {
+          return storeStorefrontPayload(url, payload, response);
+        });
+      })
+      .then(function (payload) {
+        payload = payload && typeof payload === "object" ? payload : {};
+        payload.__promoPulseUrl = url;
+        storefrontCampaignRequestCache[url] = {
+          expiresAt: readPayloadExpiresAt(payload, Date.now()),
+          payload: clonePlainObject(payload),
+        };
+        if (payload.settings && typeof payload.settings === "object") {
+          window.PromoPulseSettings = payload.settings;
+        }
+        return payload;
+      })
+      .catch(function (error) {
+        debug(getRoot(), error);
+        return { campaigns: [], settings: null, __promoPulseUrl: url };
+      })
+      .finally(function () {
+        delete storefrontCampaignPendingRequests[url];
+      });
+
+    storefrontCampaignPendingRequests[url] = request;
+
+    return request.then(clonePlainObject);
+  }
+
+  function readStorefrontPayloadCache(url) {
+    var storage = safeLocalStorage();
+    var value;
+    var parsed;
+
+    if (!storage) return null;
+
+    try {
+      value = storage.getItem(storefrontPayloadStorageKey(url));
+      parsed = value ? JSON.parse(value) : null;
+    } catch {
+      return null;
+    }
+
+    if (!parsed || !parsed.payload || !parsed.expiresAt) return null;
+
+    return parsed;
+  }
+
+  function storeStorefrontPayload(url, payload, response) {
+    var metadata = readStorefrontCacheMetadata(response);
+    var storedPayload =
+      payload && typeof payload === "object" ? payload : { campaigns: [] };
+
+    storedPayload.__promoPulseUrl = url;
+    if (metadata.noStore) {
+      removeStorefrontPayloadCache(url);
+      storedPayload.__promoPulseClientExpiresAt = Date.now();
+      storedPayload.__promoPulseEtag = "";
+      storedPayload.__promoPulseNoStore = true;
+      return storedPayload;
+    }
+
+    storedPayload.__promoPulseClientExpiresAt = metadata.expiresAt;
+    storedPayload.__promoPulseEtag = metadata.etag;
+    writeStorefrontPayloadCache(url, {
+      etag: metadata.etag,
+      expiresAt: metadata.expiresAt,
+      payload: storedPayload,
+    });
+
+    return storedPayload;
+  }
+
+  function refreshStoredStorefrontPayload(url, stored, response) {
+    var metadata = readStorefrontCacheMetadata(response);
+    var payload = clonePlainObject(stored.payload);
+    var expiresAt = metadata.expiresAt || Date.now() + storefrontCampaignRequestTtlMs;
+    var etag = metadata.etag || stored.etag || "";
+
+    if (metadata.noStore) {
+      removeStorefrontPayloadCache(url);
+      payload.__promoPulseUrl = url;
+      payload.__promoPulseClientExpiresAt = Date.now();
+      payload.__promoPulseEtag = "";
+      payload.__promoPulseNoStore = true;
+      return payload;
+    }
+
+    payload.__promoPulseUrl = url;
+    payload.__promoPulseClientExpiresAt = expiresAt;
+    payload.__promoPulseEtag = etag;
+    writeStorefrontPayloadCache(url, {
+      etag: etag,
+      expiresAt: expiresAt,
+      payload: payload,
+    });
+
+    return payload;
+  }
+
+  function writeStorefrontPayloadCache(url, entry) {
+    var storage = safeLocalStorage();
+
+    if (!storage) return;
+
+    try {
+      storage.setItem(storefrontPayloadStorageKey(url), JSON.stringify(entry));
+    } catch {
+      pruneStorefrontPayloadStorage(storage);
+      try {
+        storage.setItem(
+          storefrontPayloadStorageKey(url),
+          JSON.stringify(entry),
+        );
+      } catch {
+        return;
+      }
+    }
+  }
+
+  function removeStorefrontPayloadCache(url) {
+    var storage = safeLocalStorage();
+
+    if (!storage) return;
+
+    try {
+      storage.removeItem(storefrontPayloadStorageKey(url));
+    } catch {
+      return;
+    }
+  }
+
+  function readStorefrontCacheMetadata(response) {
+    var cacheControl = response.headers.get("cache-control") || "";
+    var expiresAtHeader =
+      response.headers.get("x-promo-pulse-cache-expires-at") || "";
+    var maxAgeHeader =
+      response.headers.get("x-promo-pulse-client-cache-max-age") || "";
+    var expiresAt = Date.parse(expiresAtHeader);
+    var maxAge = maxAgeHeader === "" ? NaN : Number(maxAgeHeader);
+    var noStore = /\bno-store\b/i.test(cacheControl);
+
+    if (noStore) {
+      expiresAt = Date.now();
+    } else if (!Number.isFinite(expiresAt)) {
+      expiresAt =
+        Date.now() +
+        (Number.isFinite(maxAge) && maxAge >= 0
+          ? Math.floor(maxAge) * 1000
+          : storefrontCampaignRequestTtlMs);
+    }
+
+    return {
+      etag: response.headers.get("etag") || "",
+      expiresAt: expiresAt,
+      noStore: noStore,
+    };
+  }
+
+  function readPayloadExpiresAt(payload, fallbackNow) {
+    if (payload && payload.__promoPulseNoStore) return 0;
+
+    var expiresAt = Number(payload && payload.__promoPulseClientExpiresAt);
+
+    return Number.isFinite(expiresAt)
+      ? expiresAt
+      : fallbackNow + storefrontCampaignRequestTtlMs;
+  }
+
+  function storefrontPayloadStorageKey(url) {
+    return "promo_pulse_storefront_payload_" + hashString(url);
+  }
+
+  function pruneStorefrontPayloadStorage(storage) {
+    try {
+      Object.keys(storage).forEach(function (key) {
+        if (key.indexOf("promo_pulse_storefront_payload_") === 0) {
+          storage.removeItem(key);
+        }
+      });
+    } catch {
+      return;
+    }
+  }
+
+  function safeLocalStorage() {
+    try {
+      return window.localStorage || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function hashString(value) {
+    var hash = 2166136261;
+    var index;
+
+    for (index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return (hash >>> 0).toString(36);
+  }
+
+  function buildStorefrontCampaignsUrl(config) {
+    var params = new URLSearchParams({
+      shop: readStorefrontConfigValue(config, "shop") || detectShop(getRoot()),
+      path: window.location.pathname || "/",
+      locale:
+        readStorefrontConfigValue(config, "locale") ||
+        readStorefrontConfigValue(config, "defaultLocale") ||
+        document.documentElement.lang ||
+        "en",
+      device: readStorefrontConfigValue(config, "device") || detectDevice(),
+      placement: storefrontCampaignPlacements.join(","),
+    });
+    var country = readStorefrontConfigValue(config, "country");
+    var market = readStorefrontConfigValue(config, "market") || detectMarket();
+    var currency =
+      readStorefrontConfigValue(config, "currency") || detectCurrency();
+    var productId = readStorefrontConfigValue(config, "productId");
+    var productTags = readStorefrontList(config.productTags);
+    var collectionIds = readStorefrontList(config.collectionIds);
+    var utmSource =
+      new URLSearchParams(window.location.search).get("utm_source") || "";
+
+    if (country) params.set("country", country);
+    if (market) params.set("market", market);
+    if (currency) params.set("currency", currency);
+    if (productId) params.set("productId", productId);
+    if (productTags.length) params.set("productTags", productTags.join(","));
+    if (collectionIds.length) {
+      params.set("collectionIds", collectionIds.join(","));
+    }
+    if (utmSource) params.set("utmSource", utmSource);
+    appendStorefrontTrackingParams(params);
+
+    return getStorefrontCampaignsEndpoint(config) + "?" + params.toString();
+  }
+
+  function getStorefrontCampaignsEndpoint(config) {
+    var root = getRoot();
+    var value =
+      window.PromoPulseApiBaseUrl ||
+      readStorefrontConfigValue(config, "apiBaseUrl") ||
+      (root && root.dataset.apiBaseUrl) ||
+      "";
+
+    value = String(value).trim().replace(/\/+$/, "");
+
+    if (!/^https?:\/\//i.test(value)) return "/apps/promo-pulse";
+    if (/\/api\/storefront\/campaigns$/i.test(value)) return value;
+
+    return value + "/api/storefront/campaigns";
+  }
+
+  function selectStorefrontCampaigns(payload, placement, options) {
+    var requestedPlacements = readPlacementList(placement);
+    var campaignId = String((options && options.campaignId) || "");
+    var campaigns = Array.isArray(payload && payload.campaigns)
+      ? payload.campaigns
+      : [];
+    var matching = requestedPlacements.length
+      ? campaigns.filter(function (campaign) {
+          return requestedPlacements.indexOf(campaign.placement) !== -1;
+        })
+      : campaigns.slice();
+    var matchingById;
+    var anyById;
+
+    if (!campaignId) return matching;
+
+    matchingById = matching.filter(function (campaign) {
+      return campaign.id === campaignId;
+    });
+
+    if (
+      matchingById.length ||
+      requestedPlacements.indexOf("CUSTOM_SELECTOR") !== -1
+    ) {
+      return matchingById;
+    }
+
+    anyById = campaigns.filter(function (campaign) {
+      return campaign.id === campaignId;
+    });
+
+    return anyById.length ? anyById : matchingById;
+  }
+
+  function readPlacementList(value) {
+    return String(value || "")
+      .split(",")
+      .map(function (placement) {
+        return placement.trim().toUpperCase();
+      })
+      .filter(Boolean);
+  }
+
+  function appendStorefrontTrackingParams(params) {
+    var tracking =
+      typeof window.PromoPulseGetVisitorSessionTracking === "function"
+        ? window.PromoPulseGetVisitorSessionTracking()
+        : null;
+
+    if (!tracking) return;
+    if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
+    if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
+    params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
+    if (
+      tracking.consentGranted !== null &&
+      tracking.consentGranted !== undefined
+    ) {
+      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
+    }
+  }
+
+  function assertStorefrontJsonResponse(response, url) {
+    var contentType = response.headers.get("content-type") || "";
+    var redirectedTo = response.redirected
+      ? " Redirected to " + response.url
+      : "";
+
+    if (
+      response.redirected ||
+      response.url.indexOf("/password") !== -1 ||
+      contentType.indexOf("application/json") === -1
+    ) {
+      pauseRequests("PromoPulseProxyPausedUntil", 60000);
+      throw new Error(
+        "Expected JSON from app proxy but received " +
+          (contentType || "unknown content-type") +
+          "." +
+          redirectedTo +
+          " Check Shopify app_proxy config for " +
+          url +
+          ".",
+      );
+    }
+  }
+
+  function readStorefrontConfigValue(config, key) {
+    var value = config && config[key];
+
+    return typeof value === "string" ? value : "";
+  }
+
+  function readStorefrontList(value) {
+    if (Array.isArray(value)) {
+      return value
+        .map(function (item) {
+          return String(item || "").trim();
+        })
+        .filter(Boolean);
+    }
+
+    return String(value || "")
+      .split(",")
+      .map(function (item) {
+        return item.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function detectDevice() {
+    if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
+    if (window.matchMedia("(max-width: 1024px)").matches) return "tablet";
+
+    return "desktop";
+  }
+
+  function detectMarket() {
+    var market = window.Shopify && window.Shopify.market;
+
+    return (market && (market.handle || market.id || market)) || "";
+  }
+
+  function detectCurrency() {
+    return (
+      window.PromoPulseCartCurrency ||
+      (window.Shopify &&
+        window.Shopify.currency &&
+        window.Shopify.currency.active) ||
+      ""
+    );
   }
 
   function analyticsAllowed() {

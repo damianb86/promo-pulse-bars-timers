@@ -1,1 +1,1 @@
-export { loader } from "./api.storefront.badges";
+export { loader } from "./apps.promo-pulse.api.storefront.badges";

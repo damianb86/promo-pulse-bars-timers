@@ -133,6 +133,28 @@
   }
 
   function fetchCampaign(config) {
+    var campaignId =
+      config.fallbackMode === "SPECIFIC_CAMPAIGN" ? config.campaignId : "";
+
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, "PRODUCT_PAGE", {
+          campaignId: campaignId,
+        })
+        .then(function (payload) {
+          applyStorefrontSettings(config, payload.settings);
+          var campaigns = Array.isArray(payload.campaigns)
+            ? payload.campaigns.map(applyExperiment)
+            : [];
+
+          return (
+            campaigns.filter(function (campaign) {
+              return campaign.type === "LOW_STOCK";
+            })[0] || null
+          );
+        });
+    }
+
     return fetch(buildUrl(config), {
       credentials: "same-origin",
       headers: { Accept: "application/json" },

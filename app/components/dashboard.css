@@ -3859,7 +3859,7 @@ s-page::part(page) {
 }
 
 .counterpulse-goal-list--compact {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 12px;
 }
 
@@ -4598,7 +4598,7 @@ s-page::part(page) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  padding: 0 14px 14px;
+  padding: 14px 14px 14px;
 }
 
 .counterpulse-placement-tile {
@@ -5968,6 +5968,13 @@ s-page::part(page) {
   align-items: start;
 }
 
+.counterpulse-plan-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .counterpulse-plan-card__name {
   color: #202223;
   font-size: 16px;
@@ -5982,12 +5989,31 @@ s-page::part(page) {
   line-height: 32px;
 }
 
+.counterpulse-plan-card__tagline {
+  color: #5c5f62;
+  font-size: 13px;
+  line-height: 18px;
+}
+
 .counterpulse-plan-card__features {
   margin: 0;
   padding-left: 18px;
   color: #202223;
   font-size: 13px;
   line-height: 20px;
+}
+
+.counterpulse-pricing-table-wrap {
+  overflow-x: auto;
+}
+
+.counterpulse-pricing-table {
+  min-width: 760px;
+}
+
+.counterpulse-pricing-table th:first-child,
+.counterpulse-pricing-table td:first-child {
+  min-width: 180px;
 }
 
 .counterpulse-form-field {
@@ -6206,6 +6232,7 @@ s-page::part(page) {
   font-weight: 600;
   text-decoration: none;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .counterpulse-button {

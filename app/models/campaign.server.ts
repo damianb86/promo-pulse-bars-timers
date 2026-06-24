@@ -13,6 +13,7 @@ import {
   assertCanActivateCampaign,
   buildDuplicateCampaignName,
 } from "../services/campaign-rules";
+import { invalidateStorefrontCacheForShopId } from "../services/storefront-cache.server";
 import {
   campaignDuplicateInclude,
   campaignDetailsInclude,
@@ -40,6 +41,7 @@ import type {
   CampaignTranslationValues,
   StorefrontLocale,
 } from "../types/localization";
+import type { StorefrontCampaignSource } from "../utils/storefront-campaigns";
 
 type CampaignFilters = {
   status?: CampaignStatusValue;
@@ -737,7 +739,7 @@ export async function publishCampaignForShop(id: string, shopId: string) {
     lastSavedAt: now,
   });
 
-  return prisma.campaign.update({
+  const updatedCampaign = await prisma.campaign.update({
     where: { id },
     data: {
       status: CampaignStatus.ACTIVE,
@@ -747,6 +749,10 @@ export async function publishCampaignForShop(id: string, shopId: string) {
     },
     include: campaignDetailsInclude,
   });
+
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return updatedCampaign;
 }
 
 export async function updateCampaignTranslationsForShop(
@@ -820,7 +826,11 @@ export function deleteCampaign(id: string) {
 export async function deleteCampaignForShop(id: string, shopId: string) {
   await assertCampaignBelongsToShop(id, shopId);
 
-  return deleteCampaign(id);
+  const deletedCampaign = await deleteCampaign(id);
+
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return deletedCampaign;
 }
 
 export async function activateCampaign(id: string, shopId: string) {
@@ -860,11 +870,15 @@ async function updateCampaignStatusForShop(
 ) {
   await assertCampaignBelongsToShop(id, shopId);
 
-  return prisma.campaign.update({
+  const updatedCampaign = await prisma.campaign.update({
     where: { id },
     data: { status },
     include: campaignDetailsInclude,
   });
+
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return updatedCampaign;
 }
 
 export async function duplicateCampaign(id: string, shopId: string) {
@@ -1209,6 +1223,12 @@ export async function getActiveCampaignsForShop(
   at = new Date(),
   placementType?: PlacementType,
 ) {
+  const campaigns = await getPublishedCampaignsForShop(shopId);
+
+  return filterActivePublishedCampaigns(campaigns, at, placementType);
+}
+
+export async function getPublishedCampaignsForShop(shopId: string) {
   const campaigns = await prisma.campaign.findMany({
     where: {
       shopId,
@@ -1218,15 +1238,21 @@ export async function getActiveCampaignsForShop(
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
   });
 
-  return campaigns
-    .map(hydratePublishedCampaignSnapshot)
-    .filter((campaign) =>
-      isPublishedCampaignActive(campaign, at, placementType),
-    );
+  return campaigns.map(hydratePublishedCampaignSnapshot);
+}
+
+export function filterActivePublishedCampaigns(
+  campaigns: StorefrontCampaignSource[],
+  at = new Date(),
+  placementType?: PlacementType,
+) {
+  return campaigns.filter((campaign) =>
+    isPublishedCampaignActive(campaign, at, placementType),
+  );
 }
 
 function isPublishedCampaignActive(
-  campaign: CampaignDetailsRecord,
+  campaign: StorefrontCampaignSource,
   at: Date,
   placementType?: PlacementType,
 ) {

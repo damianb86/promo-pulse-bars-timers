@@ -152,8 +152,8 @@ export const action = async ({
       return { error: error.message };
     }
 
-    console.error("Agency action failed", error);
-    return { error: "Agency action failed. Try again." };
+    console.error("Multi-store action failed", error);
+    return { error: "Multi-store action failed. Try again." };
   }
 };
 
@@ -165,7 +165,7 @@ export default function AgencyDashboardPage() {
   );
 
   return (
-    <s-page inlineSize="large" heading="Agency">
+    <s-page inlineSize="large" heading="Multi-store">
       <s-section>
         <div className="counterpulse-dashboard-header">
           <div>
@@ -185,7 +185,7 @@ export default function AgencyDashboardPage() {
       {data.lockedReason ? (
         <PlanUpgradeCallout
           message={data.lockedReason}
-          title="Agency dashboard is locked"
+          title="Multi-store dashboard is locked"
         />
       ) : (
         <>
@@ -196,7 +196,7 @@ export default function AgencyDashboardPage() {
           )}
 
           {actionData?.notice && (
-            <AppToast tone="success" title="Agency action complete">
+            <AppToast tone="success" title="Multi-store action complete">
               <s-paragraph>
                 {actionData.notice}{" "}
                 {actionData.draftHref && (
@@ -207,7 +207,7 @@ export default function AgencyDashboardPage() {
           )}
 
           {actionData?.error && (
-            <AppAlert tone="critical" title="Agency action failed">
+            <AppAlert tone="critical" title="Multi-store action failed">
               <s-paragraph>{actionData.error}</s-paragraph>
             </AppAlert>
           )}
@@ -215,7 +215,7 @@ export default function AgencyDashboardPage() {
           <s-section heading="Shop context">
             <Form method="get" className="counterpulse-toolbar">
               <label className="counterpulse-form-field">
-                <span>Agency workspace</span>
+                <span>Workspace</span>
                 <input readOnly value={data.agencyName} />
               </label>
               <label className="counterpulse-form-field">

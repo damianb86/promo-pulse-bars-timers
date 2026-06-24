@@ -62,6 +62,38 @@
 
     updateDebug(root, "Consultando " + placement + ".", url);
 
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, placement, {
+          campaignId: campaignId || "",
+        })
+        .then(function (payload) {
+          applyStorefrontSettings(payload.settings);
+          var campaigns = Array.isArray(payload.campaigns)
+            ? payload.campaigns.map(applyExperiment)
+            : [];
+          updateDebug(
+            root,
+            "API OK para " +
+              placement +
+              ": " +
+              campaigns.length +
+              " campana(s).",
+            payload.url || url,
+          );
+          return campaigns;
+        })
+        .catch(function (error) {
+          updateDebug(
+            root,
+            "Error consultando " + placement + ": " + error.message,
+            url,
+          );
+          debug(placement, error);
+          return [];
+        });
+    }
+
     if (cached && cached.expiresAt > now) {
       updateDebug(
         root,

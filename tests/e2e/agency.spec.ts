@@ -14,10 +14,10 @@ test("agency dashboard shows assigned shops and copies a campaign as draft", asy
   await loginAsDemoShop("/app/agency");
 
   await expect(
-    page.getByRole("heading", { exact: true, name: "Agency" }),
+    page.getByRole("heading", { exact: true, name: "Multi-store" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Agency workspace")).toHaveValue(
-    "E2E Promo Agency",
+  await expect(page.getByLabel("Workspace")).toHaveValue(
+    "E2E Promo Workspace",
   );
   await expect(
     page.getByRole("link", { name: "demo-shop.myshopify.com" }),

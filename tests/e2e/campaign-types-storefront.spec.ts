@@ -11,6 +11,20 @@ test("COUNTDOWN_BAR renders every selected global placement", async ({
   page,
   resetDb,
 }) => {
+  const campaignReadUrls: string[] = [];
+
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+
+    if (
+      request.method() === "GET" &&
+      url.pathname === "/apps/promo-pulse" &&
+      url.searchParams.has("placement")
+    ) {
+      campaignReadUrls.push(url.toString());
+    }
+  });
+
   await resetDb("campaign-type-countdown");
   await page.goto("/__test/storefront");
 
@@ -24,6 +38,7 @@ test("COUNTDOWN_BAR renders every selected global placement", async ({
     "data-value",
     /\d{2} Hrs \d{2} Mins \d{2} Secs/,
   );
+  expect(new Set(campaignReadUrls).size).toBe(1);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -165,6 +180,13 @@ test("FREE_SHIPPING_GOAL updates threshold progress after cart changes without r
     "aria-valuenow",
     "50",
   );
+  await cartCard.evaluate((node) => {
+    (
+      window as Window & {
+        __promoPulseCartCardNode?: Element;
+      }
+    ).__promoPulseCartCardNode = node;
+  });
 
   cartPageCampaignRequests = 0;
   await page.evaluate(() => {
@@ -180,6 +202,19 @@ test("FREE_SHIPPING_GOAL updates threshold progress after cart changes without r
     "aria-valuenow",
     "100",
   );
+  await expect
+    .poll(() =>
+      cartCard.evaluate(
+        (node) =>
+          node ===
+          (
+            window as Window & {
+              __promoPulseCartCardNode?: Element;
+            }
+          ).__promoPulseCartCardNode,
+      ),
+    )
+    .toBe(true);
   expect(cartPageCampaignRequests).toBe(0);
 
   expectNoConsoleErrors(page);
@@ -245,6 +280,19 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   page,
   resetDb,
 }) => {
+  let productPageBadgeRequests = 0;
+
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+
+    if (
+      url.pathname === "/apps/promo-pulse/api/storefront/badges" &&
+      url.searchParams.get("placement") === "PRODUCT_PAGE_BADGE"
+    ) {
+      productPageBadgeRequests += 1;
+    }
+  });
+
   await resetDb("campaign-type-product-badge");
   await page.goto("/__test/storefront");
 
@@ -265,6 +313,11 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   await expect(page.locator("media-gallery .pp-badge")).toHaveCount(1);
   await expect(page.locator(".pp-badge")).toContainText("Launch badge");
   await expect(page.locator(".pp-badge .pp-countdown")).toBeVisible();
+
+  productPageBadgeRequests = 0;
+  await page.goto("/__test/storefront-product");
+  await expect(page.locator(".pp-badge")).toHaveCount(1);
+  expect(productPageBadgeRequests).toBe(0);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

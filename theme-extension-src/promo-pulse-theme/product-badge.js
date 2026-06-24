@@ -1,7 +1,11 @@
 (function () {
   "use strict";
 
-  var requestCache = {};
+  var requestCache = (window.PromoPulseBadgeRequestCache =
+    window.PromoPulseBadgeRequestCache || {});
+  var pendingRequests = (window.PromoPulseBadgePendingRequests =
+    window.PromoPulseBadgePendingRequests || {});
+  var badgeRequestTtlMs = 300000;
 
   [].slice.call(document.querySelectorAll(".pp-product-badge")).forEach(init);
   initAutomaticBadges();
@@ -165,17 +169,212 @@
   }
 
   function fetchJson(url) {
-    if (!requestCache[url]) {
-      requestCache[url] = fetch(url, {
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      }).then(function (response) {
-        if (!response.ok) throw new Error(response.status);
-        return response.json();
-      });
+    var cached = requestCache[url];
+    var stored = readStoredBadgePayload(url);
+    var headers = { Accept: "application/json" };
+    var now = Date.now();
+
+    if (cached && cached.expiresAt > now) {
+      return Promise.resolve(clonePayload(cached.payload));
     }
 
-    return requestCache[url];
+    if (stored && stored.expiresAt > now) {
+      requestCache[url] = {
+        expiresAt: stored.expiresAt,
+        payload: clonePayload(stored.payload),
+      };
+      return Promise.resolve(clonePayload(stored.payload));
+    }
+
+    if (pendingRequests[url]) {
+      return pendingRequests[url].then(clonePayload);
+    }
+
+    if (stored && stored.etag) {
+      headers["If-None-Match"] = stored.etag;
+    }
+
+    pendingRequests[url] = fetch(url, {
+        credentials: "same-origin",
+        headers: headers,
+      }).then(function (response) {
+        if (response.status === 304 && stored) {
+          return refreshStoredBadgePayload(url, stored, response);
+        }
+        if (!response.ok) throw new Error(response.status);
+        return response.json().then(function (payload) {
+          return storeBadgePayload(url, payload, response);
+        });
+      })
+      .finally(function () {
+        delete pendingRequests[url];
+      });
+
+    return pendingRequests[url].then(clonePayload);
+  }
+
+  function readStoredBadgePayload(url) {
+    var storage = safeStorage("localStorage");
+    var value;
+    var parsed;
+
+    if (!storage) return null;
+
+    try {
+      value = storage.getItem(badgeStorageKey(url));
+      parsed = value ? JSON.parse(value) : null;
+    } catch {
+      return null;
+    }
+
+    if (!parsed || !parsed.payload || !parsed.expiresAt) return null;
+
+    return parsed;
+  }
+
+  function storeBadgePayload(url, payload, response) {
+    var metadata = readBadgeCacheMetadata(response);
+
+    if (metadata.noStore) {
+      removeStoredBadgePayload(url);
+      return payload;
+    }
+
+    requestCache[url] = {
+      expiresAt: metadata.expiresAt,
+      payload: clonePayload(payload),
+    };
+    writeStoredBadgePayload(url, {
+      etag: metadata.etag,
+      expiresAt: metadata.expiresAt,
+      payload: payload,
+    });
+
+    return payload;
+  }
+
+  function refreshStoredBadgePayload(url, stored, response) {
+    var metadata = readBadgeCacheMetadata(response);
+    var payload = clonePayload(stored.payload);
+    var expiresAt = metadata.expiresAt || Date.now() + badgeRequestTtlMs;
+
+    if (metadata.noStore) {
+      removeStoredBadgePayload(url);
+      return payload;
+    }
+
+    requestCache[url] = {
+      expiresAt: expiresAt,
+      payload: clonePayload(payload),
+    };
+    writeStoredBadgePayload(url, {
+      etag: metadata.etag || stored.etag || "",
+      expiresAt: expiresAt,
+      payload: payload,
+    });
+
+    return payload;
+  }
+
+  function readBadgeCacheMetadata(response) {
+    var cacheControl = response.headers.get("cache-control") || "";
+    var expiresAtHeader =
+      response.headers.get("x-promo-pulse-cache-expires-at") || "";
+    var maxAgeHeader =
+      response.headers.get("x-promo-pulse-client-cache-max-age") || "";
+    var expiresAt = Date.parse(expiresAtHeader);
+    var maxAge = maxAgeHeader === "" ? NaN : Number(maxAgeHeader);
+    var cacheControlMaxAge = readCacheControlMaxAge(cacheControl);
+    var noStore = /\bno-store\b/i.test(cacheControl);
+
+    if (noStore) {
+      expiresAt = Date.now();
+    } else if (!Number.isFinite(expiresAt)) {
+      expiresAt =
+        Date.now() +
+        (Number.isFinite(maxAge) && maxAge >= 0
+          ? Math.floor(maxAge) * 1000
+          : cacheControlMaxAge !== null
+            ? cacheControlMaxAge * 1000
+            : badgeRequestTtlMs);
+    }
+
+    return {
+      etag: response.headers.get("etag") || "",
+      expiresAt: expiresAt,
+      noStore: noStore,
+    };
+  }
+
+  function readCacheControlMaxAge(value) {
+    var match = String(value || "").match(/\bmax-age=(\d+)/i);
+
+    return match ? Number(match[1]) : null;
+  }
+
+  function writeStoredBadgePayload(url, entry) {
+    var storage = safeStorage("localStorage");
+
+    if (!storage) return;
+
+    try {
+      storage.setItem(badgeStorageKey(url), JSON.stringify(entry));
+    } catch {
+      pruneStoredBadgePayloads(storage);
+      try {
+        storage.setItem(badgeStorageKey(url), JSON.stringify(entry));
+      } catch {
+        return;
+      }
+    }
+  }
+
+  function removeStoredBadgePayload(url) {
+    var storage = safeStorage("localStorage");
+
+    if (!storage) return;
+
+    try {
+      storage.removeItem(badgeStorageKey(url));
+    } catch {
+      return;
+    }
+  }
+
+  function pruneStoredBadgePayloads(storage) {
+    try {
+      Object.keys(storage).forEach(function (key) {
+        if (key.indexOf("promo_pulse_badges_") === 0) {
+          storage.removeItem(key);
+        }
+      });
+    } catch {
+      return;
+    }
+  }
+
+  function badgeStorageKey(url) {
+    return "promo_pulse_badges_" + hashString(url);
+  }
+
+  function clonePayload(payload) {
+    try {
+      return JSON.parse(JSON.stringify(payload || {}));
+    } catch {
+      return payload || {};
+    }
+  }
+
+  function hashString(value) {
+    var hash = 2166136261;
+    var index;
+
+    for (index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return (hash >>> 0).toString(36);
   }
 
   function initAutomaticBadges() {

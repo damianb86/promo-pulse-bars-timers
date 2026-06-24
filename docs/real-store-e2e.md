@@ -2,7 +2,7 @@
 
 This suite runs Playwright against a real Shopify dev store for Promo Pulse: Bars & Timers. It is separate from the local mocked E2E suite and is disabled unless `REAL_E2E_ENABLED=true`.
 
-Use it to smoke real admin, storefront, theme app embed, theme blocks, placement rendering, cart behavior, checkout loading, optional order creation, analytics, reports, templates, settings, billing, and cleanup flows.
+Use it to smoke real admin, storefront, theme app embed, theme blocks, placement rendering, cart behavior, checkout loading, optional order creation, analytics, reports, templates, settings, billing, and cleanup flows. The broader campaign behavior map is documented in `docs/campaign-system-map.md`.
 
 ## Safety Model
 
@@ -24,6 +24,7 @@ Use it to smoke real admin, storefront, theme app embed, theme blocks, placement
    - Product template: Promo Pulse product timer, badge, or low-stock block.
    - Cart page or drawer: Promo Pulse cart timer block if the theme does not use app embed drawer injection.
 6. Use a safe product dedicated to testing, or provide an Admin API token that can create a `[PP-E2E] Test Product`.
+7. For the full checkout-order spec, set `REAL_E2E_PRODUCT_HANDLE` to a paid, published product dedicated to E2E, enable Shopify Bogus Gateway/test payment, enable the Promo Pulse Web Pixel, and make sure the `orders/create` webhook is registered.
 
 Before running the suite, the app must be reachable by the store. For local/tunnel testing, run:
 
@@ -58,7 +59,8 @@ Useful optional values:
 SHOPIFY_STOREFRONT_PASSWORD=
 SHOPIFY_ADMIN_ACCESS_TOKEN=
 REAL_E2E_THEME_NAME=
-REAL_E2E_PRODUCT_HANDLE=
+REAL_E2E_PRODUCT_HANDLE=gen-prismhue-magnetic-photo-light-panel
+REAL_E2E_EXISTING_DISCOUNT_CODE=
 REAL_E2E_ALLOW_CHECKOUT=false
 REAL_E2E_ALLOW_ORDER=false
 REAL_E2E_CLEANUP=false
@@ -70,7 +72,7 @@ PROMOPULSE_REAL_E2E_PLAN=PRO
 REAL_E2E_TIMEOUT_MS=90000
 ```
 
-If `SHOPIFY_ADMIN_ACCESS_TOKEN` is set, helper code can create and clean up prefixed Shopify resources where the token has scope. If it is not set, product/cart specs require `REAL_E2E_PRODUCT_HANDLE`, and order creation specs skip.
+If `SHOPIFY_ADMIN_ACCESS_TOKEN` is set, helper code can create and clean up prefixed Shopify resources where the token has scope. If it is not set, product/cart specs require `REAL_E2E_PRODUCT_HANDLE`, and order creation specs skip. Set `REAL_E2E_EXISTING_DISCOUNT_CODE` to a real, safe Shopify code when running Basic discount link tests; the suite does not invent a fake merchant discount. The checkout-order attribution spec requires `REAL_E2E_PRODUCT_HANDLE` even when an Admin API token is present, because it must buy a real paid product and verify a real Shopify order discount.
 
 For local `shopify app dev` runs, Shopify can occasionally leave the active
 theme pointing at a stale `dev-...` theme extension asset URL. If storefront
@@ -157,6 +159,11 @@ Trace files are under `test-results/real-e2e`.
 - `14.design-timer-configuration.spec.ts`: timer design controls and published storefront styling.
 - `15.order-create.spec.ts`: prefixed order creation through Shopify Admin API when explicitly allowed.
 - `16.placement-matrix.spec.ts`: top, bottom, custom selector, product, collection, cart, thank-you, and order-status placement coverage.
+- `17.campaign-types-targeting-schedule.spec.ts`: campaign type matrix, targeting filters, schedule boundaries, and storefront cache refresh.
+- `18.offers-discounts-email.spec.ts`: real basic discount link, advanced rules persistence, unique-code auto-apply URL, and email timer PNG.
+- `19.experiments-winner-analytics.spec.ts`: variant serving, manual winner declaration, apply winner, analytics, reports, and recommendations.
+- `20.mobile-campaign-rendering.spec.ts`: mobile top/bottom bar and cart free-shipping rendering without overflow.
+- `21.checkout-discount-order-attribution.spec.ts`: generated unique code, Shopify checkout payment with Bogus Gateway, order discount verification, unique-code reconciliation, attributed order analytics, and reports.
 - `99.cleanup.spec.ts`: prefixed cleanup only when `REAL_E2E_CLEANUP=true`.
 
 ## Theme Editor Setup Required
@@ -169,6 +176,7 @@ Some specs skip if the store is not prepared:
 - Markets/locales missing: configure Shopify Markets/locales or localized URLs.
 - Unique codes, analytics, reports, experiments, templates: use a plan/dev config that enables those features.
 - Thank-you and order-status placements: enable the checkout/customer-account extensions and use a plan/dev config that enables checkout extensions.
+- Checkout order attribution: enable `REAL_E2E_ALLOW_CHECKOUT=true` and `REAL_E2E_ALLOW_ORDER=true`, configure Bogus Gateway/test payments, set a paid `REAL_E2E_PRODUCT_HANDLE`, deploy/configure the Promo Pulse Web Pixel, register the `orders/create` webhook, and provide an Admin API token with order and discount scopes. The generated checkout test uses card number `1`, future expiry, and arbitrary CVV.
 
 ## Cleanup
 
@@ -184,7 +192,7 @@ Cleanup only targets resources prefixed with `[PP-E2E]` or `PPE2E`. It does not 
 
 - Shopify login sessions expire; rerun `npm run test:e2e:real:auth` when storageState stops working.
 - Theme editor setup is intentionally manual because editing merchant themes via tests is brittle.
-- Real orders do not run by default and require both `REAL_E2E_ALLOW_ORDER=true` and `SHOPIFY_ADMIN_ACCESS_TOKEN`.
+- Real orders do not run by default and require both `REAL_E2E_ALLOW_ORDER=true` and `SHOPIFY_ADMIN_ACCESS_TOKEN`. Browser checkout orders additionally require `REAL_E2E_ALLOW_CHECKOUT=true`, a paid test product, Shopify Bogus Gateway/test payments, Web Pixel attribution, and `orders/create` webhook delivery.
 - Analytics, Web Pixel, and app proxy events can be delayed.
 - Storefront selectors vary by theme. Specs prefer roles/labels and use `data-testid` or stable Promo Pulse classes for widgets.
 - Admin API setup depends on token scopes and Shopify API availability. Without a token, set `REAL_E2E_PRODUCT_HANDLE`.

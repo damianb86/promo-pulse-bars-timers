@@ -65,7 +65,7 @@ export type E2ETestScenario =
   | "delivery-cutoff-after"
   | "cart-drawer"
   | "analytics"
-  | "premium"
+  | "pro"
   | "ab-test"
   | "experiment-metrics"
   | "auto-winner"
@@ -229,7 +229,7 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
   ) {
     await prisma.shop.update({
       where: { id: shopId },
-      data: { plan: ShopPlan.PREMIUM },
+      data: { plan: ShopPlan.PRO },
     });
   }
 
@@ -414,7 +414,7 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
   if (scenario === "analytics") {
     await prisma.shop.update({
       where: { id: shopId },
-      data: { plan: ShopPlan.PREMIUM },
+      data: { plan: ShopPlan.PRO },
     });
     await createCountdownCampaign(shopId, {
       discountCode: "SAVE20",
@@ -422,10 +422,10 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
     return;
   }
 
-  if (scenario === "premium") {
+  if (scenario === "pro") {
     await prisma.shop.update({
       where: { id: shopId },
-      data: { plan: ShopPlan.PREMIUM },
+      data: { plan: ShopPlan.PRO },
     });
     return;
   }
@@ -1416,17 +1416,17 @@ async function createRecommendationsScenario(shopId: string) {
 async function createAgencyScenario(shopId: string) {
   await prisma.shop.update({
     where: { id: shopId },
-    data: { plan: ShopPlan.AGENCY },
+    data: { plan: ShopPlan.PRO },
   });
 
   const secondShop = await createE2EShopWithSettings(
     "agency-second.myshopify.com",
-    ShopPlan.AGENCY,
+    ShopPlan.PRO,
     "e2e-agency-second-shop",
   );
   const unassignedShop = await createE2EShopWithSettings(
     "agency-hidden.myshopify.com",
-    ShopPlan.AGENCY,
+    ShopPlan.PRO,
     "e2e-agency-hidden-shop",
   );
 
@@ -1434,7 +1434,7 @@ async function createAgencyScenario(shopId: string) {
     createCountdownCampaign(shopId, {
       translations: [
         {
-          ...englishTranslation("Agency source campaign"),
+          ...englishTranslation("Multi-store source campaign"),
           ctaText: "Shop source",
         },
       ],
@@ -1460,7 +1460,7 @@ async function createAgencyScenario(shopId: string) {
   await Promise.all([
     prisma.campaign.update({
       where: { id: sourceCampaign.id },
-      data: { name: "E2E Agency Source Campaign" },
+      data: { name: "E2E Multi-store Source Campaign" },
     }),
     prisma.campaign.update({
       where: { id: secondCampaign.id },
@@ -1474,7 +1474,7 @@ async function createAgencyScenario(shopId: string) {
 
   await prisma.agencyAccount.create({
     data: {
-      name: "E2E Promo Agency",
+      name: "E2E Promo Workspace",
       shopAccesses: {
         create: [
           { shopId, role: AgencyShopRole.OWNER },

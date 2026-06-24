@@ -59,6 +59,8 @@ export default defineConfig({
         "**/12.settings-billing.spec.ts",
         "**/14.design-timer-configuration.spec.ts",
         "**/15.order-create.spec.ts",
+        "**/18.offers-discounts-email.spec.ts",
+        "**/19.experiments-winner-analytics.spec.ts",
         "**/99.cleanup.spec.ts",
       ],
       use: {
@@ -79,6 +81,8 @@ export default defineConfig({
         "**/08.unique-codes.spec.ts",
         "**/13.checkout-smoke.spec.ts",
         "**/16.placement-matrix.spec.ts",
+        "**/17.campaign-types-targeting-schedule.spec.ts",
+        "**/21.checkout-discount-order-attribution.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],
@@ -91,6 +95,7 @@ export default defineConfig({
         "**/02.storefront-countdown-bar.spec.ts",
         "**/03.product-page-blocks.spec.ts",
         "**/06.cart-drawer.spec.ts",
+        "**/20.mobile-campaign-rendering.spec.ts",
       ],
       use: {
         ...devices["Pixel 7"],

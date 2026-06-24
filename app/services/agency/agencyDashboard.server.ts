@@ -97,7 +97,7 @@ export async function getAgencyDashboard(
   return {
     agency: {
       id: context.agency.id,
-      name: context.agency.name ?? "Agency workspace",
+      name: context.agency.name ?? "Multi-store workspace",
     },
     selectedShopId: resolvedSelectedShopId,
     shops: accessRows.map((access) => {

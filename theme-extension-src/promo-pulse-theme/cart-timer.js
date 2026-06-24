@@ -316,6 +316,8 @@
 
   function fetchCampaigns(config, debugRoot) {
     var url = buildCampaignUrl(config);
+    var campaignId =
+      config.fallbackMode === "SPECIFIC_CAMPAIGN" ? config.campaignId : "";
 
     if (isPaused("PromoPulseProxyPausedUntil")) {
       updateDebug(
@@ -331,6 +333,37 @@
       "Consultando campanas " + config.placement + " elegibles.",
       url,
     );
+
+    if (window.PromoPulseFetchCampaigns) {
+      return window
+        .PromoPulseFetchCampaigns(config, config.placement, {
+          campaignId: campaignId,
+        })
+        .then(function (payload) {
+          applyStorefrontSettings(config, payload.settings);
+          var campaigns = Array.isArray(payload.campaigns)
+            ? payload.campaigns.map(applyExperiment)
+            : [];
+          updateDebug(
+            debugRoot,
+            "API OK: " +
+              campaigns.length +
+              " campana(s) elegibles para " +
+              config.placement +
+              ".",
+            payload.url || url,
+          );
+          return campaigns;
+        })
+        .catch(function (error) {
+          updateDebug(
+            debugRoot,
+            "Error consultando " + config.placement + ": " + error.message,
+            url,
+          );
+          throw error;
+        });
+    }
 
     return window
       .fetch(url, {
@@ -456,6 +489,7 @@
     var isFullWidth = !isDrawer && design.fullWidth === true;
     var layout = normalizeLayout(design.layout);
     var isInline = layout === "inline";
+    var existingCard = findExistingCartCard(root, campaign);
     var card;
 
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) {
@@ -474,6 +508,12 @@
         root,
         "Campana recibida, pero mobileEnabled=false y el dispositivo detectado es mobile.",
       );
+      return;
+    }
+
+    if (existingCard && campaign.type === "FREE_SHIPPING_GOAL") {
+      applyCartBlockWidth(root, isFullWidth);
+      updateExistingCartCampaign(existingCard, campaign, timerState, config);
       return;
     }
 
@@ -543,6 +583,59 @@
     root.replaceChildren(card);
     tick(card, campaign, config);
     emitImpression(campaign);
+  }
+
+  function findExistingCartCard(root, campaign) {
+    if (!root || !root.children) return null;
+
+    return (
+      [].slice.call(root.children).find(function (child) {
+        return (
+          child &&
+          child.classList &&
+          child.classList.contains("pp-cart-card") &&
+          child.dataset.campaignId === campaign.id
+        );
+      }) || null
+    );
+  }
+
+  function updateExistingCartCampaign(card, campaign, timerState, config) {
+    var design = campaign.design || {};
+    var subheadline = card.querySelector(
+      ".pp-message-copy > span:not(.pp-countdown)",
+    );
+    var nextMessage = buildCartCampaignDetail(campaign, timerState, config);
+    var countdown = card.querySelector(".pp-countdown");
+
+    card.setAttribute(
+      "aria-label",
+      ((campaign.texts || {}).headline || defaultHeadline(campaign)).trim(),
+    );
+
+    if (subheadline && subheadline.textContent !== nextMessage) {
+      subheadline.textContent = nextMessage;
+    }
+
+    updateFreeShippingProgress(card, campaign, config);
+
+    if (countdown && timerState.isActive) {
+      updateCountdownElement(
+        countdown,
+        timerState.remainingMs,
+        design,
+        countdown.classList.contains("pp-countdown--compact"),
+      );
+      replayCountdownTick(countdown);
+    }
+
+    if (timerState.isExpired) {
+      if (shouldHideExpiredCampaign(campaign)) {
+        removeCartCard(card, design);
+      } else {
+        card.classList.add("pp-bar--expired");
+      }
+    }
   }
 
   function applyCartBlockWidth(root, isFullWidth) {
@@ -637,21 +730,13 @@
     var copy = document.createElement("div");
     var subheadline = document.createElement("span");
     var headline = texts.headline || defaultHeadline(campaign);
-    var detail = texts.subheadline || "";
+    var detail = buildCartCampaignDetail(campaign, timerState, config);
     var design = campaign.design || {};
     var isInline = normalizeLayout(design.layout) === "inline";
 
     message.className = "pp-message";
     copy.className = "pp-message-copy";
     if (icon) message.appendChild(icon);
-
-    if (campaign.type === "FREE_SHIPPING_GOAL") {
-      detail = buildFreeShippingText(campaign, config) || detail;
-    }
-
-    if (timerState.isExpired && texts.expiredText) {
-      detail = texts.expiredText;
-    }
 
     copy.appendChild(node("strong", "", headline));
     if (detail) {
@@ -668,23 +753,17 @@
   }
 
   function renderFreeShippingProgress(campaign, config) {
-    var threshold = Number((campaign.freeShipping || {}).thresholdAmount || 0);
-    var subtotal = Number(config.cartSubtotal || 0);
-    var unlocked = threshold <= 0 || subtotal >= threshold;
-    var progress =
-      threshold > 0
-        ? Math.min(100, Math.max(0, (subtotal / threshold) * 100))
-        : 100;
+    var state = calculateFreeShippingProgress(campaign, config);
     var wrapper = document.createElement("div");
     var label = document.createElement("span");
     var track = document.createElement("span");
     var fill = document.createElement("span");
 
     wrapper.className = progressClassName("pp-cart-progress", campaign);
-    if (unlocked) wrapper.classList.add("is-unlocked");
-    wrapper.style.setProperty("--pp-progress", progress + "%");
+    if (state.unlocked) wrapper.classList.add("is-unlocked");
+    wrapper.style.setProperty("--pp-progress", state.progress + "%");
     label.className = "pp-cart-progress__label";
-    label.textContent = buildFreeShippingText(campaign, config) || "";
+    label.textContent = state.label;
     track.className = "pp-progress__track";
     track.dataset.testid = "free-shipping-progress";
     track.setAttribute("role", "progressbar");
@@ -694,15 +773,75 @@
     );
     track.setAttribute("aria-valuemin", "0");
     track.setAttribute("aria-valuemax", "100");
-    track.setAttribute("aria-valuenow", String(Math.round(progress)));
+    track.setAttribute("aria-valuenow", String(Math.round(state.progress)));
     fill.className = "pp-progress__fill";
-    fill.style.width = Math.max(0, progress) + "%";
+    fill.style.width = Math.max(0, state.progress) + "%";
 
     track.appendChild(fill);
     if (label.textContent) wrapper.appendChild(label);
     wrapper.appendChild(track);
 
     return wrapper;
+  }
+
+  function updateFreeShippingProgress(card, campaign, config) {
+    var progress = card.querySelector(".pp-cart-progress");
+    var track = progress && progress.querySelector(".pp-progress__track");
+    var fill = progress && progress.querySelector(".pp-progress__fill");
+    var label = progress && progress.querySelector(".pp-cart-progress__label");
+    var state;
+
+    if (!progress) return;
+
+    state = calculateFreeShippingProgress(campaign, config);
+    progress.className = progressClassName("pp-cart-progress", campaign);
+    progress.classList.toggle("is-unlocked", state.unlocked);
+    progress.style.setProperty("--pp-progress", state.progress + "%");
+
+    if (label && label.textContent !== state.label) {
+      label.textContent = state.label;
+    }
+    if (track) {
+      track.setAttribute(
+        "aria-label",
+        state.label || "Free shipping progress",
+      );
+      track.setAttribute("aria-valuenow", String(Math.round(state.progress)));
+    }
+    if (fill) {
+      fill.style.width = Math.max(0, state.progress) + "%";
+    }
+  }
+
+  function calculateFreeShippingProgress(campaign, config) {
+    var threshold = Number((campaign.freeShipping || {}).thresholdAmount || 0);
+    var subtotal = Number(config.cartSubtotal || 0);
+    var unlocked = threshold <= 0 || subtotal >= threshold;
+    var progress =
+      threshold > 0
+        ? Math.min(100, Math.max(0, (subtotal / threshold) * 100))
+        : 100;
+
+    return {
+      label: buildFreeShippingText(campaign, config) || "",
+      progress: progress,
+      unlocked: unlocked,
+    };
+  }
+
+  function buildCartCampaignDetail(campaign, timerState, config) {
+    var texts = campaign.texts || {};
+    var detail = texts.subheadline || "";
+
+    if (campaign.type === "FREE_SHIPPING_GOAL") {
+      detail = buildFreeShippingText(campaign, config) || detail;
+    }
+
+    if (timerState.isExpired && texts.expiredText) {
+      detail = texts.expiredText;
+    }
+
+    return detail;
   }
 
   function progressClassName(baseClass, campaign) {

@@ -163,7 +163,7 @@ export default function RecommendationsPage() {
             <div className="counterpulse-muted">{data.shopifyDomain}</div>
           </div>
           <div className="counterpulse-dashboard-header__badges">
-            <s-badge tone="info">Premium</s-badge>
+            <s-badge tone="info">Pro</s-badge>
             {data.createdCount > 0 && (
               <s-badge tone="success">{data.createdCount} new</s-badge>
             )}

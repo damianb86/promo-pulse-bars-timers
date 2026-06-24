@@ -658,7 +658,25 @@ test("experiment variant copy is prefilled and design preview updates live", asy
     name: "Edit variant",
   });
   await expect(variantDrawer).toBeVisible();
-  await expect(page.getByTestId("variant-drawer-preview")).toBeVisible();
+  const drawerPreviewWing = page.getByTestId("variant-drawer-preview");
+  await expect(drawerPreviewWing).toBeVisible();
+  const drawerPreviewFrame = drawerPreviewWing.locator(
+    ".counterpulse-variant-preview",
+  );
+  const drawerPreviewSurface = drawerPreviewWing.getByTestId(
+    "variant-preview-surface",
+  );
+  const drawerPreviewFrameBox = await drawerPreviewFrame.boundingBox();
+  const drawerPreviewSurfaceBox = await drawerPreviewSurface.boundingBox();
+
+  expect(drawerPreviewFrameBox).not.toBeNull();
+  expect(drawerPreviewSurfaceBox).not.toBeNull();
+  if (drawerPreviewFrameBox && drawerPreviewSurfaceBox) {
+    expect(drawerPreviewFrameBox.width).toBeGreaterThan(380);
+    expect(drawerPreviewFrameBox.height).toBeGreaterThanOrEqual(
+      drawerPreviewSurfaceBox.height - 1,
+    );
+  }
   await expect(
     variantDrawer.getByTestId("variant-preview-surface"),
   ).toHaveCount(0);
@@ -825,16 +843,23 @@ test("AI variant drawer generates a reviewable experiment variant", async ({
   await expect(aiDrawer.getByText("Trust proof")).toBeVisible();
   await expect(aiDrawer.getByTestId("variant-preview-surface")).toBeVisible();
   const aiPreviewFrame = aiSuggestion.locator(".counterpulse-variant-preview");
+  const aiCopy = aiSuggestion.locator(
+    ".counterpulse-ai-variant-suggestion__copy",
+  );
   await expect(aiPreviewFrame).toBeVisible();
 
+  const aiSuggestionBox = await aiSuggestion.boundingBox();
   const aiPreviewFrameBox = await aiPreviewFrame.boundingBox();
+  const aiCopyBox = await aiCopy.boundingBox();
 
+  expect(aiSuggestionBox).not.toBeNull();
   expect(aiPreviewFrameBox).not.toBeNull();
-  if (aiPreviewFrameBox) {
-    const previewRatio = aiPreviewFrameBox.width / aiPreviewFrameBox.height;
-
-    expect(previewRatio).toBeGreaterThan(1.55);
-    expect(previewRatio).toBeLessThan(1.95);
+  expect(aiCopyBox).not.toBeNull();
+  if (aiSuggestionBox && aiPreviewFrameBox && aiCopyBox) {
+    expect(aiPreviewFrameBox.width).toBeGreaterThan(
+      aiSuggestionBox.width * 0.84,
+    );
+    expect(aiPreviewFrameBox.y).toBeLessThan(aiCopyBox.y);
   }
 
   await aiDrawer.getByRole("button", { name: "Accept variant" }).click();

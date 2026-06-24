@@ -1874,6 +1874,13 @@ function AiVariantDrawer({
                 <h4>{suggestion.name}</h4>
               </div>
               <div className="counterpulse-ai-variant-suggestion__grid">
+                <div className="counterpulse-ai-variant-suggestion__preview">
+                  <span>Preview</span>
+                  <VariantMiniPreview
+                    design={previewVariant.design}
+                    viewModel={previewViewModel}
+                  />
+                </div>
                 <div className="counterpulse-ai-variant-suggestion__copy">
                   <strong>Hypothesis</strong>
                   <p>{suggestion.hypothesis}</p>
@@ -1882,13 +1889,6 @@ function AiVariantDrawer({
                   <VariantChangesList
                     changes={previewChanges}
                     title="What AI changed"
-                  />
-                </div>
-                <div className="counterpulse-ai-variant-suggestion__preview">
-                  <span>Preview</span>
-                  <VariantMiniPreview
-                    design={previewVariant.design}
-                    viewModel={previewViewModel}
                   />
                 </div>
               </div>

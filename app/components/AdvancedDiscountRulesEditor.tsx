@@ -245,7 +245,11 @@ export function AdvancedDiscountRulesEditor({
                       </FieldInfoButton>
                     }
                   >
-                    <select name="ruleType" defaultValue="TIERED_DISCOUNT">
+                    <select
+                      aria-label="Advanced discount rule type"
+                      name="ruleType"
+                      defaultValue="TIERED_DISCOUNT"
+                    >
                       {ruleTypeOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -281,7 +285,11 @@ export function AdvancedDiscountRulesEditor({
                       </FieldInfoButton>
                     }
                   >
-                    <select name="ruleStatus" defaultValue="DRAFT">
+                    <select
+                      aria-label="Advanced discount status"
+                      name="ruleStatus"
+                      defaultValue="DRAFT"
+                    >
                       {statusOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}

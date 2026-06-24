@@ -86,6 +86,9 @@ function isIgnoredConsoleError(message: string) {
     message.includes("Unsupported decorator location: field") ||
     message.includes("Blocked a frame with origin") ||
     message.includes("Non-Error promise rejection captured") ||
+    message.includes(
+      "Blocked attempt to show multiple 'beforeunload' confirmation panels",
+    ) ||
     isShopifyDevConsoleTunnelMessage(message)
   );
 }

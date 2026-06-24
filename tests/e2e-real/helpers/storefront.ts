@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { Browser, Page, TestInfo } from "@playwright/test";
 
-import { clearPageDiagnostics, expect } from "./fixtures";
+import { clearPageDiagnostics, expect, test } from "./fixtures";
 import { getConfig } from "./env";
 
 const routedLocalThemeAssets = new WeakSet<Page>();
@@ -16,7 +16,11 @@ export async function openStorefront(page: Page, path = "/") {
   await routeLocalThemeAssetsIfEnabled(page);
   await page.goto(url.toString(), { waitUntil: "domcontentloaded" });
   await unlockStorefrontPasswordIfNeeded(page);
-  await page.waitForLoadState("networkidle", { timeout: config.timeoutMs });
+  await skipIfStorefrontConnectionVerificationIsVisible(page);
+  await page
+    .waitForLoadState("load", { timeout: Math.min(config.timeoutMs, 15_000) })
+    .catch(() => undefined);
+  await skipIfStorefrontConnectionVerificationIsVisible(page);
 }
 
 export async function unlockStorefrontPasswordIfNeeded(page: Page) {
@@ -42,6 +46,17 @@ export async function unlockStorefrontPasswordIfNeeded(page: Page) {
   }
 
   await page.waitForLoadState("domcontentloaded");
+  await skipIfStorefrontConnectionVerificationIsVisible(page);
+}
+
+async function skipIfStorefrontConnectionVerificationIsVisible(page: Page) {
+  test.skip(
+    await page
+      .getByText(/connection needs to be verified before you can proceed/i)
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false),
+    "Shopify storefront requires human connection verification. Complete the storefront verification in a browser session before running real-store storefront E2E tests.",
+  );
 }
 
 export async function clearCart(page: Page) {

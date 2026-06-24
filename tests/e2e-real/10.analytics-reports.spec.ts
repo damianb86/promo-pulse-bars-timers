@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import { test, expect } from "./helpers/fixtures";
 import {
   skipIfMissingRequiredEnv,
@@ -81,17 +79,25 @@ test.describe("real analytics and reports", () => {
       );
     }
 
-    const download = await Promise.all([
-      page.waitForEvent("download"),
-      reports
-        .locator('[data-testid="reports-export-csv"], a', {
-          hasText: /export csv/i,
-        })
-        .first()
-        .click(),
-    ]).then(([downloadResult]) => downloadResult);
+    const exportButton = reports.getByTestId("reports-export-csv");
+    await expect(exportButton).toBeVisible();
+    const csvHref = await exportButton.getAttribute("data-export-href");
+    expect(csvHref).toBeTruthy();
 
-    expect(path.extname(download.suggestedFilename())).toBe(".csv");
+    const reportsUrl = "url" in reports ? reports.url() : page.url();
+    const csvUrl = new URL(csvHref ?? "", reportsUrl).toString();
+    const csvResponse = await page.request.get(csvUrl, {
+      headers: { Accept: "text/csv" },
+    });
+
+    expect(csvResponse.ok()).toBe(true);
+    expect(csvResponse.headers()["content-type"]).toContain("text/csv");
+    expect(await csvResponse.text()).toContain("Campaign");
+
+    await exportButton.click();
+    await expect(
+      reports.getByText(/report export failed/i),
+    ).toHaveCount(0);
     expect(campaignName).toContain("[PP-E2E]");
   });
 });

@@ -56,11 +56,9 @@ test.describe("real design and timer configuration", () => {
     let schedulePanel = app.getByRole("tabpanel", { name: "Schedule" });
 
     await selectTimerMode(app, "EVERGREEN_SESSION");
+    await schedulePanel.locator('input[name="timerDurationMinutes"]').fill("45");
     await schedulePanel
-      .locator('input[name="timerDurationMinutes"]')
-      .fill("45");
-    await schedulePanel
-      .getByLabel("Once it ends")
+      .locator('select[name="timerExpiredBehavior"]')
       .selectOption("SHOW_CUSTOM_TITLE");
     await schedulePanel
       .locator('input[name="expiredText"]')
@@ -99,9 +97,9 @@ test.describe("real design and timer configuration", () => {
       ),
     ).toBeChecked();
     await expect(schedulePanel.getByLabel("End date")).toHaveValue(endDate);
-    await expect(schedulePanel.getByLabel("Once it ends")).toHaveValue(
-      "SHOW_CUSTOM_TITLE",
-    );
+    await expect(
+      schedulePanel.locator('select[name="timerExpiredBehavior"]'),
+    ).toHaveValue("SHOW_CUSTOM_TITLE");
     await expect(
       schedulePanel.locator('input[name="expiredText"]'),
     ).toHaveValue("Timer finished for this buyer");

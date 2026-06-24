@@ -14,6 +14,7 @@ import { E2E_PREFIX, getConfig, uniqueName } from "./env";
 type CampaignOptions = Partial<{
   ctaText: string;
   ctaUrl: string;
+  freeShippingDiscountTitle: string;
   goal: string;
   headline: string;
   name: string;
@@ -31,6 +32,7 @@ export async function createCampaignViaUI(
   const values = {
     ctaText: "Shop now",
     ctaUrl: "/collections/all",
+    freeShippingDiscountTitle: "",
     goal: "Flash sale",
     headline: "Promo Pulse real E2E",
     name: uniqueName("Campaign"),
@@ -52,6 +54,10 @@ export async function createCampaignViaUI(
   await app
     .getByRole("combobox", { name: /^Status$/ })
     .selectOption(values.status);
+  await fillFreeShippingDiscountTitleIfPresent(app, {
+    campaignName: values.name,
+    title: values.freeShippingDiscountTitle,
+  });
 
   await clickCampaignBuilderTab(app, "message");
   const messagePanel = app.getByRole("tabpanel", { name: "Message" });
@@ -92,6 +98,23 @@ export async function createCampaignViaUI(
   }
 
   return values.name;
+}
+
+async function fillFreeShippingDiscountTitleIfPresent(
+  app: AppScope,
+  {
+    campaignName,
+    title,
+  }: {
+    campaignName: string;
+    title: string;
+  },
+) {
+  const discountTitle = app.getByLabel("Discount title").first();
+
+  if (!(await discountTitle.isVisible().catch(() => false))) return;
+
+  await discountTitle.fill(title || `${campaignName} free shipping`);
 }
 
 async function selectOnlyCampaignPlacement(scope: AppScope, placement: string) {

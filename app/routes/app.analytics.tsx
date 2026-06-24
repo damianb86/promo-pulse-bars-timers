@@ -1,7 +1,7 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { AppAlert } from "../components/Notifications";
-import { useLoaderData } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
@@ -127,7 +127,6 @@ export default function AnalyticsPage() {
     byDay,
     deviceBreakdown,
     rangeDays,
-    shopifyDomain,
     dataSource,
     error,
     lockedAnalyticsReason,
@@ -137,84 +136,113 @@ export default function AnalyticsPage() {
     summary.currencyCode,
   );
   const previousRangeLabel = `vs previous ${rangeDays} days`;
-  const rangeLabel = formatDateRangeLabel(byDay);
   const latestInsight = getLatestInsight(byDay);
   const dailyTrendRows = [...byDay].reverse();
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const exportHref = `/app/analytics/csv?range=${rangeDays}`;
+  const handleExport = async () => {
+    setIsExporting(true);
+    setExportError("");
+
+    try {
+      const response = await fetch(exportHref, {
+        credentials: "include",
+        headers: { Accept: "text/csv" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = `promo-pulse-analytics-${rangeDays}-days.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Failed to export Promo Pulse analytics", error);
+      setExportError("Analytics export failed. Try again in a moment.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
-    <s-page inlineSize="large" heading="Analytics">
-      {error && (
-        <AppAlert tone="critical" title="Analytics need attention">
-          <s-paragraph>{error}</s-paragraph>
-        </AppAlert>
-      )}
+    <s-page inlineSize="large">
+      <div className="counterpulse-campaigns-layout counterpulse-analytics-layout">
+        {(error || exportError) && (
+          <AppAlert tone="critical" title="Analytics need attention">
+            <s-paragraph>{error || exportError}</s-paragraph>
+          </AppAlert>
+        )}
 
-      {lockedAnalyticsReason && (
-        <PlanUpgradeCallout
-          message={lockedAnalyticsReason}
-          title="Analytics are locked"
-        />
-      )}
+        {lockedAnalyticsReason && (
+          <PlanUpgradeCallout
+            message={lockedAnalyticsReason}
+            title="Analytics are locked"
+          />
+        )}
 
-      <s-section>
-        <div className="counterpulse-analytics-header">
+        <div className="counterpulse-campaigns-header counterpulse-analytics-page-header">
           <div>
-            <p>Track performance and engagement across your promotions.</p>
-            <span className="counterpulse-analytics-header__shop">
-              {shopifyDomain ?? "No shop connected yet"}
-            </span>
-          </div>
-          <div className="counterpulse-analytics-header__badges">
-            {dataSource === "demo" && (
-              <s-badge tone="info">Development demo data</s-badge>
-            )}
-          </div>
-        </div>
-      </s-section>
-
-      {!lockedAnalyticsReason && (
-        <div
-          className="counterpulse-analytics-dashboard"
-          data-testid="analytics-dashboard"
-        >
-          <section className="counterpulse-analytics-toolbar">
-            <div
-              aria-label="Analytics date range"
-              className="counterpulse-analytics-range-tabs"
-            >
-              {[7, 30, 90].map((days) => (
-                <a
-                  aria-current={rangeDays === days ? "page" : undefined}
-                  className={rangeDays === days ? "is-active" : ""}
-                  href={`/app/analytics?range=${days}`}
-                  key={days}
-                >
-                  {days} days
-                </a>
-              ))}
+            <p className="counterpulse-kicker">Performance workspace</p>
+            <s-heading>Analytics</s-heading>
+            <s-paragraph>
+              Track campaign performance, engagement, checkout intent, and
+              attributed revenue across recent storefront activity.
+            </s-paragraph>
+            <div className="counterpulse-campaigns-header__meta">
+              <span>{rangeDays} day view</span>
+              <span>{formatNumber(summary.impressions)} impressions</span>
+              {dataSource === "demo" && <span>Development demo data</span>}
             </div>
+          </div>
+          <div className="counterpulse-campaigns-header__actions">
             <button
-              className="counterpulse-analytics-date-button"
+              className="counterpulse-button-secondary counterpulse-analytics-export"
+              data-export-href={exportHref}
+              data-testid="analytics-export-csv"
+              disabled={isExporting}
               type="button"
-            >
-              <span
-                aria-hidden="true"
-                className="counterpulse-analytics-date-button__icon"
-              />
-              {rangeLabel}
-              <span aria-hidden="true">v</span>
-            </button>
-            <a
-              className="counterpulse-analytics-export"
-              href="/app/reports/csv"
+              onClick={handleExport}
             >
               <span
                 aria-hidden="true"
                 className="counterpulse-analytics-export__icon"
               />
-              Export
-            </a>
-          </section>
+              {isExporting ? "Exporting..." : "Export CSV"}
+            </button>
+          </div>
+        </div>
+
+        {!lockedAnalyticsReason && (
+          <div
+            className="counterpulse-analytics-dashboard"
+            data-testid="analytics-dashboard"
+          >
+            <section className="counterpulse-analytics-toolbar">
+              <div
+                aria-label="Analytics date range"
+                className="counterpulse-analytics-range-tabs"
+              >
+                {[7, 30, 90].map((days) => (
+                  <Link
+                    aria-current={rangeDays === days ? "page" : undefined}
+                    className={rangeDays === days ? "is-active" : ""}
+                    key={days}
+                    to={`?range=${days}`}
+                  >
+                    {days} days
+                  </Link>
+                ))}
+              </div>
+            </section>
 
           <section className="counterpulse-analytics-metric-grid">
             <AnalyticsMetricCard
@@ -395,8 +423,9 @@ export default function AnalyticsPage() {
               </p>
             </article>
           </section>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </s-page>
   );
 }
@@ -679,12 +708,6 @@ function getLatestInsight(rows: AnalyticsByDayRow[]) {
   if (!latest) return "No impressions recorded in this period yet.";
 
   return `Impressions increased on ${formatDateShort(latest.date)}`;
-}
-
-function formatDateRangeLabel(rows: AnalyticsByDayRow[]) {
-  if (rows.length === 0) return "No date range";
-
-  return `${formatDateShort(rows[0].date)} - ${formatDateKey(rows[rows.length - 1].date)}`;
 }
 
 function formatDateKey(value: string) {

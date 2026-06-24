@@ -39,7 +39,44 @@ test("storefront events are saved and visible in analytics admin", async ({
   await page.waitForTimeout(500);
   await loginAsDemoShop("/app/analytics");
   await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
-  await expect(page.getByText("Campaign performance")).toBeVisible();
+  await expect(page.getByText("Performance workspace")).toBeVisible();
+  await expect(
+    page.getByText("Track performance and engagement across your promotions."),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Campaign performance" }),
+  ).toBeVisible();
+  await expect(page.locator(".counterpulse-analytics-date-button")).toHaveCount(
+    0,
+  );
+
+  await page.getByRole("link", { name: "30 days" }).click();
+  await expect(page).toHaveURL(/range=30/);
+  await expect(page.getByRole("link", { name: "30 days" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+
+  await page.getByRole("link", { name: "90 days" }).click();
+  await expect(page).toHaveURL(/range=90/);
+  await expect(page.getByRole("link", { name: "90 days" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  const exportButton = page.getByTestId("analytics-export-csv");
+  const exportHref = await exportButton.getAttribute("data-export-href");
+
+  expect(exportHref).toBe("/app/analytics/csv?range=90");
+  const csvResponse = await page.request.get(exportHref!);
+
+  expect(csvResponse.ok()).toBe(true);
+  expect(csvResponse.headers()["content-type"]).toContain("text/csv");
+  const csv = await csvResponse.text();
+
+  expect(csv).toContain("Summary,90 days");
+  expect(csv).toContain("Campaign");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

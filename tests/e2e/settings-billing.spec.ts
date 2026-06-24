@@ -1,5 +1,4 @@
 import {
-  confirmAction,
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
@@ -25,21 +24,20 @@ test("shop settings can be saved and persist after reload", async ({
   await page.getByLabel("Default currency").fill("ars");
   await page.getByLabel("Default country").fill("ar");
   await page.getByLabel("Brand name").fill("Promo Pulse E2E");
-  await page.getByLabel("Support email").fill("support@example.com");
   await page
     .getByLabel("Cart drawer selector")
     .fill("#CartDrawer .drawer__contents");
   await page.getByLabel("Debug mode").check();
   await page.getByLabel("Consent mode").selectOption("STRICT");
 
-  await page.getByRole("button", { name: "Save settings" }).click();
+  const saveBar = page.locator("ui-save-bar");
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url().includes("/app/settings") &&
         response.request().method() === "POST",
     ),
-    confirmAction(page, "Save settings"),
+    saveBar.getByRole("button", { name: "Save" }).click(),
   ]);
 
   await expect(page.getByText("Settings saved.")).toBeVisible();
@@ -52,14 +50,19 @@ test("shop settings can be saved and persist after reload", async ({
   await expect(page.getByLabel("Default currency")).toHaveValue("ARS");
   await expect(page.getByLabel("Default country")).toHaveValue("AR");
   await expect(page.getByLabel("Brand name")).toHaveValue("Promo Pulse E2E");
-  await expect(page.getByLabel("Support email")).toHaveValue(
-    "support@example.com",
-  );
+  await expect(page.getByLabel("Support email")).toHaveCount(0);
   await expect(page.getByLabel("Cart drawer selector")).toHaveValue(
     "#CartDrawer .drawer__contents",
   );
   await expect(page.getByLabel("Debug mode")).toBeChecked();
   await expect(page.getByLabel("Consent mode")).toHaveValue("STRICT");
+
+  await page.getByLabel("Brand name").fill("Discarded brand");
+  await page
+    .locator("ui-save-bar")
+    .getByRole("button", { name: "Discard" })
+    .click();
+  await expect(page.getByLabel("Brand name")).toHaveValue("Promo Pulse E2E");
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

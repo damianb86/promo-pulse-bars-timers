@@ -39,7 +39,6 @@ export type PublicShopSettings = Pick<
   | "defaultCurrency"
   | "enableDebugMode"
   | "brandName"
-  | "supportEmail"
   | "defaultCountry"
   | "customCartDrawerSelector"
   | "customCartPageSelector"
@@ -70,7 +69,6 @@ const maxLengths: Partial<Record<keyof ShopSettingsValues, number>> = {
   defaultTimezone: 80,
   defaultCurrency: 3,
   brandName: 80,
-  supportEmail: 255,
   defaultCountry: 2,
   customCartDrawerSelector: 255,
   customCartPageSelector: 255,
@@ -191,10 +189,6 @@ export function validateShopSettingsValues(values: ShopSettingsValues) {
     errors.defaultCountry = "Country must be a 2-letter ISO code.";
   }
 
-  if (values.supportEmail && !isValidEmail(values.supportEmail)) {
-    errors.supportEmail = "Enter a valid support email.";
-  }
-
   for (const selectorField of [
     "customCartDrawerSelector",
     "customCartPageSelector",
@@ -259,7 +253,6 @@ export function serializePublicShopSettings(
     defaultCurrency: settings.defaultCurrency,
     enableDebugMode: settings.enableDebugMode,
     brandName: settings.brandName,
-    supportEmail: settings.supportEmail,
     defaultCountry: settings.defaultCountry,
     customCartDrawerSelector: settings.customCartDrawerSelector,
     customCartPageSelector: settings.customCartPageSelector,
@@ -344,10 +337,6 @@ function isValidTimezone(value: string) {
   } catch {
     return false;
   }
-}
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function isReasonableCssSelector(value: string) {

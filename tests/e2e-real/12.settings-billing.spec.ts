@@ -15,19 +15,15 @@ test.describe("real settings and billing", () => {
   }) => {
     await openPromoPulseApp(page, "/app/settings");
     const app = await getAppFrameOrPage(page);
-    const supportEmail = `pp-e2e+${Date.now()}@example.com`;
+    const brandNameInput = app.getByLabel("Brand name");
+    const originalBrandName = await brandNameInput.inputValue();
+    const temporaryBrandName = `[PP-E2E] Promo Pulse ${Date.now()}`;
 
-    await app.getByLabel("Support email").fill(supportEmail);
-    await app.getByRole("button", { name: /save settings/i }).click();
-    const confirmDialog = app.getByRole("dialog", {
-      name: /save shop defaults/i,
-    });
-
-    if (await confirmDialog.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await confirmDialog
-        .getByRole("button", { name: /^save settings$/i })
-        .click();
-    }
+    await brandNameInput.fill(temporaryBrandName);
+    await app
+      .locator("ui-save-bar")
+      .getByRole("button", { name: /^save$/i })
+      .click();
 
     await expect(
       app.getByText(/settings saved/i).first(),
@@ -35,7 +31,18 @@ test.describe("real settings and billing", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     const reloaded = await getAppFrameOrPage(page);
-    await expect(reloaded.getByLabel("Support email")).toHaveValue(supportEmail);
+    await expect(reloaded.getByLabel("Brand name")).toHaveValue(
+      temporaryBrandName,
+    );
+
+    await reloaded.getByLabel("Brand name").fill(originalBrandName);
+    await reloaded
+      .locator("ui-save-bar")
+      .getByRole("button", { name: /^save$/i })
+      .click();
+    await expect(
+      reloaded.getByText(/settings saved/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
 
     await openPromoPulseApp(page, "/app/billing");
     const billing = await getAppFrameOrPage(page);

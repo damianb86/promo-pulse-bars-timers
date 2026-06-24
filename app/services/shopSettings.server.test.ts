@@ -21,13 +21,12 @@ describe("shop settings", () => {
     });
   });
 
-  it("validates locale, timezone, currency, country, email, and selectors", () => {
+  it("validates locale, timezone, currency, country, and selectors", () => {
     const errors = validateShopSettingsValues({
       ...defaultShopSettingsValues,
       defaultTimezone: "Mars/Base",
       defaultCurrency: "US",
       defaultCountry: "USA",
-      supportEmail: "not-email",
       customCartDrawerSelector: "<script>",
     });
 
@@ -35,7 +34,6 @@ describe("shop settings", () => {
       defaultTimezone: "Enter a valid IANA timezone.",
       defaultCurrency: "Currency must be a 3-letter ISO code.",
       defaultCountry: "Country must be a 2-letter ISO code.",
-      supportEmail: "Enter a valid support email.",
       customCartDrawerSelector: "Enter a valid CSS selector.",
     });
   });
@@ -67,13 +65,19 @@ describe("shop settings", () => {
   });
 
   it("serializes storefront-safe settings", () => {
-    expect(serializePublicShopSettings(defaultShopSettingsValues)).toEqual(
+    const serialized = serializePublicShopSettings({
+      ...defaultShopSettingsValues,
+      supportEmail: "support@example.com",
+    });
+
+    expect(serialized).toEqual(
       expect.objectContaining({
         defaultLocale: "en",
         customCartDrawerSelector: "",
         analyticsEnabled: true,
       }),
     );
+    expect(serialized).not.toHaveProperty("supportEmail");
   });
 
   it("falls back to default locale when storefront locale is disabled", () => {

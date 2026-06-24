@@ -80,7 +80,9 @@ export function TimezoneCombobox({
   onChange,
   value,
 }: TimezoneComboboxProps) {
-  const [selectedValue, setSelectedValue] = useState(value ?? defaultValue);
+  const isControlled = value !== undefined;
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const selectedValue = isControlled ? value : uncontrolledValue;
   const options = useMemo(
     () => ensureSelectedTimezoneOption(selectedValue),
     [selectedValue],
@@ -88,12 +90,14 @@ export function TimezoneCombobox({
   const selectedOption =
     options.find((item) => item.value === selectedValue) ?? options[0];
   const [query, setQuery] = useState(selectedOption.label);
+  const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const listboxId = useId();
   const inputId = useId();
+  const displayedQuery = editing ? query : selectedOption.label;
 
   const filteredOptions = useMemo(() => {
-    const normalizedQuery = normalizeSearchValue(query);
+    const normalizedQuery = normalizeSearchValue(displayedQuery);
 
     if (!normalizedQuery) return options;
 
@@ -102,11 +106,14 @@ export function TimezoneCombobox({
         normalizedQuery,
       ),
     );
-  }, [options, query]);
+  }, [options, displayedQuery]);
 
   const selectOption = (optionToSelect: TimezoneOption) => {
-    setSelectedValue(optionToSelect.value);
+    if (!isControlled) {
+      setUncontrolledValue(optionToSelect.value);
+    }
     setQuery(optionToSelect.label);
+    setEditing(false);
     setOpen(false);
     onChange?.(optionToSelect.value);
   };
@@ -135,13 +142,23 @@ export function TimezoneCombobox({
           autoComplete="off"
           id={inputId}
           role="combobox"
-          value={query}
-          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          value={displayedQuery}
+          onBlur={() =>
+            window.setTimeout(() => {
+              setOpen(false);
+              setEditing(false);
+            }, 120)
+          }
           onChange={(event) => {
             setQuery(event.currentTarget.value);
+            setEditing(true);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setQuery(selectedOption.label);
+            setEditing(true);
+            setOpen(true);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               setOpen(false);

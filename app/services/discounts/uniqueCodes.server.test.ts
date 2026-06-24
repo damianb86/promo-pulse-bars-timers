@@ -110,6 +110,7 @@ describe("Stage 2 unique discount code pools", () => {
         value: 15,
         startsAt: now,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        reassignExpiredUnused: true,
       }),
     ).resolves.toMatchObject({
       prefix: "VIPSALE",
@@ -119,6 +120,7 @@ describe("Stage 2 unique discount code pools", () => {
 
     expect(prismaMock.discountCodePool.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        reassignExpiredUnused: true,
         value: new Prisma.Decimal(15),
       }),
     });
@@ -174,6 +176,11 @@ describe("Stage 2 unique discount code pools", () => {
     });
 
     expect(createRemoteDiscount).toHaveBeenCalledTimes(2);
+    expect(prismaMock.uniqueDiscountCode.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        poolId: "pool-1",
+      }),
+    });
     expect(prismaMock.discountCodePool.update).toHaveBeenCalledWith({
       where: { id: "pool-1" },
       data: {
@@ -261,6 +268,7 @@ describe("Stage 2 unique discount code pools", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           status: UniqueDiscountCodeStatus.AVAILABLE,
+          poolId: "pool-1",
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         }),
       }),
@@ -320,13 +328,14 @@ describe("Stage 2 unique discount code pools", () => {
     expect(prismaMock.discountCodePool.findFirst).not.toHaveBeenCalled();
   });
 
-  it("returns expired unused codes to the pool when reassignment is enabled", async () => {
-    prismaMock.campaign.findFirst.mockResolvedValue(
-      campaign({ uniqueCodeReassignExpired: true }),
+  it("returns expired unused codes to the pool when that pool enables reassignment", async () => {
+    prismaMock.discountCodePool.findFirst.mockResolvedValue(
+      pool({ reassignExpiredUnused: true }),
     );
     prismaMock.uniqueDiscountCode.findMany.mockResolvedValue([
       uniqueCode({
         id: "code-expired",
+        poolId: "pool-1",
         status: UniqueDiscountCodeStatus.ASSIGNED,
         visitorId: "expired-visitor",
         expiresAt: new Date("2026-06-18T14:55:00.000Z"),
@@ -371,6 +380,7 @@ describe("Stage 2 unique discount code pools", () => {
         campaignId: "campaign-1",
         status: UniqueDiscountCodeStatus.ASSIGNED,
         expiresAt: { lte: now },
+        pool: { is: { reassignExpiredUnused: true } },
       },
       data: {
         status: UniqueDiscountCodeStatus.AVAILABLE,
@@ -379,6 +389,55 @@ describe("Stage 2 unique discount code pools", () => {
         assignedAt: null,
         expiresAt: null,
       },
+    });
+  });
+
+  it("expires unused codes when their pool does not enable reassignment", async () => {
+    prismaMock.uniqueDiscountCode.findMany.mockResolvedValue([
+      uniqueCode({
+        id: "code-expired",
+        poolId: "pool-1",
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+        visitorId: "expired-visitor",
+        expiresAt: new Date("2026-06-18T14:55:00.000Z"),
+      }),
+    ]);
+    prismaMock.uniqueDiscountCode.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+
+    await expect(
+      assignCodeToVisitor({
+        shopId: "shop-1",
+        campaignId: "campaign-1",
+        visitorId: "visitor-123",
+        now,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "Unique discount code pool is exhausted.",
+    });
+
+    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenCalledWith({
+      where: {
+        shopId: "shop-1",
+        campaignId: "campaign-1",
+        OR: [
+          {
+            status: UniqueDiscountCodeStatus.AVAILABLE,
+            expiresAt: { lte: now },
+          },
+          {
+            status: UniqueDiscountCodeStatus.ASSIGNED,
+            expiresAt: { lte: now },
+            OR: [
+              { poolId: null },
+              { pool: { is: { reassignExpiredUnused: false } } },
+            ],
+          },
+        ],
+      },
+      data: { status: UniqueDiscountCodeStatus.EXPIRED },
     });
   });
 
@@ -406,7 +465,9 @@ describe("Stage 2 unique discount code pools", () => {
   });
 
   it("expires visitor codes", async () => {
-    prismaMock.uniqueDiscountCode.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.uniqueDiscountCode.updateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
 
     await expect(
       expireVisitorCode({
@@ -423,6 +484,10 @@ describe("Stage 2 unique discount code pools", () => {
         campaignId: "campaign-1",
         visitorId: "visitor-123",
         status: UniqueDiscountCodeStatus.ASSIGNED,
+        OR: [
+          { poolId: null },
+          { pool: { is: { reassignExpiredUnused: false } } },
+        ],
       },
       data: {
         status: UniqueDiscountCodeStatus.EXPIRED,
@@ -431,18 +496,19 @@ describe("Stage 2 unique discount code pools", () => {
     });
   });
 
-  it("returns a visitor-expired code to available when explicit expiration reassigns unused codes", async () => {
-    prismaMock.campaign.findFirst.mockResolvedValue(
-      campaign({ uniqueCodeReassignExpired: true }),
-    );
-    prismaMock.uniqueDiscountCode.updateMany.mockResolvedValue({ count: 1 });
+  it("returns a visitor-expired code to available when explicit expiration targets a reassignment pool", async () => {
+    prismaMock.uniqueDiscountCode.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
 
-    await expireVisitorCode({
-      shopId: "shop-1",
-      campaignId: "campaign-1",
-      visitorId: "visitor-123",
-      now,
-    });
+    await expect(
+      expireVisitorCode({
+        shopId: "shop-1",
+        campaignId: "campaign-1",
+        visitorId: "visitor-123",
+        now,
+      }),
+    ).resolves.toEqual({ count: 1 });
 
     expect(
       prismaMock.uniqueDiscountCodeAssignment.updateMany,
@@ -459,21 +525,44 @@ describe("Stage 2 unique discount code pools", () => {
         expiredAt: now,
       },
     });
-    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenCalledWith({
-      where: {
-        shopId: "shop-1",
-        campaignId: "campaign-1",
-        visitorId: "visitor-123",
-        status: UniqueDiscountCodeStatus.ASSIGNED,
+    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        where: {
+          shopId: "shop-1",
+          campaignId: "campaign-1",
+          visitorId: "visitor-123",
+          status: UniqueDiscountCodeStatus.ASSIGNED,
+          pool: { is: { reassignExpiredUnused: true } },
+        },
+        data: {
+          status: UniqueDiscountCodeStatus.AVAILABLE,
+          visitorId: null,
+          sessionId: null,
+          assignedAt: null,
+          expiresAt: null,
+        },
       },
-      data: {
-        status: UniqueDiscountCodeStatus.AVAILABLE,
-        visitorId: null,
-        sessionId: null,
-        assignedAt: null,
-        expiresAt: null,
+    );
+    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: {
+          shopId: "shop-1",
+          campaignId: "campaign-1",
+          visitorId: "visitor-123",
+          status: UniqueDiscountCodeStatus.ASSIGNED,
+          OR: [
+            { poolId: null },
+            { pool: { is: { reassignExpiredUnused: false } } },
+          ],
+        },
+        data: {
+          status: UniqueDiscountCodeStatus.EXPIRED,
+          expiresAt: now,
+        },
       },
-    });
+    );
   });
 
   it("reads an assigned visitor code without returning expired assignments", async () => {
@@ -599,9 +688,7 @@ describe("Stage 2 unique discount code pools", () => {
   });
 });
 
-function campaign(
-  overrides: { plan?: ShopPlan; uniqueCodeReassignExpired?: boolean } = {},
-) {
+function campaign(overrides: { plan?: ShopPlan } = {}) {
   return {
     id: "campaign-1",
     shopId: "shop-1",
@@ -611,7 +698,6 @@ function campaign(
     shop: { plan: overrides.plan ?? ShopPlan.FREE },
     discountSync: {
       uniqueCodeExpiresMinutes: 45,
-      uniqueCodeReassignExpired: overrides.uniqueCodeReassignExpired ?? false,
     },
   };
 }
@@ -626,6 +712,7 @@ function pool(overrides = {}) {
     value: new Prisma.Decimal(10),
     startsAt: new Date("2026-06-18T14:00:00.000Z"),
     expiresAt: new Date("2026-06-18T18:00:00.000Z"),
+    reassignExpiredUnused: false,
     totalGenerated: 2,
     totalAssigned: 0,
     totalUsed: 0,
@@ -641,6 +728,7 @@ function uniqueCode(overrides = {}) {
     id: "code-1",
     shopId: "shop-1",
     campaignId: "campaign-1",
+    poolId: "pool-1",
     visitorId: null,
     sessionId: null,
     code: "VIP-CODE",

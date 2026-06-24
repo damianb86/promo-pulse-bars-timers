@@ -618,6 +618,7 @@ async function seedStage2DemoData({
       {
         shopId: shop.id,
         campaignId: flashSaleCampaign.id,
+        poolId: "demo-code-pool-flash-sale",
         visitorId: "demo-visitor-1",
         sessionId: "demo-session-1",
         code: "VIP-DEMO-001",
@@ -631,6 +632,7 @@ async function seedStage2DemoData({
       {
         shopId: shop.id,
         campaignId: flashSaleCampaign.id,
+        poolId: "demo-code-pool-flash-sale",
         visitorId: "demo-visitor-2",
         sessionId: "demo-session-2",
         code: "VIP-DEMO-002",

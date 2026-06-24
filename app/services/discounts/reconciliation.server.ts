@@ -49,12 +49,32 @@ export async function expireOldAssignedCodes({
   campaignId,
   now = new Date(),
 }: ExpireOldAssignedCodesInput = {}) {
+  const where = {
+    ...(shopId ? { shopId } : {}),
+    ...(campaignId ? { campaignId } : {}),
+    status: UniqueDiscountCodeStatus.ASSIGNED,
+    expiresAt: { lte: now },
+  };
+  const reassignedCodes = await prisma.uniqueDiscountCode.updateMany({
+    where: {
+      ...where,
+      pool: { is: { reassignExpiredUnused: true } },
+    },
+    data: {
+      status: UniqueDiscountCodeStatus.AVAILABLE,
+      visitorId: null,
+      sessionId: null,
+      assignedAt: null,
+      expiresAt: null,
+    },
+  });
   const expiredCodes = await prisma.uniqueDiscountCode.updateMany({
     where: {
-      ...(shopId ? { shopId } : {}),
-      ...(campaignId ? { campaignId } : {}),
-      status: UniqueDiscountCodeStatus.ASSIGNED,
-      expiresAt: { lte: now },
+      ...where,
+      OR: [
+        { poolId: null },
+        { pool: { is: { reassignExpiredUnused: false } } },
+      ],
     },
     data: { status: UniqueDiscountCodeStatus.EXPIRED },
   });
@@ -69,7 +89,7 @@ export async function expireOldAssignedCodes({
   });
 
   return {
-    expiredCodes: expiredCodes.count,
+    expiredCodes: expiredCodes.count + reassignedCodes.count,
     expiredPools: expiredPools.count,
   };
 }
@@ -233,9 +253,18 @@ async function incrementPoolCounterForCode(
   code: {
     shopId: string;
     campaignId: string;
+    poolId?: string | null;
     code: string;
   },
 ) {
+  if (code.poolId) {
+    await client.discountCodePool.update({
+      where: { id: code.poolId },
+      data: { totalUsed: { increment: 1 } },
+    });
+    return;
+  }
+
   const prefix = code.code.split("-")[0];
 
   if (!prefix) return;

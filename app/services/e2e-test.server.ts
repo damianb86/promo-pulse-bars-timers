@@ -925,7 +925,7 @@ async function createUniqueDiscountCampaign(
     },
   });
 
-  await prisma.discountCodePool.create({
+  const pool = await prisma.discountCodePool.create({
     data: {
       shopId,
       campaignId: campaign.id,
@@ -944,6 +944,7 @@ async function createUniqueDiscountCampaign(
       data: codes.map((code) => ({
         shopId,
         campaignId: campaign.id,
+        poolId: pool.id,
         code,
         expiresAt: endsAt,
         status: UniqueDiscountCodeStatus.AVAILABLE,

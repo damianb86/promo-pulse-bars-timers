@@ -1,10 +1,8 @@
-import {
-  EmailTimerExpiredBehavior,
-  UniqueDiscountCodeStatus,
-} from "@prisma/client";
+import { EmailTimerExpiredBehavior } from "@prisma/client";
 import type { ActionFunctionArgs } from "react-router";
 
 import prisma from "../db.server";
+import { expireVisitorCode } from "../services/discounts/uniqueCodes.server";
 import { requireE2ETestMode } from "../services/e2e-test.server";
 import { normalizeShopDomain } from "../utils/storefront-campaigns";
 
@@ -45,18 +43,11 @@ async function expireUniqueCode(body: Stage2TestBody) {
 
   if (!shop) return json({ error: "Shop not found." }, 404);
 
-  const now = new Date();
-  const result = await prisma.uniqueDiscountCode.updateMany({
-    where: {
-      shopId: shop.id,
-      campaignId: readText(body.campaignId),
-      visitorId: readText(body.visitorId),
-      status: UniqueDiscountCodeStatus.ASSIGNED,
-    },
-    data: {
-      status: UniqueDiscountCodeStatus.EXPIRED,
-      expiresAt: new Date(now.getTime() - 1000),
-    },
+  const result = await expireVisitorCode({
+    shopId: shop.id,
+    campaignId: readText(body.campaignId),
+    visitorId: readText(body.visitorId),
+    now: new Date(),
   });
 
   return json({ ok: true, expired: result.count }, 200);

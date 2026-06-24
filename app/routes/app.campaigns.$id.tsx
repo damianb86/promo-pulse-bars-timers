@@ -1025,6 +1025,7 @@ export const action = async ({
             : parsed.discountValue,
         startsAt: parsed.startsAt,
         expiresAt: parsed.endsAt,
+        reassignExpiredUnused: parsed.values.uniqueCodeReassignExpired,
       });
       const result = await generateCodeBatch({
         shopId: shop.id,
@@ -3472,6 +3473,7 @@ function toUniqueCodePoolRow(pool: {
   totalGenerated: number;
   totalAssigned: number;
   totalUsed: number;
+  reassignExpiredUnused: boolean;
   expiresAt: Date | string | null;
 }): UniqueCodePoolRow {
   return {
@@ -3483,6 +3485,7 @@ function toUniqueCodePoolRow(pool: {
     totalGenerated: pool.totalGenerated,
     totalAssigned: pool.totalAssigned,
     totalUsed: pool.totalUsed,
+    reassignExpiredUnused: pool.reassignExpiredUnused,
     expiresAt: toShortDateTime(pool.expiresAt),
   };
 }

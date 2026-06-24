@@ -90,6 +90,7 @@ describe("unique discount code reconciliation", () => {
       where: { id: "pool-1" },
       data: { totalUsed: { increment: 1 } },
     });
+    expect(prismaMock.discountCodePool.findFirst).not.toHaveBeenCalled();
   });
 
   it("is idempotent when Shopify retries an already used code", async () => {
@@ -154,25 +155,52 @@ describe("unique discount code reconciliation", () => {
     });
   });
 
-  it("expires old assigned codes and expired pools", async () => {
-    prismaMock.uniqueDiscountCode.updateMany.mockResolvedValue({ count: 2 });
+  it("reassigns old assigned codes for enabled pools, expires the rest, and expires old pools", async () => {
+    prismaMock.uniqueDiscountCode.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 2 });
     prismaMock.discountCodePool.updateMany.mockResolvedValue({ count: 1 });
 
     await expect(
       expireOldAssignedCodes({ shopId: "shop-1", now }),
     ).resolves.toEqual({
-      expiredCodes: 2,
+      expiredCodes: 3,
       expiredPools: 1,
     });
 
-    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenCalledWith({
-      where: {
-        shopId: "shop-1",
-        status: UniqueDiscountCodeStatus.ASSIGNED,
-        expiresAt: { lte: now },
+    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        where: {
+          shopId: "shop-1",
+          status: UniqueDiscountCodeStatus.ASSIGNED,
+          expiresAt: { lte: now },
+          pool: { is: { reassignExpiredUnused: true } },
+        },
+        data: {
+          status: UniqueDiscountCodeStatus.AVAILABLE,
+          visitorId: null,
+          sessionId: null,
+          assignedAt: null,
+          expiresAt: null,
+        },
       },
-      data: { status: UniqueDiscountCodeStatus.EXPIRED },
-    });
+    );
+    expect(prismaMock.uniqueDiscountCode.updateMany).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: {
+          shopId: "shop-1",
+          status: UniqueDiscountCodeStatus.ASSIGNED,
+          expiresAt: { lte: now },
+          OR: [
+            { poolId: null },
+            { pool: { is: { reassignExpiredUnused: false } } },
+          ],
+        },
+        data: { status: UniqueDiscountCodeStatus.EXPIRED },
+      },
+    );
     expect(prismaMock.discountCodePool.updateMany).toHaveBeenCalledWith({
       where: {
         shopId: "shop-1",
@@ -226,6 +254,7 @@ function uniqueCode(overrides = {}) {
     id: "code-1",
     shopId: "shop-1",
     campaignId: "campaign-1",
+    poolId: "pool-1",
     code: "VIP-ORDER",
     status: UniqueDiscountCodeStatus.ASSIGNED,
     orderId: null,

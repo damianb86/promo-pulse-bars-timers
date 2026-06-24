@@ -562,7 +562,7 @@ async function seedUniqueCodes({
   prefix: string;
   shopId: string;
 }) {
-  await prisma.discountCodePool.create({
+  const pool = await prisma.discountCodePool.create({
     data: {
       shopId,
       campaignId: campaign.id,
@@ -580,6 +580,7 @@ async function seedUniqueCodes({
     data: Array.from({ length: codeCount }, (_, index) => ({
       shopId,
       campaignId: campaign.id,
+      poolId: pool.id,
       code: `${prefix}-${String(index + 1).padStart(3, "0")}`,
       expiresAt,
       status: UniqueDiscountCodeStatus.AVAILABLE,

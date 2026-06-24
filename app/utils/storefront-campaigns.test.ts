@@ -139,7 +139,6 @@ describe("storefront campaign serialization", () => {
         endpoint: "/api/storefront/unique-code/assign",
         autoApply: true,
         expiresMinutes: 45,
-        reassignExpired: true,
       },
     });
     expect(JSON.stringify(serialized)).not.toContain("uniqueCodePrefix");

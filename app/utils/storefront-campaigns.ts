@@ -601,7 +601,6 @@ function serializeDiscount(discountSync: DiscountSync | null) {
             endpoint: "/api/storefront/unique-code/assign",
             autoApply: discountSync.uniqueCodeAutoApply,
             expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
-            reassignExpired: discountSync.uniqueCodeReassignExpired,
           }
         : null,
   };

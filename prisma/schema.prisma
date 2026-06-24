@@ -419,6 +419,7 @@ model UniqueDiscountCode {
   id                String                   @id @default(cuid())
   shopId            String
   campaignId        String
+  poolId            String?
   visitorId         String?
   sessionId         String?
   code              String
@@ -433,11 +434,13 @@ model UniqueDiscountCode {
 
   shop        Shop                           @relation(fields: [shopId], references: [id], onDelete: Cascade)
   campaign    Campaign                       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pool        DiscountCodePool?              @relation(fields: [poolId], references: [id], onDelete: SetNull)
   assignments UniqueDiscountCodeAssignment[]
 
   @@unique([shopId, code])
   @@index([campaignId, status])
   @@index([campaignId, visitorId])
+  @@index([poolId, status])
   @@index([sessionId])
   @@index([orderId])
   @@index([expiresAt])
@@ -469,23 +472,25 @@ model UniqueDiscountCodeAssignment {
 }
 
 model DiscountCodePool {
-  id             String                 @id @default(cuid())
-  shopId         String
-  campaignId     String
-  prefix         String
-  discountType   DiscountCodeValueType
-  value          Decimal?
-  startsAt       DateTime?
-  expiresAt      DateTime?
-  totalGenerated Int                    @default(0)
-  totalAssigned  Int                    @default(0)
-  totalUsed      Int                    @default(0)
-  status         DiscountCodePoolStatus @default(DRAFT)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  id                    String                 @id @default(cuid())
+  shopId                String
+  campaignId            String
+  prefix                String
+  discountType          DiscountCodeValueType
+  value                 Decimal?
+  startsAt              DateTime?
+  expiresAt             DateTime?
+  reassignExpiredUnused Boolean                @default(false)
+  totalGenerated        Int                    @default(0)
+  totalAssigned         Int                    @default(0)
+  totalUsed             Int                    @default(0)
+  status                DiscountCodePoolStatus @default(DRAFT)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 
-  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  shop     Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  codes    UniqueDiscountCode[]
 
   @@index([shopId, status])
   @@index([campaignId, status])

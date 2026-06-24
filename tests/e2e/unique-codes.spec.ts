@@ -41,6 +41,7 @@ test("unique codes can be generated and assigned per visitor", async ({
   await uniqueCodesForm.getByLabel("Discount type").selectOption("PERCENTAGE");
   await uniqueCodesForm.getByLabel("Discount value").fill("15");
   await uniqueCodesForm.getByLabel("Duration per visitor").fill("60");
+  await uniqueCodesForm.getByLabel("Reassign unused expired codes").check();
   await uniqueCodesForm.getByLabel("Total codes to generate").fill("2");
   const autoApply = uniqueCodesForm.getByLabel("Auto-apply visitor codes");
   if (!(await autoApply.isChecked())) {
@@ -58,8 +59,13 @@ test("unique codes can be generated and assigned per visitor", async ({
   ]);
   await expect(page.getByText("Generated 2 unique codes.")).toBeVisible();
   await expect(
-    page.getByRole("row", { name: /STG2 Percentage 15 Active 2/ }),
+    page.getByRole("columnheader", { name: "Reassign unused" }),
   ).toBeVisible();
+  const generatedPoolRow = page.getByRole("row", {
+    name: /STG2 Percentage 15 Active 2/,
+  });
+  await expect(generatedPoolRow).toBeVisible();
+  await expect(generatedPoolRow).toContainText("Yes");
   await publishCurrentCampaign(page);
 
   await gotoStorefront(page, "stage2-visitor-a", "stage2-session-a");
@@ -111,6 +117,11 @@ test("unique codes can be generated and assigned per visitor", async ({
     /ended|no longer available/i,
   );
   await expect(page.locator(".pp-unique-code__value")).toHaveCount(0);
+
+  await gotoStorefront(page, "stage2-visitor-c", "stage2-session-c");
+  await expect(page.locator(".pp-unique-code__value").first()).toHaveText(
+    codeB,
+  );
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

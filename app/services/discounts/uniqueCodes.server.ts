@@ -29,6 +29,7 @@ export type CreateDiscountCodePoolInput = {
   value?: number | string | null;
   startsAt?: Date | string | null;
   expiresAt?: Date | string | null;
+  reassignExpiredUnused?: boolean;
   now?: Date;
 };
 
@@ -99,10 +100,7 @@ type CampaignForUniqueCodes = Pick<
   "id" | "shopId" | "name" | "startsAt" | "endsAt"
 > & {
   shop: Pick<Shop, "plan">;
-  discountSync: Pick<
-    DiscountSync,
-    "uniqueCodeExpiresMinutes" | "uniqueCodeReassignExpired"
-  > | null;
+  discountSync: Pick<DiscountSync, "uniqueCodeExpiresMinutes"> | null;
 };
 
 type UniqueCodesPrismaClient = typeof prisma | Prisma.TransactionClient;
@@ -127,6 +125,7 @@ export async function createDiscountCodePool({
   value,
   startsAt,
   expiresAt,
+  reassignExpiredUnused = false,
   now = new Date(),
 }: CreateDiscountCodePoolInput) {
   const campaign = await loadCampaignForUniqueCodes(shopId, campaignId);
@@ -152,6 +151,7 @@ export async function createDiscountCodePool({
         normalizedValue === null ? null : new Prisma.Decimal(normalizedValue),
       startsAt: normalizedStartsAt,
       expiresAt: normalizedExpiresAt,
+      reassignExpiredUnused,
       status: DiscountCodePoolStatus.ACTIVE,
     },
   });
@@ -188,6 +188,7 @@ export async function generateCodeBatch({
       campaignId,
       code,
       expiresAt: pool.expiresAt,
+      poolId: pool.id,
     });
 
     if (!localCode) continue;
@@ -250,8 +251,6 @@ export async function assignCodeToVisitor({
       shopId,
       campaignId,
       now,
-      reassignExpiredCodes:
-        campaign.discountSync?.uniqueCodeReassignExpired === true,
     });
 
     const existingCode = await findReusableVisitorCode(tx, {
@@ -291,7 +290,7 @@ export async function assignCodeToVisitor({
         shopId,
         campaignId,
         status: UniqueDiscountCodeStatus.AVAILABLE,
-        code: { startsWith: `${pool.prefix}-` },
+        poolId: pool.id,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       orderBy: [{ createdAt: "asc" }],
@@ -381,9 +380,6 @@ export async function expireVisitorCode({
   now = new Date(),
 }: VisitorCodeLookupInput) {
   const normalizedVisitorId = normalizeVisitorId(visitorId);
-  const campaign = await loadCampaignForUniqueCodes(shopId, campaignId);
-  const reassignExpiredCodes =
-    campaign.discountSync?.uniqueCodeReassignExpired === true;
 
   return prisma.$transaction(async (tx) => {
     await tx.uniqueDiscountCodeAssignment.updateMany({
@@ -400,26 +396,40 @@ export async function expireVisitorCode({
       },
     });
 
-    return tx.uniqueDiscountCode.updateMany({
+    const returned = await tx.uniqueDiscountCode.updateMany({
       where: {
         shopId,
         campaignId,
         visitorId: normalizedVisitorId,
         status: UniqueDiscountCodeStatus.ASSIGNED,
+        pool: { is: { reassignExpiredUnused: true } },
       },
-      data: reassignExpiredCodes
-        ? {
-            status: UniqueDiscountCodeStatus.AVAILABLE,
-            visitorId: null,
-            sessionId: null,
-            assignedAt: null,
-            expiresAt: null,
-          }
-        : {
-            status: UniqueDiscountCodeStatus.EXPIRED,
-            expiresAt: now,
-          },
+      data: {
+        status: UniqueDiscountCodeStatus.AVAILABLE,
+        visitorId: null,
+        sessionId: null,
+        assignedAt: null,
+        expiresAt: null,
+      },
     });
+    const expired = await tx.uniqueDiscountCode.updateMany({
+      where: {
+        shopId,
+        campaignId,
+        visitorId: normalizedVisitorId,
+        status: UniqueDiscountCodeStatus.ASSIGNED,
+        OR: [
+          { poolId: null },
+          { pool: { is: { reassignExpiredUnused: false } } },
+        ],
+      },
+      data: {
+        status: UniqueDiscountCodeStatus.EXPIRED,
+        expiresAt: now,
+      },
+    });
+
+    return { count: returned.count + expired.count };
   });
 }
 
@@ -648,7 +658,6 @@ async function loadCampaignForUniqueCodes(shopId: string, campaignId: string) {
       discountSync: {
         select: {
           uniqueCodeExpiresMinutes: true,
-          uniqueCodeReassignExpired: true,
         },
       },
     },
@@ -796,17 +805,20 @@ async function createAvailableCode({
   campaignId,
   code,
   expiresAt,
+  poolId,
 }: {
   shopId: string;
   campaignId: string;
   code: string;
   expiresAt: Date | null;
+  poolId: string;
 }) {
   try {
     return await prisma.uniqueDiscountCode.create({
       data: {
         shopId,
         campaignId,
+        poolId,
         code,
         expiresAt,
         status: UniqueDiscountCodeStatus.AVAILABLE,
@@ -825,12 +837,10 @@ async function expireCampaignCodes(
     shopId,
     campaignId,
     now,
-    reassignExpiredCodes,
   }: {
     shopId: string;
     campaignId: string;
     now: Date;
-    reassignExpiredCodes: boolean;
   },
 ) {
   const expiredAssignedCodes = await client.uniqueDiscountCode.findMany({
@@ -861,47 +871,41 @@ async function expireCampaignCodes(
     });
   }
 
-  if (reassignExpiredCodes) {
-    await client.uniqueDiscountCode.updateMany({
-      where: {
-        shopId,
-        campaignId,
-        status: UniqueDiscountCodeStatus.ASSIGNED,
-        expiresAt: { lte: now },
-      },
-      data: {
-        status: UniqueDiscountCodeStatus.AVAILABLE,
-        visitorId: null,
-        sessionId: null,
-        assignedAt: null,
-        expiresAt: null,
-      },
-    });
-
-    await client.uniqueDiscountCode.updateMany({
-      where: {
-        shopId,
-        campaignId,
-        status: UniqueDiscountCodeStatus.AVAILABLE,
-        expiresAt: { lte: now },
-      },
-      data: { status: UniqueDiscountCodeStatus.EXPIRED },
-    });
-
-    return;
-  }
+  await client.uniqueDiscountCode.updateMany({
+    where: {
+      shopId,
+      campaignId,
+      status: UniqueDiscountCodeStatus.ASSIGNED,
+      expiresAt: { lte: now },
+      pool: { is: { reassignExpiredUnused: true } },
+    },
+    data: {
+      status: UniqueDiscountCodeStatus.AVAILABLE,
+      visitorId: null,
+      sessionId: null,
+      assignedAt: null,
+      expiresAt: null,
+    },
+  });
 
   await client.uniqueDiscountCode.updateMany({
     where: {
       shopId,
       campaignId,
-      status: {
-        in: [
-          UniqueDiscountCodeStatus.AVAILABLE,
-          UniqueDiscountCodeStatus.ASSIGNED,
-        ],
-      },
-      expiresAt: { lte: now },
+      OR: [
+        {
+          status: UniqueDiscountCodeStatus.AVAILABLE,
+          expiresAt: { lte: now },
+        },
+        {
+          status: UniqueDiscountCodeStatus.ASSIGNED,
+          expiresAt: { lte: now },
+          OR: [
+            { poolId: null },
+            { pool: { is: { reassignExpiredUnused: false } } },
+          ],
+        },
+      ],
     },
     data: { status: UniqueDiscountCodeStatus.EXPIRED },
   });
@@ -1083,6 +1087,14 @@ async function incrementPoolCounterForCode(
   code: UniqueDiscountCode,
   counter: "totalUsed",
 ) {
+  if (code.poolId) {
+    await prisma.discountCodePool.update({
+      where: { id: code.poolId },
+      data: { [counter]: { increment: 1 } },
+    });
+    return;
+  }
+
   const prefix = code.code.split("-")[0];
 
   if (!prefix) return;

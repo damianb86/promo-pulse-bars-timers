@@ -18,6 +18,7 @@ export type UniqueCodePoolRow = {
   totalGenerated: number;
   totalAssigned: number;
   totalUsed: number;
+  reassignExpiredUnused: boolean;
   expiresAt: string;
 };
 
@@ -498,6 +499,7 @@ export function UniqueCodesEditor({
                     <th>Generated</th>
                     <th>Assigned</th>
                     <th>Used</th>
+                    <th>Reassign unused</th>
                     <th>Expires</th>
                   </tr>
                 </thead>
@@ -517,6 +519,7 @@ export function UniqueCodesEditor({
                       <td>{pool.totalGenerated}</td>
                       <td>{pool.totalAssigned}</td>
                       <td>{pool.totalUsed}</td>
+                      <td>{pool.reassignExpiredUnused ? "Yes" : "No"}</td>
                       <td>{pool.expiresAt || "Never"}</td>
                     </tr>
                   ))}

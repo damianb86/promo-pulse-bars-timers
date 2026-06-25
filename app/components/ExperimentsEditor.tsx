@@ -1013,17 +1013,10 @@ function ExperimentComposer({
   const isAiVariantGenerating = aiVariantFetcher.state !== "idle";
   const initialVariants = useMemo(
     () =>
-      withControlAsRemainder(
-        normalizeVariantWeights(
-          (experiment?.variants.length
-            ? experiment.variants
-            : defaultVariantRows
-          )
-            .filter((variant) => variant.status !== "ARCHIVED")
-            .map((variant) =>
-              toVariantDraft(variant, baseDesign, baseViewModel),
-            ),
-        ),
+      normalizeVariantWeights(
+        (experiment?.variants.length ? experiment.variants : defaultVariantRows)
+          .filter((variant) => variant.status !== "ARCHIVED")
+          .map((variant) => toVariantDraft(variant, baseDesign, baseViewModel)),
       ),
     [baseDesign, baseViewModel, experiment],
   );
@@ -1085,6 +1078,9 @@ function ExperimentComposer({
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
     null,
   );
+  const [lastAdjustedVariantIndex, setLastAdjustedVariantIndex] = useState<
+    number | null
+  >(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [aiVariantRequest, setAiVariantRequest] =
     useState<AiVariantRequestDraft>(defaultAiVariantRequest);
@@ -1202,31 +1198,29 @@ function ExperimentComposer({
   };
 
   const updateVariantWeight = (index: number, weight: number) => {
-    // The control variant's weight is derived (100% minus the others), so it is
-    // not editable directly.
-    if (isControlVariantIndex(index)) return;
-
     setVariants((currentVariants) =>
-      withControlAsRemainder(
-        currentVariants.map((variant, variantIndex) =>
-          variantIndex === index
-            ? { ...variant, weight: clampVariantWeight(weight) }
-            : variant,
-        ),
+      redistributeVariantWeight(
+        currentVariants,
+        index,
+        weight,
+        lastAdjustedVariantIndex,
       ),
     );
+    setLastAdjustedVariantIndex(index);
   };
 
   const addVariant = () => {
+    setLastAdjustedVariantIndex(null);
     setVariants((currentVariants) => {
       const nextVariant = createVariantDraft(
         currentVariants.length,
         baseDesign,
         baseViewModel,
       );
-      const nextVariants = withControlAsRemainder(
-        rebalanceVariantWeightsEvenly([...currentVariants, nextVariant]),
-      );
+      const nextVariants = rebalanceVariantWeightsEvenly([
+        ...currentVariants,
+        nextVariant,
+      ]);
       setActiveVariantIndex(nextVariants.length - 1);
       setDrawerTab("copy");
 
@@ -1309,12 +1303,11 @@ function ExperimentComposer({
     }
 
     setVariants((currentVariants) =>
-      withControlAsRemainder(
-        normalizeVariantWeights(
-          currentVariants.filter((_, index) => index !== pendingDeleteIndex),
-        ),
+      normalizeVariantWeights(
+        currentVariants.filter((_, index) => index !== pendingDeleteIndex),
       ),
     );
+    setLastAdjustedVariantIndex(null);
     setActiveVariantIndex(-1);
     setPendingDeleteIndex(null);
   };
@@ -1682,32 +1675,22 @@ function VariantCard({
       </header>
 
       <div className="counterpulse-traffic-split">
-        {isControl ? (
-          <div className="counterpulse-traffic-split__derived">
-            <span>Traffic split</span>
-            <strong>{variant.weight}%</strong>
-            <small>Remaining share after the other variants.</small>
-          </div>
-        ) : (
-          <>
-            <label>
-              <span>Traffic split</span>
-              <strong>{variant.weight}%</strong>
-              <input
-                aria-label={`Variant ${index + 1} traffic split slider`}
-                max={100}
-                min={0}
-                type="range"
-                value={variant.weight}
-                onChange={(event) => onWeightChange(Number(event.target.value))}
-              />
-            </label>
-            <div>
-              <span>0%</span>
-              <span>100%</span>
-            </div>
-          </>
-        )}
+        <label>
+          <span>Traffic split</span>
+          <strong>{variant.weight}%</strong>
+          <input
+            aria-label={`Variant ${index + 1} traffic split slider`}
+            max={100}
+            min={0}
+            type="range"
+            value={variant.weight}
+            onChange={(event) => onWeightChange(Number(event.target.value))}
+          />
+        </label>
+        <div>
+          <span>0%</span>
+          <span>100%</span>
+        </div>
       </div>
 
       <div className="counterpulse-variant-changes">
@@ -3723,28 +3706,63 @@ function clampVariantWeight(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-// Control (index 0) is never weighted directly: its share is whatever remains
-// after the other variants, so the split always totals 100%.
-function withControlAsRemainder(variants: VariantDraft[]) {
-  if (variants.length === 0) return variants;
+function redistributeVariantWeight(
+  variants: VariantDraft[],
+  changedIndex: number,
+  nextWeight: number,
+  lockedIndex: number | null = null,
+) {
+  if (!variants[changedIndex]) return variants;
   if (variants.length === 1) return [{ ...variants[0], weight: 100 }];
 
-  let othersTotal = 0;
-  const adjusted = variants.map((variant, index) => {
-    if (index === 0) return variant;
+  const preservedIndex =
+    variants.length > 2 &&
+    lockedIndex !== null &&
+    lockedIndex !== changedIndex &&
+    variants[lockedIndex]
+      ? lockedIndex
+      : null;
+  const preservedWeight =
+    preservedIndex === null
+      ? 0
+      : clampVariantWeight(variants[preservedIndex].weight);
+  const targetWeight = clampVariantWeight(
+    preservedIndex === null
+      ? nextWeight
+      : Math.min(nextWeight, 100 - preservedWeight),
+  );
+  const remainingWeight = 100 - targetWeight - preservedWeight;
+  const otherWeights = variants
+    .map((variant, index) =>
+      index === changedIndex || index === preservedIndex
+        ? null
+        : Math.max(0, Math.round(variant.weight)),
+    )
+    .filter((weight): weight is number => weight !== null);
+  const otherTotal = otherWeights.reduce((total, weight) => total + weight, 0);
+  const nextOtherWeights =
+    otherTotal > 0
+      ? distributeIntegerTotal(remainingWeight, otherWeights)
+      : distributeIntegerTotal(
+          remainingWeight,
+          Array.from({ length: otherWeights.length }, () => 1),
+        );
+  let nextOtherWeightIndex = 0;
 
-    const available = Math.max(0, 100 - othersTotal);
-    const weight = Math.min(clampVariantWeight(variant.weight), available);
-    othersTotal += weight;
+  return variants.map((variant, index) => {
+    if (index === changedIndex) {
+      return { ...variant, weight: targetWeight };
+    }
+
+    if (index === preservedIndex) {
+      return { ...variant, weight: preservedWeight };
+    }
+
+    const weight = nextOtherWeights[nextOtherWeightIndex] ?? 0;
+    nextOtherWeightIndex += 1;
 
     return { ...variant, weight };
   });
-
-  return adjusted.map((variant, index) =>
-    index === 0
-      ? { ...variant, weight: Math.max(0, 100 - othersTotal) }
-      : variant,
-  );
 }
 
 function letterForVariant(index: number) {

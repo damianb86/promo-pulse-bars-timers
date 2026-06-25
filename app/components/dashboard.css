@@ -1397,23 +1397,6 @@ s-page::part(page) {
   color: #515c6b;
 }
 
-.counterpulse-traffic-split__derived {
-  display: grid;
-  gap: 2px;
-}
-
-.counterpulse-traffic-split__derived strong {
-  font-size: 16px;
-  font-weight: 750;
-  line-height: 20px;
-}
-
-.counterpulse-traffic-split__derived small {
-  color: #6d7175;
-  font-size: 11px;
-  line-height: 15px;
-}
-
 .counterpulse-archived-variants {
   margin-top: 12px;
   display: grid;

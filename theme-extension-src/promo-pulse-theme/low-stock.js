@@ -113,12 +113,6 @@
     if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
     if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
     params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
-    if (
-      tracking.consentGranted !== null &&
-      tracking.consentGranted !== undefined
-    ) {
-      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
-    }
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {
@@ -217,8 +211,60 @@
     if (icon) card.appendChild(icon);
 
     card.appendChild(renderMessage(campaign, message));
+    appendTimer(card, campaign, design);
     root.replaceChildren(card);
+    startTimerTick(card, campaign);
     emitImpression(campaign);
+  }
+
+  function appendTimer(card, campaign, design) {
+    if (
+      !campaign.timer ||
+      typeof window.PromoPulseComputeTimerState !== "function" ||
+      typeof window.PromoPulseRenderCountdown !== "function"
+    ) {
+      return;
+    }
+
+    var timerState = window.PromoPulseComputeTimerState(campaign);
+    if (!timerState || !timerState.isActive) return;
+
+    card.appendChild(
+      window.PromoPulseRenderCountdown(timerState.remainingMs, design, false),
+    );
+  }
+
+  function startTimerTick(card, campaign) {
+    var countdown = card.querySelector(".pp-countdown");
+    if (
+      !countdown ||
+      typeof window.PromoPulseComputeTimerState !== "function" ||
+      typeof window.PromoPulseUpdateCountdown !== "function"
+    ) {
+      return;
+    }
+
+    var id = window.setInterval(function () {
+      if (!card.isConnected) {
+        window.clearInterval(id);
+        return;
+      }
+
+      var timerState = window.PromoPulseComputeTimerState(campaign);
+      // On expiry just drop the countdown; the low-stock message itself stays.
+      if (!timerState || timerState.isExpired) {
+        window.clearInterval(id);
+        countdown.remove();
+        return;
+      }
+
+      window.PromoPulseUpdateCountdown(
+        countdown,
+        timerState.remainingMs,
+        campaign.design || {},
+        false,
+      );
+    }, 1000);
   }
 
   function updateDebug(root, message, url) {

@@ -361,10 +361,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
         ctaText: "Comprar oferta",
       },
     });
-    expect(eligibleBody.placements.TOP_BAR[0]).toMatchObject({
-      id: activeCampaign.id,
-      placement: PlacementType.TOP_BAR,
-    });
+    expect(eligibleBody.placements.TOP_BAR).toEqual([activeCampaign.id]);
     expect(eligibleBody.campaigns[0]).not.toHaveProperty("shopId");
 
     const mismatchResponse = await storefrontCampaignsLoader(

@@ -139,12 +139,6 @@
     if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
     if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
     params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
-    if (
-      tracking.consentGranted !== null &&
-      tracking.consentGranted !== undefined
-    ) {
-      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
-    }
   }
 
   function buildBadgesUrl(config) {

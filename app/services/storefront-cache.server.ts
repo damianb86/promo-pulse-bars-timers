@@ -27,7 +27,8 @@ type StorefrontSnapshot = {
 
 type StorefrontPayloadBody = {
   campaigns: StorefrontCampaignResponseItem[];
-  placements: Record<string, StorefrontCampaignResponseItem[]>;
+  // Index of campaign IDs by placement; full campaign data lives in `campaigns`.
+  placements: Record<string, string[]>;
   settings: PublicShopSettings | null;
 };
 

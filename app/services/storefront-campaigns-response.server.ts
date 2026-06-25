@@ -282,8 +282,7 @@ export async function handleStorefrontCampaignsAction(
   }
 
   const body = await readJsonBody(request);
-  const userAgent =
-    request.headers.get("user-agent") ?? undefined;
+  const userAgent = request.headers.get("user-agent") ?? undefined;
   // Accept either a single event (legacy) or a batched { events: [...] } payload
   // so the storefront can flush all of a page's events in one request.
   const isBatch = Array.isArray((body as { events?: unknown }).events);
@@ -516,12 +515,14 @@ function buildStorefrontPayload(
 
   return {
     campaigns: compactCampaigns,
-    placements: compactCampaigns.reduce<Record<string, typeof compactCampaigns>>(
+    // `placements` only indexes campaigns by placement; it carries IDs (not the
+    // full objects, which already live in `campaigns`) to keep the payload small.
+    placements: compactCampaigns.reduce<Record<string, string[]>>(
       (groups, campaign) => {
         const placement = campaign.placement || "UNKNOWN";
 
         groups[placement] ??= [];
-        groups[placement].push(campaign);
+        groups[placement].push(campaign.id);
 
         return groups;
       },

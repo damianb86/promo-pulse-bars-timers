@@ -1,6 +1,40 @@
 (function () {
   "use strict";
 
+  // Expose the canonical countdown renderer so dedicated blocks (e.g. delivery
+  // cutoff) render the timer with the exact same Timer Type styling instead of
+  // reimplementing it. Defined before the embed check so it is available even
+  // when this file loads for its globals only.
+  window.PromoPulseRenderCountdown =
+    window.PromoPulseRenderCountdown ||
+    function (remainingMs, design, compact) {
+      return renderCountdown(
+        { remainingMs: remainingMs, isActive: true },
+        design || {},
+        compact === true,
+      );
+    };
+  window.PromoPulseUpdateCountdown =
+    window.PromoPulseUpdateCountdown ||
+    function (element, remainingMs, design, compact) {
+      if (element) {
+        updateCountdownElement(
+          element,
+          remainingMs,
+          design || {},
+          compact === true,
+        );
+      }
+    };
+  // Compute a timer state ({ isActive, isExpired, remainingMs }) for a campaign
+  // (with .timer/.timezone) so dedicated blocks can render the configured timer
+  // with the same logic as the app embed.
+  window.PromoPulseComputeTimerState =
+    window.PromoPulseComputeTimerState ||
+    function (campaign) {
+      return calculateTimerState(campaign || {}, new Date());
+    };
+
   var root = document.getElementById("promo-pulse-app-embed");
   if (!root) return;
 
@@ -202,12 +236,6 @@
     if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
     if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
     params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
-    if (
-      tracking.consentGranted !== null &&
-      tracking.consentGranted !== undefined
-    ) {
-      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
-    }
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {

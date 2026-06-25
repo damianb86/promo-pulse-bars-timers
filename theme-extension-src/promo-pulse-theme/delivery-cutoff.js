@@ -135,12 +135,6 @@
     if (tracking.visitorId) params.set("visitorId", tracking.visitorId);
     if (tracking.sessionId) params.set("sessionId", tracking.sessionId);
     params.set("doNotTrack", tracking.doNotTrack ? "true" : "false");
-    if (
-      tracking.consentGranted !== null &&
-      tracking.consentGranted !== undefined
-    ) {
-      params.set("consentGranted", tracking.consentGranted ? "true" : "false");
-    }
   }
 
   function getCampaignsEndpoint(apiBaseUrl) {
@@ -370,7 +364,7 @@
     message.appendChild(detail);
 
     if (promise.beforeCutoff) {
-      message.appendChild(renderCountdown(promise.vars.time_left));
+      message.appendChild(renderCountdown(promise.remainingMs, design));
     }
 
     surface.appendChild(message);
@@ -466,6 +460,7 @@
     return {
       beforeCutoff: before,
       behavior: settings.afterCutoffBehavior || "SHOW_NEXT_WINDOW",
+      remainingMs: left,
       vars: vars(locale, tz, cutoff, left, ship, min, max, design),
     };
   }
@@ -521,7 +516,16 @@
         window.clearInterval(id);
         rerender();
       } else if (countdown) {
-        countdown.textContent = promise.vars.time_left;
+        if (typeof window.PromoPulseUpdateCountdown === "function") {
+          window.PromoPulseUpdateCountdown(
+            countdown,
+            promise.remainingMs,
+            campaign.design || {},
+            false,
+          );
+        } else {
+          countdown.textContent = promise.vars.time_left;
+        }
       }
     }, 1000);
   }
@@ -812,8 +816,15 @@
     return element;
   }
 
-  function renderCountdown(text) {
-    var countdown = node("span", "pp-countdown", text);
+  function renderCountdown(remainingMs, design) {
+    // Reuse the app embed's canonical timer renderer so the cutoff countdown
+    // honors the configured Timer Type (units/colon, boxes/grouped, labels,
+    // colors). Fall back to flat text when the embed isn't on the page.
+    if (typeof window.PromoPulseRenderCountdown === "function") {
+      return window.PromoPulseRenderCountdown(remainingMs, design || {}, false);
+    }
+
+    var countdown = node("span", "pp-countdown", fmt(remainingMs, design || {}));
 
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");

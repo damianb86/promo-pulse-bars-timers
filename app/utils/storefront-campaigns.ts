@@ -199,7 +199,11 @@ function serializeStorefrontCampaignForPlacement(
     badge: serializeBadge(campaign.badgeSettings),
     texts: serializeTexts(campaign, context.locale),
     discount: serializeDiscount(campaign.discountSync),
-    experiment: serializeExperiment(campaign.experiments),
+    experiment: serializeExperiment(
+      campaign.experiments,
+      new Date(),
+      campaignShowsDiscountCode(campaign.discountSync),
+    ),
     startsAt: campaign.startsAt ? campaign.startsAt.toISOString() : null,
     endsAt: campaign.endsAt ? campaign.endsAt.toISOString() : null,
     timezone: campaign.timezone,
@@ -585,12 +589,42 @@ function getCampaignCtaUrl(
   );
 }
 
+function sanitizeDiscountOverride<T>(
+  override: T,
+  showDiscountCode: boolean,
+): T {
+  if (!override || typeof override !== "object" || Array.isArray(override)) {
+    return override;
+  }
+
+  // Never expose the internal Shopify discount id to the storefront, and only
+  // reveal an A/B variant's discount code when the campaign is configured to
+  // show codes — mirroring serializeDiscount so experiment overrides cannot
+  // bypass the showCodeOnStorefront gate and leak a restricted code.
+  const rest = { ...(override as Record<string, unknown>) };
+
+  delete rest.shopifyDiscountId;
+
+  if (!showDiscountCode) {
+    delete rest.discountCode;
+  }
+
+  return rest as T;
+}
+
+function campaignShowsDiscountCode(discountSync: DiscountSync | null) {
+  if (!discountSync) return false;
+
+  return (
+    (discountSync as { showCodeOnStorefront?: boolean | null })
+      .showCodeOnStorefront !== false
+  );
+}
+
 function serializeDiscount(discountSync: DiscountSync | null) {
   if (!discountSync) return null;
 
-  const showCodeOnStorefront =
-    (discountSync as { showCodeOnStorefront?: boolean | null })
-      .showCodeOnStorefront !== false;
+  const showCodeOnStorefront = campaignShowsDiscountCode(discountSync);
 
   return {
     method: discountSync.method,
@@ -609,6 +643,7 @@ function serializeDiscount(discountSync: DiscountSync | null) {
 function serializeExperiment(
   experiments: StorefrontCampaignSource["experiments"],
   now = new Date(),
+  showDiscountCode = false,
 ) {
   const experiment = experiments.find(
     (item) =>
@@ -632,7 +667,10 @@ function serializeExperiment(
       status: variant.status,
       designOverride: jsonObject(variant.designOverride),
       textOverride: jsonObject(variant.textOverride),
-      discountOverride: jsonObject(variant.discountOverride),
+      discountOverride: sanitizeDiscountOverride(
+        jsonObject(variant.discountOverride),
+        showDiscountCode,
+      ),
       placementOverride: jsonObject(variant.placementOverride),
     }));
 

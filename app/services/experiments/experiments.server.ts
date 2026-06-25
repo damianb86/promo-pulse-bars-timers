@@ -22,6 +22,7 @@ import {
 } from "@prisma/client";
 
 import prisma from "../../db.server";
+import { invalidateStorefrontCacheForShopId } from "../storefront-cache.server";
 
 export type ExperimentVariantInput = {
   id?: string;
@@ -969,11 +970,17 @@ async function assertExperimentBelongsToShop(
   return experiment;
 }
 
-function markCampaignSaved(campaignId: string, shopId: string) {
-  return prisma.campaign.updateMany({
+async function markCampaignSaved(campaignId: string, shopId: string) {
+  const result = await prisma.campaign.updateMany({
     where: { id: campaignId, shopId },
     data: { lastSavedAt: new Date() },
   });
+
+  // Experiment lifecycle changes (start/pause/stop/variant edits) change what
+  // the storefront serves, so refresh the cached snapshot/payload.
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return result;
 }
 
 function buildDuplicateExperimentName(name: string) {

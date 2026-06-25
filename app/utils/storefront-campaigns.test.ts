@@ -41,6 +41,11 @@ describe("storefront campaign serialization", () => {
   it("serializes running experiment variants with storefront overrides", () => {
     const serialized = serializeStorefrontCampaign(
       buildCampaign({
+        discountSync: {
+          method: "CODE",
+          discountCode: "BASE10",
+          showCodeOnStorefront: true,
+        },
         experiments: [
           {
             id: "experiment-1",
@@ -115,6 +120,83 @@ describe("storefront campaign serialization", () => {
       ],
     });
     expect(JSON.stringify(serialized)).not.toContain("winnerVariantId");
+  });
+
+  it("strips A/B variant discount codes when the campaign hides codes", () => {
+    const serialized = serializeStorefrontCampaign(
+      buildCampaign({
+        discountSync: {
+          method: "CODE",
+          discountCode: "BASE10",
+          showCodeOnStorefront: false,
+        },
+        experiments: [
+          {
+            id: "experiment-1",
+            shopId: "shop-1",
+            campaignId: "campaign-1",
+            name: "Hidden code test",
+            status: "RUNNING",
+            trafficSplitStrategy: "WEIGHTED",
+            primaryMetric: "CLICK_RATE",
+            startsAt: new Date("2026-01-01T00:00:00.000Z"),
+            endsAt: null,
+            winnerVariantId: null,
+            winnerDeclaredAt: null,
+            winnerAppliedAt: null,
+            autoWinnerEnabled: false,
+            autoWinnerMinSampleSize: 100,
+            autoWinnerMinRuntimeHours: 24,
+            autoWinnerConfidenceThreshold: 0.95,
+            createdAt: new Date("2026-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+            variants: [
+              {
+                id: "variant-a",
+                experimentId: "experiment-1",
+                campaignId: "campaign-1",
+                name: "Control",
+                weight: 50,
+                status: "ACTIVE",
+                designOverride: null,
+                textOverride: null,
+                discountOverride: null,
+                placementOverride: null,
+                createdAt: new Date("2026-01-01T00:00:00.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+              },
+              {
+                id: "variant-b",
+                experimentId: "experiment-1",
+                campaignId: "campaign-1",
+                name: "Treatment",
+                weight: 50,
+                status: "ACTIVE",
+                designOverride: null,
+                textOverride: null,
+                discountOverride: {
+                  discountCode: "SECRET20",
+                  shopifyDiscountId: "gid://shopify/DiscountNode/1",
+                  value: "20",
+                },
+                placementOverride: null,
+                createdAt: new Date("2026-01-01T00:00:01.000Z"),
+                updatedAt: new Date("2026-01-01T00:00:01.000Z"),
+              },
+            ],
+          },
+        ] as StorefrontCampaignSource["experiments"],
+      }),
+      baseContext(),
+    );
+
+    const payload = JSON.stringify(serialized);
+    // The restricted variant code and the internal Shopify discount id must
+    // never reach the storefront when the campaign hides its code.
+    expect(payload).not.toContain("SECRET20");
+    expect(payload).not.toContain("shopifyDiscountId");
+    // Non-sensitive override fields are still delivered.
+    expect(payload).toContain('"value":"20"');
   });
 
   it("serializes unique discount code availability without internal settings", () => {

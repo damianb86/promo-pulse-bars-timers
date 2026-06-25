@@ -870,11 +870,15 @@ export async function activateCampaign(id: string, shopId: string) {
 
   assertCanActivateCampaign(campaign);
 
-  return prisma.campaign.update({
+  const updatedCampaign = await prisma.campaign.update({
     where: { id },
     data: { status: CampaignStatus.ACTIVE },
     include: campaignDetailsInclude,
   });
+
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return updatedCampaign;
 }
 
 export function pauseCampaign(id: string, shopId: string) {
@@ -1388,9 +1392,13 @@ function hydratePublishedCampaignSnapshot(
       campaign.marketCampaignRules,
     ),
     translations: readArray(snapshot.translations, campaign.translations),
-    experiments: hydrateExperimentSnapshots(
-      readArray(snapshot.experiments, campaign.experiments),
-    ),
+    // Operational state must reflect the live record, not the frozen snapshot:
+    // status drives pause/activate/expire visibility, and experiments are an
+    // A/B lifecycle managed independently of the publish snapshot. Without this,
+    // pausing a published campaign (or starting an A/B test after publishing)
+    // would not take effect until republish or snapshot TTL expiry.
+    status: campaign.status,
+    experiments: hydrateExperimentSnapshots(campaign.experiments),
   };
 
   return hydrated as CampaignDetailsRecord;

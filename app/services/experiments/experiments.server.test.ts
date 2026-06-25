@@ -73,6 +73,10 @@ vi.mock("../../db.server", () => ({
   default: prismaMock,
 }));
 
+vi.mock("../storefront-cache.server", () => ({
+  invalidateStorefrontCacheForShopId: vi.fn(),
+}));
+
 describe("experiment service", () => {
   beforeEach(() => {
     vi.clearAllMocks();

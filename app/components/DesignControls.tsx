@@ -33,6 +33,29 @@ import {
   type FreeShippingProgressStyleValue,
 } from "../types/free-shipping";
 
+type TimerTypeOption = {
+  timerStyle: CampaignDesignValues["timerStyle"];
+  timerFormat: CampaignDesignValues["timerFormat"];
+  label: string;
+  description: string;
+};
+
+// "Format" (Units/Colon) is folded into the "Type" picker as additional options
+// while keeping both fields independent, so every style + format combination
+// stays reachable.
+const designTimerTypeOptions: TimerTypeOption[] = designTimerStyleOptions.flatMap(
+  (styleOption) =>
+    designTimerFormatOptions.map((formatOption) => ({
+      timerStyle: styleOption.value,
+      timerFormat: formatOption.value,
+      label:
+        formatOption.value === "UNITS"
+          ? styleOption.label
+          : `${styleOption.label} colon`,
+      description: `${styleOption.description} ${formatOption.description}`,
+    })),
+);
+
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
@@ -77,6 +100,10 @@ export function DesignControls({
     value: CampaignDesignValues[Key],
   ) => {
     onChange({ ...values, [key]: value });
+  };
+
+  const updateValues = (updates: Partial<CampaignDesignValues>) => {
+    onChange({ ...values, ...updates });
   };
 
   const updateNumber = (key: NumberDesignKey, value: string) => {
@@ -441,45 +468,44 @@ export function DesignControls({
             />
 
             <DesignGroup error={errors.timerStyle} label="Type">
-              <div className="counterpulse-timer-style-picker">
-                {designTimerStyleOptions.map((option) => (
-                  <button
-                    aria-pressed={values.timerStyle === option.value}
-                    className={
-                      values.timerStyle === option.value
-                        ? "counterpulse-timer-style-option is-active"
-                        : "counterpulse-timer-style-option"
-                    }
-                    key={option.value}
-                    type="button"
-                    onClick={() => updateValue("timerStyle", option.value)}
-                  >
-                    <TimerStylePreview timerStyle={option.value} />
-                    <span>{option.label}</span>
-                  </button>
-                ))}
+              <div className="counterpulse-timer-style-picker counterpulse-timer-style-picker--combined">
+                {designTimerTypeOptions.map((option) => {
+                  const isActive =
+                    values.timerStyle === option.timerStyle &&
+                    values.timerFormat === option.timerFormat;
+
+                  return (
+                    <button
+                      aria-pressed={isActive}
+                      className={
+                        isActive
+                          ? "counterpulse-timer-style-option is-active"
+                          : "counterpulse-timer-style-option"
+                      }
+                      key={`${option.timerStyle}-${option.timerFormat}`}
+                      type="button"
+                      title={option.description}
+                      onClick={() =>
+                        updateValues({
+                          timerStyle: option.timerStyle,
+                          timerFormat: option.timerFormat,
+                        })
+                      }
+                    >
+                      <TimerStylePreview
+                        timerStyle={option.timerStyle}
+                        timerFormat={option.timerFormat}
+                      />
+                      <span>{option.label}</span>
+                    </button>
+                  );
+                })}
               </div>
               <input
                 name="timerStyle"
                 type="hidden"
                 value={values.timerStyle}
               />
-
-              <span className="counterpulse-design-sublabel">Format</span>
-              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
-                {designTimerFormatOptions.map((option) => (
-                  <button
-                    className={
-                      values.timerFormat === option.value ? "is-active" : ""
-                    }
-                    key={option.value}
-                    type="button"
-                    onClick={() => updateValue("timerFormat", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
               <input
                 name="timerFormat"
                 type="hidden"
@@ -2754,17 +2780,29 @@ function LayoutPreview({ layout }: { layout: CampaignDesignValues["layout"] }) {
 
 function TimerStylePreview({
   timerStyle,
+  timerFormat = "UNITS",
 }: {
   timerStyle: CampaignDesignValues["timerStyle"];
+  timerFormat?: CampaignDesignValues["timerFormat"];
 }) {
   return (
     <span
-      className={`counterpulse-timer-style-preview counterpulse-timer-style-preview--${timerStyle.toLowerCase()}`}
+      className={[
+        "counterpulse-timer-style-preview",
+        `counterpulse-timer-style-preview--${timerStyle.toLowerCase()}`,
+        `counterpulse-timer-style-preview--${timerFormat.toLowerCase()}`,
+      ].join(" ")}
       aria-hidden="true"
     >
-      <span>01</span>
-      <span>58</span>
-      <span>26</span>
+      {timerFormat === "COLON" ? (
+        <span>01:58:26</span>
+      ) : (
+        <>
+          <span>01</span>
+          <span>58</span>
+          <span>26</span>
+        </>
+      )}
     </span>
   );
 }

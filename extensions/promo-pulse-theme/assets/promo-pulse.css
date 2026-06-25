@@ -274,7 +274,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
+  gap: max(4px, var(--pp-gap, 10px));
 }
 
 .pp-container .pp-bar .pp-message strong,
@@ -1072,7 +1072,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
+  gap: max(4px, var(--pp-gap, 10px));
 }
 
 .pp-product-card .pp-message strong,
@@ -1488,7 +1488,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
+  gap: max(4px, var(--pp-gap, 10px));
 }
 
 .pp-cart-card .pp-message strong,

@@ -282,21 +282,57 @@ export async function handleStorefrontCampaignsAction(
   }
 
   const body = await readJsonBody(request);
-  const validation = validateAnalyticsEventPayload({
-    ...body,
-    userAgent: body.userAgent ?? request.headers.get("user-agent") ?? undefined,
-  });
+  const userAgent =
+    request.headers.get("user-agent") ?? undefined;
+  // Accept either a single event (legacy) or a batched { events: [...] } payload
+  // so the storefront can flush all of a page's events in one request.
+  const isBatch = Array.isArray((body as { events?: unknown }).events);
+  const rawEvents = isBatch
+    ? ((body as { events: unknown[] }).events ?? [])
+    : [body];
 
-  if (!validation.ok) {
+  if (rawEvents.length === 0 || rawEvents.length > MAX_ANALYTICS_BATCH_SIZE) {
     return jsonResponse(
-      { error: "Invalid analytics event.", details: validation.errors },
+      {
+        error: `Send between 1 and ${MAX_ANALYTICS_BATCH_SIZE} analytics events per request.`,
+      },
       { status: 400, cacheControl: "no-store" },
     );
   }
 
+  const validations = rawEvents.map((event) =>
+    validateAnalyticsEventPayload({
+      // Top-level shop/consent act as defaults for every batched event.
+      shop: (body as { shop?: unknown }).shop,
+      doNotTrack: (body as { doNotTrack?: unknown }).doNotTrack,
+      consentGranted: (body as { consentGranted?: unknown }).consentGranted,
+      ...(event as Record<string, unknown>),
+      userAgent:
+        (event as { userAgent?: string }).userAgent ??
+        (body as { userAgent?: string }).userAgent ??
+        userAgent,
+    }),
+  );
+  const validPayloads = validations
+    .filter((validation) => validation.ok)
+    .map((validation) => validation.payload);
+
+  if (validPayloads.length === 0) {
+    const firstError = validations.find((validation) => !validation.ok);
+
+    return jsonResponse(
+      {
+        error: "Invalid analytics event.",
+        details: firstError && !firstError.ok ? firstError.errors : undefined,
+      },
+      { status: 400, cacheControl: "no-store" },
+    );
+  }
+
+  // Every event in a batch targets the page's shop; verify access once.
   const access = verifyStorefrontAccess(
     request,
-    validation.payload.shop,
+    validPayloads[0].shop,
     accessOptions,
   );
 
@@ -308,19 +344,42 @@ export async function handleStorefrontCampaignsAction(
   }
 
   try {
-    const result = await recordAnalyticsEvent(validation.payload);
+    const results = await Promise.all(
+      validPayloads.map((payload) => recordAnalyticsEvent(payload)),
+    );
+
+    if (!isBatch) {
+      const result = results[0];
+
+      return jsonResponse(
+        {
+          ok: true,
+          saved: result.saved,
+          deduped: result.deduped,
+          ignored: result.ignored ?? false,
+          reason: result.reason,
+          eventId: result.eventId,
+        },
+        {
+          status: result.saved ? 201 : 202,
+          cacheControl: "no-store",
+          access,
+        },
+      );
+    }
+
+    const savedCount = results.filter((result) => result.saved).length;
 
     return jsonResponse(
       {
         ok: true,
-        saved: result.saved,
-        deduped: result.deduped,
-        ignored: result.ignored ?? false,
-        reason: result.reason,
-        eventId: result.eventId,
+        received: rawEvents.length,
+        processed: results.length,
+        saved: savedCount,
+        deduped: results.filter((result) => result.deduped).length,
       },
       {
-        status: result.saved ? 201 : 202,
+        status: savedCount > 0 ? 201 : 202,
         cacheControl: "no-store",
         access,
       },
@@ -344,6 +403,8 @@ export async function handleStorefrontCampaignsAction(
     );
   }
 }
+
+const MAX_ANALYTICS_BATCH_SIZE = 50;
 
 function getCacheControlHeader(
   context: ReturnType<typeof parseStorefrontCampaignContext>,
@@ -444,9 +505,18 @@ function buildStorefrontPayload(
   campaigns: ReturnType<typeof serializeStorefrontCampaigns>,
   settings: ReturnType<typeof serializePublicShopSettings> | null,
 ) {
+  // Drop null/undefined/empty-string fields so the payload only carries
+  // meaningful data; the storefront applies the same defaults the backend
+  // omits (it already reads every field through `|| fallback`, `safeColor`,
+  // `clamp`, and `!== false` guards). false/0/arrays are preserved because the
+  // theme distinguishes them from "absent".
+  const compactCampaigns = campaigns.map((campaign) =>
+    compactStorefrontValue(campaign),
+  );
+
   return {
-    campaigns,
-    placements: campaigns.reduce<Record<string, typeof campaigns>>(
+    campaigns: compactCampaigns,
+    placements: compactCampaigns.reduce<Record<string, typeof compactCampaigns>>(
       (groups, campaign) => {
         const placement = campaign.placement || "UNKNOWN";
 
@@ -459,6 +529,25 @@ function buildStorefrontPayload(
     ),
     settings,
   };
+}
+
+function compactStorefrontValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => compactStorefrontValue(item)) as unknown as T;
+  }
+
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(value)) {
+      if (entry === null || entry === undefined || entry === "") continue;
+      result[key] = compactStorefrontValue(entry);
+    }
+
+    return result as T;
+  }
+
+  return value;
 }
 
 function shouldUseStorefrontPayloadCache(

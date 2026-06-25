@@ -44,6 +44,7 @@ describe("storefront campaign serialization", () => {
         discountSync: {
           method: "CODE",
           discountCode: "BASE10",
+          shopifyDiscountId: null,
           showCodeOnStorefront: true,
         },
         experiments: [
@@ -128,6 +129,7 @@ describe("storefront campaign serialization", () => {
         discountSync: {
           method: "CODE",
           discountCode: "BASE10",
+          shopifyDiscountId: null,
           showCodeOnStorefront: false,
         },
         experiments: [
@@ -881,6 +883,26 @@ describe("storefront campaign serialization", () => {
     expect(context.collectionIds).toEqual(["1", "2"]);
     expect(context.productTags).toEqual(["sale", "new"]);
     expect(context.cartSubtotal).toBe(42.5);
+  });
+
+  it("expands the ALL_FRONT_DEFAULT_PLACEMENTS token to every front placement", () => {
+    const context = parseStorefrontCampaignContext(
+      new URL(
+        "https://counterpulse.test/apps/promo-pulse?shop=example.myshopify.com&placement=ALL_FRONT_DEFAULT_PLACEMENTS",
+      ),
+    );
+
+    expect(context.placement).toBe("");
+    expect(context.placements).toEqual([
+      "TOP_BAR",
+      "BOTTOM_BAR",
+      "CUSTOM_SELECTOR",
+      "PRODUCT_PAGE",
+      "PRODUCT_PAGE_BADGE",
+      "COLLECTION_CARD",
+      "CART_PAGE",
+      "CART_DRAWER",
+    ]);
   });
 });
 

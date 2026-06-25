@@ -113,7 +113,12 @@ export function parseStorefrontCampaignContext(
   url: URL,
 ): StorefrontCampaignContext {
   const searchParams = url.searchParams;
-  const placement = readString(searchParams, "placement").toUpperCase();
+  const rawPlacement = readString(searchParams, "placement").toUpperCase();
+  const placements = readPlacementList(rawPlacement);
+  // The general token is not a real placement; expose it only through the
+  // expanded `placements` list so single-placement guards keep working.
+  const placement =
+    rawPlacement === ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN ? "" : rawPlacement;
 
   return {
     shop: normalizeShopDomain(searchParams.get("shop")),
@@ -130,7 +135,7 @@ export function parseStorefrontCampaignContext(
     cartSubtotal: readNumber(searchParams, "cartSubtotal"),
     currency: readString(searchParams, "currency").toUpperCase(),
     placement,
-    placements: readPlacementList(placement),
+    placements,
     campaignId: readString(searchParams, "campaignId"),
     visitorId: readString(searchParams, "visitorId"),
     sessionId: readString(searchParams, "sessionId"),
@@ -698,8 +703,24 @@ function readList(searchParams: URLSearchParams, key: string) {
     .filter(Boolean);
 }
 
+// Single token the storefront can send instead of listing every placement, to
+// keep the campaigns request compact. The backend expands it to the full set of
+// front (storefront-renderable) placements.
+export const ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN = "ALL_FRONT_DEFAULT_PLACEMENTS";
+
+export const STOREFRONT_FRONT_PLACEMENTS = [
+  "TOP_BAR",
+  "BOTTOM_BAR",
+  "CUSTOM_SELECTOR",
+  "PRODUCT_PAGE",
+  "PRODUCT_PAGE_BADGE",
+  "COLLECTION_CARD",
+  "CART_PAGE",
+  "CART_DRAWER",
+] as const;
+
 function readPlacementList(value: string) {
-  return Array.from(
+  const items = Array.from(
     new Set(
       value
         .split(",")
@@ -707,6 +728,22 @@ function readPlacementList(value: string) {
         .filter(Boolean),
     ),
   );
+
+  if (!items.includes(ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN)) {
+    return items;
+  }
+
+  const expanded = items.filter(
+    (item) => item !== ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN,
+  );
+
+  for (const placement of STOREFRONT_FRONT_PLACEMENTS) {
+    if (!expanded.includes(placement)) {
+      expanded.push(placement);
+    }
+  }
+
+  return expanded;
 }
 
 function readNumber(searchParams: URLSearchParams, key: string) {

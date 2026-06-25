@@ -246,6 +246,13 @@ function loadDiscountCodeScript({
   const windowMock = {
     PromoPulseSettings: settings,
     Shopify: { shop: "demo.myshopify.com", customerPrivacy },
+    addEventListener: vi.fn(),
+    // Flush the analytics batch synchronously so tests can read the payloads.
+    setTimeout: (callback: () => void) => {
+      callback();
+      return 0;
+    },
+    clearTimeout: vi.fn(),
     crypto: createCryptoMock(),
     doNotTrack: "0",
     fetch: fetchMock,
@@ -326,8 +333,16 @@ function readFetchPayloads(loaded: ReturnType<typeof loadDiscountCodeScript>) {
     [string, { body: string }]
   >;
 
-  return calls.map(([, init]) => {
-    return JSON.parse(init.body) as Record<string, unknown>;
+  // Analytics events are sent as a batched { events: [...] } payload; flatten
+  // every event across all flushed requests.
+  return calls.flatMap(([, init]) => {
+    const parsed = JSON.parse(init.body) as Record<string, unknown>;
+
+    if (Array.isArray((parsed as { events?: unknown }).events)) {
+      return (parsed as { events: Record<string, unknown>[] }).events;
+    }
+
+    return [parsed];
   });
 }
 

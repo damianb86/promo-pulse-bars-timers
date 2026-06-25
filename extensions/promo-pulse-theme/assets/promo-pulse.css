@@ -1150,6 +1150,8 @@
     var(--pp-timer-border, transparent);
   border-radius: var(--pp-timer-radius, 8px);
   background: var(--pp-timer-surface, rgba(255, 255, 255, 0.12));
+  width: fit-content;
+  margin: auto;
 }
 
 .pp-product-card .pp-countdown--boxes {

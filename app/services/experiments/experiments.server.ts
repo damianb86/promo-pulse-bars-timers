@@ -169,7 +169,7 @@ export async function createExperiment(input: CreateExperimentInput) {
       primaryMetric: normalizePrimaryMetric(input.primaryMetric),
       variants: input.variants?.length
         ? {
-            create: input.variants.map((variant) =>
+            create: applyControlVariantRules(input.variants).map((variant) =>
               toVariantCreateInput(input.campaignId, variant),
             ),
           }
@@ -268,7 +268,7 @@ export async function updateExperiment(input: UpdateExperimentInput) {
     },
   });
 
-  for (const variant of input.variants ?? []) {
+  for (const variant of applyControlVariantRules(input.variants ?? [])) {
     if (variant.id) {
       await prisma.experimentVariant.updateMany({
         where: {
@@ -1008,6 +1008,40 @@ function normalizePrimaryMetric(
   }
 
   return value;
+}
+
+// The control variant always represents the campaign exactly as configured: it
+// carries no overrides, and its weight is purely the remainder of 100% after the
+// other variants. This is enforced server-side so the stored data is always
+// correct regardless of what the client submits.
+function applyControlVariantRules(
+  variants: ExperimentVariantInput[],
+): ExperimentVariantInput[] {
+  const controlIndex = variants.findIndex(
+    (variant) => variant.status !== ExperimentVariantStatus.ARCHIVED,
+  );
+
+  if (controlIndex === -1) return variants;
+
+  const othersTotal = variants.reduce((total, variant, index) => {
+    if (index === controlIndex) return total;
+    if (variant.status === ExperimentVariantStatus.ARCHIVED) return total;
+
+    return total + normalizeWeight(variant.weight);
+  }, 0);
+
+  return variants.map((variant, index) =>
+    index === controlIndex
+      ? {
+          ...variant,
+          weight: Math.max(0, 100 - othersTotal),
+          designOverride: null,
+          textOverride: null,
+          discountOverride: null,
+          placementOverride: null,
+        }
+      : variant,
+  );
 }
 
 function toVariantCreateInput(

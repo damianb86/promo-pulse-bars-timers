@@ -3,6 +3,7 @@ import {
   ExperimentPrimaryMetric,
   ExperimentStatus,
   ExperimentVariantStatus,
+  Prisma,
   type ExperimentVariant,
 } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -114,6 +115,44 @@ describe("experiment service", () => {
         }),
       }),
     );
+  });
+
+  it("forces the control variant to carry no overrides and the remainder weight", async () => {
+    prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prismaMock.experiment.create.mockResolvedValue({
+      id: "experiment-1",
+      variants: [{ id: "variant-a" }, { id: "variant-b" }],
+    });
+
+    await createExperiment({
+      shopId: "shop-1",
+      campaignId: "campaign-1",
+      name: "Headline test",
+      primaryMetric: "CTR",
+      variants: [
+        {
+          name: "Control",
+          weight: 80,
+          designOverride: { backgroundColor: "#000000" },
+          textOverride: { headline: "Should be dropped" },
+          placementOverride: { placementType: "TOP_BAR" },
+        },
+        { name: "Treatment", weight: 30 },
+      ],
+    });
+
+    const createArgs = prismaMock.experiment.create.mock.calls[0][0];
+    const createdVariants = createArgs.data.variants.create;
+    const [control, treatment] = createdVariants;
+
+    // Control: no overrides, weight = 100 - 30.
+    expect(control.weight).toBe(70);
+    expect(control.designOverride).toBe(Prisma.JsonNull);
+    expect(control.textOverride).toBe(Prisma.JsonNull);
+    expect(control.placementOverride).toBe(Prisma.JsonNull);
+    expect(control.discountOverride).toBe(Prisma.JsonNull);
+    // Treatment keeps its own weight.
+    expect(treatment.weight).toBe(30);
   });
 
   it("rejects direct creation when the campaign already has an open experiment", async () => {

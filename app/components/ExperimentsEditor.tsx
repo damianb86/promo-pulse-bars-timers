@@ -1,14 +1,8 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Form, useFetcher, useNavigation } from "react-router";
 
 import { AiGenerateIcon } from "./AiGenerateIcon";
+import { CampaignPromoSurface } from "./CampaignPreview";
 import { DesignControls } from "./DesignControls";
 import { AppAlert, FieldInfoButton } from "./Notifications";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -524,26 +518,6 @@ const summarizedDesignKeys: Array<keyof CampaignDesignValues> = [
   ...motionDesignKeys,
 ];
 
-const variantPreviewFontFamilies: Record<
-  CampaignDesignValues["fontFamily"],
-  string
-> = {
-  CASUAL: '"Trebuchet MS", Verdana, ui-rounded, system-ui, sans-serif',
-  CONDENSED:
-    '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif',
-  GEOMETRIC:
-    'Avenir Next, Avenir, Futura, "Century Gothic", system-ui, sans-serif',
-  HUMANIST:
-    'Optima, Candara, Calibri, "Segoe UI", Frutiger, system-ui, sans-serif',
-  MONO: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-  ROUNDED:
-    'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif',
-  SERIF: 'Georgia, "Times New Roman", serif',
-  SYSTEM:
-    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  THEME: "inherit",
-};
-
 export function ExperimentsEditor({
   baseDesign,
   baseViewModel,
@@ -1039,15 +1013,63 @@ function ExperimentComposer({
   const isAiVariantGenerating = aiVariantFetcher.state !== "idle";
   const initialVariants = useMemo(
     () =>
-      normalizeVariantWeights(
-        (experiment?.variants.length ? experiment.variants : defaultVariantRows)
-          .filter((variant) => variant.status !== "ARCHIVED")
-          .map((variant) => toVariantDraft(variant, baseDesign, baseViewModel)),
+      withControlAsRemainder(
+        normalizeVariantWeights(
+          (experiment?.variants.length
+            ? experiment.variants
+            : defaultVariantRows
+          )
+            .filter((variant) => variant.status !== "ARCHIVED")
+            .map((variant) =>
+              toVariantDraft(variant, baseDesign, baseViewModel),
+            ),
+        ),
       ),
     [baseDesign, baseViewModel, experiment],
   );
+  const initialArchivedVariants = useMemo(
+    () =>
+      (experiment?.variants ?? [])
+        .filter((variant) => variant.status === "ARCHIVED")
+        .map((variant) => toVariantDraft(variant, baseDesign, baseViewModel)),
+    [baseDesign, baseViewModel, experiment],
+  );
   const [variants, setVariants] = useState<VariantDraft[]>(initialVariants);
-  const [archivedVariants, setArchivedVariants] = useState<VariantDraft[]>([]);
+  const [archivedVariants, setArchivedVariants] = useState<VariantDraft[]>(
+    initialArchivedVariants,
+  );
+
+  // The control variant always mirrors the live campaign. When the campaign is
+  // saved (baseDesign) or its copy changes (baseViewModel), refresh the control
+  // in place so its preview matches the design preview without a page refresh.
+  // Derived during render (React's "adjust state when a prop changes" pattern)
+  // so the control updates synchronously without an extra effect pass.
+  const controlDesign = useMemo(
+    () => normalizeDesign({ ...baseDesign }),
+    [baseDesign],
+  );
+  const controlText = useMemo(
+    () => toTextDraft({}, baseViewModel),
+    [baseViewModel],
+  );
+  const controlSyncKey = useMemo(
+    () => JSON.stringify([controlDesign, controlText]),
+    [controlDesign, controlText],
+  );
+  const [appliedControlSyncKey, setAppliedControlSyncKey] =
+    useState(controlSyncKey);
+
+  if (controlSyncKey !== appliedControlSyncKey) {
+    setAppliedControlSyncKey(controlSyncKey);
+    setVariants((current) =>
+      current.length === 0
+        ? current
+        : [
+            { ...current[0], design: controlDesign, text: controlText },
+            ...current.slice(1),
+          ],
+    );
+  }
   const initialActiveVariantIndex = useMemo(() => {
     if (!variantEditRequest?.variantId) return -1;
 
@@ -1063,9 +1085,6 @@ function ExperimentComposer({
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
     null,
   );
-  const [lastAdjustedVariantIndex, setLastAdjustedVariantIndex] = useState<
-    number | null
-  >(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [aiVariantRequest, setAiVariantRequest] =
     useState<AiVariantRequestDraft>(defaultAiVariantRequest);
@@ -1095,6 +1114,34 @@ function ExperimentComposer({
   const canSubmitExperiment = experiment
     ? variants.length > 0
     : variants.length >= 2 && positiveVariantCount >= 2;
+
+  // Track whether the experiment has unsaved edits so the save button only
+  // activates when something actually changed. The baseline is derived from the
+  // same initial values (and recomputes if the underlying campaign changes), so
+  // the control auto-sync does not register as a manual change.
+  const initialName = experiment?.name || `${baseViewModel.name} experiment`;
+  const initialPrimaryMetric = experiment?.primaryMetric || "CLICK_RATE";
+  const currentExperimentSignature = useMemo(
+    () => JSON.stringify({ name, primaryMetric, variants, archivedVariants }),
+    [name, primaryMetric, variants, archivedVariants],
+  );
+  const baselineExperimentSignature = useMemo(
+    () =>
+      JSON.stringify({
+        name: initialName,
+        primaryMetric: initialPrimaryMetric,
+        variants: initialVariants,
+        archivedVariants: initialArchivedVariants,
+      }),
+    [
+      initialName,
+      initialPrimaryMetric,
+      initialVariants,
+      initialArchivedVariants,
+    ],
+  );
+  const hasExperimentChanges =
+    currentExperimentSignature !== baselineExperimentSignature;
 
   useEffect(() => {
     const data = aiVariantFetcher.data;
@@ -1155,29 +1202,31 @@ function ExperimentComposer({
   };
 
   const updateVariantWeight = (index: number, weight: number) => {
+    // The control variant's weight is derived (100% minus the others), so it is
+    // not editable directly.
+    if (isControlVariantIndex(index)) return;
+
     setVariants((currentVariants) =>
-      redistributeVariantWeight(
-        currentVariants,
-        index,
-        weight,
-        lastAdjustedVariantIndex,
+      withControlAsRemainder(
+        currentVariants.map((variant, variantIndex) =>
+          variantIndex === index
+            ? { ...variant, weight: clampVariantWeight(weight) }
+            : variant,
+        ),
       ),
     );
-    setLastAdjustedVariantIndex(index);
   };
 
   const addVariant = () => {
-    setLastAdjustedVariantIndex(null);
     setVariants((currentVariants) => {
       const nextVariant = createVariantDraft(
         currentVariants.length,
         baseDesign,
         baseViewModel,
       );
-      const nextVariants = rebalanceVariantWeightsEvenly([
-        ...currentVariants,
-        nextVariant,
-      ]);
+      const nextVariants = withControlAsRemainder(
+        rebalanceVariantWeightsEvenly([...currentVariants, nextVariant]),
+      );
       setActiveVariantIndex(nextVariants.length - 1);
       setDrawerTab("copy");
 
@@ -1208,7 +1257,6 @@ function ExperimentComposer({
   const acceptAiVariant = () => {
     if (!aiVariantSuggestion) return;
 
-    setLastAdjustedVariantIndex(null);
     setVariants((currentVariants) => {
       const nextVariant = createVariantDraft(
         currentVariants.length,
@@ -1261,11 +1309,12 @@ function ExperimentComposer({
     }
 
     setVariants((currentVariants) =>
-      normalizeVariantWeights(
-        currentVariants.filter((_, index) => index !== pendingDeleteIndex),
+      withControlAsRemainder(
+        normalizeVariantWeights(
+          currentVariants.filter((_, index) => index !== pendingDeleteIndex),
+        ),
       ),
     );
-    setLastAdjustedVariantIndex(null);
     setActiveVariantIndex(-1);
     setPendingDeleteIndex(null);
   };
@@ -1429,10 +1478,38 @@ function ExperimentComposer({
                 setDrawerTab("copy");
               }}
               onRequestDelete={() => requestDeleteVariant(index)}
+              onResume={() =>
+                updateVariant(index, (current) => ({
+                  ...current,
+                  status: "ACTIVE",
+                }))
+              }
               onWeightChange={(weight) => updateVariantWeight(index, weight)}
             />
           ))}
         </div>
+
+        {archivedVariants.length > 0 && (
+          <div className="counterpulse-archived-variants">
+            <span className="counterpulse-archived-variants__label">
+              Archived
+            </span>
+            <ul className="counterpulse-archived-variants__list">
+              {archivedVariants.map((variant, index) => (
+                <li
+                  className="counterpulse-archived-variant-chip"
+                  key={`${variant.id || "archived"}-${index}`}
+                  title={`${variant.name || `Variant ${index + 1}`} (archived)`}
+                >
+                  <ArchivedVariantIcon />
+                  <span className="counterpulse-archived-variant-chip__name">
+                    {variant.name || `Variant ${index + 1}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {activeVariant && !isControlVariantIndex(activeVariantIndex) && (
@@ -1480,11 +1557,17 @@ function ExperimentComposer({
       <div className="counterpulse-actions">
         <button
           className="counterpulse-button"
-          disabled={isSubmitting || !canSubmitExperiment}
+          disabled={
+            isSubmitting ||
+            !canSubmitExperiment ||
+            (Boolean(experiment) && !hasExperimentChanges)
+          }
           title={
-            canSubmitExperiment
-              ? undefined
-              : "Add at least one editable variant before creating the experiment."
+            !canSubmitExperiment
+              ? "Add at least one editable variant before creating the experiment."
+              : experiment && !hasExperimentChanges
+                ? "Make a change to save the experiment."
+                : undefined
           }
           type="submit"
         >
@@ -1501,6 +1584,27 @@ function ExperimentComposer({
   );
 }
 
+function ArchivedVariantIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      height="14"
+      viewBox="0 0 24 24"
+      width="14"
+    >
+      <path
+        d="M4 7h16M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M4 7l1.5-3h13L20 7M10 11h4"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function VariantCard({
   baseDesign,
   baseViewModel,
@@ -1510,6 +1614,7 @@ function VariantCard({
   variant,
   onEdit,
   onRequestDelete,
+  onResume,
   onWeightChange,
 }: {
   baseDesign: CampaignDesignValues;
@@ -1520,6 +1625,7 @@ function VariantCard({
   variant: VariantDraft;
   onEdit: () => void;
   onRequestDelete: () => void;
+  onResume: () => void;
   onWeightChange: (weight: number) => void;
 }) {
   const preview = buildVariantPreviewModel(baseViewModel, variant);
@@ -1529,6 +1635,9 @@ function VariantCard({
     baseViewModel,
     isControl,
   );
+  const isDraft = variant.status === "DRAFT";
+  const isPaused = variant.status === "PAUSED";
+  const needsResume = isDraft || isPaused;
 
   return (
     <article
@@ -1549,6 +1658,16 @@ function VariantCard({
             {variant.name || `Variant ${index + 1}`}
           </h4>
           {index === 0 && <span>Baseline</span>}
+          {isDraft && (
+            <span className="counterpulse-variant-status-tag counterpulse-variant-status-tag--draft">
+              Draft
+            </span>
+          )}
+          {isPaused && (
+            <span className="counterpulse-variant-status-tag counterpulse-variant-status-tag--paused">
+              Paused
+            </span>
+          )}
         </div>
         {!isControl && (
           <button
@@ -1563,22 +1682,32 @@ function VariantCard({
       </header>
 
       <div className="counterpulse-traffic-split">
-        <label>
-          <span>Traffic split</span>
-          <strong>{variant.weight}%</strong>
-          <input
-            aria-label={`Variant ${index + 1} traffic split slider`}
-            max={100}
-            min={0}
-            type="range"
-            value={variant.weight}
-            onChange={(event) => onWeightChange(Number(event.target.value))}
-          />
-        </label>
-        <div>
-          <span>0%</span>
-          <span>100%</span>
-        </div>
+        {isControl ? (
+          <div className="counterpulse-traffic-split__derived">
+            <span>Traffic split</span>
+            <strong>{variant.weight}%</strong>
+            <small>Remaining share after the other variants.</small>
+          </div>
+        ) : (
+          <>
+            <label>
+              <span>Traffic split</span>
+              <strong>{variant.weight}%</strong>
+              <input
+                aria-label={`Variant ${index + 1} traffic split slider`}
+                max={100}
+                min={0}
+                type="range"
+                value={variant.weight}
+                onChange={(event) => onWeightChange(Number(event.target.value))}
+              />
+            </label>
+            <div>
+              <span>0%</span>
+              <span>100%</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="counterpulse-variant-changes">
@@ -1590,6 +1719,23 @@ function VariantCard({
       </div>
 
       <VariantMiniPreview design={variant.design} viewModel={preview} />
+
+      {needsResume && (
+        <div className="counterpulse-variant-draft-notice" role="status">
+          <span>
+            {isDraft
+              ? "This variant is a draft and isn't receiving traffic yet."
+              : "This variant is paused and isn't receiving traffic."}
+          </span>
+          <button
+            className="counterpulse-button"
+            type="button"
+            onClick={onResume}
+          >
+            Resume variant
+          </button>
+        </div>
+      )}
 
       {!isControl && (
         <button
@@ -2339,31 +2485,49 @@ function VariantHiddenInputs({
 
   return (
     <>
-      {submittedVariants.map((variant, index) => (
-        <div hidden key={`${variant.id || "new"}-${index}`}>
-          <input name="variantId" readOnly value={variant.id} />
-          <input name="variantName" readOnly value={variant.name} />
-          <input name="variantWeight" readOnly value={variant.weight} />
-          <input name="variantStatus" readOnly value={variant.status} />
-          <textarea
-            name="textOverride"
-            readOnly
-            value={jsonOverrideValue(
-              buildTextOverride(variant.text, baseViewModel),
-            )}
-          />
-          <textarea
-            name="designOverride"
-            readOnly
-            value={jsonOverrideValue(buildDesignOverride(variant, baseDesign))}
-          />
-          <textarea
-            name="placementOverride"
-            readOnly
-            value={jsonOverrideValue(buildPlacementOverride(variant.placement))}
-          />
-        </div>
-      ))}
+      {submittedVariants.map((variant, index) => {
+        // The control variant (index 0) represents the campaign as configured:
+        // it never sends overrides. Its weight is the derived remainder.
+        const isControl = index === 0;
+
+        return (
+          <div hidden key={`${variant.id || "new"}-${index}`}>
+            <input name="variantId" readOnly value={variant.id} />
+            <input name="variantName" readOnly value={variant.name} />
+            <input name="variantWeight" readOnly value={variant.weight} />
+            <input name="variantStatus" readOnly value={variant.status} />
+            <textarea
+              name="textOverride"
+              readOnly
+              value={
+                isControl
+                  ? ""
+                  : jsonOverrideValue(
+                      buildTextOverride(variant.text, baseViewModel),
+                    )
+              }
+            />
+            <textarea
+              name="designOverride"
+              readOnly
+              value={
+                isControl
+                  ? ""
+                  : jsonOverrideValue(buildDesignOverride(variant, baseDesign))
+              }
+            />
+            <textarea
+              name="placementOverride"
+              readOnly
+              value={
+                isControl
+                  ? ""
+                  : jsonOverrideValue(buildPlacementOverride(variant.placement))
+              }
+            />
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -2416,6 +2580,12 @@ function ExperimentResultsTable({
     },
   );
 
+  const primaryMetricColumn = getPrimaryMetricColumn(experiment.primaryMetric);
+  const columnClass = (column: string) =>
+    column === primaryMetricColumn
+      ? "counterpulse-experiment-results__cell--primary"
+      : undefined;
+
   return (
     <section className="counterpulse-experiment-results">
       <div className="counterpulse-experiment-results__header">
@@ -2432,12 +2602,32 @@ function ExperimentResultsTable({
               <th>Traffic split</th>
               <th>Impressions</th>
               <th>Clicks</th>
-              <th>CTR</th>
-              <th>Add-to-cart</th>
+              <ResultHeaderCell
+                column="ctr"
+                primaryMetricColumn={primaryMetricColumn}
+              >
+                CTR
+              </ResultHeaderCell>
+              <ResultHeaderCell
+                column="addToCart"
+                primaryMetricColumn={primaryMetricColumn}
+              >
+                Add-to-cart
+              </ResultHeaderCell>
               <th>Orders</th>
               <th>Revenue</th>
-              <th>RPV</th>
-              <th>Conversion</th>
+              <ResultHeaderCell
+                column="rpv"
+                primaryMetricColumn={primaryMetricColumn}
+              >
+                RPV
+              </ResultHeaderCell>
+              <ResultHeaderCell
+                column="conversion"
+                primaryMetricColumn={primaryMetricColumn}
+              >
+                Conversion
+              </ResultHeaderCell>
               <th>Action</th>
             </tr>
           </thead>
@@ -2488,8 +2678,12 @@ function ExperimentResultsTable({
                   <td>{formatPercent(variant.trafficSplit / 100)}</td>
                   <td>{variant.impressions}</td>
                   <td>{variant.clicks}</td>
-                  <td>{formatPercent(variant.ctr)}</td>
-                  <td>{variant.addToCart}</td>
+                  <td className={columnClass("ctr")}>
+                    {formatPercent(variant.ctr)}
+                  </td>
+                  <td className={columnClass("addToCart")}>
+                    {variant.addToCart}
+                  </td>
                   <td>{variant.orders}</td>
                   <td>
                     {formatCurrency(
@@ -2497,13 +2691,15 @@ function ExperimentResultsTable({
                       experiment.results.currencyCode,
                     )}
                   </td>
-                  <td>
+                  <td className={columnClass("rpv")}>
                     {formatCurrency(
                       variant.revenuePerVisitor,
                       experiment.results.currencyCode,
                     )}
                   </td>
-                  <td>{formatPercent(variant.conversionRate)}</td>
+                  <td className={columnClass("conversion")}>
+                    {formatPercent(variant.conversionRate)}
+                  </td>
                   <td>
                     <ExperimentResultActions
                       canManageVariant={canManageVariant}
@@ -3177,418 +3373,37 @@ function VariantMiniPreview({
   design: CampaignDesignValues;
   viewModel: CampaignViewModel;
 }) {
-  const placement = viewModel.placements[0] || "TOP_BAR";
-  const hasTimer = Boolean(viewModel.timer || viewModel.deliveryCutoff);
-  const isInline = design.layout === "INLINE";
-  const hasOffer = isVariantOfferVisible(viewModel, design);
-  const hasCta = design.showButton && Boolean(viewModel.ctaText);
-  const buttonStyle = buildVariantPreviewButtonStyle(design);
+  const previewPlacements = [
+    "TOP_BAR",
+    "BOTTOM_BAR",
+    "PRODUCT_PAGE",
+    "CART_PAGE",
+    "CART_DRAWER",
+    "PRODUCT_BADGE",
+  ] as const;
+  const placement =
+    previewPlacements.find((option) => option === viewModel.placements[0]) ??
+    "TOP_BAR";
 
   return (
     <div className="counterpulse-variant-preview">
-      <section
+      <CampaignPromoSurface
         className={[
-          "counterpulse-preview-promo",
-          "counterpulse-preview-promo--bar",
-          `counterpulse-preview-promo--layout-${design.layout.toLowerCase()}`,
-          `counterpulse-preview-promo--placement-${placement
-            .toLowerCase()
-            .replace("_", "-")}`,
-          design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
-          `counterpulse-preview-promo--position-${design.positionMode.toLowerCase()}`,
-          `counterpulse-preview-promo--enter-${design.entranceAnimation.toLowerCase()}`,
-          `counterpulse-preview-promo--exit-${design.exitAnimation.toLowerCase()}`,
+          "counterpulse-variant-preview__surface",
           design.mobileEnabled
             ? ""
             : "counterpulse-variant-preview__surface--mobile-disabled",
-          "counterpulse-variant-preview__surface",
         ]
           .filter(Boolean)
           .join(" ")}
-        data-testid="variant-preview-surface"
-        style={buildVariantPreviewStyle(design)}
-      >
-        <div className="counterpulse-preview-message">
-          <VariantPreviewIcon design={design} />
-          <div className="counterpulse-preview-message-copy">
-            <strong>{viewModel.headline}</strong>
-            {isInline && hasTimer ? (
-              <VariantPreviewTimer compact design={design} />
-            ) : null}
-            {!isInline && viewModel.subheadline ? (
-              <span>{viewModel.subheadline}</span>
-            ) : null}
-          </div>
-        </div>
-
-        {!isInline && hasTimer ? <VariantPreviewTimer design={design} /> : null}
-
-        {(hasOffer || hasCta) && (
-          <div className="counterpulse-preview-actions">
-            <VariantOfferPreview design={design} viewModel={viewModel} />
-            {hasCta ? (
-              <span className="counterpulse-preview-cta" style={buttonStyle}>
-                {viewModel.ctaText}
-              </span>
-            ) : null}
-          </div>
-        )}
-
-        {design.showCloseButton ? (
-          <span className="counterpulse-preview-close" aria-hidden="true">
-            x
-          </span>
-        ) : null}
-
-        {viewModel.freeShipping && design.showProgressBar !== false ? (
-          <div
-            className={`counterpulse-preview-progress counterpulse-preview-progress--${viewModel.freeShipping.progressStyle.toLowerCase()}`}
-            style={
-              {
-                "--cp-progress": "58%",
-              } as CSSProperties
-            }
-          >
-            <span>
-              <span style={{ width: "58%" }} />
-            </span>
-          </div>
-        ) : null}
-      </section>
+        dataTestId="variant-preview-surface"
+        design={design}
+        placement={placement}
+        variant="bar"
+        viewModel={viewModel}
+      />
     </div>
   );
-}
-
-function VariantOfferPreview({
-  design,
-  viewModel,
-}: {
-  design: CampaignDesignValues;
-  viewModel: CampaignViewModel;
-}) {
-  const offer = viewModel.offer;
-
-  if (!offer || !isVariantOfferVisible(viewModel, design)) return null;
-
-  const buttonStyle = buildVariantPreviewButtonStyle(design);
-
-  return (
-    <span
-      className={[
-        "counterpulse-preview-offer",
-        `counterpulse-preview-offer--${design.offerCodeLayout.toLowerCase()}`,
-      ].join(" ")}
-    >
-      {design.showDiscountCode ? (
-        <span className="counterpulse-preview-code-wrap">
-          {design.offerCodeLabel ? (
-            <span className="counterpulse-preview-offer-label">
-              {design.offerCodeLabel}
-            </span>
-          ) : null}
-          <span className="counterpulse-preview-code">{offer.code}</span>
-        </span>
-      ) : null}
-      {design.showCopyCodeButton ? (
-        <span className="counterpulse-preview-code-action" style={buttonStyle}>
-          {design.copyCodeLabel}
-        </span>
-      ) : null}
-      {design.showApplyDiscountButton && offer.canApply ? (
-        <span
-          className="counterpulse-preview-cta counterpulse-preview-cta--offer"
-          style={buttonStyle}
-        >
-          {design.applyDiscountLabel}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function isVariantOfferVisible(
-  viewModel: CampaignViewModel,
-  design: CampaignDesignValues,
-) {
-  const offer = viewModel.offer;
-
-  if (!offer) return false;
-
-  return Boolean(
-    design.showDiscountCode ||
-    design.showCopyCodeButton ||
-    (design.showApplyDiscountButton && offer.canApply),
-  );
-}
-
-function VariantPreviewTimer({
-  compact = false,
-  design,
-}: {
-  compact?: boolean;
-  design: CampaignDesignValues;
-}) {
-  const timerParts = buildVariantPreviewTimerParts(design);
-  const visibleTimerParts = design.timerShowSeconds
-    ? timerParts
-    : timerParts.filter((part) => part.shortLabel !== "Secs");
-
-  if (design.timerFormat === "COLON") {
-    return (
-      <div
-        className={[
-          "counterpulse-preview-timer",
-          "counterpulse-preview-timer--colon",
-          `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
-          `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
-          compact ? "counterpulse-preview-timer--compact" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {visibleTimerParts.map((part) => part.value).join(":")}
-      </div>
-    );
-  }
-
-  if (compact && design.timerStyle === "PLAIN") {
-    return (
-      <span
-        className={[
-          "counterpulse-preview-timer",
-          "counterpulse-preview-timer--inline-plain",
-          `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
-        ].join(" ")}
-      >
-        {visibleTimerParts
-          .map((part) =>
-            design.timerShowLabels
-              ? `${part.value} ${part.shortLabel}`
-              : part.value,
-          )
-          .join(" ")}
-      </span>
-    );
-  }
-
-  return (
-    <div
-      className={[
-        "counterpulse-preview-timer",
-        `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
-        `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
-        compact ? "counterpulse-preview-timer--compact" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      {visibleTimerParts.map((part) => (
-        <span className="counterpulse-preview-timer-unit" key={part.label}>
-          <strong>{part.value}</strong>
-          {design.timerShowLabels ? <small>{part.label}</small> : null}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function VariantPreviewIcon({ design }: { design: CampaignDesignValues }) {
-  if (design.icon === "NONE") return null;
-
-  const iconStyle = {
-    "--cp-icon-size": `${Math.max(12, Math.min(64, design.iconSize))}px`,
-  } as CSSProperties;
-
-  if (design.icon === "CUSTOM" && design.customIconUrl) {
-    return (
-      <span
-        aria-hidden="true"
-        className="counterpulse-preview-icon"
-        style={iconStyle}
-      >
-        <img alt="" src={design.customIconUrl} />
-      </span>
-    );
-  }
-
-  return (
-    <span
-      aria-hidden="true"
-      className="counterpulse-preview-icon"
-      style={iconStyle}
-    >
-      <VariantPreviewIconGlyph icon={design.icon} />
-    </span>
-  );
-}
-
-function VariantPreviewIconGlyph({
-  icon,
-}: {
-  icon: CampaignDesignValues["icon"];
-}) {
-  if (icon === "FIRE") {
-    return (
-      <svg focusable="false" viewBox="0 0 24 24">
-        <path
-          d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-
-  if (icon === "CLOCK") {
-    return (
-      <svg focusable="false" viewBox="0 0 24 24">
-        <circle
-          cx="12"
-          cy="12"
-          fill="none"
-          r="8"
-          stroke="currentColor"
-          strokeWidth="2.2"
-        />
-        <path
-          d="M12 7.5v5l3.4 2"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeWidth="2.2"
-        />
-      </svg>
-    );
-  }
-
-  if (icon === "TRUCK") {
-    return (
-      <svg focusable="false" viewBox="0 0 24 24">
-        <path
-          d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z"
-          fill="none"
-          stroke="currentColor"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-        <circle cx="7" cy="17" fill="currentColor" r="1.8" />
-        <circle cx="17" cy="17" fill="currentColor" r="1.8" />
-      </svg>
-    );
-  }
-
-  if (icon === "GIFT") {
-    return (
-      <svg focusable="false" viewBox="0 0 24 24">
-        <path
-          d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13"
-          fill="none"
-          stroke="currentColor"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    );
-  }
-
-  if (icon === "TAG") {
-    return (
-      <svg focusable="false" viewBox="0 0 24 24">
-        <path
-          d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z"
-          fill="none"
-          stroke="currentColor"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-        <circle cx="16.8" cy="7.2" fill="currentColor" r="1.3" />
-      </svg>
-    );
-  }
-
-  return null;
-}
-
-function buildVariantPreviewTimerParts(design: CampaignDesignValues) {
-  return [
-    ...(!design.timerHideZeroDays
-      ? [
-          {
-            label: design.timerDaysLabel,
-            shortLabel: "Days",
-            value: "00",
-          },
-        ]
-      : []),
-    {
-      label: design.timerHoursLabel,
-      shortLabel: "Hrs",
-      value: "23",
-    },
-    {
-      label: design.timerMinutesLabel,
-      shortLabel: "Mins",
-      value: "59",
-    },
-    {
-      label: design.timerSecondsLabel,
-      shortLabel: "Secs",
-      value: "47",
-    },
-  ];
-}
-
-function buildVariantPreviewStyle(design: CampaignDesignValues) {
-  return {
-    "--cp-surface-bg": getSurfaceBackground(design),
-    "--cp-bg": design.backgroundColor,
-    "--cp-content-max-width": `${design.contentMaxWidth}px`,
-    "--cp-text": design.textColor,
-    "--cp-accent": design.accentColor,
-    "--cp-button": design.buttonColor,
-    "--cp-button-text": design.buttonTextColor,
-    "--cp-close": design.closeButtonColor,
-    "--cp-font-size": `${design.fontSize}px`,
-    "--cp-font-family": variantPreviewFontFamilies[design.fontFamily],
-    "--cp-radius": `${design.borderRadius}px`,
-    "--cp-border-size": `${design.borderSize}px`,
-    "--cp-border-color": design.borderColor,
-    "--cp-align": getTextAlign(design.alignment),
-    "--cp-justify": getJustifyContent(design.alignment),
-    "--cp-title-size": `${design.titleFontSize}px`,
-    "--cp-title-color": design.titleColor,
-    "--cp-subheading-size": `${design.subheadingFontSize}px`,
-    "--cp-subheading-color": design.subheadingColor,
-    "--cp-timer-size": `${design.timerFontSize}px`,
-    "--cp-timer-color": design.timerColor,
-    "--cp-legend-size": `${design.legendFontSize}px`,
-    "--cp-legend-color": design.legendColor,
-    "--cp-timer-surface": design.timerSurfaceColor,
-    "--cp-timer-border": design.timerSurfaceBorderColor,
-    "--cp-timer-border-size": `${design.timerSurfaceBorderSize}px`,
-    "--cp-timer-radius": `${design.timerSurfaceRadius}px`,
-    "--cp-padding-block": `${design.paddingBlock}px`,
-    "--cp-padding-inline": `${design.paddingInline}px`,
-    "--cp-gap": `${design.contentGap}px`,
-    "--cp-offer-code-text": design.offerCodeTextColor,
-    "--cp-offer-code-bg": design.offerCodeBackgroundColor,
-    "--cp-offer-code-border": design.offerCodeBorderColor,
-    "--cp-offer-code-size": `${design.offerCodeFontSize}px`,
-    "--cp-offer-code-radius": `${design.offerCodeBorderRadius}px`,
-    "--cp-offer-code-padding-block": `${design.offerCodePaddingBlock}px`,
-    "--cp-offer-code-padding-inline": `${design.offerCodePaddingInline}px`,
-    "--cp-offer-gap": `${design.offerCodeGap}px`,
-    "--cp-motion-duration": `${design.animationDurationMs}ms`,
-  } as CSSProperties;
-}
-
-function buildVariantPreviewButtonStyle(
-  design: CampaignDesignValues,
-): CSSProperties {
-  return {
-    backgroundColor: design.buttonColor,
-    borderColor: design.buttonColor,
-    color: design.buttonTextColor,
-  };
 }
 
 function VariantDrawerField({
@@ -3858,65 +3673,6 @@ function normalizeVariantWeights(variants: VariantDraft[]) {
   );
 }
 
-function redistributeVariantWeight(
-  variants: VariantDraft[],
-  changedIndex: number,
-  nextWeight: number,
-  lockedIndex: number | null = null,
-) {
-  if (!variants[changedIndex]) return variants;
-  if (variants.length === 1) return [{ ...variants[0], weight: 100 }];
-
-  const preservedIndex =
-    variants.length > 2 &&
-    lockedIndex !== null &&
-    lockedIndex !== changedIndex &&
-    variants[lockedIndex]
-      ? lockedIndex
-      : null;
-  const preservedWeight =
-    preservedIndex === null
-      ? 0
-      : clampVariantWeight(variants[preservedIndex].weight);
-  const targetWeight = clampVariantWeight(
-    preservedIndex === null
-      ? nextWeight
-      : Math.min(nextWeight, 100 - preservedWeight),
-  );
-  const remainingWeight = 100 - targetWeight - preservedWeight;
-  const otherWeights = variants
-    .map((variant, index) =>
-      index === changedIndex || index === preservedIndex
-        ? null
-        : Math.max(0, Math.round(variant.weight)),
-    )
-    .filter((weight): weight is number => weight !== null);
-  const otherTotal = otherWeights.reduce((total, weight) => total + weight, 0);
-  const nextOtherWeights =
-    otherTotal > 0
-      ? distributeIntegerTotal(remainingWeight, otherWeights)
-      : distributeIntegerTotal(
-          remainingWeight,
-          Array.from({ length: otherWeights.length }, () => 1),
-        );
-  let nextOtherWeightIndex = 0;
-
-  return variants.map((variant, index) => {
-    if (index === changedIndex) {
-      return { ...variant, weight: targetWeight };
-    }
-
-    if (index === preservedIndex) {
-      return { ...variant, weight: preservedWeight };
-    }
-
-    const weight = nextOtherWeights[nextOtherWeightIndex] ?? 0;
-    nextOtherWeightIndex += 1;
-
-    return { ...variant, weight };
-  });
-}
-
 function applyVariantWeights(variants: VariantDraft[], weights: number[]) {
   return variants.map((variant, index) => ({
     ...variant,
@@ -3965,6 +3721,30 @@ function clampVariantWeight(value: number) {
   if (!Number.isFinite(value)) return 0;
 
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+// Control (index 0) is never weighted directly: its share is whatever remains
+// after the other variants, so the split always totals 100%.
+function withControlAsRemainder(variants: VariantDraft[]) {
+  if (variants.length === 0) return variants;
+  if (variants.length === 1) return [{ ...variants[0], weight: 100 }];
+
+  let othersTotal = 0;
+  const adjusted = variants.map((variant, index) => {
+    if (index === 0) return variant;
+
+    const available = Math.max(0, 100 - othersTotal);
+    const weight = Math.min(clampVariantWeight(variant.weight), available);
+    othersTotal += weight;
+
+    return { ...variant, weight };
+  });
+
+  return adjusted.map((variant, index) =>
+    index === 0
+      ? { ...variant, weight: Math.max(0, 100 - othersTotal) }
+      : variant,
+  );
 }
 
 function letterForVariant(index: number) {
@@ -4374,36 +4154,6 @@ function jsonOverrideValue(value: Record<string, unknown> | null) {
   return value ? JSON.stringify(value) : "";
 }
 
-function getSurfaceBackground(design: CampaignDesignValues) {
-  if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
-    return `linear-gradient(rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16)), url("${escapeCssUrl(
-      design.backgroundImageUrl,
-    )}") center / cover no-repeat`;
-  }
-
-  if (design.backgroundType === "GRADIENT") {
-    return `linear-gradient(${design.gradientAngle}deg, ${design.gradientStartColor}, ${design.gradientEndColor})`;
-  }
-
-  return design.backgroundColor;
-}
-
-function escapeCssUrl(value: string) {
-  return value.replace(/["\\\n\r]/g, "");
-}
-
-function getTextAlign(alignment: CampaignDesignValues["alignment"]) {
-  if (alignment === "LEFT") return "left";
-  if (alignment === "RIGHT") return "right";
-  return "center";
-}
-
-function getJustifyContent(alignment: CampaignDesignValues["alignment"]) {
-  if (alignment === "LEFT") return "flex-start";
-  if (alignment === "RIGHT") return "flex-end";
-  return "center";
-}
-
 function formatBasePlacement(baseViewModel: CampaignViewModel) {
   const placement = baseViewModel.placements[0];
 
@@ -4435,6 +4185,43 @@ function formatMetric(value: string) {
   if (value === "REVENUE_PER_VISITOR") return "Revenue per visitor";
 
   return formatEnum(value);
+}
+
+function getPrimaryMetricColumn(metric: string) {
+  if (metric === "ADD_TO_CART_RATE") return "addToCart";
+  if (metric === "CHECKOUT_RATE") return "conversion";
+  if (metric === "REVENUE_PER_VISITOR") return "rpv";
+
+  return "ctr";
+}
+
+function ResultHeaderCell({
+  children,
+  column,
+  primaryMetricColumn,
+}: {
+  children: ReactNode;
+  column: string;
+  primaryMetricColumn: string;
+}) {
+  const isPrimary = column === primaryMetricColumn;
+
+  return (
+    <th
+      className={
+        isPrimary ? "counterpulse-experiment-results__cell--primary" : undefined
+      }
+    >
+      <span className="counterpulse-result-th">
+        {children}
+        {isPrimary ? (
+          <span className="counterpulse-result-primary-tag">
+            Primary metric
+          </span>
+        ) : null}
+      </span>
+    </th>
+  );
 }
 
 function formatExperimentStatus(value: string) {

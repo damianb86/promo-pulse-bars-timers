@@ -67,13 +67,83 @@ const fontFamilies: Record<CampaignDesignValues["fontFamily"], string> = {
   CASUAL: '"Trebuchet MS", Verdana, ui-rounded, system-ui, sans-serif',
 };
 
+function usePreviewClock() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const updateNow = () => setNow(new Date());
+    const timeoutId = window.setTimeout(updateNow, 0);
+    const intervalId = window.setInterval(() => {
+      updateNow();
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  return now;
+}
+
+/**
+ * Renders a single promo surface (bar/block/badge) with the canonical preview
+ * logic and live countdown, without the surrounding storefront chrome. Shared so
+ * compact previews (e.g. experiment variant cards) stay identical to the design
+ * preview instead of reimplementing the rendering.
+ */
+export function CampaignPromoSurface({
+  viewModel,
+  design,
+  placement = "TOP_BAR",
+  variant = "bar",
+  className,
+  dataTestId,
+}: {
+  viewModel: CampaignViewModel;
+  design: CampaignDesignValues;
+  placement?: PreviewPlacement;
+  variant?: "bar" | "block" | "badge";
+  className?: string;
+  dataTestId?: string;
+}) {
+  const now = usePreviewClock();
+  const evergreenStorage = useMemo(
+    () => buildPreviewEvergreenStorage(viewModel.timer),
+    [viewModel.timer],
+  );
+  const timerState =
+    viewModel.timer && now
+      ? calculateTimerState(
+          viewModel.timer,
+          now,
+          viewModel.timezone,
+          evergreenStorage,
+        )
+      : null;
+
+  return (
+    <PromoSurface
+      className={className}
+      dataTestId={dataTestId}
+      design={design}
+      now={now}
+      placement={placement}
+      style={buildPreviewStyle(design)}
+      timerState={timerState}
+      variant={variant}
+      viewModel={viewModel}
+    />
+  );
+}
+
 export function CampaignPreview({
   viewModel,
   design,
   device,
   placement,
 }: CampaignPreviewProps) {
-  const [now, setNow] = useState<Date | null>(null);
+  const now = usePreviewClock();
   const evergreenStorage = useMemo(
     () => buildPreviewEvergreenStorage(viewModel.timer),
     [viewModel.timer],
@@ -102,19 +172,6 @@ export function CampaignPreview({
       viewModel={viewModel}
     />
   );
-
-  useEffect(() => {
-    const updateNow = () => setNow(new Date());
-    const timeoutId = window.setTimeout(updateNow, 0);
-    const intervalId = window.setInterval(() => {
-      updateNow();
-    }, 1000);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.clearInterval(intervalId);
-    };
-  }, []);
 
   return (
     <div
@@ -466,6 +523,8 @@ function PromoSurface({
   timerState,
   variant,
   style,
+  className,
+  dataTestId,
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -474,6 +533,8 @@ function PromoSurface({
   timerState: TimerState | null;
   variant: "bar" | "block" | "badge";
   style: CSSProperties;
+  className?: string;
+  dataTestId?: string;
 }) {
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
@@ -492,7 +553,11 @@ function PromoSurface({
           )
             .toLowerCase()
             .replace("_", "-")}`,
-        ].join(" ")}
+          className ?? "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-testid={dataTestId}
         style={style}
       >
         <span>
@@ -548,7 +613,11 @@ function PromoSurface({
         `counterpulse-preview-promo--position-${design.positionMode.toLowerCase()}`,
         `counterpulse-preview-promo--enter-${design.entranceAnimation.toLowerCase()}`,
         `counterpulse-preview-promo--exit-${design.exitAnimation.toLowerCase()}`,
-      ].join(" ")}
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-testid={dataTestId}
       style={style}
     >
       <div className="counterpulse-preview-message">

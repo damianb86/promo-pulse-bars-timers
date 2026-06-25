@@ -7848,6 +7848,15 @@ s-page::part(page) {
   gap: 8px;
 }
 
+.counterpulse-design-sublabel {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d7175;
+}
+
 .counterpulse-layout-option,
 .counterpulse-timer-style-option {
   min-width: 0;
@@ -9553,6 +9562,10 @@ s-page::part(page) {
   font-variant-numeric: tabular-nums;
 }
 
+.counterpulse-preview-timer--stacked {
+  flex-direction: column;
+}
+
 .counterpulse-preview-timer--compact {
   font-size: max(13px, calc(var(--cp-timer-size) * 0.68));
 }
@@ -9994,6 +10007,7 @@ s-page::part(page) {
   font-weight: 700;
   text-align: center;
   box-shadow: 0 8px 18px rgba(32, 34, 35, 0.14);
+  z-index: 3;
 }
 
 .counterpulse-preview-badge .counterpulse-preview-timer {

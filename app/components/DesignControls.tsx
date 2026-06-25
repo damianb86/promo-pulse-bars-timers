@@ -14,7 +14,9 @@ import {
   designOfferCopyBehaviorOptions,
   designTimerTickAnimationOptions,
   designTimerFormatOptions,
+  designTimerNumberLayoutOptions,
   designTimerStyleOptions,
+  designDismissBehaviorOptions,
   type CampaignDesignErrors,
   type DesignBackgroundTypeValue,
   type CampaignDesignImageOption,
@@ -344,28 +346,6 @@ export function DesignControls({
       <DesignPanel title="Timer Style">
         {hasTimer ? (
           <>
-            <DesignGroup error={errors.timerFormat} label="Format">
-              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
-                {designTimerFormatOptions.map((option) => (
-                  <button
-                    className={
-                      values.timerFormat === option.value ? "is-active" : ""
-                    }
-                    key={option.value}
-                    type="button"
-                    onClick={() => updateValue("timerFormat", option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <input
-                name="timerFormat"
-                type="hidden"
-                value={values.timerFormat}
-              />
-            </DesignGroup>
-
             <DesignGroup label="Timer labels">
               <div className="counterpulse-design-toggle-row">
                 <ToggleSwitch
@@ -484,6 +464,58 @@ export function DesignControls({
                 type="hidden"
                 value={values.timerStyle}
               />
+
+              <span className="counterpulse-design-sublabel">Format</span>
+              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+                {designTimerFormatOptions.map((option) => (
+                  <button
+                    className={
+                      values.timerFormat === option.value ? "is-active" : ""
+                    }
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateValue("timerFormat", option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                name="timerFormat"
+                type="hidden"
+                value={values.timerFormat}
+              />
+
+              <span className="counterpulse-design-sublabel">Number layout</span>
+              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+                {designTimerNumberLayoutOptions.map((option) => (
+                  <button
+                    className={
+                      values.timerNumberLayout === option.value
+                        ? "is-active"
+                        : ""
+                    }
+                    key={option.value}
+                    type="button"
+                    title={option.description}
+                    onClick={() =>
+                      updateValue("timerNumberLayout", option.value)
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                name="timerNumberLayout"
+                type="hidden"
+                value={values.timerNumberLayout}
+              />
+              {errors.timerNumberLayout && (
+                <span className="counterpulse-form-error">
+                  {errors.timerNumberLayout}
+                </span>
+              )}
             </DesignGroup>
 
             {values.timerStyle !== "PLAIN" && (
@@ -704,6 +736,15 @@ export function DesignControls({
             value={values.closeButtonColor}
             onChange={(value) => updateColor("closeButtonColor", value)}
           />
+          <NumberField
+            error={errors.closeButtonSize}
+            label="Close icon size"
+            max={44}
+            min={12}
+            name="closeButtonSize"
+            value={values.closeButtonSize}
+            onChange={(value) => updateNumber("closeButtonSize", value)}
+          />
         </div>
       </DesignPanel>
 
@@ -769,6 +810,37 @@ export function DesignControls({
             onChange={(checked) => updateValue("showButton", checked)}
           />
         </div>
+        {values.showCloseButton && (
+          <DesignField
+            label="When a shopper closes it"
+            error={errors.dismissBehavior}
+          >
+            <select
+              name="dismissBehavior"
+              value={values.dismissBehavior}
+              onChange={(event) =>
+                updateValue(
+                  "dismissBehavior",
+                  event.target
+                    .value as CampaignDesignValues["dismissBehavior"],
+                )
+              }
+            >
+              {designDismissBehaviorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+        )}
+        {!values.showCloseButton && (
+          <input
+            name="dismissBehavior"
+            type="hidden"
+            value={values.dismissBehavior}
+          />
+        )}
       </DesignPanel>
 
       <DesignPanel title="Motion">

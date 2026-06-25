@@ -15,9 +15,11 @@ import {
   type DesignTimerStyleValue,
   type CampaignDesignIconValue,
   type DesignAlignmentValue,
+  type DesignDismissBehaviorValue,
   type DesignOfferApplyBehaviorValue,
   type DesignOfferCodeLayoutValue,
   type DesignOfferCopyBehaviorValue,
+  type DesignTimerNumberLayoutValue,
 } from "../types/campaign-design";
 import {
   hasCampaignDesignErrors,
@@ -132,6 +134,7 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.legendColor,
     timerStyle: readTimerStyle(formData),
     timerFormat: readTimerFormat(formData),
+    timerNumberLayout: readTimerNumberLayout(formData),
     timerShowLabels: readBoolean(formData, "timerShowLabels"),
     timerShowSeconds: readBoolean(formData, "timerShowSeconds"),
     timerDaysLabel:
@@ -202,6 +205,12 @@ export function parseCampaignDesignFormData(
     ),
     alignment: readAlignment(formData),
     showCloseButton: readBoolean(formData, "showCloseButton"),
+    closeButtonSize: readInteger(
+      formData,
+      "closeButtonSize",
+      defaultCampaignDesignValues.closeButtonSize,
+    ),
+    dismissBehavior: readDismissBehavior(formData),
     showButton: readBoolean(formData, "showButton"),
     showProgressBar: readBoolean(formData, "showProgressBar"),
     showIcon: readBoolean(formData, "showIcon"),
@@ -383,7 +392,13 @@ function readInteger(
   key: keyof CampaignDesignValues,
   fallback: number,
 ) {
-  const value = Number(readString(formData, key));
+  const raw = readString(formData, key);
+
+  // An absent field reads as "" and Number("") === 0, which would silently
+  // override sensible defaults (e.g. closeButtonSize) with 0; fall back instead.
+  if (!raw) return fallback;
+
+  const value = Number(raw);
 
   return Number.isFinite(value) ? Math.round(value) : fallback;
 }
@@ -454,6 +469,18 @@ function readTimerStyle(formData: FormData): DesignTimerStyleValue {
   return defaultCampaignDesignValues.timerStyle;
 }
 
+function readTimerNumberLayout(
+  formData: FormData,
+): DesignTimerNumberLayoutValue {
+  const value = readString(formData, "timerNumberLayout");
+
+  if (value === "INLINE" || value === "STACKED") {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.timerNumberLayout;
+}
+
 function readPositionMode(formData: FormData): DesignPositionModeValue {
   const value = readString(formData, "positionMode");
 
@@ -497,6 +524,16 @@ function readAlignment(formData: FormData): DesignAlignmentValue {
   }
 
   return defaultCampaignDesignValues.alignment;
+}
+
+function readDismissBehavior(formData: FormData): DesignDismissBehaviorValue {
+  const value = readString(formData, "dismissBehavior");
+
+  if (value === "SHOW_AGAIN" || value === "HIDE_PERMANENTLY") {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.dismissBehavior;
 }
 
 function readIcon(formData: FormData): CampaignDesignIconValue {

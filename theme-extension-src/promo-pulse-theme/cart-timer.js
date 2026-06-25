@@ -517,6 +517,14 @@
       return;
     }
 
+    if (
+      design.dismissBehavior === "HIDE_PERMANENTLY" &&
+      isCampaignDismissed(campaign.id)
+    ) {
+      updateDebug(root, "Campana cerrada por el visitante; no se vuelve a mostrar.");
+      return;
+    }
+
     card = document.createElement("section");
     card.className =
       "pp-cart-card" +
@@ -880,16 +888,58 @@
 
   function renderCloseButton(card, design) {
     var button = document.createElement("button");
+    var size = clamp((design || {}).closeButtonSize, 10, 48, 20);
 
     button.className = "pp-close";
     button.type = "button";
     button.setAttribute("aria-label", "Close");
-    button.innerHTML = "&times;";
+    button.style.setProperty("--pp-close-size", size + "px");
+    button.innerHTML = closeIconSvg(size);
     button.addEventListener("click", function () {
+      if ((design || {}).dismissBehavior === "HIDE_PERMANENTLY") {
+        rememberCampaignDismissed(card.dataset.campaignId);
+      }
       removeCartCard(card, design);
     });
 
     return button;
+  }
+
+  function closeIconSvg(size) {
+    return (
+      '<svg class="pp-close__icon" viewBox="0 0 24 24" width="' +
+      size +
+      '" height="' +
+      size +
+      '" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" aria-hidden="true" focusable="false">' +
+      '<line x1="6" y1="6" x2="18" y2="18"></line>' +
+      '<line x1="18" y1="6" x2="6" y2="18"></line></svg>'
+    );
+  }
+
+  function dismissStorageKey(campaignId) {
+    return "promo_pulse_dismissed_" + campaignId;
+  }
+
+  function isCampaignDismissed(campaignId) {
+    if (!campaignId) return false;
+
+    try {
+      return window.localStorage.getItem(dismissStorageKey(campaignId)) === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function rememberCampaignDismissed(campaignId) {
+    if (!campaignId) return;
+
+    try {
+      window.localStorage.setItem(dismissStorageKey(campaignId), "1");
+    } catch (error) {
+      /* storage blocked: dismissal cannot persist */
+    }
   }
 
   function removeCartCard(card, design) {
@@ -931,6 +981,9 @@
       timerStyle.toLowerCase() +
       " pp-countdown--" +
       timerFormat.toLowerCase() +
+      (design.timerNumberLayout === "STACKED"
+        ? " pp-countdown--stacked"
+        : "") +
       (compact ? " pp-countdown--compact" : "") +
       timerTickClass(design);
 

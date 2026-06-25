@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 
+import { RouteLoadingIndicator } from "./RouteLoadingIndicator";
+
 type AppShellProps = {
   apiKey: string;
   children: ReactNode;
@@ -33,6 +35,7 @@ export function AppShell({ apiKey, children }: AppShellProps) {
           </a>
         ))}
       </NavMenu>
+      <RouteLoadingIndicator />
       <div className="counterpulse-app-surface">{children}</div>
     </AppProvider>
   );

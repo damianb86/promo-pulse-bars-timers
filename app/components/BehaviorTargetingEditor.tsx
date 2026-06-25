@@ -1,6 +1,12 @@
-import { useState, type ReactNode } from "react";
-import { AppAlert, FieldInfoButton, useConfirmSubmit } from "./Notifications";
-import { Form, useNavigation } from "react-router";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { AppAlert, FieldInfoButton } from "./Notifications";
+import { useFetcher } from "react-router";
 
 import {
   behaviorSegmentOptions,
@@ -78,21 +84,83 @@ export function BehaviorTargetingEditor({
   notice,
   values,
 }: BehaviorTargetingEditorProps) {
-  const navigation = useNavigation();
-  const isSubmitting = navigation.state === "submitting";
+  const fetcher = useFetcher();
+  const formRef = useRef<HTMLFormElement>(null);
+  const baselineRef = useRef("");
+  const [isDirty, setIsDirty] = useState(false);
   const [selectedSegments, setSelectedSegments] = useState<
     Set<BehaviorSegmentKey>
   >(() => new Set(values.segments));
-  const confirmSubmit = useConfirmSubmit({
-    confirmLabel: "Save behavior targeting",
-    title: "Save behavior targeting?",
-    children: (
-      <p>
-        This can change which visitors are eligible for the campaign. Targeting
-        only uses consent-safe Promo Pulse events.
-      </p>
-    ),
-  });
+  const isSaving = fetcher.state !== "idle";
+  const fetcherData = fetcher.data as
+    | {
+        behaviorTargetingErrors?: BehaviorTargetingErrors;
+        behaviorTargetingNotice?: string;
+      }
+    | undefined;
+  const activeErrors = fetcherData?.behaviorTargetingErrors ?? errors;
+  const activeNotice = fetcherData?.behaviorTargetingNotice ?? notice;
+
+  const recomputeDirty = useCallback(() => {
+    const form = formRef.current;
+    if (!form) return;
+    setIsDirty(computeBehaviorSignature(form) !== baselineRef.current);
+  }, []);
+
+  // Capture the baseline signature once the form is mounted. The editor is
+  // re-keyed on persisted changes, so mount always reflects the saved state.
+  // isDirty starts false and the segment effect below reconciles from here.
+  useEffect(() => {
+    baselineRef.current = formRef.current
+      ? computeBehaviorSignature(formRef.current)
+      : "";
+  }, []);
+
+  // Recompute dirtiness when per-segment panels mount/unmount.
+  useEffect(() => {
+    recomputeDirty();
+  }, [selectedSegments, recomputeDirty]);
+
+  // Report dirty/saving to the shared Shopify save bar in the campaign editor.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("promo-pulse:behavior-targeting-state", {
+        detail: { dirty: isDirty, saving: isSaving },
+      }),
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("promo-pulse:behavior-targeting-state", {
+          detail: { dirty: false, saving: false },
+        }),
+      );
+    };
+  }, [isDirty, isSaving]);
+
+  // Save and discard are driven by the Shopify save bar, not a local button.
+  useEffect(() => {
+    const save = () => {
+      if (!isDirty || isSaving || !formRef.current) return;
+      fetcher.submit(formRef.current, { method: "post" });
+    };
+    const discard = () => {
+      formRef.current?.reset();
+      setSelectedSegments(new Set(values.segments));
+      window.setTimeout(() => recomputeDirty(), 0);
+    };
+
+    window.addEventListener("promo-pulse:behavior-targeting-save", save);
+    window.addEventListener("promo-pulse:behavior-targeting-discard", discard);
+
+    return () => {
+      window.removeEventListener("promo-pulse:behavior-targeting-save", save);
+      window.removeEventListener(
+        "promo-pulse:behavior-targeting-discard",
+        discard,
+      );
+    };
+  }, [fetcher, isDirty, isSaving, recomputeDirty, values.segments]);
 
   const toggleSegment = (key: BehaviorSegmentKey, checked: boolean) => {
     setSelectedSegments((current) => {
@@ -122,25 +190,31 @@ export function BehaviorTargetingEditor({
         />
       )}
 
-      {notice && (
+      {activeNotice && (
         <AppAlert tone="info" title="Behavior targeting updated">
-          <s-paragraph>{notice}</s-paragraph>
+          <s-paragraph>{activeNotice}</s-paragraph>
         </AppAlert>
       )}
 
-      {errors?.form && (
+      {activeErrors?.form && (
         <AppAlert tone="critical" title="Behavior targeting could not be saved">
-          <s-paragraph>{errors.form}</s-paragraph>
+          <s-paragraph>{activeErrors.form}</s-paragraph>
         </AppAlert>
       )}
 
       {!lockedReason && (
-        <Form
+        <fetcher.Form
           method="post"
           className="counterpulse-form"
-          onSubmit={confirmSubmit.onSubmit}
+          ref={formRef}
+          onChange={recomputeDirty}
+          onSubmit={(event) => event.preventDefault()}
         >
           <input name="_action" type="hidden" value="saveBehaviorTargeting" />
+          <p className="counterpulse-field-hint">
+            Changes here are saved with the campaign’s Save bar at the top of the
+            page.
+          </p>
 
           <div className="counterpulse-panel-grid">
             <div className="counterpulse-config-card counterpulse-config-card--wide">
@@ -185,7 +259,7 @@ export function BehaviorTargetingEditor({
               <div className="counterpulse-form-grid">
                 <FormField
                   label="Lookback days"
-                  error={errors?.lookbackDays}
+                  error={activeErrors?.lookbackDays}
                   info={
                     <FieldInfoButton label="Lookback days" title="Lookback">
                       <BehaviorInfoContent
@@ -262,7 +336,7 @@ export function BehaviorTargetingEditor({
                           <SegmentPanel
                             segment={option.key}
                             values={values}
-                            errors={errors}
+                            errors={activeErrors}
                           />
                         )}
                       </div>
@@ -272,17 +346,19 @@ export function BehaviorTargetingEditor({
               </div>
             ))}
           </div>
-
-          <div className="counterpulse-actions">
-            <button className="counterpulse-button" type="submit">
-              {isSubmitting ? "Saving..." : "Save behavior targeting"}
-            </button>
-          </div>
-        </Form>
+        </fetcher.Form>
       )}
-      {confirmSubmit.modal}
     </s-section>
   );
+}
+
+function computeBehaviorSignature(form: HTMLFormElement) {
+  const entries = Array.from(new FormData(form).entries()).map(
+    ([key, value]) => `${key}=${String(value)}`,
+  );
+  entries.sort();
+
+  return entries.join("&");
 }
 
 function SegmentPanel({

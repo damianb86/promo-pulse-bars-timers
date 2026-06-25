@@ -1710,6 +1710,11 @@ export default function EditCampaignPage() {
     dirty: false,
     saving: false,
   });
+  const [behaviorTargetingSaveBarState, setBehaviorTargetingSaveBarState] =
+    useState({
+      dirty: false,
+      saving: false,
+    });
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
@@ -1731,7 +1736,9 @@ export default function EditCampaignPage() {
   );
   const hasCampaignDraftUnsavedChanges = currentDraftKey !== persistedDraftKey;
   const hasUnsavedChanges =
-    hasCampaignDraftUnsavedChanges || experimentAutoWinnerSaveBarState.dirty;
+    hasCampaignDraftUnsavedChanges ||
+    experimentAutoWinnerSaveBarState.dirty ||
+    behaviorTargetingSaveBarState.dirty;
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
     draftCampaignValues.goal === "FREE_SHIPPING";
@@ -1798,6 +1805,9 @@ export default function EditCampaignPage() {
     window.dispatchEvent(
       new CustomEvent("promo-pulse:experiment-auto-winner-discard"),
     );
+    window.dispatchEvent(
+      new CustomEvent("promo-pulse:behavior-targeting-discard"),
+    );
   };
 
   useEffect(() => {
@@ -1819,8 +1829,12 @@ export default function EditCampaignPage() {
     dirty: hasUnsavedChanges,
     disabled:
       navigation.state === "submitting" ||
-      experimentAutoWinnerSaveBarState.saving,
-    saving: isSavingDraft || experimentAutoWinnerSaveBarState.saving,
+      experimentAutoWinnerSaveBarState.saving ||
+      behaviorTargetingSaveBarState.saving,
+    saving:
+      isSavingDraft ||
+      experimentAutoWinnerSaveBarState.saving ||
+      behaviorTargetingSaveBarState.saving,
   });
 
   useEffect(() => {
@@ -1838,15 +1852,37 @@ export default function EditCampaignPage() {
       });
     };
 
+    const handleBehaviorTargetingState = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          dirty?: boolean;
+          saving?: boolean;
+        }>
+      ).detail;
+
+      setBehaviorTargetingSaveBarState({
+        dirty: Boolean(detail?.dirty),
+        saving: Boolean(detail?.saving),
+      });
+    };
+
     window.addEventListener(
       "promo-pulse:experiment-auto-winner-state",
       handleExperimentAutoWinnerState,
+    );
+    window.addEventListener(
+      "promo-pulse:behavior-targeting-state",
+      handleBehaviorTargetingState,
     );
 
     return () => {
       window.removeEventListener(
         "promo-pulse:experiment-auto-winner-state",
         handleExperimentAutoWinnerState,
+      );
+      window.removeEventListener(
+        "promo-pulse:behavior-targeting-state",
+        handleBehaviorTargetingState,
       );
     };
   }, []);
@@ -1878,6 +1914,14 @@ export default function EditCampaignPage() {
         saving={isSavingDraft || experimentAutoWinnerSaveBarState.saving}
         onDiscard={discardDraft}
         onSave={() => {
+          // Behavior targeting saves independently via a fetcher, so trigger it
+          // alongside whatever the active tab needs to persist.
+          if (behaviorTargetingSaveBarState.dirty) {
+            window.dispatchEvent(
+              new CustomEvent("promo-pulse:behavior-targeting-save"),
+            );
+          }
+
           if (hasCampaignDraftUnsavedChanges) {
             if (requestCampaignDraftSubmitFromActiveForm("saveDraft")) {
               return;
@@ -1887,9 +1931,11 @@ export default function EditCampaignPage() {
             return;
           }
 
-          window.dispatchEvent(
-            new CustomEvent("promo-pulse:experiment-auto-winner-save"),
-          );
+          if (experimentAutoWinnerSaveBarState.dirty) {
+            window.dispatchEvent(
+              new CustomEvent("promo-pulse:experiment-auto-winner-save"),
+            );
+          }
         }}
       />
       <s-page inlineSize="large" heading="Edit campaign">
@@ -2132,6 +2178,7 @@ export default function EditCampaignPage() {
                     onValuesChange={updateTargetingDraftValues}
                   />
                   <BehaviorTargetingEditor
+                    key={`behavior:${JSON.stringify(behaviorTargetingValues)}`}
                     errors={actionData?.behaviorTargetingErrors}
                     lockedReason={lockedFeatures.behaviorTargeting}
                     notice={actionData?.behaviorTargetingNotice}

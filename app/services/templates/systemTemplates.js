@@ -616,13 +616,13 @@ const strategyDefinitions = [
       icon: "TRUCK",
       templateKey: "free-shipping",
       recommendedPlacement: "CART_DRAWER",
-      placements: ["CART_DRAWER", "TOP_BAR"],
+      placements: ["CART_DRAWER"],
       subheadline: "Convert first-time visitors with a clear first-order reward.",
       description:
-        "Objective: convert first-time visitors. Presents a free-shipping progress goal only to shoppers with no prior Promo Pulse history, giving newcomers a concrete incentive to complete a first order.",
+        "Objective: convert first-time visitors. Presents a free-shipping progress goal in the cart drawer only to shoppers with no prior Promo Pulse history, giving newcomers a concrete incentive to complete a first order.",
       highlights: [
         "Behavior targeting: New visitor (no prior history)",
-        "Free-shipping progress goal in the cart drawer and top bar",
+        "Free-shipping progress goal in the cart drawer",
         "Set the real threshold and reward before publishing",
       ],
       behaviorRules: {

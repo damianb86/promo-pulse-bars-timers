@@ -7,6 +7,7 @@ import {
   redirect,
   useActionData,
   useLoaderData,
+  useNavigation,
 } from "react-router";
 
 import { EmptyStateCard } from "../components/EmptyStateCard";
@@ -435,17 +436,6 @@ function TemplateFilters({
           </select>
         </label>
         <label className="counterpulse-form-field">
-          <span>Locale</span>
-          <select name="locale" defaultValue={filters.locale ?? ""}>
-            <option value="">All locales</option>
-            {options.locales.map((locale) => (
-              <option key={locale} value={locale}>
-                {locale}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="counterpulse-form-field">
           <span>Campaign type</span>
           <select name="type" defaultValue={filters.type ?? ""}>
             <option value="">All types</option>
@@ -480,6 +470,11 @@ function CreateTemplateFromCampaign({
 }: {
   campaigns: SourceCampaignRow[];
 }) {
+  const navigation = useNavigation();
+  const isSaving =
+    navigation.state !== "idle" &&
+    navigation.formData?.get("_action") === "createFromCampaign";
+
   return (
     <section className="counterpulse-template-create">
       <div>
@@ -516,10 +511,11 @@ function CreateTemplateFromCampaign({
         </label>
         <button
           className="counterpulse-button"
-          disabled={campaigns.length === 0}
+          disabled={campaigns.length === 0 || isSaving}
+          aria-busy={isSaving}
           type="submit"
         >
-          Save template
+          {isSaving ? "Saving..." : "Save template"}
         </button>
       </Form>
     </section>
@@ -527,6 +523,14 @@ function CreateTemplateFromCampaign({
 }
 
 function TemplateCard({ template }: { template: TemplateRow }) {
+  const navigation = useNavigation();
+  const pendingAction =
+    navigation.state !== "idle" &&
+    navigation.formData?.get("templateKey") === template.key
+      ? String(navigation.formData?.get("_action") ?? "")
+      : "";
+  const isUsing = pendingAction === "useTemplate";
+  const isDeleting = pendingAction === "deleteTemplate";
   const confirmDelete = useConfirmSubmit({
     cancelLabel: "Keep template",
     confirmLabel: "Delete template",
@@ -574,9 +578,6 @@ function TemplateCard({ template }: { template: TemplateRow }) {
         <div className="counterpulse-template-card__meta">
           <span>{formatCampaignOption(template.type)}</span>
           <span>{formatCampaignOption(template.placementType)}</span>
-          <span>
-            {template.countryCode ?? "US"} / {template.locale}
-          </span>
         </div>
 
         {template.behaviorSegments.length > 0 && (
@@ -610,8 +611,13 @@ function TemplateCard({ template }: { template: TemplateRow }) {
           <Form method="post">
             <input name="_action" type="hidden" value="useTemplate" />
             <input name="templateKey" type="hidden" value={template.key} />
-            <button className="counterpulse-button" type="submit">
-              Use template
+            <button
+              className="counterpulse-button"
+              type="submit"
+              disabled={isUsing}
+              aria-busy={isUsing}
+            >
+              {isUsing ? "Opening..." : "Use template"}
             </button>
           </Form>
 
@@ -623,8 +629,10 @@ function TemplateCard({ template }: { template: TemplateRow }) {
                 aria-label={`Delete ${template.eventName}`}
                 className="counterpulse-button-danger counterpulse-button-danger--small"
                 type="submit"
+                disabled={isDeleting}
+                aria-busy={isDeleting}
               >
-                Delete
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </Form>
           )}

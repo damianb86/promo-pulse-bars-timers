@@ -6,6 +6,53 @@ s-page {
   max-width: none;
 }
 
+.counterpulse-route-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 1000;
+  height: 3px;
+  overflow: hidden;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+.counterpulse-route-progress--active {
+  opacity: 1;
+}
+
+.counterpulse-route-progress__bar {
+  width: 40%;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(90deg, #008060, #00a47c);
+  transform: translateX(-100%);
+}
+
+.counterpulse-route-progress--active .counterpulse-route-progress__bar {
+  animation: counterpulse-route-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes counterpulse-route-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .counterpulse-route-progress--active .counterpulse-route-progress__bar {
+    animation-duration: 2.2s;
+  }
+}
+
 html,
 body {
   margin: 0;

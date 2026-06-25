@@ -7868,6 +7868,10 @@ s-page::part(page) {
   gap: 8px;
 }
 
+.counterpulse-timer-style-picker--combined {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .counterpulse-design-sublabel {
   display: block;
   margin-top: 12px;
@@ -8098,6 +8102,16 @@ s-page::part(page) {
   padding: 7px 0;
   border: 1px solid #c9cccf;
   background: #ffffff;
+}
+
+.counterpulse-timer-style-preview--colon {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.counterpulse-timer-style-preview--boxes.counterpulse-timer-style-preview--colon
+  span {
+  padding: 7px 8px;
 }
 
 .counterpulse-radio-stack {
@@ -9556,7 +9570,7 @@ s-page::part(page) {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
-  gap: 4px;
+  gap: max(4px, var(--cp-gap));
 }
 
 .counterpulse-preview-message strong {

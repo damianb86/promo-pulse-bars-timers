@@ -43,7 +43,10 @@
   margin-inline: auto;
 }
 
-.pp-container .pp-bar--full-width {
+/* Match both .pp-bar and the modifier so Full Width beats the per-layout width
+   caps (e.g. .pp-bar--layout-cta_right { width: min(100%, 520px) }), which share
+   the same specificity and would otherwise win by appearing later. */
+.pp-container .pp-bar.pp-bar--full-width {
   width: 100%;
 }
 

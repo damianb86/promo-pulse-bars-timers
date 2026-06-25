@@ -1,12 +1,8 @@
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
-import { Link, useActionData, useLoaderData } from "react-router";
+import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
-import { AppAlert, AppToast } from "../components/Notifications";
+import { AppAlert } from "../components/Notifications";
 import { CampaignStatusBadge } from "../components/CampaignStatusBadge";
 import { EmptyStateCard } from "../components/EmptyStateCard";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
@@ -16,31 +12,20 @@ import {
   getDashboardSummary,
   type DashboardSummary,
 } from "../models/dashboard.server";
-import { getOrCreateShopByDomain } from "../models/shop.server";
-import {
-  OnboardingError,
-  updateManualOnboardingChecklistField,
-} from "../services/onboarding.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
-import type { OnboardingChecklistField } from "../types/onboarding";
 
 type LoaderData = {
   dashboard: DashboardSummary;
   error: string | null;
 };
 
-type ActionData = {
-  notice?: string;
-  error?: string;
-};
-
 export const loader = async ({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> => {
-  const { session } = await authenticateAdmin(request);
+  const { session, admin } = await authenticateAdmin(request);
 
   try {
-    const dashboard = await getDashboardSummary(session.shop);
+    const dashboard = await getDashboardSummary(session.shop, admin);
 
     return {
       dashboard,
@@ -61,41 +46,8 @@ export const loader = async ({
   }
 };
 
-export const action = async ({
-  request,
-}: ActionFunctionArgs): Promise<ActionData> => {
-  const { session } = await authenticateAdmin(request);
-  const formData = await request.formData();
-
-  if (String(formData.get("intent")) !== "updateChecklist") {
-    return { error: "Unsupported dashboard action." };
-  }
-
-  const field = String(formData.get("field") ?? "") as OnboardingChecklistField;
-  const value = String(formData.get("value")) === "true";
-  const shop = await getOrCreateShopByDomain(session.shop);
-
-  try {
-    await updateManualOnboardingChecklistField(shop.id, field, value);
-
-    return {
-      notice: value
-        ? "Checklist step marked done."
-        : "Checklist step reopened.",
-    };
-  } catch (error) {
-    if (error instanceof OnboardingError) {
-      return { error: error.message };
-    }
-
-    console.error("Failed to update onboarding checklist", error);
-    return { error: "Checklist could not be updated." };
-  }
-};
-
 export default function Dashboard() {
   const { dashboard, error } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>() as ActionData | undefined;
   const revenue = new Intl.NumberFormat("en", {
     style: "currency",
     currency: dashboard.metrics.currencyCode,
@@ -121,18 +73,6 @@ export default function Dashboard() {
       {error && (
         <AppAlert tone="warning" title="Dashboard data needs attention">
           <s-paragraph>{error}</s-paragraph>
-        </AppAlert>
-      )}
-
-      {actionData?.notice && (
-        <AppToast tone="success" title="Checklist updated">
-          <s-paragraph>{actionData.notice}</s-paragraph>
-        </AppToast>
-      )}
-
-      {actionData?.error && (
-        <AppAlert tone="critical" title="Checklist update failed">
-          <s-paragraph>{actionData.error}</s-paragraph>
         </AppAlert>
       )}
 
@@ -248,34 +188,67 @@ export default function Dashboard() {
             label: "Create first campaign",
             completed: dashboard.onboarding.firstCampaignCreated,
             description: "Create and activate a starter promotion.",
+            actionLabel: "Create campaign",
+            actionHref: "/app/campaigns/new",
           },
           {
             label: "Enable theme app embed",
             completed: dashboard.onboarding.appEmbedEnabled,
-            description: "Turn on the Promo Pulse app embed in Theme Editor.",
-            manualField: "appEmbedEnabled",
+            description:
+              "Detected automatically once the Promo Pulse app embed is turned on in Theme Editor.",
+            actionLabel: "Open theme editor",
+            actionHref: themeEditorUrl(dashboard.shopifyDomain, {
+              context: "apps",
+            }),
           },
           {
             label: "Add product block",
             completed: dashboard.onboarding.productBlockAdded,
-            description: "Add the Promo Pulse block to a product template.",
-            manualField: "productBlockAdded",
+            description:
+              "Detected automatically once the Promo Pulse block is added to a product template.",
+            actionLabel: "Add to product template",
+            actionHref: themeEditorUrl(dashboard.shopifyDomain, {
+              template: "product",
+              addAppBlockId: `${THEME_EXTENSION_UID}/product-timer`,
+              target: "mainSection",
+            }),
           },
           {
             label: "Add cart block",
             completed: dashboard.onboarding.cartBlockAdded,
-            description: "Add the Promo Pulse block to the cart template.",
-            manualField: "cartBlockAdded",
+            description:
+              "Detected automatically once the Promo Pulse block is added to the cart template.",
+            actionLabel: "Add to cart template",
+            actionHref: themeEditorUrl(dashboard.shopifyDomain, {
+              template: "cart",
+              addAppBlockId: `${THEME_EXTENSION_UID}/cart-timer`,
+              target: "mainSection",
+            }),
           },
           {
             label: "Receive first impression",
             completed: dashboard.onboarding.firstImpressionReceived,
-            description: "Auto detected when a campaign renders on storefront.",
+            description:
+              "Detected automatically the first time a campaign renders on the storefront.",
+            actionLabel: "View analytics",
+            actionHref: "/app/reports",
           },
         ]}
       />
     </s-page>
   );
+}
+
+const THEME_EXTENSION_UID = "07333e7d-52b3-bfc5-0ef1-b67701f5552ae39da71d";
+
+function themeEditorUrl(
+  shopifyDomain: string | null,
+  params: Record<string, string>,
+) {
+  const domain = shopifyDomain ?? "admin.shopify.com";
+  const search = new URLSearchParams(params).toString();
+
+  return `https://${domain}/admin/themes/current/editor?${search}`;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

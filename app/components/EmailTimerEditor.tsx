@@ -427,7 +427,11 @@ export function EmailTimerEditor({
                       }}
                     >
                       <span style={{ background: preset.accentColor }} />
-                      <strong>{formatPreviewTimeText(preset)}</strong>
+                      <strong
+                        className={`counterpulse-email-timer-live-preview__time--${preset.fontFamily.toLowerCase()}`}
+                      >
+                        {formatPreviewTimeText(preset)}
+                      </strong>
                       {preset.showLabels && (
                         <em style={{ color: preset.labelColor }}>
                           {formatPreviewLabelText(preset)}
@@ -1097,7 +1101,7 @@ function EmailTimerLivePreview({
         {config.showHeading && (
           <span
             className="counterpulse-email-timer-live-preview__heading"
-            style={{ color: config.accentColor }}
+            style={{ color: config.textColor }}
           >
             {config.headingText || "ENDS IN"}
           </span>

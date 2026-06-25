@@ -4,6 +4,7 @@ import {
   designAlignmentOptions,
   designBackgroundTypeOptions,
   designBannerAnimationOptions,
+  designDismissBehaviorOptions,
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
@@ -12,6 +13,7 @@ import {
   designOfferCopyBehaviorOptions,
   designPositionModeOptions,
   designTimerFormatOptions,
+  designTimerNumberLayoutOptions,
   designTimerTickAnimationOptions,
   designTimerStyleOptions,
   findCampaignDesignTemplate,
@@ -322,6 +324,14 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   );
   validateIntegerRange(values, errors, "timerFontSize", 12, 72, "Timer size");
   validateIntegerRange(values, errors, "legendFontSize", 10, 24, "Legend size");
+  validateIntegerRange(
+    values,
+    errors,
+    "closeButtonSize",
+    12,
+    44,
+    "Close icon size",
+  );
 
   if (
     !designTimerStyleOptions.some(
@@ -337,6 +347,22 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     )
   ) {
     errors.timerFormat = "Choose a valid timer format.";
+  }
+
+  if (
+    !designTimerNumberLayoutOptions.some(
+      (option) => option.value === values.timerNumberLayout,
+    )
+  ) {
+    errors.timerNumberLayout = "Choose a valid timer number layout.";
+  }
+
+  if (
+    !designDismissBehaviorOptions.some(
+      (option) => option.value === values.dismissBehavior,
+    )
+  ) {
+    errors.dismissBehavior = "Choose a valid close behavior.";
   }
 
   validateLabel(values, errors, "timerDaysLabel", "Days label");

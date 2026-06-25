@@ -30,6 +30,11 @@
   ];
   var memoryVisitorId = "";
   var memorySessionId = "";
+  // Analytics events are queued and flushed as one batched POST per page load.
+  var analyticsEventQueue = [];
+  var analyticsFlushTimer = null;
+  var ANALYTICS_MAX_BATCH = 50;
+  var ANALYTICS_FLUSH_DELAY_MS = 400;
   var lastRememberedCampaign = null;
 
   installFetchGuard();
@@ -82,20 +87,10 @@
         });
       }
 
-      try {
-        window
-          .fetch(getAnalyticsPath(root), {
-            method: "POST",
-            credentials: "same-origin",
-            keepalive: true,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          })
-          .catch(function () {});
-      } catch (error) {
-        debug(root, error);
-      }
+      enqueueAnalyticsEvent(root, payload);
     };
+
+    installAnalyticsFlushHandlers();
 
     window.PromoPulseTrackCopy = function (campaign) {
       window.PromoPulseTrackEvent("COPY_CODE", campaign);
@@ -890,6 +885,80 @@
     );
   }
 
+  function enqueueAnalyticsEvent(root, payload) {
+    analyticsEventQueue.push(payload);
+
+    if (analyticsEventQueue.length >= ANALYTICS_MAX_BATCH) {
+      flushAnalyticsEvents(root, false);
+      return;
+    }
+
+    if (analyticsFlushTimer) return;
+
+    analyticsFlushTimer = window.setTimeout(function () {
+      flushAnalyticsEvents(root, false);
+    }, ANALYTICS_FLUSH_DELAY_MS);
+  }
+
+  function flushAnalyticsEvents(root, useBeacon) {
+    if (analyticsFlushTimer) {
+      window.clearTimeout(analyticsFlushTimer);
+      analyticsFlushTimer = null;
+    }
+
+    if (!analyticsEventQueue.length) return;
+
+    var events = analyticsEventQueue.splice(0, ANALYTICS_MAX_BATCH);
+    var url = getAnalyticsPath(root || getRoot());
+    var body = JSON.stringify({ events: events });
+
+    if (useBeacon && navigator && typeof navigator.sendBeacon === "function") {
+      try {
+        navigator.sendBeacon(
+          url,
+          new Blob([body], { type: "application/json" }),
+        );
+        if (analyticsEventQueue.length) flushAnalyticsEvents(root, true);
+        return;
+      } catch (beaconError) {
+        debug(root, beaconError);
+      }
+    }
+
+    try {
+      window
+        .fetch(url, {
+          method: "POST",
+          credentials: "same-origin",
+          keepalive: true,
+          headers: { "Content-Type": "application/json" },
+          body: body,
+        })
+        .catch(function () {});
+    } catch (error) {
+      debug(root, error);
+    }
+
+    // Drain anything that exceeded a single batch.
+    if (analyticsEventQueue.length) {
+      enqueueAnalyticsEvent(root, analyticsEventQueue.shift());
+    }
+  }
+
+  function installAnalyticsFlushHandlers() {
+    if (window.PromoPulseAnalyticsFlushReady) return;
+    window.PromoPulseAnalyticsFlushReady = true;
+
+    var flushWithBeacon = function () {
+      flushAnalyticsEvents(getRoot(), true);
+    };
+
+    window.addEventListener("pagehide", flushWithBeacon);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") flushWithBeacon();
+    });
+  }
+
   function getAnalyticsPath(root) {
     var apiBaseUrl = getApiBaseUrl(root);
 
@@ -1234,7 +1303,9 @@
         document.documentElement.lang ||
         "en",
       device: readStorefrontConfigValue(config, "device") || detectDevice(),
-      placement: storefrontCampaignPlacements.join(","),
+      // Send a single token instead of listing every placement; the backend
+      // expands it to all front placements and returns them grouped.
+      placement: "ALL_FRONT_DEFAULT_PLACEMENTS",
     });
     var country = readStorefrontConfigValue(config, "country");
     var market = readStorefrontConfigValue(config, "market") || detectMarket();

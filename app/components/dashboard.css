@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=VT323&display=swap");
+
 .counterpulse-app-surface,
 html,
 body,
@@ -6151,6 +6153,22 @@ s-page::part(page) {
   letter-spacing: 1px;
 }
 
+.counterpulse-email-style-preset__swatch
+  strong.counterpulse-email-timer-live-preview__time--digital {
+  font-family: "VT323", "Courier New", ui-monospace, monospace;
+  letter-spacing: 1.5px;
+}
+
+.counterpulse-email-style-preset__swatch
+  strong.counterpulse-email-timer-live-preview__time--wide {
+  letter-spacing: 3px;
+}
+
+.counterpulse-email-style-preset__swatch
+  strong.counterpulse-email-timer-live-preview__time--compact {
+  letter-spacing: 0;
+}
+
 .counterpulse-email-style-preset__swatch em {
   position: relative;
   max-width: 100%;
@@ -6236,11 +6254,13 @@ s-page::part(page) {
   font-size: 30px;
   font-weight: 900;
   line-height: 1;
+  letter-spacing: 1.5px;
 }
 
 .counterpulse-email-timer-live-preview__time--digital {
-  font-family: "Courier New", ui-monospace, monospace;
-  letter-spacing: 2px;
+  font-family: "VT323", "Courier New", ui-monospace, monospace;
+  font-size: 36px;
+  letter-spacing: 1.5px;
 }
 
 .counterpulse-email-timer-live-preview__time--wide {
@@ -6248,7 +6268,7 @@ s-page::part(page) {
 }
 
 .counterpulse-email-timer-live-preview__time--compact {
-  font-size: 32px;
+  font-size: 26px;
   letter-spacing: 0;
 }
 
@@ -7846,6 +7866,15 @@ s-page::part(page) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.counterpulse-design-sublabel {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d7175;
 }
 
 .counterpulse-layout-option,
@@ -9553,6 +9582,10 @@ s-page::part(page) {
   font-variant-numeric: tabular-nums;
 }
 
+.counterpulse-preview-timer--stacked {
+  flex-direction: column;
+}
+
 .counterpulse-preview-timer--compact {
   font-size: max(13px, calc(var(--cp-timer-size) * 0.68));
 }
@@ -9994,6 +10027,7 @@ s-page::part(page) {
   font-weight: 700;
   text-align: center;
   box-shadow: 0 8px 18px rgba(32, 34, 35, 0.14);
+  z-index: 3;
 }
 
 .counterpulse-preview-badge .counterpulse-preview-timer {

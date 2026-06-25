@@ -1,29 +1,26 @@
-import { Form } from "react-router";
-
-import type { OnboardingChecklistField } from "../types/onboarding";
-
 export type OnboardingChecklistItem = {
   label: string;
   completed: boolean;
   description?: string;
-  manualField?: OnboardingChecklistField;
+  actionLabel?: string;
+  actionHref?: string;
 };
 
 type OnboardingChecklistProps = {
   items: OnboardingChecklistItem[];
-  actionPath?: string;
 };
 
-export function OnboardingChecklist({
-  items,
-  actionPath,
-}: OnboardingChecklistProps) {
+export function OnboardingChecklist({ items }: OnboardingChecklistProps) {
   const completedCount = items.filter((item) => item.completed).length;
 
   return (
     <s-section
       heading={`Onboarding checklist (${completedCount}/${items.length})`}
     >
+      <s-paragraph>
+        Setup progress is checked automatically. Use the links below to finish
+        any step that is not done yet.
+      </s-paragraph>
       <div className="counterpulse-checklist">
         {items.map((item) => (
           <div className="counterpulse-checklist__item" key={item.label}>
@@ -45,23 +42,19 @@ export function OnboardingChecklist({
                 </div>
               )}
             </div>
-            {item.manualField && (
-              <Form
-                action={actionPath}
-                className="counterpulse-checklist__action"
-                method="post"
+            {!item.completed && item.actionHref && (
+              <a
+                className="counterpulse-button-secondary counterpulse-checklist__action"
+                href={item.actionHref}
+                rel={
+                  item.actionHref.startsWith("http")
+                    ? "noopener noreferrer"
+                    : undefined
+                }
+                target={item.actionHref.startsWith("http") ? "_blank" : undefined}
               >
-                <input name="intent" type="hidden" value="updateChecklist" />
-                <input name="field" type="hidden" value={item.manualField} />
-                <input
-                  name="value"
-                  type="hidden"
-                  value={item.completed ? "false" : "true"}
-                />
-                <button className="counterpulse-button-secondary" type="submit">
-                  {item.completed ? "Mark not done" : "Mark done"}
-                </button>
-              </Form>
+                {item.actionLabel ?? "Fix this"}
+              </a>
             )}
           </div>
         ))}

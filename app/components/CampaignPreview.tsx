@@ -589,8 +589,26 @@ function PromoSurface({
       )}
 
       {design.showCloseButton && (
-        <span className="counterpulse-preview-close" aria-hidden="true">
-          x
+        <span
+          className="counterpulse-preview-close"
+          aria-hidden="true"
+          style={{
+            width: `${design.closeButtonSize}px`,
+            height: `${design.closeButtonSize}px`,
+          }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width={design.closeButtonSize}
+            height={design.closeButtonSize}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+          >
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
         </span>
       )}
 
@@ -744,9 +762,14 @@ function TimerDisplay({
       className={[
         "counterpulse-preview-timer",
         `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
+        design.timerNumberLayout === "STACKED"
+          ? "counterpulse-preview-timer--stacked"
+          : "",
         `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
         compact ? "counterpulse-preview-timer--compact" : "",
-      ].join(" ")}
+      ]
+        .filter(Boolean)
+        .join(" ")}
       suppressHydrationWarning
     >
       {visibleTimerParts.map((part) => (

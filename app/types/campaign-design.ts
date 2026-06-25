@@ -21,9 +21,11 @@ export type DesignFontFamilyValue =
   | "CASUAL";
 export type DesignTimerStyleValue = "PLAIN" | "GROUPED" | "BOXES";
 export type DesignTimerFormatValue = "UNITS" | "COLON";
+export type DesignTimerNumberLayoutValue = "INLINE" | "STACKED";
 export type DesignPositionModeValue = "FLOW" | "OVERLAY";
 export type DesignBannerAnimationValue = "NONE" | "FADE" | "SLIDE" | "POP";
 export type DesignTimerTickAnimationValue = "NONE" | "FADE" | "FLIP" | "PULSE";
+export type DesignDismissBehaviorValue = "SHOW_AGAIN" | "HIDE_PERMANENTLY";
 export type DesignOfferCodeLayoutValue = "INLINE" | "STACKED" | "COMPACT";
 export type DesignOfferCopyBehaviorValue =
   | "FEEDBACK"
@@ -71,6 +73,7 @@ export type CampaignDesignValues = {
   legendColor: string;
   timerStyle: DesignTimerStyleValue;
   timerFormat: DesignTimerFormatValue;
+  timerNumberLayout: DesignTimerNumberLayoutValue;
   timerShowLabels: boolean;
   timerShowSeconds: boolean;
   timerDaysLabel: string;
@@ -98,6 +101,8 @@ export type CampaignDesignValues = {
   customCss: string;
   alignment: DesignAlignmentValue;
   showCloseButton: boolean;
+  closeButtonSize: number;
+  dismissBehavior: DesignDismissBehaviorValue;
   showButton: boolean;
   showProgressBar: boolean;
   showIcon: boolean;
@@ -185,6 +190,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   legendColor: "#6B7280",
   timerStyle: "PLAIN",
   timerFormat: "UNITS",
+  timerNumberLayout: "INLINE",
   timerShowLabels: true,
   timerShowSeconds: true,
   timerDaysLabel: "Days",
@@ -212,6 +218,8 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   customCss: "",
   alignment: "CENTER",
   showCloseButton: true,
+  closeButtonSize: 20,
+  dismissBehavior: "SHOW_AGAIN",
   showButton: true,
   showProgressBar: true,
   showIcon: false,
@@ -660,6 +668,23 @@ export const designTimerFormatOptions: Array<{
   },
 ];
 
+export const designTimerNumberLayoutOptions: Array<{
+  value: DesignTimerNumberLayoutValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "INLINE",
+    label: "Side by side digits",
+    description: "Each timer number keeps its digits on one line.",
+  },
+  {
+    value: "STACKED",
+    label: "Stack digits",
+    description: "Digits inside each timer number are stacked vertically.",
+  },
+];
+
 export const designTimerStyleOptions: Array<{
   value: DesignTimerStyleValue;
   label: string;
@@ -679,6 +704,24 @@ export const designTimerStyleOptions: Array<{
     value: "BOXES",
     label: "Boxes",
     description: "Each time unit is shown in its own styled box.",
+  },
+];
+
+export const designDismissBehaviorOptions: Array<{
+  value: DesignDismissBehaviorValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "SHOW_AGAIN",
+    label: "Show again",
+    description: "Closing hides only the current on-page instance.",
+  },
+  {
+    value: "HIDE_PERMANENTLY",
+    label: "Remember close",
+    description:
+      "Closing hides this campaign on this browser until the campaign is republished or local storage is cleared.",
   },
 ];
 

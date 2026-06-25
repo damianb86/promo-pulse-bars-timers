@@ -219,6 +219,7 @@ model CampaignDesign {
   legendColor              String                   @default("#D1D5DB")
   timerStyle               DesignTimerStyle         @default(PLAIN)
   timerFormat              DesignTimerFormat        @default(UNITS)
+  timerNumberLayout        DesignTimerNumberLayout  @default(INLINE)
   timerShowLabels          Boolean                  @default(true)
   timerShowSeconds         Boolean                  @default(true)
   timerDaysLabel           String                   @default("Days")
@@ -245,6 +246,8 @@ model CampaignDesign {
   mobileEnabled            Boolean                  @default(true)
   alignment                DesignAlignment          @default(CENTER)
   showCloseButton          Boolean                  @default(true)
+  closeButtonSize          Int                      @default(20)
+  dismissBehavior          DesignDismissBehavior    @default(SHOW_AGAIN)
   showButton               Boolean                  @default(true)
   showProgressBar          Boolean                  @default(true)
   showIcon                 Boolean                  @default(true)
@@ -1120,6 +1123,11 @@ enum DesignTimerFormat {
   COLON
 }
 
+enum DesignTimerNumberLayout {
+  INLINE
+  STACKED
+}
+
 enum DesignPositionMode {
   FLOW
   OVERLAY
@@ -1137,6 +1145,11 @@ enum DesignTimerTickAnimation {
   FADE
   FLIP
   PULSE
+}
+
+enum DesignDismissBehavior {
+  SHOW_AGAIN
+  HIDE_PERMANENTLY
 }
 
 enum DesignOfferCodeLayout {

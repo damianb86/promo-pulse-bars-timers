@@ -73,6 +73,10 @@ vi.mock("../../db.server", () => ({
   default: prismaMock,
 }));
 
+vi.mock("../storefront-cache.server", () => ({
+  invalidateStorefrontCacheForShopId: vi.fn(),
+}));
+
 describe("experiment service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -263,6 +267,46 @@ describe("experiment service", () => {
 
     expect(ratio).toBeGreaterThan(0.66);
     expect(ratio).toBeLessThan(0.74);
+  });
+
+  it("serves every variant including the last across three-way splits", () => {
+    const experiment = experimentFixture({
+      variants: [
+        variantFixture({
+          id: "variant-a",
+          weight: 33,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        }),
+        variantFixture({
+          id: "variant-b",
+          weight: 33,
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
+        }),
+        variantFixture({
+          id: "variant-c",
+          weight: 34,
+          createdAt: new Date("2026-01-01T00:00:02.000Z"),
+        }),
+      ],
+    });
+    const counts: Record<string, number> = {
+      "variant-a": 0,
+      "variant-b": 0,
+      "variant-c": 0,
+    };
+
+    for (let index = 0; index < 9000; index += 1) {
+      const variant = selectWeightedVariant(experiment, `visitor-${index}`);
+      if (variant) counts[variant.id] += 1;
+    }
+
+    // The last variant must be served, and roughly in line with its weight.
+    expect(counts["variant-c"]).toBeGreaterThan(0);
+    for (const id of ["variant-a", "variant-b", "variant-c"]) {
+      const share = counts[id] / 9000;
+      expect(share).toBeGreaterThan(0.27);
+      expect(share).toBeLessThan(0.4);
+    }
   });
 
   it("does not assign a variant for paused experiments", async () => {

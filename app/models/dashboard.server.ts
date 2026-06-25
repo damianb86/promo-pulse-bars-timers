@@ -8,6 +8,8 @@ import {
 import prisma from "../db.server";
 import { getOnboardingChecklistStatus } from "../services/onboarding.server";
 import { getEffectiveShopPlan } from "../services/planLimits.server";
+import type { ShopifyGraphqlClient } from "../services/shopifyDiscounts.server";
+import { detectThemeAppBlockStatus } from "../services/themeAppEmbed.server";
 import type { OnboardingChecklistStatus } from "../types/onboarding";
 
 const demoShopDomain = "promo-pulse-demo.myshopify.com";
@@ -44,6 +46,7 @@ export type DashboardSummary = {
 
 export async function getDashboardSummary(
   shopifyDomain: string | null,
+  admin?: ShopifyGraphqlClient | null,
 ): Promise<DashboardSummary> {
   const liveShop = shopifyDomain
     ? await prisma.shop.findUnique({ where: { shopifyDomain } })
@@ -76,6 +79,7 @@ export async function getDashboardSummary(
     impressionsAllTime,
     clicksLast7Days,
     revenueAggregate,
+    themeAppBlockStatus,
   ] = await Promise.all([
     prisma.campaign.findMany({
       where: { shopId: shop.id },
@@ -110,6 +114,7 @@ export async function getDashboardSummary(
       },
       _sum: { revenueAmount: true },
     }),
+    detectThemeAppBlockStatus(admin),
   ]);
 
   const campaignCounts = campaigns.reduce(
@@ -125,6 +130,7 @@ export async function getDashboardSummary(
   const onboarding = await getOnboardingChecklistStatus(shop.id, {
     firstCampaignCreated: campaigns.length > 0,
     firstImpressionReceived: impressionsAllTime > 0,
+    ...themeAppBlockStatus,
   });
 
   return {

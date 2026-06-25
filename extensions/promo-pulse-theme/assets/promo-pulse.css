@@ -43,7 +43,10 @@
   margin-inline: auto;
 }
 
-.pp-container .pp-bar--full-width {
+/* Match both .pp-bar and the modifier so Full Width beats the per-layout width
+   caps (e.g. .pp-bar--layout-cta_right { width: min(100%, 520px) }), which share
+   the same specificity and would otherwise win by appearing later. */
+.pp-container .pp-bar.pp-bar--full-width {
   width: 100%;
 }
 
@@ -347,6 +350,14 @@
   font-size: max(13px, calc(var(--pp-timer-size, 24px) * 0.68));
 }
 
+/* Stacked layout: timer numbers run one below the other. */
+.pp-container .pp-bar .pp-countdown--stacked,
+.pp-product-card .pp-countdown--stacked,
+.pp-cart-card .pp-countdown--stacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
 .pp-container .pp-bar .pp-countdown--grouped,
 .pp-container .pp-bar .pp-countdown--colon.pp-countdown--boxes {
   padding: 8px 12px;
@@ -599,8 +610,8 @@
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 22px;
-  height: 22px;
+  width: calc(var(--pp-close-size, 20px) + 10px);
+  height: calc(var(--pp-close-size, 20px) + 10px);
   border: 0;
   border-radius: 999px;
   padding: 0;
@@ -609,11 +620,14 @@
   cursor: pointer;
   display: grid;
   place-items: center;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
+  line-height: 0;
   opacity: 0.72;
+}
+
+.pp-close__icon {
+  display: block;
+  width: var(--pp-close-size, 20px);
+  height: var(--pp-close-size, 20px);
 }
 
 .pp-close:hover {

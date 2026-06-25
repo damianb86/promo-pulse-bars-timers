@@ -6,12 +6,7 @@ import type {
   OnboardingChecklistStatus,
 } from "../types/onboarding";
 
-export type OnboardingChecklistInferredState = Partial<
-  Pick<
-    OnboardingChecklistStatus,
-    "firstCampaignCreated" | "firstImpressionReceived"
-  >
->;
+export type OnboardingChecklistInferredState = Partial<OnboardingChecklistStatus>;
 
 export class OnboardingError extends Error {
   constructor(message: string) {
@@ -20,12 +15,6 @@ export class OnboardingError extends Error {
   }
 }
 
-const manualChecklistFields = new Set<OnboardingChecklistField>([
-  "appEmbedEnabled",
-  "productBlockAdded",
-  "cartBlockAdded",
-]);
-
 export async function getOnboardingChecklistStatus(
   shopId: string,
   inferred: OnboardingChecklistInferredState = {},
@@ -33,12 +22,10 @@ export async function getOnboardingChecklistStatus(
   const checklist = await getOrCreateOnboardingChecklist(shopId);
   const nextValues: Partial<OnboardingChecklistStatus> = {};
 
-  if (inferred.firstCampaignCreated && !checklist.firstCampaignCreated) {
-    nextValues.firstCampaignCreated = true;
-  }
-
-  if (inferred.firstImpressionReceived && !checklist.firstImpressionReceived) {
-    nextValues.firstImpressionReceived = true;
+  for (const field of Object.keys(inferred) as OnboardingChecklistField[]) {
+    if (inferred[field] === true && !checklist[field]) {
+      nextValues[field] = true;
+    }
   }
 
   const updatedChecklist =
@@ -47,20 +34,6 @@ export async function getOnboardingChecklistStatus(
       : checklist;
 
   return toChecklistStatus(updatedChecklist);
-}
-
-export async function updateManualOnboardingChecklistField(
-  shopId: string,
-  field: OnboardingChecklistField,
-  value: boolean,
-) {
-  if (!manualChecklistFields.has(field)) {
-    throw new OnboardingError(
-      "This onboarding step cannot be changed manually.",
-    );
-  }
-
-  return updateOnboardingChecklist(shopId, { [field]: value });
 }
 
 export function markFirstImpressionReceived(shopId: string) {

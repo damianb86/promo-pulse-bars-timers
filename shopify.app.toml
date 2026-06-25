@@ -26,7 +26,7 @@ uri = "/webhooks/compliance"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events,read_markets,write_markets,read_files"
+scopes = "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events,read_markets,write_markets,read_files,read_themes"
 
 [access.admin]
 embedded_app_direct_api_access = true

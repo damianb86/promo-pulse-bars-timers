@@ -12548,3 +12548,131 @@ s-page::part(page) {
     flex-direction: column;
   }
 }
+
+/* ==========================================================================
+   Mobile-tuned layouts. Selectable when editing the Mobile design surface.
+   All are responsive; they bias toward narrow viewports and big tap targets.
+   ========================================================================== */
+
+/* Stacked, centered mobile layouts with full-width tap targets. */
+.counterpulse-preview-promo--layout-mobile_banner,
+.counterpulse-preview-promo--layout-mobile_card,
+.counterpulse-preview-promo--layout-mobile_sheet,
+.counterpulse-preview-promo--layout-mobile_spotlight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+}
+
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-message,
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-message,
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-message,
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-message {
+  justify-content: center;
+}
+
+.counterpulse-preview-promo--layout-mobile_banner
+  .counterpulse-preview-message-copy,
+.counterpulse-preview-promo--layout-mobile_card
+  .counterpulse-preview-message-copy,
+.counterpulse-preview-promo--layout-mobile_sheet
+  .counterpulse-preview-message-copy,
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-message-copy {
+  justify-items: center;
+  text-align: center;
+}
+
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-actions,
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-actions,
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-actions,
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-actions {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-cta,
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-cta,
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-cta,
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-cta {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-offer {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Card: a self-contained rounded card. */
+.counterpulse-preview-promo--layout-mobile_card {
+  max-width: var(--cp-content-max-width, 440px);
+}
+
+/* Bottom sheet: rounded top corners, full-bleed bottom — pairs with Float bottom. */
+.counterpulse-preview-promo--layout-mobile_sheet {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Spotlight: emphasize the countdown as the hero. */
+.counterpulse-preview-promo--layout-mobile_spotlight .counterpulse-preview-timer {
+  order: -1;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Compact bar: a single dense row, message left, action right. */
+.counterpulse-preview-promo--layout-mobile_compact_bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-message {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-message-copy {
+  min-width: 0;
+}
+
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-timer,
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-actions {
+  flex: none;
+}
+
+@media (max-width: 420px) {
+  .counterpulse-preview-promo--layout-mobile_compact_bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .counterpulse-preview-promo--layout-mobile_compact_bar
+    .counterpulse-preview-actions {
+    width: 100%;
+  }
+}

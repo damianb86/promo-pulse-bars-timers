@@ -9,6 +9,8 @@ import {
   designFontFamilyOptions,
   designIconOptions,
   designLayoutOptions,
+  designFloatPositionOptions,
+  mobileDesignLayoutValues,
   designOfferApplyBehaviorOptions,
   designOfferCodeLayoutOptions,
   designOfferCopyBehaviorOptions,
@@ -63,6 +65,7 @@ type DesignControlsProps = {
   hasTimer?: boolean;
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
+  device?: "desktop" | "mobile";
   progressStyle?: FreeShippingProgressStyleValue;
   onChange: (values: CampaignDesignValues) => void;
   onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
@@ -74,6 +77,7 @@ export function DesignControls({
   hasOffer = false,
   hasTimer = true,
   isProPlan,
+  device = "desktop",
   progressStyle,
   onChange,
   onProgressStyleChange,
@@ -87,6 +91,21 @@ export function DesignControls({
   const [openTemplateDropdown, setOpenTemplateDropdown] = useState<
     "layout" | "preset" | null
   >(null);
+  const isMobileSurface = device === "mobile";
+  const mobileLayoutSet = new Set<CampaignDesignValues["layout"]>(
+    mobileDesignLayoutValues,
+  );
+  // Desktop editing offers the desktop layouts; the mobile design surface
+  // offers the mobile-tuned layouts. Both render responsively. The currently
+  // selected layout is always kept available so an existing value never
+  // disappears from the picker.
+  const visibleLayoutOptions = designLayoutOptions.filter((option) => {
+    const isMobileLayout = mobileLayoutSet.has(option.value);
+    return (
+      option.value === values.layout ||
+      (isMobileSurface ? isMobileLayout : !isMobileLayout)
+    );
+  });
   const selectedLayoutOption =
     designLayoutOptions.find((option) => option.value === values.layout) ??
     designLayoutOptions[0];
@@ -196,7 +215,7 @@ export function DesignControls({
               )
             }
           >
-            {designLayoutOptions.map((option) => (
+            {visibleLayoutOptions.map((option) => (
               <button
                 aria-selected={values.layout === option.value}
                 className={
@@ -836,6 +855,107 @@ export function DesignControls({
             onChange={(checked) => updateValue("showButton", checked)}
           />
         </div>
+        {values.positionMode === "OVERLAY" ? (
+          <div className="counterpulse-float-config">
+            <DesignField
+              label="Float positioning"
+              error={errors.floatPosition}
+            >
+              <select
+                name="floatPosition"
+                value={values.floatPosition}
+                onChange={(event) =>
+                  updateValue(
+                    "floatPosition",
+                    event.target
+                      .value as CampaignDesignValues["floatPosition"],
+                  )
+                }
+              >
+                {designFloatPositionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </DesignField>
+            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+              <DesignField label="Top" error={errors.floatOffsetTop}>
+                <input
+                  name="floatOffsetTop"
+                  value={values.floatOffsetTop}
+                  placeholder="0 / auto"
+                  onChange={(event) =>
+                    updateValue("floatOffsetTop", event.target.value)
+                  }
+                />
+              </DesignField>
+              <DesignField label="Bottom" error={errors.floatOffsetBottom}>
+                <input
+                  name="floatOffsetBottom"
+                  value={values.floatOffsetBottom}
+                  placeholder="0 / auto"
+                  onChange={(event) =>
+                    updateValue("floatOffsetBottom", event.target.value)
+                  }
+                />
+              </DesignField>
+              <DesignField label="Left" error={errors.floatOffsetLeft}>
+                <input
+                  name="floatOffsetLeft"
+                  value={values.floatOffsetLeft}
+                  placeholder="0 / auto"
+                  onChange={(event) =>
+                    updateValue("floatOffsetLeft", event.target.value)
+                  }
+                />
+              </DesignField>
+              <DesignField label="Right" error={errors.floatOffsetRight}>
+                <input
+                  name="floatOffsetRight"
+                  value={values.floatOffsetRight}
+                  placeholder="0 / auto"
+                  onChange={(event) =>
+                    updateValue("floatOffsetRight", event.target.value)
+                  }
+                />
+              </DesignField>
+            </div>
+            <p className="counterpulse-field-hint">
+              Enter a number (px), a CSS length like 24px / 10% / 1rem, or
+              "auto". The defaults (top, left and right at 0, bottom auto) keep
+              the banner full-width across the top of the page.
+            </p>
+          </div>
+        ) : (
+          <>
+            <input
+              name="floatPosition"
+              type="hidden"
+              value={values.floatPosition}
+            />
+            <input
+              name="floatOffsetTop"
+              type="hidden"
+              value={values.floatOffsetTop}
+            />
+            <input
+              name="floatOffsetBottom"
+              type="hidden"
+              value={values.floatOffsetBottom}
+            />
+            <input
+              name="floatOffsetLeft"
+              type="hidden"
+              value={values.floatOffsetLeft}
+            />
+            <input
+              name="floatOffsetRight"
+              type="hidden"
+              value={values.floatOffsetRight}
+            />
+          </>
+        )}
         {values.showCloseButton && (
           <DesignField
             label="When a shopper closes it"

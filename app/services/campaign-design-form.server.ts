@@ -8,6 +8,7 @@ import {
   type DesignBackgroundTypeValue,
   type DesignBannerAnimationValue,
   type DesignPositionModeValue,
+  type DesignFloatPositionValue,
   type DesignFontFamilyValue,
   type DesignLayoutValue,
   type DesignTimerTickAnimationValue,
@@ -189,6 +190,11 @@ export function parseCampaignDesignFormData(
     fullWidth: readBoolean(formData, "fullWidth"),
     positionMode: readPositionMode(formData),
     positionSticky: readBoolean(formData, "positionSticky"),
+    floatPosition: readFloatPosition(formData),
+    floatOffsetTop: readOffset(formData, "floatOffsetTop", "0"),
+    floatOffsetBottom: readOffset(formData, "floatOffsetBottom", "auto"),
+    floatOffsetLeft: readOffset(formData, "floatOffsetLeft", "0"),
+    floatOffsetRight: readOffset(formData, "floatOffsetRight", "0"),
     entranceAnimation: readBannerAnimation(formData, "entranceAnimation"),
     exitAnimation: readBannerAnimation(formData, "exitAnimation"),
     animationDurationMs: readInteger(
@@ -489,6 +495,38 @@ function readPositionMode(formData: FormData): DesignPositionModeValue {
   }
 
   return defaultCampaignDesignValues.positionMode;
+}
+
+function readFloatPosition(formData: FormData): DesignFloatPositionValue {
+  const value = readString(formData, "floatPosition").toUpperCase();
+
+  if (["ABSOLUTE", "FIXED"].includes(value)) {
+    return value as DesignFloatPositionValue;
+  }
+
+  return defaultCampaignDesignValues.floatPosition;
+}
+
+// Float offsets accept a CSS length ("0", "20px", "10%", "1rem") or "auto".
+// We keep them as sanitized strings so merchants can pin a banner precisely
+// while the defaults (top/left/right 0, bottom auto) keep it full-width.
+function readOffset(
+  formData: FormData,
+  key: keyof CampaignDesignValues,
+  fallback: string,
+): string {
+  const raw = readString(formData, key).trim().toLowerCase();
+
+  if (!raw) return fallback;
+  if (raw === "auto") return "auto";
+
+  // Bare number -> pixels.
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return `${raw}px`;
+
+  // Allow a single CSS length/percentage token; otherwise fall back.
+  if (/^-?\d+(\.\d+)?(px|rem|em|vh|vw|%)$/.test(raw)) return raw;
+
+  return fallback;
 }
 
 function readBannerAnimation(

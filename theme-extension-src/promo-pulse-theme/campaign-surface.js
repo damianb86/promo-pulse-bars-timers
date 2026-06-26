@@ -58,6 +58,17 @@
     return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
+  // Normalises a float offset to a CSS length: bare numbers become px, "auto"
+  // and existing units pass through, anything else falls back.
+  function cssLength(value, fallback) {
+    var raw = String(value == null ? "" : value).trim();
+    if (!raw) return fallback;
+    if (raw === "auto") return "auto";
+    if (/^-?\d+(\.\d+)?$/.test(raw)) return raw + "px";
+    if (/^-?\d+(\.\d+)?(px|rem|em|vh|vw|%)$/.test(raw)) return raw;
+    return fallback;
+  }
+
   function getTextAlign(alignment) {
     if (alignment === "LEFT") return "left";
     if (alignment === "RIGHT") return "right";
@@ -136,6 +147,10 @@
         num(design.offerCodePaddingInline, 10) + "px",
       "--cp-offer-gap": num(design.offerCodeGap, 8) + "px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
+      "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
+      "--cp-float-bottom": cssLength(design.floatOffsetBottom, "auto"),
+      "--cp-float-left": cssLength(design.floatOffsetLeft, "0"),
+      "--cp-float-right": cssLength(design.floatOffsetRight, "0"),
     };
     Object.keys(vars).forEach(function (key) {
       if (vars[key] !== undefined && vars[key] !== null) {
@@ -691,6 +706,10 @@
         "counterpulse-preview-promo--placement-" + dash(spec.placement),
         design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
         "counterpulse-preview-promo--position-" + lower(design.positionMode),
+        design.positionMode === "OVERLAY"
+          ? "counterpulse-preview-promo--float-" +
+            lower(design.floatPosition || "FIXED")
+          : "",
         "counterpulse-preview-promo--enter-" + lower(design.entranceAnimation),
         "counterpulse-preview-promo--exit-" + lower(design.exitAnimation),
         spec.className || "",

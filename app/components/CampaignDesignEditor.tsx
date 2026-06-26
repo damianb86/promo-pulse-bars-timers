@@ -218,6 +218,11 @@ export function CampaignDesignEditor({
             hasOffer={Boolean(previewViewModel.offer)}
             hasTimer={isTimerShown(previewViewModel.timer)}
             isProPlan={isProPlan}
+            device={
+              device === "mobile" && design.separateMobileDesign
+                ? "mobile"
+                : "desktop"
+            }
             progressStyle={progressStyle}
             values={activeDesign}
             onChange={updateActiveDesign}

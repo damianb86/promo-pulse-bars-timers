@@ -238,6 +238,11 @@ model CampaignDesign {
   fullWidth                Boolean                  @default(false)
   positionMode             DesignPositionMode       @default(FLOW)
   positionSticky           Boolean                  @default(true)
+  floatPosition            DesignFloatPosition      @default(FIXED)
+  floatOffsetTop           String                   @default("0")
+  floatOffsetBottom        String                   @default("auto")
+  floatOffsetLeft          String                   @default("0")
+  floatOffsetRight         String                   @default("0")
   entranceAnimation        DesignBannerAnimation    @default(FADE)
   exitAnimation            DesignBannerAnimation    @default(FADE)
   animationDurationMs      Int                      @default(220)
@@ -1092,6 +1097,11 @@ enum DesignLayout {
   CTA_RIGHT
   CTA_LEFT
   CTA_TOP
+  MOBILE_BANNER
+  MOBILE_CARD
+  MOBILE_SHEET
+  MOBILE_COMPACT_BAR
+  MOBILE_SPOTLIGHT
 }
 
 enum DesignBackgroundType {
@@ -1131,6 +1141,11 @@ enum DesignTimerNumberLayout {
 enum DesignPositionMode {
   FLOW
   OVERLAY
+}
+
+enum DesignFloatPosition {
+  ABSOLUTE
+  FIXED
 }
 
 enum DesignBannerAnimation {

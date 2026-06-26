@@ -7,7 +7,14 @@ export type DesignLayoutValue =
   | "COMPACT_STACK"
   | "CTA_RIGHT"
   | "CTA_LEFT"
-  | "CTA_TOP";
+  | "CTA_TOP"
+  | "MOBILE_BANNER"
+  | "MOBILE_CARD"
+  | "MOBILE_SHEET"
+  | "MOBILE_COMPACT_BAR"
+  | "MOBILE_SPOTLIGHT";
+
+export type DesignLayoutDeviceValue = "DESKTOP" | "MOBILE";
 export type DesignBackgroundTypeValue = "SOLID" | "GRADIENT" | "IMAGE";
 export type DesignFontFamilyValue =
   | "THEME"
@@ -23,6 +30,7 @@ export type DesignTimerStyleValue = "PLAIN" | "GROUPED" | "BOXES";
 export type DesignTimerFormatValue = "UNITS" | "COLON";
 export type DesignTimerNumberLayoutValue = "INLINE" | "STACKED";
 export type DesignPositionModeValue = "FLOW" | "OVERLAY";
+export type DesignFloatPositionValue = "ABSOLUTE" | "FIXED";
 export type DesignBannerAnimationValue = "NONE" | "FADE" | "SLIDE" | "POP";
 export type DesignTimerTickAnimationValue = "NONE" | "FADE" | "FLIP" | "PULSE";
 export type DesignDismissBehaviorValue = "SHOW_AGAIN" | "HIDE_PERMANENTLY";
@@ -92,6 +100,11 @@ export type CampaignDesignValues = {
   fullWidth: boolean;
   positionMode: DesignPositionModeValue;
   positionSticky: boolean;
+  floatPosition: DesignFloatPositionValue;
+  floatOffsetTop: string;
+  floatOffsetBottom: string;
+  floatOffsetLeft: string;
+  floatOffsetRight: string;
   entranceAnimation: DesignBannerAnimationValue;
   exitAnimation: DesignBannerAnimationValue;
   animationDurationMs: number;
@@ -209,6 +222,11 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   fullWidth: false,
   positionMode: "FLOW",
   positionSticky: false,
+  floatPosition: "FIXED",
+  floatOffsetTop: "0",
+  floatOffsetBottom: "auto",
+  floatOffsetLeft: "0",
+  floatOffsetRight: "0",
   entranceAnimation: "FADE",
   exitAnimation: "FADE",
   animationDurationMs: 220,
@@ -604,6 +622,65 @@ export const designLayoutOptions: Array<{
     value: "CTA_TOP",
     label: "Action top",
     description: "Main action is placed above the message for priority offers.",
+  },
+  {
+    value: "MOBILE_BANNER",
+    label: "Mobile banner",
+    description:
+      "Slim full-width banner: centered message, timer, and a full-width tap target. The reliable mobile default.",
+  },
+  {
+    value: "MOBILE_CARD",
+    label: "Mobile card",
+    description:
+      "Rounded card with generous padding, centered content, and a large full-width touch button.",
+  },
+  {
+    value: "MOBILE_SHEET",
+    label: "Bottom sheet",
+    description:
+      "Stacked sheet with rounded top corners and a pinned full-width action — pairs well with Float over page (bottom).",
+  },
+  {
+    value: "MOBILE_COMPACT_BAR",
+    label: "Compact bar",
+    description:
+      "Single dense row: message and a compact timer with a small inline action. Great for sticky bars.",
+  },
+  {
+    value: "MOBILE_SPOTLIGHT",
+    label: "Spotlight",
+    description:
+      "Big centered countdown hero with the message underneath and a full-width action below.",
+  },
+];
+
+// Layouts that are tuned for the mobile design surface. Desktop editing shows
+// the rest; the mobile design surface shows these. Both render responsively.
+export const mobileDesignLayoutValues: DesignLayoutValue[] = [
+  "MOBILE_BANNER",
+  "MOBILE_CARD",
+  "MOBILE_SHEET",
+  "MOBILE_COMPACT_BAR",
+  "MOBILE_SPOTLIGHT",
+];
+
+export const designFloatPositionOptions: Array<{
+  value: DesignFloatPositionValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "FIXED",
+    label: "Fixed (pinned to screen)",
+    description:
+      "Stays in place as the page scrolls, positioned against the viewport.",
+  },
+  {
+    value: "ABSOLUTE",
+    label: "Absolute (within the page)",
+    description:
+      "Positioned against the nearest container and scrolls away with the page.",
   },
 ];
 

@@ -730,9 +730,78 @@
     return section;
   }
 
+  function parseDate(value) {
+    var date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+
+  function safeStorage(name) {
+    try {
+      return window[name] || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function evergreenDeadline(id, timer) {
+    var storage = safeStorage(
+      timer.resetBehavior === "ON_SESSION_END"
+        ? "sessionStorage"
+        : "localStorage",
+    );
+    var key = "promo_pulse_surface_deadline_" + id;
+    var stored = storage ? parseDate(storage.getItem(key)) : null;
+    var duration = Number(timer.durationMinutes);
+    var endsAt;
+
+    if (stored) {
+      if (stored.getTime() > Date.now()) return stored;
+      if (timer.expiredBehavior !== "REPEAT_COUNTDOWN") return stored;
+    }
+
+    endsAt = new Date(Date.now() + Math.round(duration) * 60000);
+    try {
+      if (storage) storage.setItem(key, endsAt.toISOString());
+    } catch (error) {
+      /* storage blocked */
+    }
+    return endsAt;
+  }
+
+  // Canonical timer-state computation available to every block (the app embed's
+  // PromoPulseComputeTimerState is only present when the embed is on the page).
+  // FIXED_DATE and EVERGREEN_SESSION are resolved locally; the timezone-aware
+  // recurring modes reuse the embed implementation when available.
+  function computeTimerState(campaign) {
+    campaign = campaign || {};
+    var timer = campaign.timer || {};
+    var mode = timer.mode || "FIXED_DATE";
+    var now = Date.now();
+    var endsAt = null;
+
+    if (mode === "EVERGREEN_SESSION" && timer.durationMinutes) {
+      endsAt = evergreenDeadline(campaign.id, timer);
+    } else if (mode === "RECURRING_DAILY" || mode === "RECURRING_WEEKLY") {
+      if (typeof window.PromoPulseComputeTimerState === "function") {
+        return window.PromoPulseComputeTimerState(campaign);
+      }
+      endsAt = parseDate(campaign.endsAt);
+    } else {
+      endsAt = parseDate(campaign.endsAt);
+    }
+
+    var expired = endsAt ? endsAt.getTime() <= now : false;
+    return {
+      isActive: Boolean(endsAt && !expired),
+      isExpired: expired,
+      remainingMs: endsAt ? Math.max(0, endsAt.getTime() - now) : 0,
+    };
+  }
+
   window.CountPulseSurface = {
     build: build,
     applyStyle: applyStyle,
+    computeTimerState: computeTimerState,
     buildTimer: buildTimer,
     updateTimer: updateTimer,
     updateTimerFromText: updateTimerFromText,

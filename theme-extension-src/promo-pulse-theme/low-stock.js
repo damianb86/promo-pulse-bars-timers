@@ -200,12 +200,22 @@
       return;
     }
 
-    var timerState =
-      campaign.timer &&
-      typeof window.PromoPulseComputeTimerState === "function"
-        ? window.PromoPulseComputeTimerState(campaign)
-        : null;
+    var texts = campaign.texts || {};
+    var timerState = window.CountPulseSurface.computeTimerState(campaign);
     var hasTimer = Boolean(timerState && timerState.isActive);
+
+    var couponNode = null;
+    if (
+      !timerState.isExpired &&
+      campaign.discount &&
+      (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
+      typeof window.PromoPulseCouponButton === "function"
+    ) {
+      couponNode = window.PromoPulseCouponButton(
+        campaign.discount.discountCode,
+        campaign,
+      );
+    }
 
     card = window.CountPulseSurface.build({
       variant: "block",
@@ -219,7 +229,16 @@
         remainingMs: timerState ? timerState.remainingMs : 0,
       },
       hasTimer: hasTimer,
+      couponNode: couponNode,
+      cta:
+        !timerState.isExpired && design.showButton !== false
+          ? texts.ctaText || ""
+          : "",
+      ctaUrl: texts.ctaUrl || "",
       dataTestId: "low-stock-widget",
+      onClose: function () {
+        card.remove();
+      },
     });
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "status");
@@ -234,11 +253,7 @@
 
   function startTimerTick(card, campaign) {
     var countdown = card.querySelector("[data-cp-timer]");
-    if (
-      !countdown ||
-      typeof window.PromoPulseComputeTimerState !== "function" ||
-      !window.CountPulseSurface
-    ) {
+    if (!countdown || !window.CountPulseSurface) {
       return;
     }
 
@@ -248,7 +263,7 @@
         return;
       }
 
-      var timerState = window.PromoPulseComputeTimerState(campaign);
+      var timerState = window.CountPulseSurface.computeTimerState(campaign);
       // On expiry just drop the countdown; the low-stock message itself stays.
       if (!timerState || timerState.isExpired) {
         window.clearInterval(id);

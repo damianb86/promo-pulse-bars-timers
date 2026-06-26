@@ -1,6 +1,7 @@
 import {
   defaultCampaignDesignValues,
   designLayoutOptions,
+  isMobileDesignLayout,
   findCampaignDesignTemplate,
 } from "../../types/campaign-design";
 import type { CampaignDesignValues } from "../../types/campaign-design";
@@ -2088,7 +2089,10 @@ function sanitizePartialDesign(
     ...(typeof design.templateKey === "string"
       ? { templateKey: design.templateKey.slice(0, 80) }
       : {}),
-    ...(designLayoutOptions.some((option) => option.value === design.layout)
+    ...(designLayoutOptions.some(
+      (option) =>
+        option.value === design.layout && !isMobileDesignLayout(option.value),
+    )
       ? { layout: design.layout }
       : {}),
     ...(design.backgroundType === "SOLID" ||

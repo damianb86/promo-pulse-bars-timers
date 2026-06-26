@@ -4,14 +4,17 @@ import { Form, useFetcher, useNavigation } from "react-router";
 import { AiGenerateIcon } from "./AiGenerateIcon";
 import { CampaignPromoSurface } from "./CampaignPreview";
 import { DesignControls } from "./DesignControls";
+import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import { AppAlert, FieldInfoButton } from "./Notifications";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 import {
   defaultCampaignDesignValues,
   findCampaignDesignTemplate,
+  isMobileDesignLayout,
   type CampaignDesignMediaOptions,
   type CampaignDesignValues,
 } from "../types/campaign-design";
+import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import {
   formatCampaignOption,
   placementTypeOptions,
@@ -113,6 +116,7 @@ type VariantDraft = {
   status: string;
   text: VariantTextDraft;
   design: CampaignDesignValues;
+  mobileDesign: CampaignDesignValues;
   placement: VariantPlacementDraft;
 };
 
@@ -137,7 +141,9 @@ type AiVariantSuggestion = {
   rationale: string;
   hypothesis: string;
   text: Partial<VariantTextDraft>;
-  design: Partial<CampaignDesignValues>;
+  design: Partial<CampaignDesignValues> & {
+    mobileDesign?: Partial<CampaignDesignValues>;
+  };
   placement: Partial<VariantPlacementDraft>;
 };
 type AiVariantFetcherData = {
@@ -1041,13 +1047,17 @@ function ExperimentComposer({
     () => normalizeDesign({ ...baseDesign }),
     [baseDesign],
   );
+  const controlMobileDesign = useMemo(
+    () => normalizeDesign(deriveMobileDesignFromDesktop(baseDesign)),
+    [baseDesign],
+  );
   const controlText = useMemo(
     () => toTextDraft({}, baseViewModel),
     [baseViewModel],
   );
   const controlSyncKey = useMemo(
-    () => JSON.stringify([controlDesign, controlText]),
-    [controlDesign, controlText],
+    () => JSON.stringify([controlDesign, controlMobileDesign, controlText]),
+    [controlDesign, controlMobileDesign, controlText],
   );
   const [appliedControlSyncKey, setAppliedControlSyncKey] =
     useState(controlSyncKey);
@@ -1058,7 +1068,12 @@ function ExperimentComposer({
       current.length === 0
         ? current
         : [
-            { ...current[0], design: controlDesign, text: controlText },
+            {
+              ...current[0],
+              design: controlDesign,
+              mobileDesign: controlMobileDesign,
+              text: controlText,
+            },
             ...current.slice(1),
           ],
     );
@@ -1628,8 +1643,11 @@ function VariantCard({
     baseViewModel,
     isControl,
   );
-  const isDraft = variant.status === "DRAFT";
-  const isPaused = variant.status === "PAUSED";
+  // The control variant has no status of its own — it is simply the live
+  // campaign without overrides, so it is always "active" and must never show a
+  // Draft/Paused chip or a resume prompt.
+  const isDraft = !isControl && variant.status === "DRAFT";
+  const isPaused = !isControl && variant.status === "PAUSED";
   const needsResume = isDraft || isPaused;
 
   return (
@@ -1756,7 +1774,14 @@ function VariantDrawer({
   onDrawerTabChange: (tab: DrawerTab) => void;
   onWeightChange: (weight: number) => void;
 }) {
-  const preview = buildVariantPreviewModel(baseViewModel, variant);
+  const [designDevice, setDesignDevice] = useState<PreviewDevice>("desktop");
+  const isMobileSurface =
+    designDevice === "mobile" && variant.design.separateMobileDesign;
+  const activeVariantDesign = isMobileSurface
+    ? variant.mobileDesign
+    : variant.design;
+  const basePreview = buildVariantPreviewModel(baseViewModel, variant);
+  const preview = { ...basePreview, design: activeVariantDesign };
   const [isClosing, setIsClosing] = useState(false);
   const requestClose = () => setIsClosing(true);
 
@@ -1796,7 +1821,7 @@ function VariantDrawer({
                 : formatBasePlacement(baseViewModel)}
             </span>
           </div>
-          <VariantMiniPreview design={variant.design} viewModel={preview} />
+          <VariantMiniPreview design={activeVariantDesign} viewModel={preview} />
         </section>
         <aside
           className="counterpulse-variant-drawer"
@@ -1978,6 +2003,52 @@ function VariantDrawer({
 
           {drawerTab === "design" && (
             <div className="counterpulse-variant-drawer__design">
+              <div className="counterpulse-variant-responsive-bar">
+                <div className="counterpulse-variant-responsive-bar__device">
+                  <DevicePreviewToggle
+                    value={designDevice}
+                    onChange={setDesignDevice}
+                  />
+                </div>
+                <label className="counterpulse-variant-responsive-switch">
+                  <input
+                    type="checkbox"
+                    checked={variant.design.separateMobileDesign}
+                    aria-label="Separate desktop and mobile design"
+                    onChange={(event) => {
+                      const separate = event.target.checked;
+                      onChange({
+                        ...variant,
+                        design: {
+                          ...variant.design,
+                          separateMobileDesign: separate,
+                        },
+                        mobileDesign: {
+                          ...(separate
+                            ? variant.mobileDesign
+                            : deriveMobileDesignFromDesktop(variant.design)),
+                          separateMobileDesign: separate,
+                        },
+                      });
+                      if (!separate) setDesignDevice("desktop");
+                    }}
+                  />
+                  <span>
+                    <strong>Separate desktop and mobile</strong>
+                    <small>
+                      {variant.design.separateMobileDesign
+                        ? "Editing each device independently."
+                        : "Mobile mirrors the desktop variant with slightly smaller text."}
+                    </small>
+                  </span>
+                </label>
+              </div>
+              {isMobileSurface && (
+                <p className="counterpulse-variant-scope-note">
+                  You are editing the mobile version of this variant. Mobile
+                  layouts are available here.
+                </p>
+              )}
               <DesignControls
                 errors={{}}
                 hasTimer={Boolean(
@@ -1985,12 +2056,22 @@ function VariantDrawer({
                 )}
                 isProPlan={isProPlan}
                 mediaOptions={designMediaOptions}
-                values={variant.design}
+                device={isMobileSurface ? "mobile" : "desktop"}
+                values={activeVariantDesign}
                 onChange={(design) =>
-                  onChange({
-                    ...variant,
-                    design,
-                  })
+                  onChange(
+                    isMobileSurface
+                      ? { ...variant, mobileDesign: design }
+                      : {
+                          ...variant,
+                          design,
+                          // Keep the separate flag mirrored on both designs.
+                          mobileDesign: {
+                            ...variant.mobileDesign,
+                            separateMobileDesign: design.separateMobileDesign,
+                          },
+                        },
+                  )
                 }
               />
             </div>
@@ -3471,6 +3552,17 @@ function toVariantDraft(
   const textOverride = readJsonRecord(variant.textOverrideJson);
   const designOverride = readJsonRecord(variant.designOverrideJson);
   const placementOverride = readJsonRecord(variant.placementOverrideJson);
+  // The variant design override can carry a nested mobile override so a variant
+  // can configure desktop and mobile separately (mirrors the campaign design).
+  const { mobileDesign: mobileOverrideRaw, ...desktopOverride } = designOverride;
+  const mobileOverride = readRecordValue(mobileOverrideRaw);
+  const separate = Boolean(desktopOverride.separateMobileDesign);
+  const baseMobileDesign = deriveMobileDesignFromDesktop(baseDesign);
+
+  const desktopDesign = normalizeDesign({
+    ...baseDesign,
+    ...desktopOverride,
+  });
 
   return {
     id: variant.id,
@@ -3478,9 +3570,11 @@ function toVariantDraft(
     weight: Number.isFinite(variant.weight) ? variant.weight : 0,
     status: variant.status || "DRAFT",
     text: toTextDraft(textOverride, baseViewModel),
-    design: normalizeDesign({
-      ...baseDesign,
-      ...designOverride,
+    design: desktopDesign,
+    mobileDesign: normalizeDesign({
+      ...baseMobileDesign,
+      separateMobileDesign: separate,
+      ...(separate ? mobileOverride : {}),
     }),
     placement: {
       placementType: readPlacementOverride(placementOverride),
@@ -3544,6 +3638,17 @@ function applyAiVariantSuggestion(
 ): VariantDraft {
   const placement = suggestion.placement ?? {};
   const placementType = readAiPlacementType(placement.placementType);
+  const { mobileDesign: mobileSuggestion, ...desktopSuggestion } =
+    suggestion.design ?? {};
+  // A mobile layout never belongs on the desktop design.
+  if (desktopSuggestion.layout && isMobileDesignLayout(desktopSuggestion.layout)) {
+    delete desktopSuggestion.layout;
+  }
+  const separate = Boolean(desktopSuggestion.separateMobileDesign);
+  const desktopDesign = normalizeDesign({
+    ...variant.design,
+    ...desktopSuggestion,
+  });
 
   return {
     ...variant,
@@ -3552,9 +3657,13 @@ function applyAiVariantSuggestion(
       ...variant.text,
       ...readAiTextSuggestion(suggestion.text),
     },
-    design: normalizeDesign({
-      ...variant.design,
-      ...suggestion.design,
+    design: desktopDesign,
+    mobileDesign: normalizeDesign({
+      ...(separate
+        ? variant.mobileDesign
+        : deriveMobileDesignFromDesktop(desktopDesign)),
+      ...(separate && mobileSuggestion ? mobileSuggestion : {}),
+      separateMobileDesign: separate,
     }),
     placement: {
       placementType,
@@ -3603,6 +3712,7 @@ function createVariantDraft(
     status: "DRAFT",
     text: textDraftFromViewModel(baseViewModel),
     design: normalizeDesign(baseDesign),
+    mobileDesign: normalizeDesign(deriveMobileDesignFromDesktop(baseDesign)),
     placement: {
       placementType: "",
       customSelector: "",
@@ -3833,6 +3943,26 @@ function buildDesignOverride(
   for (const key of designOverrideKeys) {
     if (variant.design[key] !== baseDesign[key]) {
       override[key] = variant.design[key];
+    }
+  }
+
+  // When the variant opts into a separate mobile design, persist a nested
+  // mobile override (the diff vs the derived base mobile design) so the phone
+  // version can differ from the desktop variant.
+  if (variant.design.separateMobileDesign) {
+    override.separateMobileDesign = true;
+
+    const baseMobileDesign = deriveMobileDesignFromDesktop(baseDesign);
+    const mobileOverride: Record<string, unknown> = {};
+
+    for (const key of designOverrideKeys) {
+      if (variant.mobileDesign[key] !== baseMobileDesign[key]) {
+        mobileOverride[key] = variant.mobileDesign[key];
+      }
+    }
+
+    if (Object.keys(mobileOverride).length > 0) {
+      override.mobileDesign = mobileOverride;
     }
   }
 
@@ -4133,6 +4263,12 @@ function formatDesignStringValue(value: string) {
   if (/^[A-Z0-9_]+$/.test(value)) return formatEnum(value);
 
   return value;
+}
+
+function readRecordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function readJsonRecord(value: string) {

@@ -665,6 +665,33 @@ export const mobileDesignLayoutValues: DesignLayoutValue[] = [
   "MOBILE_SPOTLIGHT",
 ];
 
+export function isMobileDesignLayout(value: DesignLayoutValue) {
+  return mobileDesignLayoutValues.includes(value);
+}
+
+// Human-readable layout catalog for the AI generators so the model can pick the
+// right structure per case. Desktop layouts go on `design.layout`; mobile
+// layouts only belong on the mobile design (separateMobileDesign + mobileDesign).
+export function describeDesignLayoutsForAi() {
+  const format = (option: (typeof designLayoutOptions)[number]) =>
+    `- ${option.value} (${option.label}): ${option.description}`;
+  const desktop = designLayoutOptions.filter(
+    (option) => !isMobileDesignLayout(option.value),
+  );
+  const mobile = designLayoutOptions.filter((option) =>
+    isMobileDesignLayout(option.value),
+  );
+
+  return [
+    "Layout catalog — choose the structure that best fits the message and placement:",
+    "Desktop layouts (use one of these for the top-level design.layout):",
+    ...desktop.map(format),
+    "Mobile layouts (these change WHERE elements sit and cannot be reproduced with other settings; only valid on the mobile design — to use one, set separateMobileDesign true and place it in mobileDesign.layout, never in the top-level design.layout):",
+    ...mobile.map(format),
+    "Guidance: pick MOBILE_COMPACT_BAR or MOBILE_BANNER for slim/top-bar style urgency; MOBILE_CARD or MOBILE_SHEET for product-page/cart blocks that need a clear tappable action; MOBILE_SPOTLIGHT when the countdown itself is the hook.",
+  ].join("\n");
+}
+
 export const designFloatPositionOptions: Array<{
   value: DesignFloatPositionValue;
   label: string;

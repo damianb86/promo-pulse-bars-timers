@@ -5,6 +5,8 @@ import {
   designBannerAnimationOptions,
   designFontFamilyOptions,
   designLayoutOptions,
+  describeDesignLayoutsForAi,
+  isMobileDesignLayout,
   designTimerFormatOptions,
   designTimerStyleOptions,
   designTimerTickAnimationOptions,
@@ -54,12 +56,16 @@ export type ExperimentVariantAiPlacement = {
   customSelector: string;
 };
 
+export type ExperimentVariantAiDesign = Partial<CampaignDesignValues> & {
+  mobileDesign?: Partial<CampaignDesignValues>;
+};
+
 export type ExperimentVariantAiSuggestion = {
   name: string;
   rationale: string;
   hypothesis: string;
   text: Partial<ExperimentVariantAiText>;
-  design: Partial<CampaignDesignValues>;
+  design: ExperimentVariantAiDesign;
   placement: Partial<ExperimentVariantAiPlacement>;
 };
 
@@ -403,7 +409,9 @@ function buildVariantPrompt(input: ExperimentVariantAiInput) {
     "Keep all claims realistic. Do not invent reviews, stock counts, guarantees, discount amounts, or deadlines that are not in the provided campaign text.",
     "Use United States English for any English copy.",
     "Make the variant meaningfully different from existing variants and include a test hypothesis.",
-    'Return this exact JSON shape: {"variant":{"name":"Variant B - ...","rationale":"...","hypothesis":"...","text":{"headline":"..."},"design":{"layout":"BALANCED"},"placement":{"placementType":"","customSelector":""}}}.',
+    "You may give the variant a phone-specific look by setting design.separateMobileDesign true and adding a design.mobileDesign object with only the fields that differ on mobile (especially a mobile layout). Mobile layouts (MOBILE_*) go ONLY in design.mobileDesign.layout, never in the top-level design.layout.",
+    describeDesignLayoutsForAi(),
+    'Return this exact JSON shape: {"variant":{"name":"Variant B - ...","rationale":"...","hypothesis":"...","text":{"headline":"..."},"design":{"layout":"BALANCED","separateMobileDesign":false,"mobileDesign":{}},"placement":{"placementType":"","customSelector":""}}}.',
     "",
     `Requested strategy: ${input.strategy}`,
     `Design intensity: ${input.designIntensity}`,
@@ -431,13 +439,10 @@ function sanitizeVariantSuggestion(
 ): ExperimentVariantAiSuggestion {
   const fallback = buildMockSuggestion(input);
   const text = sanitizeTextRecord(output.text, input.campaign.text);
-  const design =
+  const design: ExperimentVariantAiDesign =
     input.designIntensity === "copy_only"
       ? {}
-      : sanitizePartialDesignRecord(
-          readRecord(output.design),
-          input.campaign.design,
-        );
+      : sanitizeVariantDesign(readRecord(output.design), input.campaign.design);
 
   return {
     name: sanitizeLabel(output.name, fallback.name, 64),
@@ -831,6 +836,39 @@ function sanitizeDesignRecord(
     ...fallback,
     ...sanitizePartialDesignRecord(value, fallback),
   };
+}
+
+// Sanitizes the variant design, routing any nested mobile design + mobile
+// layouts onto the mobile surface. Mobile layouts (MOBILE_*) are only valid in
+// mobileDesign.layout, never on the desktop design.
+function sanitizeVariantDesign(
+  rawDesign: Record<string, unknown>,
+  fallback: CampaignDesignValues,
+): ExperimentVariantAiDesign {
+  const desktop = sanitizePartialDesignRecord(rawDesign, fallback);
+
+  // A mobile layout placed on the desktop design is not valid — drop it.
+  if (desktop.layout && isMobileDesignLayout(desktop.layout)) {
+    delete desktop.layout;
+  }
+
+  const rawMobile =
+    rawDesign.mobileDesign &&
+    typeof rawDesign.mobileDesign === "object" &&
+    !Array.isArray(rawDesign.mobileDesign)
+      ? (rawDesign.mobileDesign as Record<string, unknown>)
+      : {};
+  const wantsSeparate =
+    rawDesign.separateMobileDesign === true ||
+    Object.keys(rawMobile).length > 0;
+
+  if (!wantsSeparate) return desktop;
+
+  const mobile = sanitizePartialDesignRecord(rawMobile, fallback);
+
+  if (Object.keys(mobile).length === 0) return desktop;
+
+  return { ...desktop, separateMobileDesign: true, mobileDesign: mobile };
 }
 
 function sanitizePartialDesignRecord(

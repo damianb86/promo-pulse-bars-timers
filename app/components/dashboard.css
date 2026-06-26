@@ -12897,3 +12897,45 @@ s-page::part(page) {
   height: 7px;
   background: #5c6ac4;
 }
+
+/* Variant drawer: responsive (desktop/mobile) design controls. */
+.counterpulse-variant-responsive-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.counterpulse-variant-responsive-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.counterpulse-variant-responsive-switch input {
+  margin-top: 2px;
+  flex: none;
+}
+
+.counterpulse-variant-responsive-switch span {
+  display: grid;
+  gap: 1px;
+}
+
+.counterpulse-variant-responsive-switch strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 17px;
+}
+
+.counterpulse-variant-responsive-switch small {
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 16px;
+}

@@ -208,6 +208,7 @@ function serializeStorefrontCampaignForPlacement(
       campaign.experiments,
       new Date(),
       campaignShowsDiscountCode(campaign.discountSync),
+      context.device,
     ),
     startsAt: campaign.startsAt ? campaign.startsAt.toISOString() : null,
     endsAt: campaign.endsAt ? campaign.endsAt.toISOString() : null,
@@ -645,10 +646,37 @@ function serializeDiscount(discountSync: DiscountSync | null) {
   };
 }
 
+// A variant's designOverride can carry a nested `mobileDesign` override plus a
+// `separateMobileDesign` flag. Resolve it to a flat, device-appropriate override
+// (the storefront merges this over the already device-resolved campaign design).
+function resolveVariantDesignOverride(
+  rawOverride: Record<string, unknown>,
+  device: string,
+) {
+  const { mobileDesign, separateMobileDesign, ...desktopOverride } =
+    rawOverride;
+
+  if (
+    separateMobileDesign &&
+    isMobileDesignDevice(device) &&
+    mobileDesign &&
+    typeof mobileDesign === "object" &&
+    !Array.isArray(mobileDesign)
+  ) {
+    return {
+      ...desktopOverride,
+      ...(mobileDesign as Record<string, unknown>),
+    };
+  }
+
+  return desktopOverride;
+}
+
 function serializeExperiment(
   experiments: StorefrontCampaignSource["experiments"],
   now = new Date(),
   showDiscountCode = false,
+  device = "desktop",
 ) {
   const experiment = experiments.find(
     (item) =>
@@ -670,7 +698,10 @@ function serializeExperiment(
       name: variant.name,
       weight: variant.weight,
       status: variant.status,
-      designOverride: jsonObject(variant.designOverride),
+      designOverride: resolveVariantDesignOverride(
+        jsonObject(variant.designOverride),
+        device,
+      ),
       textOverride: jsonObject(variant.textOverride),
       discountOverride: sanitizeDiscountOverride(
         jsonObject(variant.discountOverride),

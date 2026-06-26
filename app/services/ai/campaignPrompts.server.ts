@@ -1,6 +1,7 @@
 import type { CampaignAiInput } from "../../types/ai-campaign";
+import { describeDesignLayoutsForAi } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v5";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v6";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -140,6 +141,11 @@ Design guidance:
 - Button visibility should match the layout. Badges and low-stock messages often
   should set showButton false.
 - Choose an icon only when it helps the merchant understand the campaign.
+- Set design.layout to one of the DESKTOP layouts only. The MOBILE_* layouts
+  listed below are chosen by the merchant on the separate mobile design surface;
+  never put a MOBILE_* value in design.layout.
+
+${describeDesignLayoutsForAi()}
 `.trim();
 
 export function buildCampaignAiUserPrompt(input: CampaignAiInput) {

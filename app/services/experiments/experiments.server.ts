@@ -7,6 +7,7 @@ import {
   DesignFontFamily,
   DesignLayout,
   DesignPositionMode,
+  DesignFloatPosition,
   DesignTimerFormat,
   DesignTimerStyle,
   DesignTimerTickAnimation,
@@ -1321,6 +1322,16 @@ async function applyDesignOverride(
   const icon = readCampaignDesignIcon(override.icon);
   const layout = readDesignLayout(override.layout);
   const positionMode = readDesignPositionMode(override.positionMode);
+  const floatPosition =
+    override.floatPosition === "ABSOLUTE" || override.floatPosition === "FIXED"
+      ? (override.floatPosition as DesignFloatPosition)
+      : null;
+  const mobileDesignOverride =
+    override.mobileDesign &&
+    typeof override.mobileDesign === "object" &&
+    !Array.isArray(override.mobileDesign)
+      ? (override.mobileDesign as Prisma.InputJsonObject)
+      : null;
   const timerFormat = readDesignTimerFormat(override.timerFormat);
   const timerStyle = readDesignTimerStyle(override.timerStyle);
   const timerTickAnimation = readDesignTimerTickAnimation(
@@ -1351,6 +1362,10 @@ async function applyDesignOverride(
       "timerSurfaceBorderColor",
       "customCss",
       "customIconUrl",
+      "floatOffsetTop",
+      "floatOffsetBottom",
+      "floatOffsetLeft",
+      "floatOffsetRight",
     ]),
     ...pickIntegerFields(override, [
       "gradientAngle",
@@ -1373,6 +1388,7 @@ async function applyDesignOverride(
     ...pickBooleanFields(override, [
       "fullWidth",
       "positionSticky",
+      "separateMobileDesign",
       "mobileEnabled",
       "showCloseButton",
       "showButton",
@@ -1390,6 +1406,8 @@ async function applyDesignOverride(
     ...(icon ? { icon } : {}),
     ...(layout ? { layout } : {}),
     ...(positionMode ? { positionMode } : {}),
+    ...(floatPosition ? { floatPosition } : {}),
+    ...(mobileDesignOverride ? { mobileDesign: mobileDesignOverride } : {}),
     ...(timerFormat ? { timerFormat } : {}),
     ...(timerStyle ? { timerStyle } : {}),
     ...(timerTickAnimation ? { timerTickAnimation } : {}),

@@ -90,14 +90,64 @@
     }
 
     fetchCampaigns(config, "PRODUCT_PAGE", root).then(function (campaigns) {
-      if (campaigns[0]) {
-        renderProduct(root, campaigns[0], config);
+      if (campaigns.length) {
+        renderProductAll(root, campaigns, config);
       } else {
+        getRenderSlot(root, "delivery").replaceChildren();
         updateDebug(
           root,
           "API OK: 0 campanas DELIVERY_CUTOFF elegibles para PRODUCT_PAGE.",
         );
       }
+    });
+  }
+
+  // Dedicated render slot inside the shared .pp-product-timer block so the
+  // delivery-cutoff asset does not clobber the timer/low-stock assets when
+  // several campaigns target PRODUCT_PAGE at once.
+  function getRenderSlot(root, name) {
+    var slot = root.querySelector('[data-pp-slot="' + name + '"]');
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.setAttribute("data-pp-slot", name);
+      slot.className = "pp-render-slot pp-render-slot--" + name;
+      root.appendChild(slot);
+    }
+    return slot;
+  }
+
+  function renderProductAll(root, campaigns, config) {
+    var slot = getRenderSlot(root, "delivery");
+    var entries = [];
+
+    if (!window.CountPulseSurface) return;
+
+    campaigns.forEach(function (campaign) {
+      var promise = deliveryPromise(
+        campaign.deliveryCutoff,
+        campaign.timezone,
+        config.locale,
+        campaign.design || {},
+      );
+      if (!shouldRender(campaign, promise)) return;
+      entries.push({
+        card: buildSurface("block", campaign, promise),
+        campaign: campaign,
+      });
+    });
+
+    slot.replaceChildren.apply(
+      slot,
+      entries.map(function (entry) {
+        return entry.card;
+      }),
+    );
+
+    entries.forEach(function (entry) {
+      tick(entry.card, entry.campaign, config, function () {
+        renderProductAll(root, campaigns, config);
+      });
+      emit(entry.campaign);
     });
   }
 
@@ -289,34 +339,6 @@
     else container.appendChild(bar);
     tick(bar, campaign, config, function () {
       renderGlobal(campaign, config);
-    });
-    emit(campaign);
-  }
-
-  function renderProduct(root, campaign, config) {
-    var promise = deliveryPromise(
-      campaign.deliveryCutoff,
-      campaign.timezone,
-      config.locale,
-      campaign.design || {},
-    );
-    var card;
-
-    if (!shouldRender(campaign, promise)) {
-      updateDebug(
-        root,
-        "Delivery cutoff recibido, pero oculto por mobileEnabled=false o afterCutoffBehavior=HIDE.",
-      );
-      if (!config.debug) root.replaceChildren();
-      return;
-    }
-
-    if (!window.CountPulseSurface) return;
-
-    card = buildSurface("block", campaign, promise);
-    root.replaceChildren(card);
-    tick(card, campaign, config, function () {
-      renderProduct(root, campaign, config);
     });
     emit(campaign);
   }

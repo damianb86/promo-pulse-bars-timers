@@ -1065,6 +1065,7 @@
   font-weight: 700;
   line-height: 1;
   opacity: 0.68;
+  cursor: pointer;
 }
 
 
@@ -1226,4 +1227,80 @@
 /* When the timer expires we drop the countdown; nothing else should shift. */
 .counterpulse-preview-promo--expired {
   /* no visual change; class kept for hooks/analytics */
+}
+
+/* --------------------------------------------------------------------------
+   Mobile parity. In the in-app preview these caps live under the
+   `.counterpulse-preview-shell--mobile` device toggle; on a real storefront
+   "mobile" is a narrow viewport, so the same rules are applied via a media
+   query. When "Separate desktop and mobile" is on, the backend already sends
+   the mobile design values; these rules clamp the layout exactly like the
+   preview does so the two match.
+   -------------------------------------------------------------------------- */
+@media (max-width: 749px) {
+  .counterpulse-preview-promo {
+    width: 100%;
+    padding: max(10px, calc(var(--cp-padding-block) * 0.68))
+      max(14px, calc(var(--cp-padding-inline) * 0.7));
+  }
+
+  .counterpulse-preview-promo--layout-balanced,
+  .counterpulse-preview-promo--layout-cta_right,
+  .counterpulse-preview-promo--layout-cta_left {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-message,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-balanced .counterpulse-preview-progress,
+  .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
+  .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer,
+  .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
+  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
+  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: auto;
+  }
+
+  .counterpulse-preview-promo--layout-inline {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .counterpulse-preview-message {
+    justify-content: center;
+  }
+
+  .counterpulse-preview-message-copy {
+    justify-items: center;
+  }
+
+  .counterpulse-preview-actions {
+    justify-content: center;
+  }
+
+  .counterpulse-preview-message strong {
+    font-size: min(21px, var(--cp-title-size));
+  }
+
+  .counterpulse-preview-timer {
+    font-size: min(34px, var(--cp-timer-size));
+  }
+}
+
+/* Stack multiple campaigns in the same placement slot, one below the other. */
+.pp-render-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pp-render-slot:empty {
+  display: none;
 }

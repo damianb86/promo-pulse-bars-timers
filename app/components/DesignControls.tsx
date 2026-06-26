@@ -1495,7 +1495,10 @@ function CardDesignPanel({
 }) {
   return (
     <section className="counterpulse-design-card counterpulse-card-editor">
-      <h3>Card</h3>
+      <h3>
+        <DesignSectionIcon title="Card" />
+        <span>Card</span>
+      </h3>
 
       <div className="counterpulse-card-editor__body">
         <div className="counterpulse-card-editor__section">
@@ -2287,9 +2290,115 @@ function DesignPanel({
 }) {
   return (
     <section className="counterpulse-design-card">
-      <h3>{title}</h3>
+      <h3>
+        <DesignSectionIcon title={title} />
+        <span>{title}</span>
+      </h3>
       <div className="counterpulse-design-card__body">{children}</div>
     </section>
+  );
+}
+
+const designSectionIconPaths: Record<string, ReactNode> = {
+  Template: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  Typography: (
+    <>
+      <path d="M5 18 10 6l5 12" />
+      <path d="M6.7 14h6.6" />
+      <path d="M16 18h3.5" />
+    </>
+  ),
+  "Timer Style": (
+    <>
+      <circle cx="12" cy="13" r="7" />
+      <path d="M12 9.5V13l2.4 1.6" />
+      <path d="M9.5 3h5" />
+    </>
+  ),
+  Card: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 9h18" />
+    </>
+  ),
+  Progress: (
+    <>
+      <rect x="3" y="9.5" width="18" height="5" rx="2.5" />
+      <path d="M3 12h11" />
+    </>
+  ),
+  Elements: (
+    <>
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <circle cx="17" cy="7" r="4" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
+      <path d="M3 17h8" />
+    </>
+  ),
+  Behavior: (
+    <>
+      <path d="M5 4l5.5 15 2.2-6.3 6.3-2.2z" />
+      <path d="M13.5 13.5 19 19" />
+    </>
+  ),
+  Motion: (
+    <>
+      <path d="M3 8h10" />
+      <path d="M3 12h7" />
+      <path d="M3 16h12" />
+      <path d="M16 6l5 6-5 6" />
+    </>
+  ),
+  Advanced: (
+    <>
+      <path d="M4 7h10" />
+      <path d="M18 7h2" />
+      <circle cx="16" cy="7" r="2" />
+      <path d="M4 17h2" />
+      <path d="M10 17h10" />
+      <circle cx="8" cy="17" r="2" />
+    </>
+  ),
+  "Offer code": (
+    <>
+      <path d="M4 12.2 12.2 4H20v7.8L11.8 20z" />
+      <circle cx="16.5" cy="7.5" r="1.2" />
+    </>
+  ),
+  Default: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l2.5 2" />
+    </>
+  ),
+};
+
+function DesignSectionIcon({ title }: { title: string }) {
+  const paths = designSectionIconPaths[title] ?? designSectionIconPaths.Default;
+
+  return (
+    <svg
+      className="counterpulse-design-card__icon"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {paths}
+    </svg>
   );
 }
 

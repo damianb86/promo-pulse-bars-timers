@@ -286,29 +286,53 @@
     node.setAttribute("data-cp-timer", "true");
   }
 
+  // The tick animations (fade/flip/pulse) are CSS animations that run on mount.
+  // In the preview they replay because React remounts the element (keyed by
+  // value). On the storefront we update text in place, so we must restart the
+  // animation manually to make the effect visible on every tick.
+  function hasTickAnimation(node) {
+    return /counterpulse-preview-timer--tick-(fade|flip|pulse)/.test(
+      node.className || "",
+    );
+  }
+
+  function replayAnimation(el) {
+    if (!el) return;
+    el.style.animation = "none";
+    // Force a reflow so the browser registers the reset before re-enabling.
+    void el.offsetWidth;
+    el.style.animation = "";
+  }
+
   // Live update of an existing timer node built by buildTimer.
   function updateTimer(node, remainingMs, design) {
     if (!node) return;
     var parts = visibleTimerParts(buildTimerParts(remainingMs, design), design);
+    var animate = hasTickAnimation(node);
 
     if (
       node.classList.contains("counterpulse-preview-timer--colon") ||
       node.classList.contains("counterpulse-preview-timer--inline-plain")
     ) {
+      var nextText;
       if (node.classList.contains("counterpulse-preview-timer--colon")) {
-        node.textContent = parts
+        nextText = parts
           .map(function (part) {
             return part.value;
           })
           .join(":");
       } else {
-        node.textContent = parts
+        nextText = parts
           .map(function (part) {
             return design.timerShowLabels
               ? part.value + " " + part.shortLabel
               : part.value;
           })
           .join(" ");
+      }
+      if (node.textContent !== nextText) {
+        node.textContent = nextText;
+        if (animate) replayAnimation(node);
       }
       return;
     }
@@ -317,6 +341,7 @@
     for (var i = 0; i < units.length && i < parts.length; i += 1) {
       if (units[i].textContent !== parts[i].value) {
         units[i].textContent = parts[i].value;
+        if (animate) replayAnimation(units[i]);
       }
     }
   }
@@ -327,23 +352,29 @@
     if (!node) return;
     var parts = visibleTimerParts(buildTimerPartsFromText(text), design);
     if (!parts.length) return;
+    var animate = hasTickAnimation(node);
 
-    if (node.classList.contains("counterpulse-preview-timer--colon")) {
-      node.textContent = parts
-        .map(function (part) {
-          return part.value;
-        })
-        .join(":");
-      return;
-    }
-    if (node.classList.contains("counterpulse-preview-timer--inline-plain")) {
-      node.textContent = parts
-        .map(function (part) {
-          return design.timerShowLabels
-            ? part.value + " " + part.shortLabel
-            : part.value;
-        })
-        .join(" ");
+    if (
+      node.classList.contains("counterpulse-preview-timer--colon") ||
+      node.classList.contains("counterpulse-preview-timer--inline-plain")
+    ) {
+      var nextText = node.classList.contains("counterpulse-preview-timer--colon")
+        ? parts
+            .map(function (part) {
+              return part.value;
+            })
+            .join(":")
+        : parts
+            .map(function (part) {
+              return design.timerShowLabels
+                ? part.value + " " + part.shortLabel
+                : part.value;
+            })
+            .join(" ");
+      if (node.textContent !== nextText) {
+        node.textContent = nextText;
+        if (animate) replayAnimation(node);
+      }
       return;
     }
 
@@ -351,6 +382,7 @@
     for (var i = 0; i < units.length && i < parts.length; i += 1) {
       if (units[i].textContent !== parts[i].value) {
         units[i].textContent = parts[i].value;
+        if (animate) replayAnimation(units[i]);
       }
     }
   }

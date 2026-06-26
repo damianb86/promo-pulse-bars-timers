@@ -7600,6 +7600,14 @@ s-page::part(page) {
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.counterpulse-design-card__icon {
+  flex: none;
+  color: #5c6ac4;
 }
 
 .counterpulse-design-card__body {
@@ -10195,6 +10203,7 @@ s-page::part(page) {
   font-weight: 700;
   line-height: 1;
   opacity: 0.68;
+  cursor: pointer;
 }
 
 @keyframes counterpulse-progress-unlocked {

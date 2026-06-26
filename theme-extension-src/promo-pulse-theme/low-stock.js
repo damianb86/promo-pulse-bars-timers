@@ -50,27 +50,63 @@
     requestUrl = buildUrl(config);
     updateDebug(root, "Consultando campanas LOW_STOCK.", requestUrl);
 
-    fetchCampaign(config)
-      .then(function (campaign) {
-        if (!campaign) {
+    fetchCampaigns(config)
+      .then(function (campaigns) {
+        if (!campaigns.length) {
           updateDebug(
             root,
             "API OK: 0 campanas LOW_STOCK elegibles para PRODUCT_PAGE.",
             requestUrl,
           );
+          getRenderSlot(root, "low-stock").replaceChildren();
           return;
         }
         updateDebug(
           root,
-          "API OK: campana LOW_STOCK recibida " + campaign.id + ".",
+          "API OK: " + campaigns.length + " campana(s) LOW_STOCK recibidas.",
         );
-        render(root, campaign, config);
-        bindVariantChanges(root, campaign, config);
+        renderAll(root, campaigns, config);
+        bindVariantChanges(root, campaigns, config);
       })
       .catch(function (error) {
         updateDebug(root, "Error LOW_STOCK: " + error.message, requestUrl);
         if (config.debug && window.console) console.log("[CP stock]", error);
       });
+  }
+
+  // Shared per-asset render slot inside the .pp-product-timer block so the
+  // timer, low-stock and delivery-cutoff assets never clobber each other.
+  function getRenderSlot(root, name) {
+    var slot = root.querySelector('[data-pp-slot="' + name + '"]');
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.setAttribute("data-pp-slot", name);
+      slot.className = "pp-render-slot pp-render-slot--" + name;
+      root.appendChild(slot);
+    }
+    return slot;
+  }
+
+  function renderAll(root, campaigns, config) {
+    var slot = getRenderSlot(root, "low-stock");
+    var entries = [];
+
+    campaigns.forEach(function (campaign) {
+      var card = buildLowStockCard(root, campaign, config);
+      if (card) entries.push({ card: card, campaign: campaign });
+    });
+
+    slot.replaceChildren.apply(
+      slot,
+      entries.map(function (entry) {
+        return entry.card;
+      }),
+    );
+
+    entries.forEach(function (entry) {
+      startTimerTick(entry.card, entry.campaign);
+      emitImpression(entry.campaign);
+    });
   }
 
   function buildUrl(config) {
@@ -126,7 +162,17 @@
     return value + "/api/storefront/campaigns";
   }
 
-  function fetchCampaign(config) {
+  function onlyLowStock(payload, config) {
+    applyStorefrontSettings(config, payload.settings);
+    var campaigns = Array.isArray(payload.campaigns)
+      ? payload.campaigns.map(applyExperiment)
+      : [];
+    return campaigns.filter(function (campaign) {
+      return campaign.type === "LOW_STOCK";
+    });
+  }
+
+  function fetchCampaigns(config) {
     var campaignId =
       config.fallbackMode === "SPECIFIC_CAMPAIGN" ? config.campaignId : "";
 
@@ -136,16 +182,7 @@
           campaignId: campaignId,
         })
         .then(function (payload) {
-          applyStorefrontSettings(config, payload.settings);
-          var campaigns = Array.isArray(payload.campaigns)
-            ? payload.campaigns.map(applyExperiment)
-            : [];
-
-          return (
-            campaigns.filter(function (campaign) {
-              return campaign.type === "LOW_STOCK";
-            })[0] || null
-          );
+          return onlyLowStock(payload, config);
         });
     }
 
@@ -158,15 +195,7 @@
         return response.json();
       })
       .then(function (payload) {
-        applyStorefrontSettings(config, payload.settings);
-        var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns.map(applyExperiment)
-          : [];
-        return (
-          campaigns.filter(function (campaign) {
-            return campaign.type === "LOW_STOCK";
-          })[0] || null
-        );
+        return onlyLowStock(payload, config);
       });
   }
 
@@ -178,7 +207,7 @@
     return campaign;
   }
 
-  function render(root, campaign, config) {
+  function buildLowStockCard(root, campaign, config) {
     var message = buildMessage(campaign.lowStock, currentInventory(config), [
       (campaign.texts || {}).lowStockText,
       (campaign.lowStock || {}).fallbackMessage,
@@ -191,13 +220,12 @@
         root,
         "Campana LOW_STOCK recibida, pero no se muestra: no hay inventario real bajo el threshold ni fallback configurado.",
       );
-      root.replaceChildren();
-      return;
+      return null;
     }
 
     if (!window.CountPulseSurface) {
       updateDebug(root, "Surface module no disponible todavia.");
-      return;
+      return null;
     }
 
     var texts = campaign.texts || {};
@@ -246,9 +274,7 @@
       card.classList.add("counterpulse-preview-promo--compact");
     }
 
-    root.replaceChildren(card);
-    startTimerTick(card, campaign);
-    emitImpression(campaign);
+    return card;
   }
 
   function startTimerTick(card, campaign) {
@@ -299,7 +325,7 @@
     return wrapper;
   }
 
-  function bindVariantChanges(root, campaign, config) {
+  function bindVariantChanges(root, campaigns, config) {
     var form =
       safeQuerySelector(config.customProductFormSelector) ||
       root.closest("form[action*='/cart/add']") ||
@@ -314,7 +340,7 @@
     controls.forEach(function (control) {
       control.addEventListener("change", function () {
         config.selectedVariantId = normalizeVariantId(readVariantId(form));
-        render(root, campaign, config);
+        renderAll(root, campaigns, config);
       });
     });
   }

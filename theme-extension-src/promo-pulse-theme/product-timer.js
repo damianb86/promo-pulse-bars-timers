@@ -170,7 +170,24 @@
     return value + "/api/storefront/campaigns";
   }
 
+  // Each dedicated product-page asset (timer, low-stock, delivery-cutoff)
+  // shares the same .pp-product-timer block. They must render into their own
+  // slot so they don't clobber each other when several campaigns target the
+  // PRODUCT_PAGE placement at once.
+  function getRenderSlot(root, name) {
+    var selector = '[data-pp-slot="' + name + '"]';
+    var slot = root.querySelector(selector);
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.setAttribute("data-pp-slot", name);
+      slot.className = "pp-render-slot pp-render-slot--" + name;
+      root.appendChild(slot);
+    }
+    return slot;
+  }
+
   function renderCampaigns(root, campaigns, config) {
+    var slot = getRenderSlot(root, "timer");
     var cards = [];
     var ticks = [];
 
@@ -182,10 +199,13 @@
       }
     });
 
-    if (cards.length === 0) return;
+    if (cards.length === 0) {
+      slot.replaceChildren();
+      return;
+    }
 
-    stopProductTimers(root);
-    root.replaceChildren.apply(root, cards);
+    stopProductTimers(slot);
+    slot.replaceChildren.apply(slot, cards);
 
     ticks.forEach(function (entry) {
       tick(entry.card, entry.campaign);

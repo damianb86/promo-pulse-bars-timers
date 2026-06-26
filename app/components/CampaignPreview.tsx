@@ -785,6 +785,49 @@ function TimerDisplay({
   if (!visibleTimerParts.length) return null;
 
   if (design.timerFormat === "COLON") {
+    // Boxes + colon: render one box per number with the ":" separators sitting
+    // between the boxes (outside them), instead of a single boxed string.
+    if (design.timerStyle === "BOXES") {
+      const colonBoxNodes: ReactNode[] = [];
+
+      visibleTimerParts.forEach((part, index) => {
+        if (index > 0) {
+          colonBoxNodes.push(
+            <span
+              aria-hidden="true"
+              className="counterpulse-preview-timer-sep"
+              key={`sep-${index}`}
+            >
+              :
+            </span>,
+          );
+        }
+        colonBoxNodes.push(
+          <span className="counterpulse-preview-timer-unit" key={part.label}>
+            <strong key={part.value}>{part.value}</strong>
+          </span>,
+        );
+      });
+
+      return (
+        <div
+          className={[
+            "counterpulse-preview-timer",
+            "counterpulse-preview-timer--colon",
+            "counterpulse-preview-timer--boxes",
+            "counterpulse-preview-timer--colon-boxes",
+            `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
+            compact ? "counterpulse-preview-timer--compact" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          suppressHydrationWarning
+        >
+          {colonBoxNodes}
+        </div>
+      );
+    }
+
     const timerText = formatTimerPartsAsColon(visibleTimerParts);
 
     return (

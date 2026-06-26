@@ -1334,90 +1334,106 @@
 
 /* ==========================================================================
    Mobile-tuned layouts. Selectable when editing the Mobile design surface.
-   All are responsive; they bias toward narrow viewports and big tap targets.
+   Each one places the message / timer / action differently so they read as
+   distinct arrangements that cannot be reproduced with the settings below.
    ========================================================================== */
 
-/* Stacked, centered mobile layouts with full-width tap targets. */
-.counterpulse-preview-promo--layout-mobile_banner,
-.counterpulse-preview-promo--layout-mobile_card,
-.counterpulse-preview-promo--layout-mobile_sheet,
-.counterpulse-preview-promo--layout-mobile_spotlight {
+/* 1) Mobile banner — pure vertical stack, centered, full-width action last.
+      Order: message → timer → action. */
+.counterpulse-preview-promo--layout-mobile_banner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
   width: 100%;
 }
-
-.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-mobile_spotlight
-  .counterpulse-preview-message {
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-message {
   justify-content: center;
 }
-
 .counterpulse-preview-promo--layout-mobile_banner
-  .counterpulse-preview-message-copy,
-.counterpulse-preview-promo--layout-mobile_card
-  .counterpulse-preview-message-copy,
-.counterpulse-preview-promo--layout-mobile_sheet
-  .counterpulse-preview-message-copy,
-.counterpulse-preview-promo--layout-mobile_spotlight
   .counterpulse-preview-message-copy {
   justify-items: center;
   text-align: center;
 }
-
 .counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-actions,
-.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-actions,
-.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-actions,
-.counterpulse-preview-promo--layout-mobile_spotlight
-  .counterpulse-preview-actions {
-  width: 100%;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-cta,
-.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-cta,
-.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-cta,
-.counterpulse-preview-promo--layout-mobile_spotlight
-  .counterpulse-preview-cta {
+.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-cta {
   width: 100%;
   justify-content: center;
   text-align: center;
 }
 
-.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-offer,
-.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-offer,
-.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-offer,
-.counterpulse-preview-promo--layout-mobile_spotlight
-  .counterpulse-preview-offer {
+/* 2) Mobile card — timer on the LEFT, message on the RIGHT (side by side),
+      action spans full-width underneath both. */
+.counterpulse-preview-promo--layout-mobile_card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "timer message"
+    "actions actions";
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-message {
+  grid-area: message;
+  justify-content: flex-start;
+}
+.counterpulse-preview-promo--layout-mobile_card
+  .counterpulse-preview-message-copy {
+  justify-items: start;
+  text-align: left;
+}
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-timer {
+  grid-area: timer;
+}
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-actions {
+  grid-area: actions;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+.counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-cta {
   width: 100%;
   justify-content: center;
+  text-align: center;
 }
 
-/* Card: a self-contained rounded card. */
-.counterpulse-preview-promo--layout-mobile_card {
-  max-width: var(--cp-content-max-width, 440px);
-}
-
-/* Bottom sheet: rounded top corners, full-bleed bottom — pairs with Float bottom. */
+/* 3) Bottom sheet — message first, the ACTION sits in the middle (priority),
+      timer drops to the bottom. Rounded only on top like a sheet. */
 .counterpulse-preview-promo--layout-mobile_sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
-
-/* Spotlight: emphasize the countdown as the hero. */
-.counterpulse-preview-promo--layout-mobile_spotlight .counterpulse-preview-timer {
-  order: -1;
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-message {
+  order: 1;
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-mobile_sheet
+  .counterpulse-preview-message-copy {
+  justify-items: center;
+  text-align: center;
+}
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-actions {
+  order: 2;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-cta {
   width: 100%;
   justify-content: center;
 }
+.counterpulse-preview-promo--layout-mobile_sheet .counterpulse-preview-timer {
+  order: 3;
+}
 
-/* Compact bar: a single dense row, message left, action right. */
+/* 4) Compact bar — one dense row: message left, timer + action on the right. */
 .counterpulse-preview-promo--layout-mobile_compact_bar {
   display: flex;
   flex-direction: row;
@@ -1427,19 +1443,17 @@
   text-align: left;
   width: 100%;
 }
-
 .counterpulse-preview-promo--layout-mobile_compact_bar
   .counterpulse-preview-message {
   flex: 1 1 auto;
   min-width: 0;
   justify-content: flex-start;
 }
-
 .counterpulse-preview-promo--layout-mobile_compact_bar
   .counterpulse-preview-message-copy {
   min-width: 0;
+  text-align: left;
 }
-
 .counterpulse-preview-promo--layout-mobile_compact_bar
   .counterpulse-preview-timer,
 .counterpulse-preview-promo--layout-mobile_compact_bar
@@ -1453,9 +1467,64 @@
     justify-content: center;
     text-align: center;
   }
-
   .counterpulse-preview-promo--layout-mobile_compact_bar
     .counterpulse-preview-actions {
     width: 100%;
   }
+}
+
+/* 5) Spotlight — the countdown is the hero on TOP (big), message beneath it,
+      full-width action last. */
+.counterpulse-preview-promo--layout-mobile_spotlight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-timer {
+  order: -1;
+  width: 100%;
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-message {
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-message-copy {
+  justify-items: center;
+  text-align: center;
+}
+.counterpulse-preview-promo--layout-mobile_spotlight
+  .counterpulse-preview-actions,
+.counterpulse-preview-promo--layout-mobile_spotlight .counterpulse-preview-cta {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Boxes + Colon: one box per number, with ":" separators outside the boxes. */
+.counterpulse-preview-timer--colon.counterpulse-preview-timer--colon-boxes {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 6px;
+  align-items: center;
+}
+
+.counterpulse-preview-timer--colon-boxes .counterpulse-preview-timer-unit {
+  min-width: 2.6em;
+  padding: 6px 8px;
+}
+
+.counterpulse-preview-timer--colon-boxes .counterpulse-preview-timer-sep {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cp-timer-color);
+  font-size: 1em;
+  font-weight: 850;
+  line-height: 0.95;
+  padding: 0 1px;
 }

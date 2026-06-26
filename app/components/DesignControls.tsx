@@ -531,36 +531,42 @@ export function DesignControls({
                 value={values.timerFormat}
               />
 
-              <span className="counterpulse-design-sublabel">Number layout</span>
-              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
-                {designTimerNumberLayoutOptions.map((option) => (
-                  <button
-                    className={
-                      values.timerNumberLayout === option.value
-                        ? "is-active"
-                        : ""
-                    }
-                    key={option.value}
-                    type="button"
-                    title={option.description}
-                    onClick={() =>
-                      updateValue("timerNumberLayout", option.value)
-                    }
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              {values.timerFormat !== "COLON" && (
+                <>
+                  <span className="counterpulse-design-sublabel">
+                    Number layout
+                  </span>
+                  <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+                    {designTimerNumberLayoutOptions.map((option) => (
+                      <button
+                        className={
+                          values.timerNumberLayout === option.value
+                            ? "is-active"
+                            : ""
+                        }
+                        key={option.value}
+                        type="button"
+                        title={option.description}
+                        onClick={() =>
+                          updateValue("timerNumberLayout", option.value)
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.timerNumberLayout && (
+                    <span className="counterpulse-form-error">
+                      {errors.timerNumberLayout}
+                    </span>
+                  )}
+                </>
+              )}
               <input
                 name="timerNumberLayout"
                 type="hidden"
                 value={values.timerNumberLayout}
               />
-              {errors.timerNumberLayout && (
-                <span className="counterpulse-form-error">
-                  {errors.timerNumberLayout}
-                </span>
-              )}
             </DesignGroup>
 
             {values.timerStyle !== "PLAIN" && (
@@ -3014,16 +3020,29 @@ function TimerStylePreview({
   timerStyle: CampaignDesignValues["timerStyle"];
   timerFormat?: CampaignDesignValues["timerFormat"];
 }) {
+  const isColonBoxes = timerFormat === "COLON" && timerStyle === "BOXES";
+
   return (
     <span
       className={[
         "counterpulse-timer-style-preview",
         `counterpulse-timer-style-preview--${timerStyle.toLowerCase()}`,
         `counterpulse-timer-style-preview--${timerFormat.toLowerCase()}`,
-      ].join(" ")}
+        isColonBoxes ? "counterpulse-timer-style-preview--colon-boxes" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-hidden="true"
     >
-      {timerFormat === "COLON" ? (
+      {isColonBoxes ? (
+        <>
+          <span>01</span>
+          <em>:</em>
+          <span>58</span>
+          <em>:</em>
+          <span>26</span>
+        </>
+      ) : timerFormat === "COLON" ? (
         <span>01:58:26</span>
       ) : (
         <>

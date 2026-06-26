@@ -236,6 +236,40 @@
     var classes;
 
     if (design.timerFormat === "COLON") {
+      // Boxes + colon: one box per number with the ":" separators between the
+      // boxes (outside them).
+      if (design.timerStyle === "BOXES") {
+        var colonBoxes = el(
+          "div",
+          [
+            "counterpulse-preview-timer",
+            "counterpulse-preview-timer--colon",
+            "counterpulse-preview-timer--boxes",
+            "counterpulse-preview-timer--colon-boxes",
+            "counterpulse-preview-timer--tick-" +
+              lower(design.timerTickAnimation),
+            compact ? "counterpulse-preview-timer--compact" : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+        parts.forEach(function (part, index) {
+          if (index > 0) {
+            var sep = el("span", "counterpulse-preview-timer-sep");
+            sep.setAttribute("aria-hidden", "true");
+            sep.textContent = ":";
+            colonBoxes.appendChild(sep);
+          }
+          var unit = el("span", "counterpulse-preview-timer-unit");
+          var strong = document.createElement("strong");
+          strong.textContent = part.value;
+          unit.appendChild(strong);
+          colonBoxes.appendChild(unit);
+        });
+        markTimer(colonBoxes);
+        return colonBoxes;
+      }
+
       classes = [
         "counterpulse-preview-timer",
         "counterpulse-preview-timer--colon",
@@ -325,6 +359,20 @@
     var parts = visibleTimerParts(buildTimerParts(remainingMs, design), design);
     var animate = hasTickAnimation(node);
 
+    // Per-box timers (units present, e.g. boxes + colon) update each box.
+    if (node.querySelector(".counterpulse-preview-timer-unit strong")) {
+      var boxUnits = node.querySelectorAll(
+        ".counterpulse-preview-timer-unit strong",
+      );
+      for (var u = 0; u < boxUnits.length && u < parts.length; u += 1) {
+        if (boxUnits[u].textContent !== parts[u].value) {
+          boxUnits[u].textContent = parts[u].value;
+          if (animate) replayAnimation(boxUnits[u]);
+        }
+      }
+      return;
+    }
+
     if (
       node.classList.contains("counterpulse-preview-timer--colon") ||
       node.classList.contains("counterpulse-preview-timer--inline-plain")
@@ -368,6 +416,20 @@
     var parts = visibleTimerParts(buildTimerPartsFromText(text), design);
     if (!parts.length) return;
     var animate = hasTickAnimation(node);
+
+    // Per-box timers (units present, e.g. boxes + colon) update each box.
+    if (node.querySelector(".counterpulse-preview-timer-unit strong")) {
+      var boxUnits = node.querySelectorAll(
+        ".counterpulse-preview-timer-unit strong",
+      );
+      for (var u = 0; u < boxUnits.length && u < parts.length; u += 1) {
+        if (boxUnits[u].textContent !== parts[u].value) {
+          boxUnits[u].textContent = parts[u].value;
+          if (animate) replayAnimation(boxUnits[u]);
+        }
+      }
+      return;
+    }
 
     if (
       node.classList.contains("counterpulse-preview-timer--colon") ||

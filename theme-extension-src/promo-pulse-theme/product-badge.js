@@ -791,54 +791,52 @@
     var design = badgePayload.design || {};
     var text = badge.badgeText || badgePayload.text || "Limited offer";
     var href = badge.url || "";
-    var element = href
-      ? document.createElement("a")
-      : document.createElement("span");
+    var timerState = calculateTimerState(badgePayload, new Date());
 
-    element.className = [
-      "pp-badge",
-      "pp-badge--" + shape(badge.badgeShape).toLowerCase(),
-      "pp-badge--" +
-        position(badge.badgePosition).toLowerCase().replace("_", "-"),
-    ].join(" ");
-    if (!isAutomaticSlot && design.positionMode === "OVERLAY") {
-      element.classList.add("pp-surface--overlay");
+    if (!window.CountPulseSurface) {
+      return document.createElement("span");
     }
+
+    var element = window.CountPulseSurface.build({
+      variant: "badge",
+      placement: badgePayload.placement || "PRODUCT_PAGE_BADGE",
+      design: design,
+      headline: text,
+      hasTimer: timerState.isActive,
+      timer: {
+        isActive: timerState.isActive,
+        isExpired: timerState.isExpired,
+        remainingMs: timerState.remainingMs,
+      },
+      badge: {
+        text: text,
+        shape: badge.badgeShape,
+        position: badge.badgePosition,
+      },
+      dataTestId: "promo-badge",
+    });
+
     element.dataset.campaignId = badgePayload.campaignId || badgePayload.id;
     if (badgePayload.ruleId) element.dataset.badgeRuleId = badgePayload.ruleId;
-    element.appendChild(renderBadgeText(text));
-    appendBadgeTimer(element, badgePayload, design);
     element.setAttribute("role", "note");
     element.setAttribute("aria-label", element.textContent || text);
+
     if (href) {
-      element.href = href;
-      element.addEventListener("click", function () {
+      var link = document.createElement("a");
+      link.href = href;
+      link.className = "counterpulse-preview-badge-link";
+      link.addEventListener("click", function () {
         emitBadgeClick(badgePayload);
       });
+      while (element.firstChild) link.appendChild(element.firstChild);
+      element.appendChild(link);
     }
-    setDesign(element, design);
+
+    if (timerState.isActive) {
+      startBadgeCountdown(element, badgePayload, design);
+    }
 
     return element;
-  }
-
-  function renderBadgeText(text) {
-    var span = document.createElement("span");
-
-    span.className = "pp-badge-text";
-    span.textContent = text;
-
-    return span;
-  }
-
-  function appendBadgeTimer(element, badgePayload, design) {
-    var timerState = calculateTimerState(badgePayload, new Date());
-    var countdown;
-
-    if (!timerState.isActive) return;
-
-    countdown = renderCountdown(timerState, design, true);
-    element.appendChild(countdown);
-    startBadgeCountdown(element, badgePayload, design);
   }
 
   function renderCountdown(timerState, design, compact) {
@@ -932,12 +930,11 @@
   }
 
   function startBadgeCountdown(element, badgePayload, design) {
-    if (!element.querySelector(".pp-countdown")) return;
+    if (!element.querySelector("[data-cp-timer]")) return;
 
     window.setInterval(function () {
       var timerState = calculateTimerState(badgePayload, new Date());
-      var countdown = element.querySelector(".pp-countdown");
-      var previousValue;
+      var countdown = element.querySelector("[data-cp-timer]");
 
       if (!countdown) return;
 
@@ -947,15 +944,12 @@
         return;
       }
 
-      previousValue = countdown.dataset.value || "";
-      updateCountdownElement(
-        countdown,
-        timerState.remainingMs,
-        design,
-        countdown.classList.contains("pp-countdown--compact"),
-      );
-      if (countdown.dataset.value !== previousValue) {
-        replayCountdownTick(countdown);
+      if (window.CountPulseSurface) {
+        window.CountPulseSurface.updateTimer(
+          countdown,
+          timerState.remainingMs,
+          design,
+        );
       }
     }, 1000);
   }

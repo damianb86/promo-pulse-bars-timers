@@ -411,7 +411,6 @@
 
     if (renderedCampaigns[renderKey]) return;
 
-    var bar = document.createElement("section");
     var container = targetContainer
       ? getSnippetContainer(targetContainer, campaign.placementStyle)
       : getPlacementContainer(
@@ -421,75 +420,67 @@
         );
 
     if (!container) return;
+    if (!window.CountPulseSurface) return;
 
-    bar.className =
-      "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace(/_/g, "-");
-    bar.dataset.campaignId = campaign.id;
-    bar.classList.add(
-      "pp-bar--layout-" + String(design.layout || "STANDARD").toLowerCase(),
-    );
-    if (design.fullWidth) bar.classList.add("pp-bar--full-width");
-    if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
-    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
-      bar.classList.add(
-        "pp-bar--enter-" + String(design.entranceAnimation).toLowerCase(),
-      );
-    }
-    if (design.exitAnimation && design.exitAnimation !== "NONE") {
-      bar.classList.add(
-        "pp-bar--exit-" + String(design.exitAnimation).toLowerCase(),
-      );
-    }
-    bar.dataset.campaignId = campaign.id;
-    bar.dataset.testid = "promo-bar";
-    bar.setAttribute("role", "region");
-    bar.setAttribute(
-      "aria-label",
-      ((campaign.texts || {}).headline || "Promo Pulse promotion").trim(),
-    );
-    setDesignProperties(bar, design);
-
-    if (
-      campaign.placement === "TOP_BAR" &&
-      design.positionMode !== "OVERLAY" &&
-      design.positionSticky
-    ) {
-      bar.classList.add("pp-bar--sticky");
+    var texts = campaign.texts || {};
+    var detail = texts.subheadline || "";
+    if (timerState.isExpired && texts.expiredText) {
+      detail = texts.expiredText;
     }
 
-    icon = renderIcon(design);
-    bar.appendChild(renderMessage(campaign, timerState, icon));
-
-    if (
-      timerState.isActive &&
-      String(design.layout || "").toUpperCase() !== "INLINE"
-    ) {
-      bar.appendChild(renderCountdown(timerState, design));
-    }
-
+    var couponNode = null;
     if (
       !timerState.isExpired &&
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
       typeof window.PromoPulseCouponButton === "function"
     ) {
-      bar.appendChild(
-        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
+      couponNode = window.PromoPulseCouponButton(
+        campaign.discount.discountCode,
+        campaign,
       );
     }
 
+    var variant =
+      campaign.placement === "TOP_BAR" || campaign.placement === "BOTTOM_BAR"
+        ? "bar"
+        : "block";
+
+    var bar = window.CountPulseSurface.build({
+      variant: variant,
+      placement: campaign.placement,
+      design: design,
+      headline: texts.headline || "Promo Pulse promotion",
+      body: detail,
+      timer: {
+        isActive: timerState.isActive,
+        isExpired: timerState.isExpired,
+        remainingMs: timerState.remainingMs,
+      },
+      hasTimer: timerState.isActive,
+      couponNode: couponNode,
+      cta:
+        !timerState.isExpired && design.showButton !== false
+          ? texts.ctaText || ""
+          : "",
+      ctaUrl: texts.ctaUrl || "",
+      dataTestId: "promo-bar",
+      onClose: function () {
+        if (design.dismissBehavior === "HIDE_PERMANENTLY") {
+          rememberCampaignDismissed(campaign.id);
+        }
+        removeBar(bar, design);
+        delete renderedCampaigns[renderKey];
+      },
+    });
+
+    bar.dataset.campaignId = campaign.id;
     if (
-      !timerState.isExpired &&
-      design.showButton !== false &&
-      (campaign.texts || {}).ctaText
+      campaign.placement === "TOP_BAR" &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
     ) {
-      bar.appendChild(
-        renderCta(campaign.texts.ctaText, campaign.texts.ctaUrl, campaign),
-      );
-    }
-
-    if (design.showCloseButton) {
-      bar.appendChild(renderCloseButton(bar, design));
+      bar.classList.add("counterpulse-preview-promo--sticky");
     }
 
     container.appendChild(bar);
@@ -520,6 +511,7 @@
     var textEl;
 
     if (!container || renderedCampaigns[renderKey]) return;
+    if (!window.CountPulseSurface) return;
 
     rootEl = document.createElement("div");
     rootEl.className = "pp-root pp-product-badge pp-product-badge--surface";
@@ -528,40 +520,39 @@
 
     badgeText = getBadgeText(campaign, badgeSettings);
     badgeHref = getBadgeHref(campaign);
-    badgeEl = document.createElement(badgeHref ? "a" : "span");
-    badgeEl.className =
-      "pp-badge pp-badge--" +
-      getBadgeShape(badgeSettings) +
-      " pp-badge--" +
-      getBadgePosition(badgeSettings);
-    if (design.positionMode === "OVERLAY") {
-      badgeEl.classList.add("pp-surface--overlay");
-    }
+
+    badgeEl = window.CountPulseSurface.build({
+      variant: "badge",
+      placement: campaign.placement,
+      design: design,
+      headline: badgeText,
+      hasTimer: timerState.isActive,
+      timer: {
+        isActive: timerState.isActive,
+        isExpired: timerState.isExpired,
+        remainingMs: timerState.remainingMs,
+      },
+      badge: {
+        text: badgeText,
+        shape: badgeSettings.badgeShape,
+        position: badgeSettings.badgePosition,
+      },
+      dataTestId: "promo-badge",
+    });
     badgeEl.dataset.campaignId = campaign.id;
-    badgeEl.dataset.testid = "promo-badge";
-    badgeEl.setAttribute(
-      "aria-label",
-      (badgeText || "Promo Pulse badge").trim(),
-    );
+    badgeEl.setAttribute("aria-label", (badgeText || "Promo Pulse badge").trim());
 
     if (badgeHref) {
-      badgeEl.href = badgeHref;
-      badgeEl.addEventListener("click", function () {
+      var link = document.createElement("a");
+      link.href = badgeHref;
+      link.className = "counterpulse-preview-badge-link";
+      link.addEventListener("click", function () {
         emitClick(campaign);
       });
+      while (badgeEl.firstChild) link.appendChild(badgeEl.firstChild);
+      badgeEl.appendChild(link);
     } else {
       badgeEl.setAttribute("role", "note");
-    }
-
-    setDesignProperties(badgeEl, design);
-
-    textEl = document.createElement("span");
-    textEl.className = "pp-badge-text";
-    textEl.textContent = badgeText;
-    badgeEl.appendChild(textEl);
-
-    if (timerState.isActive) {
-      badgeEl.appendChild(renderCountdown(timerState, design, true));
     }
 
     rootEl.appendChild(badgeEl);
@@ -1262,13 +1253,13 @@
   }
 
   function startCountdown(bar, campaign) {
-    if (!bar.querySelector(".pp-countdown")) return;
+    if (!bar.querySelector("[data-cp-timer]")) return;
 
     window.setInterval(function () {
       var timerState = calculateTimerState(campaign, new Date());
-      var countdown = bar.querySelector(".pp-countdown");
+      var countdown = bar.querySelector("[data-cp-timer]");
       var subheadline = bar.querySelector(
-        ".pp-message-copy > span:not(.pp-countdown)",
+        ".counterpulse-preview-message-copy > span",
       );
       var expiredText = (campaign.texts || {}).expiredText || "";
       var expiredBehavior = getExpiredBehavior(campaign);
@@ -1277,12 +1268,14 @@
 
       if (timerState.isExpired) {
         countdown.remove();
-        bar.classList.add("pp-bar--expired");
+        bar.classList.add("counterpulse-preview-promo--expired");
 
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
           if (!subheadline) {
             subheadline = document.createElement("span");
-            bar.querySelector(".pp-message-copy")?.appendChild(subheadline);
+            bar
+              .querySelector(".counterpulse-preview-message-copy")
+              ?.appendChild(subheadline);
           }
           subheadline.textContent = expiredText;
         } else if (
@@ -1295,16 +1288,11 @@
         return;
       }
 
-      var previousValue = countdown.dataset.value || "";
-      updateCountdownElement(
+      window.CountPulseSurface.updateTimer(
         countdown,
         timerState.remainingMs,
         campaign.design || {},
-        countdown.classList.contains("pp-countdown--compact"),
       );
-      if (countdown.dataset.value !== previousValue) {
-        replayCountdownTick(countdown);
-      }
     }, 1000);
   }
 

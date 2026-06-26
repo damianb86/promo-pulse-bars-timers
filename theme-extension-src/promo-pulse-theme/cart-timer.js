@@ -80,7 +80,7 @@
       .then(function (campaigns) {
         root.__promoPulseCartCampaigns = campaigns;
         if (campaigns[0]) {
-          renderCartCampaign(root, campaigns[0], config, false);
+          renderCartCampaigns(root, campaigns, config, false);
         } else {
           updateDebug(
             root,
@@ -144,7 +144,7 @@
       })
       .then(function (campaigns) {
         if (campaigns[0]) {
-          renderCartCampaign(root, campaigns[0], config, false);
+          renderCartCampaigns(root, campaigns, config, false);
         }
       })
       .catch(function (error) {
@@ -227,7 +227,8 @@
         });
       })
       .then(function (campaigns) {
-        var campaign = campaigns[0];
+        var list = (Array.isArray(campaigns) ? campaigns : []).filter(Boolean);
+        var campaign = list[0];
         var target = campaign ? findDrawerTarget(campaign, config) : null;
         var slot;
 
@@ -248,11 +249,11 @@
 
         drawerInternalUpdate = true;
         slot = ensureDrawerSlot(target);
-        renderCartCampaign(slot, campaign, config, true);
+        renderCartCampaigns(slot, list, config, true);
         updateDebug(
           embed,
-          "CART_DRAWER renderizado en selector compatible. Campaign ID: " +
-            campaign.id,
+          "CART_DRAWER renderizado en selector compatible. Campañas: " +
+            list.length,
         );
         window.setTimeout(function () {
           drawerInternalUpdate = false;
@@ -476,14 +477,66 @@
     return value + "/api/storefront/campaigns";
   }
 
-  function renderCartCampaign(root, campaign, config, isDrawer) {
+  function renderCartCampaigns(root, campaigns, config, isDrawer) {
+    var list = (Array.isArray(campaigns) ? campaigns : []).filter(Boolean);
+    var cards = [];
+    var ticks = [];
+
+    // Fast path: a single FREE_SHIPPING_GOAL campaign that is already rendered
+    // is updated in place to avoid resetting/flickering the progress bar on
+    // cart refreshes. Mirrors the original single-campaign behavior.
+    if (list.length === 1) {
+      var only = list[0];
+      var existingCard = findExistingCartCard(root, only);
+
+      if (
+        existingCard &&
+        only.type === "FREE_SHIPPING_GOAL" &&
+        !(
+          only.design &&
+          only.design.mobileEnabled === false &&
+          detectDevice() === "mobile"
+        )
+      ) {
+        var ts = calculateTimerState(only, new Date(), config);
+
+        if (!(ts.isExpired && shouldHideExpiredCampaign(only))) {
+          applyCartBlockWidth(
+            root,
+            !isDrawer && (only.design || {}).fullWidth === true,
+          );
+          updateExistingCartCampaign(existingCard, only, ts, config);
+          return;
+        }
+      }
+    }
+
+    list.forEach(function (campaign) {
+      var card = buildCartCard(root, campaign, config, isDrawer);
+      if (card) {
+        cards.push(card);
+        ticks.push({ card: card, campaign: campaign });
+      }
+    });
+
+    if (cards.length === 0) return;
+
+    stopCartTimers(root);
+    root.replaceChildren.apply(root, cards);
+
+    ticks.forEach(function (entry) {
+      tick(entry.card, entry.campaign, config);
+      emitImpression(entry.campaign);
+    });
+  }
+
+  function buildCartCard(root, campaign, config, isDrawer) {
     var timerState = calculateTimerState(campaign, new Date(), config);
     var texts = campaign.texts || {};
     var design = campaign.design || {};
     var isFullWidth = !isDrawer && design.fullWidth === true;
     var layout = normalizeLayout(design.layout);
     var isInline = layout === "inline";
-    var existingCard = findExistingCartCard(root, campaign);
     var card;
 
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) {
@@ -491,7 +544,7 @@
         root,
         "Campana recibida, pero el timer expiro y debe ocultarse.",
       );
-      return;
+      return null;
     }
     if (
       campaign.design &&
@@ -502,13 +555,7 @@
         root,
         "Campana recibida, pero mobileEnabled=false y el dispositivo detectado es mobile.",
       );
-      return;
-    }
-
-    if (existingCard && campaign.type === "FREE_SHIPPING_GOAL") {
-      applyCartBlockWidth(root, isFullWidth);
-      updateExistingCartCampaign(existingCard, campaign, timerState, config);
-      return;
+      return null;
     }
 
     if (
@@ -516,75 +563,87 @@
       isCampaignDismissed(campaign.id)
     ) {
       updateDebug(root, "Campana cerrada por el visitante; no se vuelve a mostrar.");
-      return;
+      return null;
     }
 
-    card = document.createElement("section");
-    card.className =
-      "pp-cart-card" +
-      " pp-cart-card--layout-" +
-      layout +
-      (config.compactMode ? " pp-cart-card--compact" : "") +
-      (isDrawer ? " pp-cart-card--drawer" : "") +
-      (isFullWidth ? " pp-cart-card--full-width" : "");
-    if (design.positionMode === "OVERLAY") {
-      card.classList.add("pp-surface--overlay");
-    }
-    applyMotionClasses(card, design);
-    card.dataset.campaignId = campaign.id;
-    if (isDrawer) {
-      card.dataset.testid = "cart-drawer-widget";
-    }
-    card.setAttribute("role", "region");
-    card.setAttribute(
-      "aria-label",
-      (texts.headline || defaultHeadline(campaign)).trim(),
-    );
-    setDesign(card, design, config.alignment);
-    applyCartBlockWidth(root, isFullWidth);
-
-    card.appendChild(
-      renderMessage(campaign, timerState, config, renderCampaignIcon(campaign)),
-    );
-
-    if (isTimerEnabled(campaign) && timerState.isActive && !isInline) {
-      card.appendChild(renderCountdown(timerState.remainingMs, design, false));
+    if (!window.CountPulseSurface) {
+      updateDebug(root, "Surface module no disponible todavia.");
+      return null;
     }
 
-    if (
-      campaign.type === "FREE_SHIPPING_GOAL" &&
-      design.showProgressBar !== false
-    ) {
-      card.appendChild(renderFreeShippingProgress(campaign, config));
-    }
+    var hasTimer = isTimerEnabled(campaign) && timerState.isActive;
+    var detail = buildCartCampaignDetail(campaign, timerState, config);
 
+    var couponNode = null;
     if (
       !timerState.isExpired &&
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
       typeof window.CPcb === "function"
     ) {
-      card.appendChild(window.CPcb(campaign.discount.discountCode, campaign));
+      couponNode = window.CPcb(campaign.discount.discountCode, campaign);
     }
 
+    var progress = null;
     if (
+      campaign.type === "FREE_SHIPPING_GOAL" &&
+      design.showProgressBar !== false
+    ) {
+      var fs = calculateFreeShippingProgress(campaign, config);
+      progress = {
+        percentage: fs.progress,
+        style: readProgressStyle(campaign),
+        unlocked: fs.unlocked,
+      };
+    }
+
+    var ctaLabel = texts.ctaText;
+    var ctaUrl = texts.ctaUrl;
+    if (!ctaLabel && campaign.type === "CART_TIMER") {
+      ctaLabel = "Checkout";
+      ctaUrl = "/checkout";
+    }
+    var showCta =
       !timerState.isExpired &&
       isButtonEnabled(campaign) &&
-      (campaign.design || {}).showButton !== false
-    ) {
-      renderCta(campaign).forEach(function (cta) {
-        card.appendChild(cta);
-      });
-    }
+      design.showButton !== false &&
+      Boolean(ctaLabel);
 
-    if (design.showCloseButton) {
-      card.appendChild(renderCloseButton(card, design));
-    }
+    card = window.CountPulseSurface.build({
+      variant: "block",
+      placement: campaign.placement || (isDrawer ? "CART_DRAWER" : "CART_PAGE"),
+      design: design,
+      headline: texts.headline || defaultHeadline(campaign),
+      body: detail,
+      timer: {
+        isActive: hasTimer,
+        isExpired: timerState.isExpired,
+        remainingMs: timerState.remainingMs,
+      },
+      hasTimer: hasTimer,
+      couponNode: couponNode,
+      cta: showCta ? ctaLabel : "",
+      ctaUrl: ctaUrl || "",
+      progress: progress,
+      dataTestId: isDrawer ? "cart-drawer-widget" : "cart-timer-widget",
+      onClose: function () {
+        if (design.dismissBehavior === "HIDE_PERMANENTLY") {
+          rememberCampaignDismissed(campaign.id);
+        }
+        removeCartCard(card, design);
+      },
+    });
 
-    stopCartTimers(root);
-    root.replaceChildren(card);
-    tick(card, campaign, config);
-    emitImpression(campaign);
+    card.dataset.campaignId = campaign.id;
+    if (config.compactMode) {
+      card.classList.add("counterpulse-preview-promo--compact");
+    }
+    if (isDrawer) {
+      card.classList.add("counterpulse-preview-promo--drawer");
+    }
+    applyCartBlockWidth(root, isFullWidth);
+
+    return card;
   }
 
   function findExistingCartCard(root, campaign) {
@@ -595,7 +654,7 @@
         return (
           child &&
           child.classList &&
-          child.classList.contains("pp-cart-card") &&
+          child.classList.contains("counterpulse-preview-promo") &&
           child.dataset.campaignId === campaign.id
         );
       }) || null
@@ -605,15 +664,10 @@
   function updateExistingCartCampaign(card, campaign, timerState, config) {
     var design = campaign.design || {};
     var subheadline = card.querySelector(
-      ".pp-message-copy > span:not(.pp-countdown)",
+      ".counterpulse-preview-message-copy > span",
     );
     var nextMessage = buildCartCampaignDetail(campaign, timerState, config);
-    var countdown = card.querySelector(".pp-countdown");
-
-    card.setAttribute(
-      "aria-label",
-      ((campaign.texts || {}).headline || defaultHeadline(campaign)).trim(),
-    );
+    var countdown = card.querySelector("[data-cp-timer]");
 
     if (subheadline && subheadline.textContent !== nextMessage) {
       subheadline.textContent = nextMessage;
@@ -622,20 +676,14 @@
     updateFreeShippingProgress(card, campaign, config);
 
     if (countdown && timerState.isActive) {
-      updateCountdownElement(
-        countdown,
-        timerState.remainingMs,
-        design,
-        countdown.classList.contains("pp-countdown--compact"),
-      );
-      replayCountdownTick(countdown);
+      window.CountPulseSurface.updateTimer(countdown, timerState.remainingMs, design);
     }
 
     if (timerState.isExpired) {
       if (shouldHideExpiredCampaign(campaign)) {
         removeCartCard(card, design);
       } else {
-        card.classList.add("pp-bar--expired");
+        card.classList.add("counterpulse-preview-promo--expired");
       }
     }
   }
@@ -671,7 +719,9 @@
     if (!root || !root.querySelectorAll) return;
 
     [].slice
-      .call(root.querySelectorAll(".pp-cart-card"))
+      .call(
+        root.querySelectorAll(".pp-cart-card, .counterpulse-preview-promo"),
+      )
       .forEach(function (card) {
         if (card.__promoPulseTimerInterval) {
           window.clearInterval(card.__promoPulseTimerInterval);
@@ -722,7 +772,7 @@
     if (!element || !element.closest) return true;
 
     return !!element.closest(
-      "#promo-pulse-app-embed, .pp-debug, #promo-pulse-cart-drawer-slot, .pp-cart-drawer-slot, .pp-container, .pp-cart-card",
+      "#promo-pulse-app-embed, .pp-debug, #promo-pulse-cart-drawer-slot, .pp-cart-drawer-slot, .pp-container, .pp-cart-card, .counterpulse-preview-promo",
     );
   }
 
@@ -787,29 +837,18 @@
   }
 
   function updateFreeShippingProgress(card, campaign, config) {
-    var progress = card.querySelector(".pp-cart-progress");
-    var track = progress && progress.querySelector(".pp-progress__track");
-    var fill = progress && progress.querySelector(".pp-progress__fill");
-    var label = progress && progress.querySelector(".pp-cart-progress__label");
+    var progress = card.querySelector(".counterpulse-preview-progress");
+    var fill = progress && progress.querySelector("span > span");
     var state;
 
     if (!progress) return;
 
     state = calculateFreeShippingProgress(campaign, config);
-    progress.className = progressClassName("pp-cart-progress", campaign);
-    progress.classList.toggle("is-unlocked", state.unlocked);
-    progress.style.setProperty("--pp-progress", state.progress + "%");
-
-    if (label && label.textContent !== state.label) {
-      label.textContent = state.label;
-    }
-    if (track) {
-      track.setAttribute(
-        "aria-label",
-        state.label || "Free shipping progress",
-      );
-      track.setAttribute("aria-valuenow", String(Math.round(state.progress)));
-    }
+    progress.classList.toggle(
+      "counterpulse-preview-progress--unlocked",
+      state.unlocked,
+    );
+    progress.style.setProperty("--cp-progress", state.progress + "%");
     if (fill) {
       fill.style.width = Math.max(0, state.progress) + "%";
     }
@@ -1082,22 +1121,21 @@
   }
 
   function tick(card, campaign, config) {
-    if (!card.querySelector(".pp-countdown")) return;
+    if (!card.querySelector("[data-cp-timer]")) return;
 
     card.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date(), config);
-      var countdown = card.querySelector(".pp-countdown");
+      var countdown = card.querySelector("[data-cp-timer]");
       var subheadline = card.querySelector(
-        ".pp-message-copy > span:not(.pp-countdown)",
+        ".counterpulse-preview-message-copy > span",
       );
       var expiredText = (campaign.texts || {}).expiredText || "";
       var expiredBehavior = getExpiredBehavior(campaign);
-      var previousValue;
 
       if (!countdown) return;
       if (state.isExpired) {
         countdown.remove();
-        card.classList.add("pp-bar--expired");
+        card.classList.add("counterpulse-preview-promo--expired");
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
           if (subheadline) subheadline.textContent = expiredText;
         } else if (
@@ -1109,16 +1147,11 @@
         return;
       }
 
-      previousValue = countdown.dataset.value || "";
-      updateCountdownElement(
+      window.CountPulseSurface.updateTimer(
         countdown,
         state.remainingMs,
         campaign.design || {},
-        countdown.classList.contains("pp-countdown--compact"),
       );
-      if (countdown.dataset.value !== previousValue) {
-        replayCountdownTick(countdown);
-      }
     }, 1000);
   }
 

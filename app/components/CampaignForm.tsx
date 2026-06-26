@@ -2641,6 +2641,40 @@ export function CampaignForm({
                         </div>
                       </FormGroup>
                     </div>
+
+                    <TimezoneCombobox
+                      error={errors.timezone}
+                      info={
+                        <FieldInfoButton
+                          label="Delivery timezone"
+                          title="Timezone used for the delivery promise"
+                        >
+                          <CampaignInfoContent
+                            intro="The order-by cutoff and delivery window are calculated in this timezone. Use the same zone as the fulfillment operation so the promise stays accurate."
+                            items={[
+                              [
+                                "Cutoff accuracy",
+                                "The countdown to the daily cutoff and the ship/delivery dates are all evaluated against this zone.",
+                              ],
+                              [
+                                "Shared with timing",
+                                "This is the same timezone shown in the Timing and timezone tab; changing it here updates it everywhere.",
+                              ],
+                            ]}
+                          />
+                        </FieldInfoButton>
+                      }
+                      label="Delivery timezone"
+                      name="timezone"
+                      className="counterpulse-form-field--full"
+                      value={formValues.timezone}
+                      onChange={(timezone) =>
+                        setFormValues((currentValues) => ({
+                          ...currentValues,
+                          timezone,
+                        }))
+                      }
+                    />
                   </section>
                 )}
 
@@ -2773,6 +2807,19 @@ export function CampaignForm({
               tabId={builderTabId("message")}
               tabKey="message"
             >
+              <div className="counterpulse-message-variables-row">
+                <span>
+                  Use dynamic variables inside any message and they are replaced
+                  live on the storefront.
+                </span>
+                <FieldInfoButton
+                  label="Message variables"
+                  title="Dynamic message variables"
+                  modalClassName="counterpulse-modal--wide"
+                >
+                  <MessageVariablesInfo type={formValues.type} />
+                </FieldInfoButton>
+              </div>
               {effectiveMessageTranslations &&
               effectiveMessageResolvedTranslations ? (
                 <>
@@ -4360,6 +4407,164 @@ function CampaignInfoContent({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+type MessageVariableGroup = {
+  title: string;
+  description: string;
+  variables: Array<{ token: string; description: string; example: string }>;
+};
+
+const freeShippingMessageVariables: MessageVariableGroup = {
+  title: "Free shipping",
+  description:
+    "Replaced with the amount still needed to unlock free shipping, formatted in the cart currency.",
+  variables: [
+    {
+      token: "{{amount}}",
+      description: "Amount remaining to reach the free shipping threshold.",
+      example: "$24.00",
+    },
+    {
+      token: "{{remaining}}",
+      description: "Alias of {{amount}}.",
+      example: "$24.00",
+    },
+    {
+      token: "{{remaining_amount}}",
+      description: "Alias of {{amount}}.",
+      example: "$24.00",
+    },
+  ],
+};
+
+const lowStockMessageVariables: MessageVariableGroup = {
+  title: "Low stock",
+  description:
+    "Replaced with the remaining inventory when Shopify exposes a quantity at or below your threshold.",
+  variables: [
+    {
+      token: "{{quantity}}",
+      description: "Remaining units in stock.",
+      example: "7",
+    },
+    {
+      token: "{{count}}",
+      description: "Alias of {{quantity}}.",
+      example: "7",
+    },
+  ],
+};
+
+const deliveryCutoffMessageVariables: MessageVariableGroup = {
+  title: "Delivery cutoff",
+  description:
+    "Computed from the cutoff, processing, and delivery settings in the campaign's timezone. Dates and weekdays follow the storefront locale.",
+  variables: [
+    {
+      token: "{{time_left}}",
+      description: "Live countdown until today's order-by cutoff.",
+      example: "02h 15m",
+    },
+    {
+      token: "{{time_remaining}}",
+      description: "Alias of {{time_left}}.",
+      example: "02h 15m",
+    },
+    {
+      token: "{{cutoff_time}}",
+      description: "Time of the daily cutoff.",
+      example: "2:00 PM",
+    },
+    {
+      token: "{{delivery_range}}",
+      description: "Estimated delivery window (min to max date).",
+      example: "Apr 12 – Apr 15",
+    },
+    {
+      token: "{{ships_date}}",
+      description: "Date the order is expected to ship.",
+      example: "Apr 10",
+    },
+    {
+      token: "{{ships_weekday}}",
+      description: "Weekday the order is expected to ship.",
+      example: "Wednesday",
+    },
+    {
+      token: "{{min_delivery_date}}",
+      description: "Earliest estimated delivery date.",
+      example: "Apr 12",
+    },
+    {
+      token: "{{min_delivery_weekday}}",
+      description: "Earliest estimated delivery weekday.",
+      example: "Friday",
+    },
+    {
+      token: "{{max_delivery_date}}",
+      description: "Latest estimated delivery date.",
+      example: "Apr 15",
+    },
+    {
+      token: "{{max_delivery_weekday}}",
+      description: "Latest estimated delivery weekday.",
+      example: "Monday",
+    },
+  ],
+};
+
+function messageVariableGroupsForType(
+  type: CampaignFormValues["type"],
+): MessageVariableGroup[] {
+  if (type === "FREE_SHIPPING_GOAL") return [freeShippingMessageVariables];
+  if (type === "LOW_STOCK") return [lowStockMessageVariables];
+  if (type === "DELIVERY_CUTOFF") return [deliveryCutoffMessageVariables];
+
+  return [];
+}
+
+function MessageVariablesInfo({ type }: { type: CampaignFormValues["type"] }) {
+  const groups = messageVariableGroupsForType(type);
+
+  return (
+    <div className="counterpulse-info-copy">
+      <p>
+        Wrap a variable in double curly braces to insert live data into your
+        headline, subheadline, CTA, or any other message. Unknown variables are
+        left untouched.
+      </p>
+
+      {groups.length === 0 ? (
+        <p className="counterpulse-message-variables__empty">
+          This campaign type renders its copy exactly as written and does not
+          support dynamic variables.
+        </p>
+      ) : (
+        groups.map((group) => (
+          <div className="counterpulse-message-variables" key={group.title}>
+            <strong className="counterpulse-message-variables__title">
+              {group.title}
+            </strong>
+            <p className="counterpulse-message-variables__desc">
+              {group.description}
+            </p>
+            <ul className="counterpulse-message-variables__list">
+              {group.variables.map((variable) => (
+                <li key={variable.token}>
+                  <code>{variable.token}</code>
+                  <span>{variable.description}</span>
+                  <em>
+                    renders as <b>{variable.example}</b>
+                  </em>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
     </div>
   );
 }

@@ -26,6 +26,8 @@
     window.PromoPulseCartCurrency = "{{ cart.currency.iso_code | default: shop.currency | escape }}";
     window.PromoPulseApiBaseUrl = "{{ block.settings.apiBaseUrl | escape }}";
   </script>
+  {{ 'campaign-surface.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'campaign-surface.js' | asset_url }}" defer></script>
   <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
   <script src="{{ 'product-badge.js' | asset_url }}" defer></script>
   <script src="{{ 'free-shipping.js' | asset_url }}" defer></script>

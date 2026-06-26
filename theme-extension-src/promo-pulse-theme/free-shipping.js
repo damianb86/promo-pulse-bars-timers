@@ -301,6 +301,11 @@
       return;
     }
 
+    if (!window.CountPulseSurface) {
+      updateDebug(root, "Surface module no disponible todavia.");
+      return;
+    }
+
     container = getPlacementContainer(campaign.placement);
     if (existing) {
       updateExistingBar(existing, campaign);
@@ -318,9 +323,9 @@
   function updateExistingBar(bar, campaign) {
     var progress = calculateProgress(campaign);
     var detail = bar.querySelector(
-      ".pp-message-copy > span:not(.pp-countdown)",
+      ".counterpulse-preview-message-copy > span",
     );
-    var countdown = bar.querySelector(".pp-countdown");
+    var countdown = bar.querySelector("[data-cp-timer]");
     var timerState = calculateTimerState(campaign, new Date());
 
     if (detail) {
@@ -330,18 +335,16 @@
     updateProgress(bar, campaign, progress, detail ? detail.textContent : "");
 
     if (countdown && timerState.isActive) {
-      updateCountdownElement(
+      window.CountPulseSurface.updateTimer(
         countdown,
         timerState.remainingMs,
         campaign.design || {},
-        countdown.classList.contains("pp-countdown--compact"),
       );
-      replayCountdownTick(countdown);
     }
 
     if (timerState.isExpired) {
       countdown && countdown.remove();
-      bar.classList.add("pp-bar--expired");
+      bar.classList.add("counterpulse-preview-promo--expired");
 
       if (shouldHideExpiredCampaign(campaign)) {
         removeBar(bar, campaign.design || {});
@@ -369,94 +372,65 @@
 
   function buildBar(campaign) {
     var design = campaign.design || {};
+    var texts = campaign.texts || {};
     var progress = calculateProgress(campaign);
     var timerState = calculateTimerState(campaign, new Date());
-    var isInline = String(design.layout || "").toUpperCase() === "INLINE";
-    var bar = document.createElement("section");
-    var message = document.createElement("div");
-    var copy = document.createElement("div");
-    var headline = document.createElement("strong");
-    var detail = document.createElement("span");
 
-    bar.className =
-      "pp-bar pp-bar--" +
-      campaign.placement.toLowerCase().replace("_", "-") +
-      " pp-bar--free-shipping";
-    bar.classList.add(
-      "pp-bar--layout-" + String(design.layout || "STANDARD").toLowerCase(),
-    );
-    if (design.fullWidth) bar.classList.add("pp-bar--full-width");
-    if (design.positionMode === "OVERLAY") bar.classList.add("pp-bar--overlay");
-    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
-      bar.classList.add(
-        "pp-bar--enter-" + String(design.entranceAnimation).toLowerCase(),
-      );
-    }
-    if (design.exitAnimation && design.exitAnimation !== "NONE") {
-      bar.classList.add(
-        "pp-bar--exit-" + String(design.exitAnimation).toLowerCase(),
-      );
-    }
-    bar.dataset.campaignId = campaign.id;
-    bar.dataset.testid = "promo-bar";
-    bar.setAttribute("role", "region");
-    bar.setAttribute(
-      "aria-label",
-      ((campaign.texts || {}).headline || "Promo Pulse promotion").trim(),
-    );
-    setDesign(bar, design);
-
-    if (
-      campaign.placement === "TOP_BAR" &&
-      design.positionMode !== "OVERLAY" &&
-      design.positionSticky
-    ) {
-      bar.classList.add("pp-bar--sticky");
-    }
-
-    var icon = renderDesignIcon(design);
-
-    message.className = "pp-message";
-    copy.className = "pp-message-copy";
-    if (icon) message.appendChild(icon);
-    headline.textContent = (campaign.texts || {}).headline || "Free shipping";
-    detail.textContent = buildMessage(campaign, progress);
-    copy.appendChild(headline);
-    copy.appendChild(detail);
-    if (timerState.isActive && isInline) {
-      copy.appendChild(renderCountdown(timerState.remainingMs, design, true));
-    }
-    message.appendChild(copy);
-    bar.appendChild(message);
-    if (timerState.isActive && !isInline) {
-      bar.appendChild(renderCountdown(timerState.remainingMs, design));
-    }
-    if (design.showProgressBar !== false) {
-      bar.appendChild(renderProgress(campaign, progress, detail.textContent));
-    }
-
+    var couponNode = null;
     if (
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
       typeof window.PromoPulseCouponButton === "function"
     ) {
-      bar.appendChild(
-        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
+      couponNode = window.PromoPulseCouponButton(
+        campaign.discount.discountCode,
+        campaign,
       );
     }
 
-    if (design.showButton !== false && (campaign.texts || {}).ctaText) {
-      bar.appendChild(
-        link(
-          "pp-cta",
-          campaign.texts.ctaText,
-          isSafeUrl(campaign.texts.ctaUrl) ? campaign.texts.ctaUrl : "#",
-        ),
-      );
-    }
+    var progressSpec =
+      design.showProgressBar !== false
+        ? {
+            percentage: Math.max(0, Math.min(100, progress.percentage)),
+            style: readProgressStyle(campaign),
+            unlocked: progress.unlocked,
+          }
+        : null;
 
-    if (design.showCloseButton) {
-      bar.appendChild(renderCloseButton(bar, design));
+    var variant =
+      campaign.placement === "TOP_BAR" || campaign.placement === "BOTTOM_BAR"
+        ? "bar"
+        : "block";
+
+    var bar = window.CountPulseSurface.build({
+      variant: variant,
+      placement: campaign.placement,
+      design: design,
+      headline: texts.headline || "Free shipping",
+      body: buildMessage(campaign, progress),
+      timer: {
+        isActive: timerState.isActive,
+        isExpired: timerState.isExpired,
+        remainingMs: timerState.remainingMs,
+      },
+      hasTimer: timerState.isActive,
+      couponNode: couponNode,
+      cta: design.showButton !== false ? texts.ctaText || "" : "",
+      ctaUrl: texts.ctaUrl || "",
+      progress: progressSpec,
+      dataTestId: "promo-bar",
+      onClose: function () {
+        removeBar(bar, design);
+      },
+    });
+
+    bar.dataset.campaignId = campaign.id;
+    if (
+      campaign.placement === "TOP_BAR" &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
+    ) {
+      bar.classList.add("counterpulse-preview-promo--sticky");
     }
 
     return bar;
@@ -536,21 +510,17 @@
   }
 
   function updateProgress(bar, campaign, progress, label) {
-    var wrapper = bar.querySelector(".pp-progress");
-    var track = wrapper && wrapper.querySelector(".pp-progress__track");
-    var fill = wrapper && wrapper.querySelector(".pp-progress__fill");
+    var wrapper = bar.querySelector(".counterpulse-preview-progress");
+    var fill = wrapper && wrapper.querySelector("span > span");
     var percentage = Math.max(0, Math.min(100, progress.percentage));
 
     if (!wrapper) return;
 
-    wrapper.className = progressClassName("pp-progress", campaign);
-    wrapper.classList.toggle("is-unlocked", progress.unlocked);
-    wrapper.style.setProperty("--pp-progress", percentage + "%");
-
-    if (track) {
-      track.setAttribute("aria-label", label || "Free shipping progress");
-      track.setAttribute("aria-valuenow", String(Math.round(percentage)));
-    }
+    wrapper.classList.toggle(
+      "counterpulse-preview-progress--unlocked",
+      progress.unlocked,
+    );
+    wrapper.style.setProperty("--cp-progress", percentage + "%");
     if (fill) {
       fill.style.width = percentage + "%";
     }
@@ -675,18 +645,18 @@
   }
 
   function startCountdown(bar, campaign) {
-    if (!bar.querySelector(".pp-countdown")) return;
+    if (!bar.querySelector("[data-cp-timer]")) return;
 
     bar.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date());
-      var countdown = bar.querySelector(".pp-countdown");
+      var countdown = bar.querySelector("[data-cp-timer]");
       var design = campaign.design || {};
 
       if (!countdown) return;
 
       if (state.isExpired) {
         countdown.remove();
-        bar.classList.add("pp-bar--expired");
+        bar.classList.add("counterpulse-preview-promo--expired");
 
         if (shouldHideExpiredCampaign(campaign)) {
           removeBar(bar, design);
@@ -694,13 +664,7 @@
         return;
       }
 
-      updateCountdownElement(
-        countdown,
-        state.remainingMs,
-        design,
-        countdown.classList.contains("pp-countdown--compact"),
-      );
-      replayCountdownTick(countdown);
+      window.CountPulseSurface.updateTimer(countdown, state.remainingMs, design);
     }, 1000);
   }
 

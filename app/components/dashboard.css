@@ -891,7 +891,6 @@ s-page::part(page) {
   .counterpulse-variant-preview__surface.counterpulse-preview-promo {
   width: 112%;
   max-width: 112%;
-  transform: scale(0.88);
   transform-origin: center;
 }
 
@@ -1974,7 +1973,7 @@ s-page::part(page) {
   gap: 10px;
 }
 
-.counterpulse-variant-drawer-preview-wing strong {
+.counterpulse-variant-drawer-preview-wing > div:first-child strong {
   color: #202223;
   font-size: 13px;
   line-height: 18px;
@@ -2030,7 +2029,7 @@ s-page::part(page) {
 
 .counterpulse-variant-drawer-field small,
 .counterpulse-variant-scope-note,
-.counterpulse-variant-drawer-preview-wing span {
+.counterpulse-variant-drawer-preview-wing > div:first-child span {
   color: #6d7175;
   font-size: 12px;
   font-weight: 400;
@@ -3146,6 +3145,93 @@ s-page::part(page) {
   font-size: 12px;
   font-weight: 400;
   line-height: 17px;
+}
+
+.counterpulse-message-variables-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid #e1e3e5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f6f6f7;
+}
+
+.counterpulse-message-variables-row > span {
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-message-variables {
+  display: grid;
+  gap: 4px;
+}
+
+.counterpulse-message-variables__title {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.counterpulse-message-variables__desc,
+.counterpulse-message-variables__empty {
+  margin: 0;
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-message-variables__list {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counterpulse-message-variables__list li {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fafbfb;
+}
+
+.counterpulse-message-variables__list code {
+  justify-self: start;
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: #ebf0ff;
+  color: #1f3a8a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.counterpulse-message-variables__list span {
+  color: #6d7175;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.counterpulse-message-variables__list em {
+  color: #8c9196;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.counterpulse-message-variables__list em b {
+  color: #202223;
+  font-weight: 600;
+}
+
+.counterpulse-modal--wide {
+  max-width: 560px;
 }
 
 @keyframes counterpulse-toast-in {

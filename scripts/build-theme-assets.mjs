@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { transformWithEsbuild } from "vite";
 
 const assets = [
+  "campaign-surface",
   "promo-pulse",
   "product-timer",
   "cart-timer",
@@ -12,6 +13,9 @@ const assets = [
   "product-badge",
   "discount-code",
 ];
+
+// Plain CSS assets are copied verbatim (the build only minifies JS).
+const cssAssets = ["campaign-surface"];
 
 for (const name of assets) {
   const source = await readFile(
@@ -27,5 +31,17 @@ for (const name of assets) {
   await writeFile(
     `extensions/promo-pulse-theme/assets/${name}.js`,
     `/* eslint-disable */\n${result.code.trimEnd()}\n`,
+  );
+}
+
+for (const name of cssAssets) {
+  const source = await readFile(
+    `theme-extension-src/promo-pulse-theme/${name}.css`,
+    "utf8",
+  );
+
+  await writeFile(
+    `extensions/promo-pulse-theme/assets/${name}.css`,
+    source.trimEnd() + "\n",
   );
 }

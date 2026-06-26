@@ -195,51 +195,49 @@
       return;
     }
 
-    card = document.createElement("section");
-    card.className =
-      "pp-product-card pp-low-stock" +
-      (config.compactMode ? " pp-product-card--compact" : "");
-    if (design.positionMode === "OVERLAY") {
-      card.classList.add("pp-surface--overlay");
+    if (!window.CountPulseSurface) {
+      updateDebug(root, "Surface module no disponible todavia.");
+      return;
     }
+
+    var timerState =
+      campaign.timer &&
+      typeof window.PromoPulseComputeTimerState === "function"
+        ? window.PromoPulseComputeTimerState(campaign)
+        : null;
+    var hasTimer = Boolean(timerState && timerState.isActive);
+
+    card = window.CountPulseSurface.build({
+      variant: "block",
+      placement: campaign.placement || "PRODUCT_PAGE",
+      design: design,
+      headline: message,
+      body: null,
+      timer: {
+        isActive: hasTimer,
+        isExpired: Boolean(timerState && timerState.isExpired),
+        remainingMs: timerState ? timerState.remainingMs : 0,
+      },
+      hasTimer: hasTimer,
+      dataTestId: "low-stock-widget",
+    });
     card.dataset.campaignId = campaign.id;
     card.setAttribute("role", "status");
-    card.setAttribute("aria-label", message);
-    setDesign(card, design, config.alignment);
+    if (config.compactMode) {
+      card.classList.add("counterpulse-preview-promo--compact");
+    }
 
-    var icon = renderDesignIcon(design);
-    if (icon) card.appendChild(icon);
-
-    card.appendChild(renderMessage(campaign, message));
-    appendTimer(card, campaign, design);
     root.replaceChildren(card);
     startTimerTick(card, campaign);
     emitImpression(campaign);
   }
 
-  function appendTimer(card, campaign, design) {
-    if (
-      !campaign.timer ||
-      typeof window.PromoPulseComputeTimerState !== "function" ||
-      typeof window.PromoPulseRenderCountdown !== "function"
-    ) {
-      return;
-    }
-
-    var timerState = window.PromoPulseComputeTimerState(campaign);
-    if (!timerState || !timerState.isActive) return;
-
-    card.appendChild(
-      window.PromoPulseRenderCountdown(timerState.remainingMs, design, false),
-    );
-  }
-
   function startTimerTick(card, campaign) {
-    var countdown = card.querySelector(".pp-countdown");
+    var countdown = card.querySelector("[data-cp-timer]");
     if (
       !countdown ||
       typeof window.PromoPulseComputeTimerState !== "function" ||
-      typeof window.PromoPulseUpdateCountdown !== "function"
+      !window.CountPulseSurface
     ) {
       return;
     }
@@ -258,11 +256,10 @@
         return;
       }
 
-      window.PromoPulseUpdateCountdown(
+      window.CountPulseSurface.updateTimer(
         countdown,
         timerState.remainingMs,
         campaign.design || {},
-        false,
       );
     }, 1000);
   }

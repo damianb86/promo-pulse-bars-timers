@@ -265,28 +265,24 @@
       return;
     }
 
+    if (!window.CountPulseSurface) return;
+
     container = getContainer(campaign.placement);
     bar = buildSurface(
-      "pp-bar pp-bar--" + campaign.placement.toLowerCase().replace("_", "-"),
+      campaign.placement === "TOP_BAR" || campaign.placement === "BOTTOM_BAR"
+        ? "bar"
+        : "block",
       campaign,
       promise,
     );
     bar.id = "promo-pulse-delivery-" + campaign.placement;
-
-    if ((campaign.design || {}).fullWidth) {
-      bar.classList.add("pp-bar--full-width");
-    }
-
-    if ((campaign.design || {}).positionMode === "OVERLAY") {
-      bar.classList.add("pp-bar--overlay");
-    }
 
     if (
       campaign.placement === "TOP_BAR" &&
       (campaign.design || {}).positionMode !== "OVERLAY" &&
       (campaign.design || {}).positionSticky
     ) {
-      bar.classList.add("pp-bar--sticky");
+      bar.classList.add("counterpulse-preview-promo--sticky");
     }
 
     if (existing) existing.replaceWith(bar);
@@ -315,7 +311,9 @@
       return;
     }
 
-    card = buildSurface("pp-product-card", campaign, promise);
+    if (!window.CountPulseSurface) return;
+
+    card = buildSurface("block", campaign, promise);
     root.replaceChildren(card);
     tick(card, campaign, config, function () {
       renderProduct(root, campaign, config);
@@ -336,60 +334,56 @@
     if (endpoint && url) endpoint.textContent = url;
   }
 
-  function buildSurface(className, campaign, promise) {
+  function deliveryClock(ms) {
+    var total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+    var hours = Math.floor(total / 3600);
+    var minutes = Math.floor((total % 3600) / 60);
+    var seconds = total % 60;
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+    return pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  }
+
+  function buildSurface(variant, campaign, promise) {
     var design = campaign.design || {};
-    var surface = document.createElement("section");
-    var message = document.createElement("div");
-    var headline = document.createElement("strong");
-    var detail = document.createElement("span");
+    var texts = campaign.texts || {};
 
-    surface.className = className + " pp-delivery-cutoff";
-    if (design.positionMode === "OVERLAY") {
-      surface.classList.add("pp-surface--overlay");
-    }
-    surface.dataset.campaignId = campaign.id;
-    setDesign(surface, design);
+    if (!window.CountPulseSurface) return document.createElement("section");
 
-    if (design.mobileEnabled === false && device === "mobile")
-      surface.hidden = true;
-
-    var icon = renderDesignIcon(design);
-    if (icon) surface.appendChild(icon);
-
-    message.className = "pp-message";
-    headline.textContent =
-      (campaign.texts || {}).headline || "Delivery promise";
-    detail.textContent = deliveryMessage(campaign, promise);
-    message.appendChild(headline);
-    message.appendChild(detail);
-
-    if (promise.beforeCutoff) {
-      message.appendChild(renderCountdown(promise.remainingMs, design));
-    }
-
-    surface.appendChild(message);
-
+    var couponNode = null;
     if (
       campaign.discount &&
       (campaign.discount.discountCode || campaign.discount.uniqueCode) &&
       typeof window.PromoPulseCouponButton === "function"
     ) {
-      surface.appendChild(
-        window.PromoPulseCouponButton(campaign.discount.discountCode, campaign),
+      couponNode = window.PromoPulseCouponButton(
+        campaign.discount.discountCode,
+        campaign,
       );
     }
 
-    if (design.showButton !== false && (campaign.texts || {}).ctaText) {
-      surface.appendChild(
-        link(
-          "pp-cta",
-          campaign.texts.ctaText,
-          safeUrl(campaign.texts.ctaUrl) ? campaign.texts.ctaUrl : "#",
-        ),
-      );
-    }
+    var surface = window.CountPulseSurface.build({
+      variant: variant,
+      placement: campaign.placement,
+      design: design,
+      headline: texts.headline || "Delivery promise",
+      body: deliveryMessage(campaign, promise),
+      deliveryTime: promise.beforeCutoff ? deliveryClock(promise.remainingMs) : null,
+      hasTimer: promise.beforeCutoff,
+      couponNode: couponNode,
+      cta: design.showButton !== false ? texts.ctaText || "" : "",
+      ctaUrl: texts.ctaUrl || "",
+      dataTestId: "delivery-cutoff-widget",
+      onClose: function () {
+        surface.remove();
+      },
+    });
 
-    if (design.showCloseButton) surface.appendChild(close(surface));
+    surface.dataset.campaignId = campaign.id;
+    if (design.mobileEnabled === false && device === "mobile") {
+      surface.hidden = true;
+    }
 
     return surface;
   }
@@ -499,7 +493,7 @@
   }
 
   function tick(surface, campaign, config, rerender) {
-    if (!surface.querySelector(".pp-countdown")) return;
+    if (!surface.querySelector("[data-cp-timer]")) return;
     var id = window.setInterval(function () {
       if (!surface.isConnected) {
         window.clearInterval(id);
@@ -511,21 +505,16 @@
         config.locale,
         campaign.design || {},
       );
-      var countdown = surface.querySelector(".pp-countdown");
+      var countdown = surface.querySelector("[data-cp-timer]");
       if (!promise.beforeCutoff) {
         window.clearInterval(id);
         rerender();
-      } else if (countdown) {
-        if (typeof window.PromoPulseUpdateCountdown === "function") {
-          window.PromoPulseUpdateCountdown(
-            countdown,
-            promise.remainingMs,
-            campaign.design || {},
-            false,
-          );
-        } else {
-          countdown.textContent = promise.vars.time_left;
-        }
+      } else if (countdown && window.CountPulseSurface) {
+        window.CountPulseSurface.updateTimerFromText(
+          countdown,
+          deliveryClock(promise.remainingMs),
+          campaign.design || {},
+        );
       }
     }, 1000);
   }

@@ -29,6 +29,8 @@
     {{ block.shopify_attributes }}
   ></div>
 {% endif %}
+{{ 'campaign-surface.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'campaign-surface.js' | asset_url }}" defer></script>
 <script src="{{ 'discount-code.js' | asset_url }}" defer></script>
 <script src="{{ 'product-badge.js' | asset_url }}" defer></script>
 

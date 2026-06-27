@@ -13,7 +13,9 @@ import {
   type CampaignAiProvider,
 } from "./campaignGenerator.server";
 import {
+  AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT,
   AI_CAMPAIGN_SYSTEM_PROMPT,
+  buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
 } from "./campaignPrompts.server";
 
@@ -401,6 +403,36 @@ describe("AI campaign reference image", () => {
 
     expect(suggestion.referenceImageUsed).toBe(false);
     expect(suggestion.design.backgroundColor).not.toBe("#FF00AA");
+  });
+
+  it("builds an image system prompt that allows visual overrides and lists settings", () => {
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REFERENCE IMAGE MODE");
+    // Reuses the base prompt + the design settings catalog.
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "Promo Pulse AI Campaign Builder",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "Design settings catalog",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("backgroundColor");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("OVERRIDE");
+    // Still never asks for experiment variants.
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain('"variants"');
+  });
+
+  it("builds an image user prompt that includes the merchant payload", () => {
+    const prompt = buildCampaignAiImageUserPrompt(
+      buildDefaultCampaignAiInput({
+        productContext: "linen shirts",
+        locale: "it",
+        locales: ["en", "it"],
+      }),
+    );
+
+    expect(prompt).toContain("reference image is attached");
+    expect(prompt).toContain("linen shirts");
+    expect(prompt).toContain('"targetLocales": [');
+    expect(prompt).toContain('"it"');
   });
 
   it("round-trips image-derived colors through the applied suggestion", () => {

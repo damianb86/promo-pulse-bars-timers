@@ -1193,8 +1193,12 @@ export function AiCampaignBuilder({
                     name="productContext"
                     value={formValues.productContext}
                     rows={3}
-                    placeholder="Example: premium skincare bundles, summer dresses, returning customers, first-time buyers."
-                    required
+                    placeholder={
+                      referenceImage
+                        ? "Optional when an image is attached. Add anything the image cannot show."
+                        : "Example: premium skincare bundles, summer dresses, returning customers, first-time buyers."
+                    }
+                    required={!referenceImage}
                     onChange={(event) =>
                       updateValue("productContext", event.currentTarget.value)
                     }
@@ -1295,7 +1299,7 @@ export function AiCampaignBuilder({
                 >
                   <input
                     value={formValues.productContext}
-                    required
+                    required={!referenceImage}
                     onChange={(event) =>
                       updateValue("productContext", event.currentTarget.value)
                     }

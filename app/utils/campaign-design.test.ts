@@ -11,6 +11,7 @@ import {
 import {
   campaignDesignTemplates,
   defaultCampaignDesignValues,
+  describeDesignSettingsForAi,
   designAlignmentOptions,
   designBannerAnimationOptions,
   designFontFamilyOptions,
@@ -23,6 +24,7 @@ import {
   designTimerFormatOptions,
   designTimerStyleOptions,
   designTimerTickAnimationOptions,
+  isMobileDesignLayout,
 } from "../types/campaign-design";
 
 describe("campaign design validation", () => {
@@ -75,6 +77,11 @@ describe("campaign design validation", () => {
       "CTA_RIGHT",
       "CTA_LEFT",
       "CTA_TOP",
+      "MOBILE_BANNER",
+      "MOBILE_CARD",
+      "MOBILE_SHEET",
+      "MOBILE_COMPACT_BAR",
+      "MOBILE_SPOTLIGHT",
     ]);
     expect(designFontFamilyOptions.map((option) => option.value)).toEqual([
       "THEME",
@@ -268,5 +275,51 @@ describe("campaign design validation", () => {
       offerCodeGap: "Offer gap must be between 0 and 24.",
       appliedDiscountMessage: "Applied message is required.",
     });
+  });
+});
+
+describe("describeDesignSettingsForAi", () => {
+  const catalog = describeDesignSettingsForAi();
+
+  it("documents the core visual fields the image flow can override", () => {
+    for (const field of [
+      "layout",
+      "backgroundType",
+      "backgroundColor",
+      "gradientStartColor",
+      "textColor",
+      "buttonColor",
+      "paddingBlock",
+      "paddingInline",
+      "contentGap",
+      "timerStyle",
+      "timerFormat",
+      "showButton",
+      "showIcon",
+      "fullWidth",
+      "alignment",
+    ]) {
+      expect(catalog).toContain(field);
+    }
+  });
+
+  it("only lists desktop layout values, never mobile-only ones", () => {
+    for (const option of designLayoutOptions) {
+      if (isMobileDesignLayout(option.value)) {
+        expect(catalog).not.toContain(`${option.value} (`);
+      } else {
+        expect(catalog).toContain(option.value);
+      }
+    }
+  });
+
+  it("lists every built-in preset key as a starting point", () => {
+    for (const template of campaignDesignTemplates) {
+      expect(catalog).toContain(template.templateKey);
+    }
+  });
+
+  it("requires hex colors so the model returns valid values", () => {
+    expect(catalog).toContain("#1A2B3C");
   });
 });

@@ -285,6 +285,10 @@ model CampaignDesign {
   offerCopyBehavior        DesignOfferCopyBehavior  @default(FEEDBACK)
   offerApplyBehavior       DesignOfferApplyBehavior @default(SHOW_APPLIED)
   mobileDesign             Json?
+  structureCompact         String?
+  structureCss             String?
+  structureVersion         Int                      @default(1)
+  structureEdited          Boolean                  @default(false)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }

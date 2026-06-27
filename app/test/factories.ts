@@ -365,6 +365,10 @@ function createDesign(
     offerCopyBehavior: DesignOfferCopyBehavior.FEEDBACK,
     offerApplyBehavior: DesignOfferApplyBehavior.SHOW_APPLIED,
     mobileDesign: null,
+    structureCompact: null,
+    structureCss: null,
+    structureVersion: 1,
+    structureEdited: false,
     ...overrides,
   };
 }

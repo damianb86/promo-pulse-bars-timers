@@ -3038,6 +3038,49 @@ s-page::part(page) {
   padding-right: 6px;
 }
 
+.counterpulse-modal--html {
+  box-sizing: border-box;
+  width: min(92vw, 1180px);
+  max-width: calc(100vw - 32px);
+  max-height: min(88vh, 920px);
+  overflow: hidden;
+}
+
+.counterpulse-modal--html .counterpulse-modal__body {
+  max-height: min(70vh, 740px);
+  overflow: hidden;
+}
+
+.counterpulse-structure-html-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: min(60vh, 620px);
+  resize: vertical;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #1f2937;
+  background: #f9fafb;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.counterpulse-structure-html-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.counterpulse-structure-html-row span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
 .counterpulse-modal h2 {
   margin: 0;
   color: #202223;

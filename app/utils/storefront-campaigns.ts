@@ -26,6 +26,7 @@ import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
 } from "../types/campaign-design";
+import { decodePackedStructure } from "./campaign-structure";
 import { resolveMobileCampaignDesign } from "./responsive-design";
 import {
   campaignTranslationFields,
@@ -384,6 +385,29 @@ export function serializeDesign(
   return {
     ...resolvedDesign,
     showIcon: resolvedDesign.icon !== "NONE",
+    structure: serializeStructure(design),
+  };
+}
+
+// Emits the per-campaign structural HTML (dictionary-packed AST) + CSS for the
+// storefront. Returns null for legacy campaigns with no saved structure, in which
+// case the theme extension falls back to its built-in surface builder.
+function serializeStructure(design: CampaignDesign | null) {
+  if (!design) return null;
+
+  const structureDesign = design as CampaignDesign & {
+    structureCompact?: string | null;
+    structureCss?: string | null;
+    structureVersion?: number | null;
+  };
+
+  const packed = decodePackedStructure(structureDesign.structureCompact);
+  if (!packed) return null;
+
+  return {
+    packed,
+    css: structureDesign.structureCss ?? "",
+    version: structureDesign.structureVersion ?? 1,
   };
 }
 

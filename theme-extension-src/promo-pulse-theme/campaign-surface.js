@@ -990,6 +990,13 @@
     var design = spec.design || {};
     var variant = spec.variant || "bar";
 
+    // Structure-driven render (saved HTML). Falls through to the legacy builder
+    // when the campaign has no saved structure or anything goes wrong.
+    if (design.structure) {
+      var fromStructure = buildFromStructure(spec);
+      if (fromStructure) return fromStructure;
+    }
+
     if (variant === "badge") {
       var badge = spec.badge || {};
       var badgeNode = el(
@@ -1110,6 +1117,184 @@
     }
 
     return section;
+  }
+
+  // -------------------------------------------------------------------------
+  // Structure-driven rendering.
+  //
+  // When a campaign carries saved structural HTML (design.structure), render
+  // from that AST instead of the built-in surface builder: rebuild the DOM from
+  // the dictionary-packed nodes, scope + inject the per-campaign CSS, then
+  // hydrate the `data-cp-slot` placeholders with the same dynamic builders used
+  // by the legacy path (timer, offer, progress, icon, close, headline/body/cta).
+  // Falls back to null so build() can use the legacy path on any problem.
+  // -------------------------------------------------------------------------
+
+  function structureLongClass(shortClass) {
+    return shortClass.indexOf("cp-") === 0
+      ? "counterpulse-preview-" + shortClass.slice(3)
+      : shortClass;
+  }
+
+  function unpackStructureToDom(packed) {
+    var tags = packed.t || [];
+    var classes = packed.c || [];
+
+    function buildNode(arr) {
+      var tag = tags[arr[0]] || "div";
+      var node = document.createElement(tag);
+      var clsIds = arr[1] || [];
+      if (clsIds.length) {
+        node.className = clsIds
+          .map(function (id) {
+            return structureLongClass(classes[id]);
+          })
+          .join(" ");
+      }
+      var slot = arr[2];
+      if (slot) node.setAttribute("data-cp-slot", slot);
+      var text = arr[3];
+      if (text) node.textContent = String(text);
+      var href = arr[4];
+      if (href && node.tagName === "A") node.setAttribute("href", String(href));
+      var children = arr[5] || [];
+      for (var i = 0; i < children.length; i += 1) {
+        node.appendChild(buildNode(children[i]));
+      }
+      return node;
+    }
+
+    return packed && packed.n ? buildNode(packed.n) : null;
+  }
+
+  function uniqueScopeId() {
+    return "cp" + Math.random().toString(36).slice(2, 9);
+  }
+
+  // Replace the slot placeholder with a built node, or remove it when null.
+  function fillReplaceSlot(slotEl, builtNode) {
+    if (!slotEl || !slotEl.parentNode) return;
+    if (builtNode) {
+      slotEl.parentNode.replaceChild(builtNode, slotEl);
+    } else {
+      slotEl.parentNode.removeChild(slotEl);
+    }
+  }
+
+  function fixRootClasses(root, variant, placement) {
+    var keep = [];
+    (root.className || "").split(/\s+/).forEach(function (token) {
+      if (!token) return;
+      if (/counterpulse-preview-promo--(bar|block|badge)$/.test(token)) return;
+      if (/counterpulse-preview-promo--placement-/.test(token)) return;
+      keep.push(token);
+    });
+    keep.push("counterpulse-preview-promo--" + variant);
+    if (placement) {
+      keep.push("counterpulse-preview-promo--placement-" + dash(placement));
+    }
+    root.className = keep.join(" ");
+  }
+
+  function buildFromStructure(spec) {
+    var structure = spec.design && spec.design.structure;
+    if (!structure || !structure.packed) return null;
+    // Badge variant keeps the legacy builder (its structure differs enough that
+    // the saved block structure is not a drop-in).
+    if (spec.variant === "badge") return null;
+
+    var root;
+    try {
+      root = unpackStructureToDom(structure.packed);
+    } catch (error) {
+      return null;
+    }
+    if (!root) return null;
+
+    var design = spec.design || {};
+    fixRootClasses(root, spec.variant || "bar", spec.placement);
+    if (spec.className) root.className += " " + spec.className;
+    if (spec.dataTestId) root.setAttribute("data-testid", spec.dataTestId);
+
+    // Scope + inject the per-campaign CSS (vars + sanitized custom CSS).
+    var css = typeof structure.css === "string" ? structure.css : "";
+    if (css) {
+      var scopeId = uniqueScopeId();
+      root.setAttribute("data-cp-uid", scopeId);
+      var scoped = css
+        .replace(/__CP_SCOPE__/g, '[data-cp-uid="' + scopeId + '"]')
+        .replace(/<\/?\s*style/gi, "");
+      var styleNode = document.createElement("style");
+      styleNode.textContent = scoped;
+      root.appendChild(styleNode);
+    }
+
+    hydrateStructureSlots(root, spec, design);
+    return root;
+  }
+
+  function hydrateStructureSlots(root, spec, design) {
+    var slots = root.querySelectorAll("[data-cp-slot]");
+    // Snapshot into an array because replace slots mutate the tree.
+    var list = [];
+    for (var i = 0; i < slots.length; i += 1) list.push(slots[i]);
+
+    list.forEach(function (slotEl) {
+      var slot = slotEl.getAttribute("data-cp-slot");
+      switch (slot) {
+        case "headline":
+          setRichText(slotEl, interpolateMessage(spec.headline || "", spec));
+          break;
+        case "body":
+          if (spec.body) {
+            setRichText(slotEl, interpolateMessage(spec.body, spec));
+          } else {
+            fillReplaceSlot(slotEl, null);
+          }
+          break;
+        case "cta": {
+          if (!spec.cta) {
+            fillReplaceSlot(slotEl, null);
+            break;
+          }
+          slotEl.textContent = interpolateMessage(spec.cta, spec);
+          if (spec.ctaUrl && slotEl.tagName === "A") {
+            slotEl.setAttribute("href", spec.ctaUrl);
+          }
+          break;
+        }
+        case "icon":
+          fillReplaceSlot(slotEl, buildIcon(design));
+          break;
+        case "timer":
+          fillReplaceSlot(
+            slotEl,
+            spec.hasTimer ? buildTimer(spec, design, false) : null,
+          );
+          break;
+        case "timer-inline":
+          fillReplaceSlot(
+            slotEl,
+            spec.hasTimer ? buildTimer(spec, design, true) : null,
+          );
+          break;
+        case "offer":
+          fillReplaceSlot(
+            slotEl,
+            spec.couponNode ||
+              buildOffer(design, spec.offer, spec.offerHandlers),
+          );
+          break;
+        case "close":
+          fillReplaceSlot(slotEl, buildClose(design, spec.onClose));
+          break;
+        case "progress":
+          fillReplaceSlot(slotEl, buildProgress(spec.progress, design));
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   function parseDate(value) {

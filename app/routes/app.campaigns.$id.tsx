@@ -82,6 +82,7 @@ import {
 } from "../services/ai/experimentVariantGenerator.server";
 import {
   hasCampaignDesignErrors,
+  parseCampaignStructureForm,
   parseResponsiveCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
 import {
@@ -260,6 +261,11 @@ import {
   type CampaignViewModel,
 } from "../utils/campaign-view-model";
 import {
+  decodePackedStructure,
+  treeToHtml,
+  unpackTree,
+} from "../utils/campaign-structure";
+import {
   isSeparateMobileDesignEnabled,
   resolveMobileCampaignDesign,
 } from "../utils/responsive-design";
@@ -270,6 +276,8 @@ type LoaderData = {
   targetingOptions: CampaignTargetingOptions;
   designValues: CampaignDesignValues;
   mobileDesignValues: CampaignDesignValues;
+  structureEdited: boolean;
+  structureHtml: string;
   designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
   discountApiError: string;
@@ -380,6 +388,10 @@ export const loader = async ({
     campaign.design,
     designValues,
   );
+  const structureEdited = campaign.design?.structureEdited ?? false;
+  const structureHtml = structureEdited
+    ? decodeStructureHtml(campaign.design?.structureCompact)
+    : "";
   const effectivePlan = getEffectiveShopPlan(shop);
   const lockedFeatures = {
     customCss: getLockedFeatureReason(shop, "custom_css"),
@@ -507,6 +519,8 @@ export const loader = async ({
     targetingOptions: await loadTargetingOptions(admin),
     designValues,
     mobileDesignValues,
+    structureEdited,
+    structureHtml,
     designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
       name: campaign.name,
@@ -727,6 +741,7 @@ export const action = async ({
         shop.id,
         parsed.values,
         parsed.mobileValues,
+        parseCampaignStructureForm(formData),
       );
       return redirect(`/app/campaigns/${id}`);
     } catch (error) {
@@ -1583,6 +1598,7 @@ export const action = async ({
       shop.id,
       parsedDesign.values,
       parsedDesign.mobileValues,
+      parseCampaignStructureForm(formData),
     );
 
     if (usesFreeShippingSettings) {
@@ -1684,6 +1700,8 @@ export default function EditCampaignPage() {
     targetingOptions,
     designValues,
     mobileDesignValues,
+    structureEdited,
+    structureHtml,
     designMediaOptions,
     designViewModel,
     discountApiError,
@@ -2252,6 +2270,8 @@ export default function EditCampaignPage() {
                   onMobileChange={setDraftMobileDesignValues}
                   onProgressStyleChange={updateDraftProgressStyle}
                   viewModel={draftPreviewViewModel}
+                  structureEdited={structureEdited}
+                  structureHtml={structureHtml}
                 />
               ),
             },
@@ -3925,6 +3945,18 @@ type CampaignDesignRecord =
       mobileDesign?: unknown;
     })
   | null;
+
+// Decodes the saved structural HTML (packed AST) back into clean editor HTML so
+// the design HTML modal can show a merchant's hand-edited structure.
+function decodeStructureHtml(compact: string | null | undefined): string {
+  const packed = decodePackedStructure(compact);
+  if (!packed) return "";
+  try {
+    return treeToHtml(unpackTree(packed));
+  } catch {
+    return "";
+  }
+}
 
 function toCampaignDesignValues(
   design: CampaignDesignRecord,

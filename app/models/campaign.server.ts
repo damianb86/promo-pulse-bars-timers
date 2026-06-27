@@ -31,6 +31,12 @@ import type {
   PlacementTypeValue,
 } from "../types/campaign-options";
 import type { CampaignDesignValues } from "../types/campaign-design";
+import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import { CAMPAIGN_STRUCTURE_VERSION } from "../utils/campaign-structure";
+import {
+  generateStructureFromHtml,
+  generateStructureFromSettings,
+} from "../utils/campaign-structure.server";
 import type { BadgeSettingsValues } from "../types/badge";
 import { defaultBadgeSettingsValues } from "../types/badge";
 import type { DeliveryCutoffSettingsValues } from "../types/delivery-cutoff";
@@ -738,11 +744,67 @@ export function toCampaignDesignWriteData(
   };
 }
 
+export type CampaignStructureSaveOptions = {
+  // Sanitized, hand-edited structural HTML. When provided, it becomes the stored
+  // structure and the campaign is marked structureEdited. When omitted/empty the
+  // structure is regenerated from the visual settings.
+  editedHtml?: string | null;
+};
+
+// Regenerates the campaign's structural HTML + CSS so the saved HTML stays the
+// source of truth for storefront rendering. When the merchant has hand-edited
+// the HTML we keep their structure; otherwise we mirror the visual settings.
+function buildCampaignStructureWriteData(
+  campaign: CampaignDetailsRecord,
+  design: CampaignDesignValues,
+  options: CampaignStructureSaveOptions,
+) {
+  const viewModel = buildCampaignViewModel({
+    name: campaign.name,
+    type: campaign.type,
+    endsAt: campaign.endsAt,
+    timezone: campaign.timezone,
+    placements: campaign.placements,
+    translations: campaign.translations,
+    design,
+    timerSettings: campaign.timerSettings,
+    cartRescueSettings: campaign.cartRescueSettings,
+    deliveryCutoffSettings: campaign.deliveryCutoffSettings,
+    freeShippingSettings: campaign.freeShippingSettings,
+    lowStockSettings: campaign.lowStockSettings,
+    badgeSettings: campaign.badgeSettings,
+    discountSync: campaign.discountSync,
+  });
+
+  const editedHtml = options.editedHtml?.trim();
+  const structure = editedHtml
+    ? generateStructureFromHtml(editedHtml, design)
+    : null;
+
+  if (structure) {
+    return {
+      structureCompact: structure.compact,
+      structureCss: structure.css,
+      structureVersion: CAMPAIGN_STRUCTURE_VERSION,
+      structureEdited: true,
+    };
+  }
+
+  const generated = generateStructureFromSettings(viewModel, design);
+  return {
+    structureCompact: generated.compact,
+    structureCss: generated.css,
+    structureVersion: CAMPAIGN_STRUCTURE_VERSION,
+    structureEdited: false,
+  };
+}
+
 export async function updateCampaignDesignForShop(
   id: string,
   shopId: string,
   input: CampaignDesignValues,
   mobileInput: CampaignDesignValues = input,
+  structureOptions: CampaignStructureSaveOptions = {},
 ) {
   await assertCampaignBelongsToShop(id, shopId);
 
@@ -752,13 +814,28 @@ export async function updateCampaignDesignForShop(
       data: { lastSavedAt: new Date() },
     });
 
+    const campaign = await tx.campaign.findUniqueOrThrow({
+      where: { id },
+      include: campaignDetailsInclude,
+    });
+    const structureData = buildCampaignStructureWriteData(
+      campaign,
+      input,
+      structureOptions,
+    );
+
+    const writeData = {
+      ...toCampaignDesignWriteData(input, mobileInput),
+      ...structureData,
+    };
+
     return tx.campaignDesign.upsert({
       where: { campaignId: id },
       create: {
         campaignId: id,
-        ...toCampaignDesignWriteData(input, mobileInput),
+        ...writeData,
       },
-      update: toCampaignDesignWriteData(input, mobileInput),
+      update: writeData,
     });
   });
 }

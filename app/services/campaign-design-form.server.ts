@@ -28,6 +28,7 @@ import {
   validateCampaignDesignValues,
 } from "../utils/campaign-design";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
+import { sanitizeStructureHtml } from "../utils/structure-html";
 import { canUseFeature } from "./planLimits.server";
 
 export type ParsedCampaignDesignForm = {
@@ -351,6 +352,26 @@ export function parseResponsiveCampaignDesignFormData(
 }
 
 export { hasCampaignDesignErrors };
+
+export type ParsedCampaignStructureForm = {
+  // Sanitized hand-edited structural HTML, or null when the merchant has not
+  // overridden the auto-generated structure (regenerate from settings).
+  editedHtml: string | null;
+};
+
+// Reads the optional structural-HTML override coming from the design editor's
+// HTML modal. The HTML is sanitized here before it ever reaches the model layer.
+export function parseCampaignStructureForm(
+  formData: FormData,
+): ParsedCampaignStructureForm {
+  const edited = readFormString(formData, "structureEdited") === "true";
+  if (!edited) return { editedHtml: null };
+
+  const sanitized = sanitizeStructureHtml(
+    readFormString(formData, "structureHtml"),
+  );
+  return { editedHtml: sanitized || null };
+}
 
 function readString(formData: FormData, key: keyof CampaignDesignValues) {
   const value = formData.get(key);

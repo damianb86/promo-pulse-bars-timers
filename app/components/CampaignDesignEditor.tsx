@@ -17,6 +17,11 @@ import { emptyCampaignDesignMediaOptions } from "../types/campaign-design";
 import type { FreeShippingProgressStyleValue } from "../types/free-shipping";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
+import {
+  buildCampaignStructureTree,
+  deriveCampaignStructureSpec,
+  treeToHtml,
+} from "../utils/campaign-structure";
 
 type CampaignDesignEditorProps = {
   design: CampaignDesignValues;
@@ -30,6 +35,8 @@ type CampaignDesignEditorProps = {
   onMobileChange: (design: CampaignDesignValues) => void;
   onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
   viewModel: CampaignViewModel;
+  structureEdited?: boolean;
+  structureHtml?: string;
 };
 
 export function CampaignDesignEditor({
@@ -44,6 +51,8 @@ export function CampaignDesignEditor({
   onMobileChange,
   onProgressStyleChange,
   viewModel,
+  structureEdited: initialStructureEdited = false,
+  structureHtml: initialStructureHtml = "",
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
     () =>
@@ -102,6 +111,36 @@ export function CampaignDesignEditor({
     [errors],
   );
   const [openErrorModalKey, setOpenErrorModalKey] = useState("");
+
+  // Structural HTML modal. The HTML is auto-generated from the visual settings;
+  // when the merchant edits it, it becomes the saved structure (structureEdited).
+  const [htmlModalOpen, setHtmlModalOpen] = useState(false);
+  const [structureEdited, setStructureEdited] = useState(
+    initialStructureEdited,
+  );
+  const generatedStructureHtml = useMemo(() => {
+    const spec = deriveCampaignStructureSpec(
+      viewModel,
+      design,
+      "block",
+      primaryPlacement,
+    );
+    return treeToHtml(buildCampaignStructureTree(spec));
+  }, [viewModel, design, primaryPlacement]);
+  const [editedStructureHtml, setEditedStructureHtml] = useState(
+    initialStructureHtml || generatedStructureHtml,
+  );
+  const displayedStructureHtml = structureEdited
+    ? editedStructureHtml
+    : generatedStructureHtml;
+  const resetStructureFromDesign = () => {
+    setStructureEdited(false);
+    setEditedStructureHtml(generatedStructureHtml);
+  };
+  const handleStructureHtmlChange = (value: string) => {
+    setEditedStructureHtml(value);
+    setStructureEdited(true);
+  };
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -161,6 +200,29 @@ export function CampaignDesignEditor({
         <p>{designErrorSummary?.message}</p>
       </InfoModal>
 
+      {/* Hidden inputs so the structural HTML override travels with the design
+          form. When not edited, structureHtml stays empty and the backend
+          regenerates the structure from the visual settings. */}
+      <input
+        name="structureEdited"
+        type="hidden"
+        value={structureEdited ? "true" : "false"}
+      />
+      <input
+        name="structureHtml"
+        type="hidden"
+        value={structureEdited ? editedStructureHtml : ""}
+      />
+
+      <StructureHtmlModal
+        edited={structureEdited}
+        html={displayedStructureHtml}
+        open={htmlModalOpen}
+        onChange={handleStructureHtmlChange}
+        onClose={() => setHtmlModalOpen(false)}
+        onReset={resetStructureFromDesign}
+      />
+
       {errors?.form && (
         <AppAlert tone="critical" title="Design could not be saved">
           <s-paragraph>{errors.form}</s-paragraph>
@@ -209,6 +271,20 @@ export function CampaignDesignEditor({
                   ? `You are editing the ${device} design. Switching device changes which campaign design is edited.`
                   : "You are editing one shared design. Use Mobile preview to verify the automatic typography adjustment."}
               </p>
+              <div className="counterpulse-structure-html-row">
+                <button
+                  className="counterpulse-button-secondary"
+                  type="button"
+                  onClick={() => setHtmlModalOpen(true)}
+                >
+                  View / edit HTML
+                </button>
+                <span>
+                  {structureEdited
+                    ? "Custom HTML structure is in use."
+                    : "Structure is generated from the design settings."}
+                </span>
+              </div>
             </div>
           </section>
 
@@ -244,6 +320,87 @@ export function CampaignDesignEditor({
         />
       </div>
     </s-section>
+  );
+}
+
+function StructureHtmlModal({
+  open,
+  html,
+  edited,
+  onChange,
+  onReset,
+  onClose,
+}: {
+  open: boolean;
+  html: string;
+  edited: boolean;
+  onChange: (value: string) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="counterpulse-modal-backdrop">
+      <button
+        aria-label="Close"
+        className="counterpulse-modal-backdrop__dismiss"
+        tabIndex={-1}
+        type="button"
+        onClick={onClose}
+      />
+      <div
+        aria-label="Campaign HTML structure"
+        aria-modal="true"
+        className="counterpulse-modal counterpulse-modal--html"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <div>
+            <h2>Campaign HTML structure</h2>
+            <p className="counterpulse-design-note">
+              The structural HTML below is what renders the campaign on your
+              storefront. Styling lives separately as CSS, so this stays clean.
+              Edit it to customize the structure; reset to regenerate it from the
+              design settings.
+            </p>
+          </div>
+        </div>
+        <div className="counterpulse-modal__body">
+          <textarea
+            aria-label="Campaign HTML structure"
+            className="counterpulse-structure-html-textarea"
+            spellCheck={false}
+            value={html}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
+        <div className="counterpulse-modal__actions">
+          <button
+            className="counterpulse-button-secondary"
+            disabled={!edited}
+            type="button"
+            onClick={onReset}
+          >
+            Reset from design
+          </button>
+          <button className="counterpulse-button" type="button" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

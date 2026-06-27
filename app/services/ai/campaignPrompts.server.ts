@@ -194,25 +194,33 @@ The merchant attached a reference image of an existing promotional element
 Your task is to reproduce that image as closely as possible using ONLY the
 Promo Pulse settings described above and in the catalog below.
 
+The image is NOT necessarily a countdown timer. It may be any kind of banner:
+a plain promotional/announcement bar, a sale banner, a free-shipping bar, a
+low-stock message, a product badge, a cart message, or a countdown timer. Do not
+assume a timer is present.
+
 How to analyze the image:
-- Identify what kind of element it is: top/bottom announcement bar, product or
-  cart countdown timer, free-shipping progress bar, low-stock message, product
-  badge, or a special banner. Map it to the closest campaign goal, type, and
-  placementType.
+- Identify what kind of element it is and map it to the closest campaign goal,
+  type, and placementType. Only choose a timer type (COUNTDOWN_BAR, PRODUCT_TIMER,
+  CART_TIMER) when a real countdown/clock is actually visible in the image. If the
+  image is just a promotional/announcement banner with no countdown, use goal
+  ANNOUNCEMENT with a bar type and DO NOT fabricate a timer or countdown urgency.
 - Read the layout: is it full-width or a contained card? Is the content one
-  inline row or a vertical stack? Where do the message, timer, and button sit?
-  Pick the design.layout and fullWidth that reproduce that arrangement.
+  inline row or a vertical stack? Where do the message and button sit (and the
+  timer, if any)? Pick the design.layout and fullWidth that reproduce that
+  arrangement.
 - Extract the colors precisely as 6-digit hex: background (solid or gradient),
-  headline color, subheading color, timer digit color, button fill, button text,
-  borders. If you see a gradient, set backgroundType GRADIENT with start/end
-  colors and an angle.
+  headline color, subheading color, button fill, button text, borders (and timer
+  digit color only if a timer is shown). If you see a gradient, set backgroundType
+  GRADIENT with start/end colors and an angle.
 - Estimate spacing: padding (slim vs tall bar), gap between elements, corner
   rounding (sharp full-width bar vs rounded pill/card), border thickness.
-- Estimate typography: relative title vs body vs timer sizes, and whether the
-  font looks default/system, serif, rounded, condensed, etc.
-- Detect the timer style: bare digits (PLAIN), one container (GROUPED), or
-  separate digit tiles (BOXES); colon HH:MM:SS vs labeled units; the digit and
-  label colors and the surface behind them.
+- Estimate typography: relative title vs body (and timer, if any) sizes, and
+  whether the font looks default/system, serif, rounded, condensed, etc.
+- Only if the image shows a countdown, detect the timer style: bare digits
+  (PLAIN), one container (GROUPED), or separate digit tiles (BOXES); colon
+  HH:MM:SS vs labeled units; the digit and label colors and the surface behind
+  them. If there is no countdown, ignore all timer settings.
 - Detect buttons and icons: only set showButton true / showIcon true and pick an
   icon when the image actually shows one. Use the visible button label as ctaText.
 - Transcribe visible text into headline / subheadline / ctaText / expiredText,

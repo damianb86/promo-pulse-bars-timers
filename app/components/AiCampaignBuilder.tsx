@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { AppAlert, AppToast } from "./Notifications";
 import { Form, useNavigation } from "react-router";
 
@@ -16,7 +26,9 @@ import {
 import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
 import { getStorefrontLocaleOptions } from "../types/localization";
+import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import { AiGenerateIcon } from "./AiGenerateIcon";
+import { CampaignPromoSurface } from "./CampaignPreview";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
 
 type AiCampaignBuilderProps = {
@@ -36,6 +48,24 @@ type ReferenceImageState = {
   mimeType: string;
   sizeBytes: number;
 };
+
+// Fields that can be ignored when generating from a reference image. The
+// campaign type/goal is intentionally excluded — it must always be chosen.
+const IGNORABLE_AI_FIELDS = [
+  "campaignShape",
+  "brandTone",
+  "quickStarts",
+  "campaignNameHint",
+  "locale",
+  "productContext",
+  "knownOffer",
+  "merchantNotes",
+  "eventName",
+  "countryCode",
+  "ctaUrl",
+] as const;
+
+type IgnorableAiField = (typeof IGNORABLE_AI_FIELDS)[number];
 
 type GoalFlowOption = {
   id: string;
@@ -587,6 +617,32 @@ export function AiCampaignBuilder({
   const referenceImageMaxMb = Math.round(
     campaignAiReferenceImageMaxBytes / (1024 * 1024),
   );
+  const hasReferenceImage = Boolean(referenceImage);
+  // When a reference image is attached, every input except the campaign type is
+  // ignored by default so the AI reads it from the image. We track which fields
+  // the merchant explicitly un-ignored; the default (empty set) means all
+  // ignored. This derives ignore state without an effect.
+  const [unignoredFields, setUnignoredFields] = useState<Set<IgnorableAiField>>(
+    new Set(),
+  );
+  const isFieldIgnored = (field: IgnorableAiField) =>
+    hasReferenceImage && !unignoredFields.has(field);
+  const toggleIgnoredField = (field: IgnorableAiField) => {
+    setUnignoredFields((current) => {
+      const next = new Set(current);
+      // Membership = "kept" (not ignored); flipping toggles the ignore state.
+      if (next.has(field)) next.delete(field);
+      else next.add(field);
+      return next;
+    });
+  };
+  const ignoreControl = (field: IgnorableAiField) =>
+    hasReferenceImage
+      ? {
+          active: isFieldIgnored(field),
+          onToggle: () => toggleIgnoredField(field),
+        }
+      : undefined;
   const activeGoalFlow = aiGoalFlows[formValues.objective];
   const isAnsweringFollowUp = followUpQuestions.length > 0 && !suggestion;
   const isGenerating =
@@ -719,6 +775,8 @@ export function AiCampaignBuilder({
         mimeType: file.type,
         sizeBytes: file.size,
       });
+      // A fresh image starts with every field ignored again.
+      setUnignoredFields(new Set());
     };
 
     reader.readAsDataURL(file);
@@ -732,6 +790,7 @@ export function AiCampaignBuilder({
   const removeReferenceImage = () => {
     setReferenceImage(null);
     setImageError(null);
+    setUnignoredFields(new Set());
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -822,26 +881,34 @@ export function AiCampaignBuilder({
               type="hidden"
               value={formValues.objective}
             />
-            <input
-              name="brandTone"
-              type="hidden"
-              value={formValues.brandTone}
-            />
-            <input
-              name="campaignShape"
-              type="hidden"
-              value={formValues.campaignShape}
-            />
-            <input
-              name="goalAnswersJson"
-              type="hidden"
-              value={JSON.stringify(formValues.goalAnswers)}
-            />
-            <input
-              name="quickStartsJson"
-              type="hidden"
-              value={JSON.stringify(formValues.quickStarts)}
-            />
+            {!isFieldIgnored("brandTone") && (
+              <input
+                name="brandTone"
+                type="hidden"
+                value={formValues.brandTone}
+              />
+            )}
+            {!isFieldIgnored("campaignShape") && (
+              <>
+                <input
+                  name="campaignShape"
+                  type="hidden"
+                  value={formValues.campaignShape}
+                />
+                <input
+                  name="goalAnswersJson"
+                  type="hidden"
+                  value={JSON.stringify(formValues.goalAnswers)}
+                />
+              </>
+            )}
+            {!isFieldIgnored("quickStarts") && (
+              <input
+                name="quickStartsJson"
+                type="hidden"
+                value={JSON.stringify(formValues.quickStarts)}
+              />
+            )}
             <input
               name="followUpAnswersJson"
               type="hidden"
@@ -998,10 +1065,24 @@ export function AiCampaignBuilder({
               )}
             </div>
 
-            <div className="counterpulse-ai-step">
-              <div>
-                <p className="counterpulse-kicker">Goal setup</p>
-                <h3>{activeGoalFlow.summary}</h3>
+            <div
+              className={
+                isFieldIgnored("campaignShape")
+                  ? "counterpulse-ai-step counterpulse-ai-step--ignored"
+                  : "counterpulse-ai-step"
+              }
+            >
+              <div className="counterpulse-ai-step__head">
+                <div>
+                  <p className="counterpulse-kicker">Goal setup</p>
+                  <h3>{activeGoalFlow.summary}</h3>
+                </div>
+                {hasReferenceImage && (
+                  <IgnoreToggle
+                    active={isFieldIgnored("campaignShape")}
+                    onToggle={() => toggleIgnoredField("campaignShape")}
+                  />
+                )}
               </div>
               <div className="counterpulse-ai-shape-grid">
                 {aiCampaignShapeOptions.map((option) => (
@@ -1056,10 +1137,24 @@ export function AiCampaignBuilder({
               </div>
             </div>
 
-            <div className="counterpulse-ai-step">
-              <div>
-                <p className="counterpulse-kicker">Tone</p>
-                <h3>How should the campaign sound?</h3>
+            <div
+              className={
+                isFieldIgnored("brandTone")
+                  ? "counterpulse-ai-step counterpulse-ai-step--ignored"
+                  : "counterpulse-ai-step"
+              }
+            >
+              <div className="counterpulse-ai-step__head">
+                <div>
+                  <p className="counterpulse-kicker">Tone</p>
+                  <h3>How should the campaign sound?</h3>
+                </div>
+                {hasReferenceImage && (
+                  <IgnoreToggle
+                    active={isFieldIgnored("brandTone")}
+                    onToggle={() => toggleIgnoredField("brandTone")}
+                  />
+                )}
               </div>
               <div className="counterpulse-ai-chip-grid">
                 {campaignAiToneOptions.map((option) => (
@@ -1081,10 +1176,24 @@ export function AiCampaignBuilder({
               )}
             </div>
 
-            <div className="counterpulse-ai-step">
-              <div>
-                <p className="counterpulse-kicker">Offer</p>
-                <h3>Pick any relevant starting points</h3>
+            <div
+              className={
+                isFieldIgnored("quickStarts")
+                  ? "counterpulse-ai-step counterpulse-ai-step--ignored"
+                  : "counterpulse-ai-step"
+              }
+            >
+              <div className="counterpulse-ai-step__head">
+                <div>
+                  <p className="counterpulse-kicker">Offer</p>
+                  <h3>Pick any relevant starting points</h3>
+                </div>
+                {hasReferenceImage && (
+                  <IgnoreToggle
+                    active={isFieldIgnored("quickStarts")}
+                    onToggle={() => toggleIgnoredField("quickStarts")}
+                  />
+                )}
               </div>
               <div className="counterpulse-ai-chip-grid">
                 {uniqueStrings([
@@ -1154,10 +1263,14 @@ export function AiCampaignBuilder({
                 <h3>Only write what the AI cannot know</h3>
               </div>
               <div className="counterpulse-form-grid">
-                <FormField label="Campaign name hint">
+                <FormField
+                  label="Campaign name hint"
+                  ignore={ignoreControl("campaignNameHint")}
+                >
                   <input
                     name="campaignNameHint"
                     value={formValues.campaignNameHint}
+                    disabled={isFieldIgnored("campaignNameHint")}
                     placeholder="Optional. Leave blank to generate a name."
                     onChange={(event) =>
                       updateValue("campaignNameHint", event.currentTarget.value)
@@ -1165,10 +1278,15 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
-                <FormField label="Language" error={errors.locale}>
+                <FormField
+                  label="Language"
+                  error={errors.locale}
+                  ignore={ignoreControl("locale")}
+                >
                   <select
                     name="locale"
                     value={formValues.locale}
+                    disabled={isFieldIgnored("locale")}
                     onChange={(event) =>
                       updateValue(
                         "locale",
@@ -1188,11 +1306,13 @@ export function AiCampaignBuilder({
                   label="Product, collection, or audience"
                   error={errors.productContext}
                   fullWidth
+                  ignore={ignoreControl("productContext")}
                 >
                   <textarea
                     name="productContext"
                     value={formValues.productContext}
                     rows={3}
+                    disabled={isFieldIgnored("productContext")}
                     placeholder={
                       referenceImage
                         ? "Optional when an image is attached. Add anything the image cannot show."
@@ -1209,11 +1329,13 @@ export function AiCampaignBuilder({
                   label="Offer details"
                   error={errors.knownOffer}
                   fullWidth
+                  ignore={ignoreControl("knownOffer")}
                 >
                   <textarea
                     name="knownOffer"
                     value={formValues.knownOffer}
                     rows={3}
+                    disabled={isFieldIgnored("knownOffer")}
                     placeholder="Optional. Example: 20% off, free shipping over $75, sale ends Sunday, only 12 units left."
                     onChange={(event) =>
                       updateValue("knownOffer", event.currentTarget.value)
@@ -1221,11 +1343,16 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
-                <FormField label="Extra campaign notes" fullWidth>
+                <FormField
+                  label="Extra campaign notes"
+                  fullWidth
+                  ignore={ignoreControl("merchantNotes")}
+                >
                   <textarea
                     name="merchantNotes"
                     value={formValues.merchantNotes}
                     rows={3}
+                    disabled={isFieldIgnored("merchantNotes")}
                     placeholder="Optional. Add brand constraints, audience notes, exclusions, merchandising rules, or anything the AI should respect."
                     onChange={(event) =>
                       updateValue("merchantNotes", event.currentTarget.value)
@@ -1233,10 +1360,15 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
-                <FormField label="Event or season" error={errors.eventName}>
+                <FormField
+                  label="Event or season"
+                  error={errors.eventName}
+                  ignore={ignoreControl("eventName")}
+                >
                   <input
                     name="eventName"
                     value={formValues.eventName}
+                    disabled={isFieldIgnored("eventName")}
                     placeholder="Optional. Black Friday, launch week..."
                     onChange={(event) =>
                       updateValue("eventName", event.currentTarget.value)
@@ -1244,11 +1376,16 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
-                <FormField label="Country" error={errors.countryCode}>
+                <FormField
+                  label="Country"
+                  error={errors.countryCode}
+                  ignore={ignoreControl("countryCode")}
+                >
                   <input
                     name="countryCode"
                     value={formValues.countryCode}
                     maxLength={2}
+                    disabled={isFieldIgnored("countryCode")}
                     placeholder="US"
                     onChange={(event) =>
                       updateValue(
@@ -1259,10 +1396,16 @@ export function AiCampaignBuilder({
                   />
                 </FormField>
 
-                <FormField label="Target URL" error={errors.ctaUrl} fullWidth>
+                <FormField
+                  label="Target URL"
+                  error={errors.ctaUrl}
+                  fullWidth
+                  ignore={ignoreControl("ctaUrl")}
+                >
                   <input
                     name="ctaUrl"
                     value={formValues.ctaUrl}
+                    disabled={isFieldIgnored("ctaUrl")}
                     placeholder="/collections/sale"
                     onChange={(event) =>
                       updateValue("ctaUrl", event.currentTarget.value)
@@ -1430,14 +1573,7 @@ export function AiCampaignBuilder({
                   AI suggestion preview
                 </h3>
 
-                {suggestion.referenceImageUsed && (
-                  <AppAlert tone="info" title="Generated from your image">
-                    <s-paragraph>
-                      Colors, layout, and spacing were matched to your reference
-                      image. Review the design before saving.
-                    </s-paragraph>
-                  </AppAlert>
-                )}
+                <SuggestionMiniPreview suggestion={suggestion} />
 
                 {suggestion.safety.warnings.length > 0 && (
                   <AppAlert tone="warning" title="Review generated copy">
@@ -1553,6 +1689,139 @@ function AiGoalIcon() {
     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
       <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 3.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6Zm0 3.2a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2Z" />
     </svg>
+  );
+}
+
+// Maps an arbitrary placement to the closest preview surface the compact promo
+// renderer understands (mirrors the experiment variant preview behavior).
+function resolveSuggestionPreviewSurface(placement: string | undefined): {
+  placement:
+    | "TOP_BAR"
+    | "BOTTOM_BAR"
+    | "PRODUCT_PAGE"
+    | "CART_PAGE"
+    | "CART_DRAWER"
+    | "PRODUCT_BADGE";
+  variant: "bar" | "block" | "badge";
+} {
+  if (placement === "PRODUCT_PAGE_BADGE" || placement === "COLLECTION_CARD") {
+    return { placement: "PRODUCT_BADGE", variant: "badge" };
+  }
+  if (placement === "TOP_BAR" || placement === "BOTTOM_BAR") {
+    return { placement, variant: "bar" };
+  }
+  if (placement === "CART_PAGE" || placement === "CART_DRAWER") {
+    return { placement, variant: "block" };
+  }
+  return { placement: "PRODUCT_PAGE", variant: "block" };
+}
+
+// Renders a live promo preview of an AI suggestion using the same surface as the
+// campaign editor and experiment variant previews, so the merchant sees what the
+// campaign will look like before applying it.
+function SuggestionMiniPreview({
+  suggestion,
+}: {
+  suggestion: CampaignSuggestion;
+}) {
+  const viewModel = useMemo(() => {
+    const placementTypes =
+      suggestion.campaign.placementTypes.length > 0
+        ? suggestion.campaign.placementTypes
+        : [suggestion.campaign.placementType];
+    const type = suggestion.campaign.type;
+
+    return buildCampaignViewModel({
+      name: suggestion.campaign.name || "Campaign preview",
+      type,
+      endsAt: suggestion.timer.endsAt || null,
+      timezone: "UTC",
+      placements: placementTypes.map((placementType) => ({
+        placementType,
+        enabled: true,
+      })),
+      translations: [
+        {
+          locale: "en",
+          headline: suggestion.campaign.headline,
+          subheadline: suggestion.campaign.subheadline,
+          ctaText: suggestion.campaign.ctaText || "Shop now",
+          ctaUrl: suggestion.campaign.ctaUrl || "#",
+          expiredText: suggestion.campaign.expiredText,
+          badgeText: suggestion.badge.badgeText,
+        },
+      ],
+      design: suggestion.design,
+      timerSettings: {
+        mode: suggestion.timer.mode,
+        durationMinutes: Number(suggestion.timer.durationMinutes) || null,
+        expiredBehavior: suggestion.timer.expiredBehavior,
+        resetBehavior: suggestion.timer.resetBehavior,
+      },
+      freeShippingSettings:
+        type === "FREE_SHIPPING_GOAL"
+          ? {
+              thresholdAmount: suggestion.freeShipping.thresholdAmount || "0",
+              currencyCode: suggestion.freeShipping.currencyCode || "USD",
+              includeDiscountedSubtotal:
+                suggestion.freeShipping.includeDiscountedSubtotal,
+              emptyCartMessage: suggestion.freeShipping.emptyCartMessage,
+              successMessage: suggestion.freeShipping.successMessage,
+              progressStyle: suggestion.freeShipping.progressStyle,
+            }
+          : null,
+      lowStockSettings:
+        type === "LOW_STOCK"
+          ? {
+              threshold: Number(suggestion.lowStock.threshold) || 0,
+              showExactQuantity: suggestion.lowStock.showExactQuantity,
+              fallbackMessage: suggestion.lowStock.fallbackMessage,
+            }
+          : null,
+      badgeSettings:
+        type === "PRODUCT_BADGE"
+          ? {
+              badgeText: suggestion.badge.badgeText,
+              badgeShape: suggestion.badge.badgeShape,
+              badgePosition: suggestion.badge.badgePosition,
+            }
+          : null,
+      deliveryCutoffSettings:
+        type === "DELIVERY_CUTOFF"
+          ? {
+              cutoffHour: Number(suggestion.deliveryCutoff.cutoffHour) || 0,
+              cutoffMinute: Number(suggestion.deliveryCutoff.cutoffMinute) || 0,
+              processingDays:
+                Number(suggestion.deliveryCutoff.processingDays) || 0,
+              minDeliveryDays:
+                Number(suggestion.deliveryCutoff.minDeliveryDays) || 0,
+              maxDeliveryDays:
+                Number(suggestion.deliveryCutoff.maxDeliveryDays) || 0,
+              afterCutoffBehavior:
+                suggestion.deliveryCutoff.afterCutoffBehavior,
+            }
+          : null,
+    });
+  }, [suggestion]);
+
+  const { placement, variant } = resolveSuggestionPreviewSurface(
+    viewModel.placements[0],
+  );
+
+  return (
+    <div className="counterpulse-ai-suggestion-preview__surface-wrap">
+      <span className="counterpulse-kicker">Preview</span>
+      <div className="counterpulse-variant-preview">
+        <CampaignPromoSurface
+          className="counterpulse-variant-preview__surface"
+          dataTestId="ai-suggestion-preview-surface"
+          design={suggestion.design}
+          placement={placement}
+          variant={variant}
+          viewModel={viewModel}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1712,24 +1981,70 @@ function FormField({
   error,
   children,
   fullWidth = false,
+  ignore,
 }: {
   label: string;
   error?: string;
   children: ReactNode;
   fullWidth?: boolean;
+  ignore?: { active: boolean; onToggle: () => void };
 }) {
+  const ignored = Boolean(ignore?.active);
+  const controlId = useId();
+  const className = [
+    "counterpulse-form-field",
+    fullWidth ? "counterpulse-form-field--full" : "",
+    ignored ? "counterpulse-form-field--ignored" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  // Associate the label with its control explicitly so the in-label "Ignore"
+  // toggle never steals the implicit label association from the input.
+  const control = isValidElement(children)
+    ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId })
+    : children;
+
   return (
-    <label
-      className={
-        fullWidth
-          ? "counterpulse-form-field counterpulse-form-field--full"
-          : "counterpulse-form-field"
-      }
-    >
-      <span>{label}</span>
-      {children}
+    <label className={className} htmlFor={controlId}>
+      <span className="counterpulse-form-field__head">
+        <span>{label}</span>
+        {ignore && (
+          <IgnoreToggle active={ignore.active} onToggle={ignore.onToggle} />
+        )}
+      </span>
+      {control}
       {error && <span className="counterpulse-form-error">{error}</span>}
     </label>
+  );
+}
+
+function IgnoreToggle({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      aria-checked={active}
+      className={
+        active
+          ? "counterpulse-ai-ignore counterpulse-ai-ignore--active"
+          : "counterpulse-ai-ignore"
+      }
+      role="switch"
+      type="button"
+      onClick={(event) => {
+        // Keep the wrapping label from also focusing/toggling its control.
+        event.preventDefault();
+        event.stopPropagation();
+        onToggle();
+      }}
+    >
+      <span aria-hidden="true" className="counterpulse-ai-ignore__box" />
+      Ignore
+    </button>
   );
 }
 

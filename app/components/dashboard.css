@@ -4053,6 +4053,84 @@ s-page::part(page) {
   margin-top: 4px;
 }
 
+/* Per-field and per-step "ignore" toggles shown when a reference image is set. */
+.counterpulse-form-field__head,
+.counterpulse-ai-step__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.counterpulse-ai-step__head {
+  align-items: flex-start;
+}
+
+.counterpulse-ai-ignore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  border: 0;
+  padding: 2px 4px;
+  background: transparent;
+  color: #6d7175;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.counterpulse-ai-ignore__box {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #8c9196;
+  border-radius: 4px;
+  background: #ffffff;
+  position: relative;
+}
+
+.counterpulse-ai-ignore--active {
+  color: #4c4861;
+}
+
+.counterpulse-ai-ignore--active .counterpulse-ai-ignore__box {
+  border-color: #6d28d9;
+  background: #6d28d9;
+}
+
+.counterpulse-ai-ignore--active .counterpulse-ai-ignore__box::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.counterpulse-form-field--ignored > textarea,
+.counterpulse-form-field--ignored > input,
+.counterpulse-form-field--ignored > select {
+  opacity: 0.5;
+}
+
+.counterpulse-ai-step--ignored .counterpulse-ai-shape-grid,
+.counterpulse-ai-step--ignored .counterpulse-ai-flow-stack,
+.counterpulse-ai-step--ignored .counterpulse-ai-chip-grid {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.counterpulse-ai-suggestion-preview__surface-wrap {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 .counterpulse-ai-option-grid,
 .counterpulse-ai-shape-grid {
   display: grid;

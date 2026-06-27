@@ -51,15 +51,58 @@ test("uploads a reference image and generates a draft without a description", as
   await expect(aiBuilder.getByText("promo-bar.png")).toBeVisible();
   await expect(aiBuilder.getByText("Drag & drop an image here")).toBeHidden();
 
+  // With an image attached, ignore toggles appear and default to on, so the
+  // other inputs are disabled (the campaign type is still selectable).
+  await expect(aiBuilder.getByRole("switch").first()).toBeVisible();
+  await expect(
+    aiBuilder.getByRole("textbox", {
+      name: "Product, collection, or audience",
+    }),
+  ).toBeDisabled();
+
   // Description is optional with an image attached: generate directly.
   await aiBuilder.getByRole("button", { name: "Generate with AI" }).click();
 
   await expect(page.getByText("AI suggestion preview")).toBeVisible();
-  await expect(page.getByText("Generated from your image")).toBeVisible();
+  // The campaign preview surface is rendered at the top of the suggestion, and
+  // the old "Generated from your image" banner is gone.
+  await expect(page.getByTestId("ai-suggestion-preview-surface")).toBeVisible();
+  await expect(page.getByText("Generated from your image")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Apply suggestion" }).click();
   await expect(page.locator(".counterpulse-ai-drawer")).toBeHidden();
   await expect(page.locator('select[name="status"]')).toHaveValue("DRAFT");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("un-ignoring a field re-enables its input", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("pro");
+  await loginAsDemoShop("/app/campaigns/new");
+
+  const aiBuilder = await openAiDrawer(page);
+  await aiBuilder.locator('input[type="file"]').setInputFiles({
+    name: "promo-bar.png",
+    mimeType: "image/png",
+    buffer: PNG_1X1,
+  });
+
+  const productField = aiBuilder.getByRole("textbox", {
+    name: "Product, collection, or audience",
+  });
+  await expect(productField).toBeDisabled();
+
+  // Toggle the Ignore switch inside the product field's row.
+  await productField
+    .locator("xpath=ancestor::label[1]")
+    .getByRole("switch")
+    .click();
+  await expect(productField).toBeEnabled();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -5,10 +5,13 @@ import { Form, useNavigation } from "react-router";
 import {
   type CampaignAiAnswerMap,
   type CampaignAiFollowUpQuestion,
+  campaignAiReferenceImageAccept,
+  campaignAiReferenceImageMaxBytes,
   campaignAiToneOptions,
   type CampaignAiFormErrors,
   type CampaignAiInput,
   type CampaignSuggestion,
+  isCampaignAiReferenceImageMimeType,
 } from "../types/ai-campaign";
 import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
@@ -25,6 +28,13 @@ type AiCampaignBuilderProps = {
   suggestion?: CampaignSuggestion | null;
   templateSourceName?: string;
   values: CampaignAiInput;
+};
+
+type ReferenceImageState = {
+  dataUrl: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
 };
 
 type GoalFlowOption = {
@@ -564,10 +574,18 @@ export function AiCampaignBuilder({
   );
   const activeLocalesKey = activeLocales.join("|");
   const suggestionPreviewRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [applied, setApplied] = useState(false);
   const [formValues, setFormValues] = useState(values);
   const [followUpAnswers, setFollowUpAnswers] = useState<CampaignAiAnswerMap>(
     {},
+  );
+  const [referenceImage, setReferenceImage] =
+    useState<ReferenceImageState | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const referenceImageMaxMb = Math.round(
+    campaignAiReferenceImageMaxBytes / (1024 * 1024),
   );
   const activeGoalFlow = aiGoalFlows[formValues.objective];
   const isAnsweringFollowUp = followUpQuestions.length > 0 && !suggestion;
@@ -662,6 +680,59 @@ export function AiCampaignBuilder({
           : [...currentAnswers, optionId],
       };
     });
+  };
+
+  const readReferenceImageFile = (file: File) => {
+    setImageError(null);
+
+    if (!isCampaignAiReferenceImageMimeType(file.type)) {
+      setImageError(
+        "Unsupported image type. Use a PNG, JPG, JPEG, or WEBP file.",
+      );
+      return;
+    }
+
+    if (file.size > campaignAiReferenceImageMaxBytes) {
+      setImageError(
+        `That image is too large. Use a file under ${referenceImageMaxMb} MB.`,
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onerror = () => {
+      setImageError("The image could not be read. Try uploading it again.");
+    };
+
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+
+      if (!result.startsWith("data:")) {
+        setImageError("The image could not be read. Try uploading it again.");
+        return;
+      }
+
+      setReferenceImage({
+        dataUrl: result,
+        name: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageFiles = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file) readReferenceImageFile(file);
+  };
+
+  const removeReferenceImage = () => {
+    setReferenceImage(null);
+    setImageError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   useEffect(() => {
@@ -784,6 +855,119 @@ export function AiCampaignBuilder({
             {activeLocales.map((locale) => (
               <input key={locale} name="locales" type="hidden" value={locale} />
             ))}
+            {referenceImage && (
+              <>
+                <input
+                  name="referenceImageDataUrl"
+                  type="hidden"
+                  value={referenceImage.dataUrl}
+                />
+                <input
+                  name="referenceImageMimeType"
+                  type="hidden"
+                  value={referenceImage.mimeType}
+                />
+              </>
+            )}
+
+            <div className="counterpulse-ai-step">
+              <div>
+                <p className="counterpulse-kicker">Reference image</p>
+                <h3>Match an existing banner or timer (optional)</h3>
+                <p>
+                  Upload a screenshot of a promo bar, countdown, or banner and
+                  the AI reproduces its layout, colors, spacing, and text using
+                  your real campaign settings. Skip it to generate from your
+                  description only.
+                </p>
+              </div>
+
+              {imageError && (
+                <AppAlert tone="critical" title="Image could not be used">
+                  <s-paragraph>{imageError}</s-paragraph>
+                </AppAlert>
+              )}
+
+              {referenceImage ? (
+                <div className="counterpulse-ai-image-preview">
+                  <img
+                    alt="Reference campaign preview"
+                    className="counterpulse-ai-image-preview__image"
+                    src={referenceImage.dataUrl}
+                  />
+                  <div className="counterpulse-ai-image-preview__meta">
+                    <strong>{referenceImage.name || "Reference image"}</strong>
+                    <small>{formatBytes(referenceImage.sizeBytes)}</small>
+                    <div className="counterpulse-ai-image-preview__actions">
+                      <button
+                        className="counterpulse-button-secondary"
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Replace
+                      </button>
+                      <button
+                        className="counterpulse-button-secondary"
+                        type="button"
+                        onClick={removeReferenceImage}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  className={
+                    isDraggingImage
+                      ? "counterpulse-ai-dropzone counterpulse-ai-dropzone--active"
+                      : "counterpulse-ai-dropzone"
+                  }
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setIsDraggingImage(true);
+                  }}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDraggingImage(true);
+                  }}
+                  onDragLeave={(event) => {
+                    event.preventDefault();
+                    setIsDraggingImage(false);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingImage(false);
+                    handleImageFiles(event.dataTransfer.files);
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="counterpulse-ai-dropzone__icon"
+                  >
+                    <ReferenceImageIcon />
+                  </span>
+                  <strong>Drag &amp; drop an image here</strong>
+                  <span>
+                    or click to browse — PNG, JPG, JPEG, or WEBP up to{" "}
+                    {referenceImageMaxMb} MB
+                  </span>
+                </button>
+              )}
+
+              <input
+                accept={campaignAiReferenceImageAccept}
+                className="counterpulse-ai-file-input"
+                ref={fileInputRef}
+                type="file"
+                onChange={(event) => {
+                  handleImageFiles(event.currentTarget.files);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </div>
 
             <div className="counterpulse-ai-step">
               <div>
@@ -1242,6 +1426,15 @@ export function AiCampaignBuilder({
                   AI suggestion preview
                 </h3>
 
+                {suggestion.referenceImageUsed && (
+                  <AppAlert tone="info" title="Generated from your image">
+                    <s-paragraph>
+                      Colors, layout, and spacing were matched to your reference
+                      image. Review the design before saving.
+                    </s-paragraph>
+                  </AppAlert>
+                )}
+
                 {suggestion.safety.warnings.length > 0 && (
                   <AppAlert tone="warning" title="Review generated copy">
                     {suggestion.safety.warnings.map((warning) => (
@@ -1357,6 +1550,24 @@ function AiGoalIcon() {
       <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 3.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6Zm0 3.2a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2Z" />
     </svg>
   );
+}
+
+function ReferenceImageIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path
+        d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v8.6l3.3-3.3a1 1 0 0 1 1.4 0l2.3 2.3 3.3-3.3a1 1 0 0 1 1.4 0L19 14V6H5Zm4 2.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 function applySuggestionToCampaignForm(suggestion: CampaignSuggestion) {

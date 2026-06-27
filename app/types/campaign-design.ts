@@ -904,3 +904,67 @@ export function findCampaignDesignTemplate(templateKey: string) {
     )!
   );
 }
+
+// Human-readable catalog of the design.* settings the AI can return, used by the
+// image-analysis prompt so the model knows every supported field, the values it
+// accepts, and how each one changes the campaign visually. Generated from the
+// real option arrays + numeric ranges so it never drifts from the schema.
+export function describeDesignSettingsForAi() {
+  const enumValues = <Value extends string>(
+    options: ReadonlyArray<{ value: Value; label: string }>,
+  ) => options.map((option) => `${option.value} (${option.label})`).join(", ");
+
+  const templateExamples = campaignDesignTemplates
+    .map((template) => `${template.templateKey} (${template.label})`)
+    .join(", ");
+
+  return [
+    "Design settings catalog — every supported design.* field, its accepted values, and its visual impact. Use ONLY these fields. Never invent new ones. All colors must be 6-digit hex like #1A2B3C.",
+    "",
+    "Structure & placement:",
+    `- layout: ${enumValues(
+      designLayoutOptions.filter(
+        (option) => !isMobileDesignLayout(option.value),
+      ),
+    )}. Controls how message, timer, and action are arranged. Match the reading order seen in the image.`,
+    "- fullWidth (boolean): true for edge-to-edge bars; false for a centered, contained card.",
+    "- contentMaxWidth (number, 280-1440 px): max width of the inner content when not full width.",
+    `- alignment: ${enumValues(designAlignmentOptions)}. Horizontal alignment of the content.`,
+    "",
+    "Background & surface:",
+    `- backgroundType: ${enumValues(designBackgroundTypeOptions)}. Use GRADIENT when the image shows a color transition, SOLID for a single fill.`,
+    "- backgroundColor (hex): the solid fill color of the bar/banner background.",
+    "- gradientStartColor / gradientEndColor (hex) and gradientAngle (number, 0-360 deg): used when backgroundType is GRADIENT.",
+    "- borderColor (hex), borderSize (number, 0-8 px), borderRadius (number, 0-999 px): outer border and corner rounding. Use borderRadius 0 for flush full-width bars, higher for pill/rounded cards.",
+    "",
+    "Spacing:",
+    "- paddingBlock (number, 4-48 px): vertical inner padding (taller vs slimmer bar).",
+    "- paddingInline (number, 8-64 px): horizontal inner padding.",
+    "- contentGap (number, 0-32 px): gap between message, timer, and action.",
+    "",
+    "Typography & text colors:",
+    `- fontFamily: ${enumValues(designFontFamilyOptions)}.`,
+    "- titleFontSize (number, 12-48 px) + titleColor (hex): the headline.",
+    "- subheadingFontSize (number, 10-32 px) + subheadingColor (hex): the supporting line.",
+    "- fontSize (number, 11-22 px) + textColor (hex): base body text.",
+    "- accentColor (hex): emphasis/links/highlight color.",
+    "",
+    "Timer:",
+    `- timerStyle: ${enumValues(designTimerStyleOptions)}. PLAIN for bare digits, GROUPED for one container, BOXES for separate digit tiles.`,
+    `- timerFormat: ${enumValues(designTimerFormatOptions)}. COLON for HH:MM:SS, UNITS for separated labeled units.`,
+    `- timerNumberLayout: ${enumValues(designTimerNumberLayoutOptions)}.`,
+    "- timerFontSize (number, 12-72 px) + timerColor (hex): countdown digits.",
+    "- legendFontSize (number, 10-24 px) + legendColor (hex): the unit labels under the digits.",
+    "- timerShowLabels / timerShowSeconds (boolean).",
+    "- timerSurfaceColor / timerSurfaceBorderColor (hex), timerSurfaceBorderSize (number, 0-6 px), timerSurfaceRadius (number, 0-40 px): the box behind digits (visible with GROUPED/BOXES).",
+    "",
+    "Button & icon:",
+    "- showButton (boolean): whether a CTA button is visible. Turn off for badges or label-only bars.",
+    "- buttonColor (hex) + buttonTextColor (hex): the CTA button fill and its label.",
+    `- showIcon (boolean) and icon: ${enumValues(designIconOptions)}. Only set an icon you can actually see in the image.`,
+    "- showCloseButton (boolean) + closeButtonColor (hex): the dismiss control.",
+    "- showProgressBar (boolean): for free-shipping progress style bars.",
+    "",
+    `Built-in design presets (templateKey) you can start from, then override the visual fields above to match the image: ${templateExamples}.`,
+  ].join("\n");
+}

@@ -31,6 +31,39 @@ export const campaignAiTones = [
 
 export type CampaignAiTone = (typeof campaignAiTones)[number];
 
+// Reference image upload (multimodal AI campaign generation). These constants are
+// shared between the browser dropzone and the server-side validation so both
+// enforce the exact same limits.
+export const campaignAiReferenceImageMaxBytes = 5 * 1024 * 1024;
+
+export const campaignAiReferenceImageMimeTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
+
+export type CampaignAiReferenceImageMimeType =
+  (typeof campaignAiReferenceImageMimeTypes)[number];
+
+export const campaignAiReferenceImageAccept =
+  campaignAiReferenceImageMimeTypes.join(",");
+
+// A reference image the merchant uploaded so the AI can visually match an
+// existing bar/timer/banner. `dataUrl` is a base64 data URI usable directly as
+// an OpenAI Responses `input_image.image_url`.
+export type CampaignAiReferenceImage = {
+  dataUrl: string;
+  mimeType: CampaignAiReferenceImageMimeType;
+};
+
+export function isCampaignAiReferenceImageMimeType(
+  value: unknown,
+): value is CampaignAiReferenceImageMimeType {
+  return campaignAiReferenceImageMimeTypes.includes(
+    value as CampaignAiReferenceImageMimeType,
+  );
+}
+
 export const campaignAiShapes = [
   "sitewide",
   "product",
@@ -201,6 +234,10 @@ export type CampaignAiFollowUpQuestion = {
 export type CampaignSuggestion = {
   promptVersion: string;
   source: CampaignSuggestionSource;
+  // True when the suggestion was generated from an uploaded reference image.
+  // When set, the design keeps its image-derived visual overrides (colors,
+  // gradients, spacing) instead of being reset to the chosen preset palette.
+  referenceImageUsed?: boolean;
   input: CampaignAiInput;
   campaign: CampaignSuggestionCampaign;
   timer: CampaignAiTimerSettings;

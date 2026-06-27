@@ -32,10 +32,13 @@ import {
 import { defaultFreeShippingSettingsValues } from "../../types/free-shipping";
 import { defaultLowStockSettingsValues } from "../../types/low-stock";
 import {
+  campaignAiReferenceImageMaxBytes,
   campaignAiShapes,
   campaignAiTones,
+  isCampaignAiReferenceImageMimeType,
   type CampaignAiAnswerMap,
   type CampaignAiBadgeSettings,
+  type CampaignAiReferenceImage,
   type CampaignAiDeliveryCutoffSettings,
   type CampaignAiDiscountSettings,
   type CampaignAiFollowUpQuestion,
@@ -63,8 +66,10 @@ import {
 } from "../../types/localization";
 import { normalizeStorefrontLocale } from "../../utils/campaign-localization";
 import {
+  AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT,
   AI_CAMPAIGN_PROMPT_VERSION,
   AI_CAMPAIGN_SYSTEM_PROMPT,
+  buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
 } from "./campaignPrompts.server";
 
@@ -86,10 +91,17 @@ type CampaignAiProviderOutput = {
 
 type CampaignAiExperimentVariantOutput = Array<Partial<CampaignAiVariant>>;
 
+// Extra context passed to a provider for a single generation. Optional so the
+// text-only flow and existing provider implementations stay unchanged.
+export type CampaignAiGenerationContext = {
+  referenceImage?: CampaignAiReferenceImage;
+};
+
 export type CampaignAiProvider = {
   source: CampaignSuggestionSource;
   generateCampaignSuggestion(
     input: CampaignAiInput,
+    context?: CampaignAiGenerationContext,
   ): Promise<CampaignAiProviderOutput>;
   generateTranslations?(
     input: CampaignAiInput,
@@ -103,6 +115,7 @@ export type CampaignAiProvider = {
 
 type CampaignAiGenerationOptions = {
   provider?: CampaignAiProvider;
+  referenceImage?: CampaignAiReferenceImage;
 };
 
 type CampaignAiInputLike = Partial<
@@ -174,10 +187,14 @@ export function buildDefaultCampaignAiInput(
   return normalizeCampaignAiInput({ ...defaultInput, ...overrides });
 }
 
-export function parseCampaignAiFormData(formData: FormData): {
+export function parseCampaignAiFormData(
+  formData: FormData,
+  options: { requireProductContext?: boolean } = {},
+): {
   values: CampaignAiInput;
   errors: CampaignAiFormErrors;
 } {
+  const requireProductContext = options.requireProductContext ?? true;
   const values = normalizeCampaignAiInput({
     objective: readString(formData, "objective") || defaultInput.objective,
     campaignNameHint: readString(formData, "campaignNameHint"),
@@ -200,7 +217,7 @@ export function parseCampaignAiFormData(formData: FormData): {
 
   const errors: CampaignAiFormErrors = {};
 
-  if (!values.productContext) {
+  if (requireProductContext && !values.productContext) {
     errors.productContext = "Product or category is required.";
   }
 
@@ -210,6 +227,66 @@ export function parseCampaignAiFormData(formData: FormData): {
   }
 
   return { values, errors };
+}
+
+// Parse and validate an uploaded reference image submitted as a base64 data URL.
+// Returns the sanitized image plus an optional user-facing error. Designed so the
+// route can fall back to the text-only flow on any problem.
+export function parseCampaignAiReferenceImage(formData: FormData): {
+  image: CampaignAiReferenceImage | null;
+  error?: string;
+} {
+  const rawDataUrl = formData.get("referenceImageDataUrl");
+
+  if (typeof rawDataUrl !== "string" || !rawDataUrl.trim()) {
+    return { image: null };
+  }
+
+  const match = /^data:([^;,]+);base64,([\s\S]+)$/.exec(rawDataUrl.trim());
+
+  if (!match) {
+    return {
+      image: null,
+      error: "The reference image could not be read. Try uploading it again.",
+    };
+  }
+
+  const mimeType = match[1].toLowerCase();
+  const base64 = match[2];
+
+  if (!isCampaignAiReferenceImageMimeType(mimeType)) {
+    return {
+      image: null,
+      error: "Unsupported image type. Use a PNG, JPG, JPEG, or WEBP file.",
+    };
+  }
+
+  // base64 length -> decoded byte length (ignoring padding) to enforce the size
+  // limit on the server without decoding the whole payload.
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  const approxBytes = Math.floor((base64.length * 3) / 4) - padding;
+
+  if (approxBytes <= 0) {
+    return {
+      image: null,
+      error: "The reference image appears to be empty. Try another file.",
+    };
+  }
+
+  if (approxBytes > campaignAiReferenceImageMaxBytes) {
+    const maxMb = Math.round(campaignAiReferenceImageMaxBytes / (1024 * 1024));
+    return {
+      image: null,
+      error: `The reference image is too large. Use a file under ${maxMb} MB.`,
+    };
+  }
+
+  return {
+    image: {
+      dataUrl: `data:${mimeType};base64,${base64}`,
+      mimeType,
+    },
+  };
 }
 
 export function hasCampaignAiFormErrors(errors: CampaignAiFormErrors) {
@@ -478,11 +555,16 @@ export async function generateCampaignSuggestion(
 ): Promise<CampaignSuggestion> {
   const normalizedInput = normalizeCampaignAiInput(input);
   const provider = options.provider ?? getDefaultCampaignAiProvider();
-  const output = await provider.generateCampaignSuggestion(normalizedInput);
+  const referenceImage = options.referenceImage;
+  const output = await provider.generateCampaignSuggestion(
+    normalizedInput,
+    referenceImage ? { referenceImage } : undefined,
+  );
   const suggestion = completeCampaignSuggestion(
     normalizedInput,
     output,
     provider.source,
+    Boolean(referenceImage),
   );
 
   return sanitizeCampaignSuggestion(suggestion);
@@ -555,6 +637,7 @@ export function parseAppliedCampaignSuggestion(
         safety: parsed.safety,
       },
       parsed.source === "provider" ? "provider" : "mock",
+      Boolean(parsed.referenceImageUsed),
     );
 
     if (parsed.promptVersion !== AI_CAMPAIGN_PROMPT_VERSION) {
@@ -599,7 +682,30 @@ function getDefaultCampaignAiProvider(): CampaignAiProvider {
 function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
   return {
     source: "provider",
-    async generateCampaignSuggestion(input) {
+    async generateCampaignSuggestion(input, context) {
+      const referenceImage = context?.referenceImage;
+
+      if (referenceImage) {
+        try {
+          return await requestOpenAiJson(apiKey, input, referenceImage);
+        } catch (error) {
+          console.error(
+            "AI campaign image analysis failed; retrying without the image",
+            error,
+          );
+          // Fall back to the text-only flow so the merchant still gets a draft.
+          try {
+            return await requestOpenAiJson(apiKey, input);
+          } catch (textError) {
+            console.error(
+              "AI campaign provider failed; using mock output",
+              textError,
+            );
+            return buildMockCampaignSuggestion(input);
+          }
+        }
+      }
+
       try {
         return await requestOpenAiJson(apiKey, input);
       } catch (error) {
@@ -613,10 +719,32 @@ function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
 async function requestOpenAiJson(
   apiKey: string,
   input: CampaignAiInput,
+  referenceImage?: CampaignAiReferenceImage,
 ): Promise<CampaignAiProviderOutput> {
   const responsesUrl =
     process.env.OPENAI_RESPONSES_URL?.trim() ||
     "https://api.openai.com/v1/responses";
+
+  // Multimodal analysis uses the dedicated vision model (default gpt-5.4),
+  // configurable via OPENAI_VISION_MODEL so it can be switched to gpt-5.5 or any
+  // compatible model without code changes.
+  const model = referenceImage
+    ? process.env.OPENAI_VISION_MODEL?.trim() || "gpt-5.4"
+    : (process.env.OPENAI_MODEL ?? "gpt-5.4-mini");
+
+  if (referenceImage) {
+    console.info("AI campaign image analysis: requesting suggestion", {
+      model,
+      mimeType: referenceImage.mimeType,
+    });
+  }
+
+  const userContent = referenceImage
+    ? [
+        { type: "input_text", text: buildCampaignAiImageUserPrompt(input) },
+        { type: "input_image", image_url: referenceImage.dataUrl },
+      ]
+    : buildCampaignAiUserPrompt(input);
 
   const response = await fetch(responsesUrl, {
     method: "POST",
@@ -625,10 +753,15 @@ async function requestOpenAiJson(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-5.4-mini",
+      model,
       input: [
-        { role: "system", content: AI_CAMPAIGN_SYSTEM_PROMPT },
-        { role: "user", content: buildCampaignAiUserPrompt(input) },
+        {
+          role: "system",
+          content: referenceImage
+            ? AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT
+            : AI_CAMPAIGN_SYSTEM_PROMPT,
+        },
+        { role: "user", content: userContent },
       ],
       text: {
         format: { type: "json_object" },
@@ -681,6 +814,7 @@ function completeCampaignSuggestion(
   input: CampaignAiInput,
   output: CampaignAiProviderOutput,
   source: CampaignSuggestionSource,
+  allowVisualOverrides = false,
 ): CampaignSuggestion {
   const fallback = buildMockCampaignSuggestion(input);
   const campaign = mergeCampaign(fallback.campaign, output.campaign);
@@ -688,6 +822,7 @@ function completeCampaignSuggestion(
   return {
     promptVersion: AI_CAMPAIGN_PROMPT_VERSION,
     source,
+    referenceImageUsed: allowVisualOverrides,
     input,
     campaign,
     timer: sanitizeTimerSettings(output.timer, fallback.timer),
@@ -707,7 +842,11 @@ function completeCampaignSuggestion(
       buildTranslations(input, campaign),
       output.translations ?? {},
     ),
-    design: sanitizeAiDesign(output.design, fallback.design),
+    design: sanitizeAiDesign(
+      output.design,
+      fallback.design,
+      allowVisualOverrides,
+    ),
     variants: [],
     safety: {
       warnings: [...(output.safety?.warnings ?? [])],
@@ -725,6 +864,7 @@ function buildMockCampaignSuggestion(
   return {
     promptVersion: AI_CAMPAIGN_PROMPT_VERSION,
     source: "mock",
+    referenceImageUsed: false,
     input,
     campaign,
     timer: buildTimer(input),
@@ -1170,7 +1310,11 @@ function sanitizeCampaignSuggestion(
     ...suggestion,
     campaign,
     translations,
-    design: sanitizeAiDesign(suggestion.design, buildDesign(suggestion.input)),
+    design: sanitizeAiDesign(
+      suggestion.design,
+      buildDesign(suggestion.input),
+      Boolean(suggestion.referenceImageUsed),
+    ),
     variants: [],
     safety: {
       warnings: uniqueStrings(warnings),
@@ -2064,6 +2208,11 @@ function sanitizeDesign(
 function sanitizeAiDesign(
   design: Partial<CampaignDesignValues> | undefined,
   fallback: CampaignDesignValues,
+  // When true (reference-image flow), keep the AI's visual overrides (colors,
+  // gradients, etc.) layered on top of the chosen preset so the campaign matches
+  // the uploaded image. The text-only flow keeps stripping them to the preset
+  // palette for safety/consistency.
+  allowVisualOverrides = false,
 ): CampaignDesignValues {
   const sanitizedDesign = sanitizePartialDesign(design);
   const templateKey =
@@ -2071,11 +2220,13 @@ function sanitizeAiDesign(
       ? sanitizedDesign.templateKey
       : fallback.templateKey;
   const template = findCampaignDesignTemplate(templateKey);
-  const nonColorDesign = omitPresetVisualOverrides(sanitizedDesign);
+  const appliedDesign = allowVisualOverrides
+    ? sanitizedDesign
+    : omitPresetVisualOverrides(sanitizedDesign);
 
   return sanitizeDesign({
     ...template,
-    ...nonColorDesign,
+    ...appliedDesign,
     templateKey: template.templateKey,
   });
 }

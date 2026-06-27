@@ -120,6 +120,7 @@ model Campaign {
   lastSavedAt       DateTime       @default(now())
   publishedAt       DateTime?
   publishedSnapshot Json?
+  assetsRequested   Boolean        @default(false)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -149,12 +150,38 @@ model Campaign {
   recommendations               CampaignRecommendation[]
   translations                  CampaignTranslation[]
   analyticsEvents               AnalyticsEvent[]
+  assets                        CampaignAsset[]
 
   @@index([shopId, status])
   @@index([shopId, type])
   @@index([shopId, priority])
   @@index([shopId, publishedAt])
   @@index([startsAt, endsAt])
+}
+
+enum CampaignAssetSource {
+  GENERATED
+  EXTRACTED
+  SVG
+}
+
+// A visual asset the AI generated/extracted for a campaign and uploaded to the
+// Shopify Files library. The Shopify URL is the only storage — there is no
+// server-side fallback.
+model CampaignAsset {
+  id            String              @id @default(cuid())
+  campaignId    String
+  shopifyFileId String
+  shopifyUrl    String
+  assetType     String
+  source        CampaignAssetSource
+  modelUsed     String?
+  promptUsed    String?
+  createdAt     DateTime            @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
 }
 
 model CampaignPlacement {

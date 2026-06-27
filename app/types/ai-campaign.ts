@@ -101,6 +101,32 @@ export type CampaignAiInput = {
   followUpAnswers: CampaignAiAnswerMap;
   ctaUrl: string;
   locales: StorefrontLocale[];
+  // Whether the merchant asked the AI to generate visual assets from the
+  // reference image (PRO + write_files only; validated server-side).
+  generateVisualAssets: boolean;
+};
+
+export type CampaignAiAssetSource = "generated" | "extracted" | "svg";
+
+export type CampaignAiAssetType =
+  | "background"
+  | "icon"
+  | "badge"
+  | "pattern"
+  | "texture"
+  | "decoration"
+  | "image";
+
+// A visual asset the AI wants for the campaign. Referenced from the structural
+// HTML/CSS via the placeholder `{{asset:key}}`, which the pipeline replaces with
+// the uploaded Shopify file URL.
+export type CampaignAiAssetSpec = {
+  key: string;
+  type: CampaignAiAssetType;
+  source: CampaignAiAssetSource;
+  prompt: string;
+  // Inline SVG markup (only when source === "svg").
+  svg?: string;
 };
 
 export type CampaignAiFormErrors = Partial<
@@ -255,6 +281,9 @@ export type CampaignSuggestion = {
   // string means "no override — use the structure generated from the settings".
   structureHtml: string;
   structureCss: string;
+  // Visual assets the AI proposes (only when generateVisualAssets was on). The
+  // HTML/CSS reference them via `{{asset:key}}` placeholders.
+  assets: CampaignAiAssetSpec[];
   variants: CampaignAiVariant[];
   safety: CampaignAiSafety;
 };

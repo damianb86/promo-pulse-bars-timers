@@ -69,7 +69,7 @@ export type StorefrontCampaignContext = {
 
 export type StorefrontCampaignSource = Omit<
   Campaign,
-  "lastSavedAt" | "publishedAt" | "publishedSnapshot"
+  "lastSavedAt" | "publishedAt" | "publishedSnapshot" | "assetsRequested"
 > & {
   lastSavedAt?: Date;
   publishedAt?: Date | null;

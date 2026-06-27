@@ -47,6 +47,9 @@ import {
   type CampaignAiDiscountSettings,
   type CampaignAiFollowUpQuestion,
   type CampaignAiFormErrors,
+  type CampaignAiAssetSpec,
+  type CampaignAiAssetSource,
+  type CampaignAiAssetType,
   type CampaignAiFreeShippingSettings,
   type CampaignAiInput,
   type CampaignAiLowStockSettings,
@@ -92,6 +95,7 @@ type CampaignAiProviderOutput = {
   design?: Partial<CampaignDesignValues>;
   structureHtml?: string;
   structureCss?: string;
+  assets?: unknown;
   safety?: Partial<CampaignSuggestion["safety"]>;
 };
 
@@ -149,6 +153,7 @@ const defaultInput: CampaignAiInput = {
   followUpAnswers: {},
   ctaUrl: "/collections/all",
   locales: defaultEnabledStorefrontLocales,
+  generateVisualAssets: false,
 };
 
 const stockClaimPatterns = [
@@ -187,6 +192,7 @@ const openAiJsonKeys = [
   "design",
   "structureHtml",
   "structureCss",
+  "assets",
 ];
 
 export function buildDefaultCampaignAiInput(
@@ -221,6 +227,8 @@ export function parseCampaignAiFormData(
     followUpAnswers: readAnswerMap(formData, "followUpAnswersJson"),
     ctaUrl: readString(formData, "ctaUrl") || defaultInput.ctaUrl,
     locales: readLocales(formData, "locales"),
+    generateVisualAssets:
+      readString(formData, "generateVisualAssets") === "true",
   });
 
   const errors: CampaignAiFormErrors = {};
@@ -644,6 +652,7 @@ export function parseAppliedCampaignSuggestion(
         design: parsed.design,
         structureHtml: parsed.structureHtml,
         structureCss: parsed.structureCss,
+        assets: parsed.assets,
         safety: parsed.safety,
       },
       parsed.source === "provider" ? "provider" : "mock",
@@ -861,6 +870,7 @@ function completeCampaignSuggestion(
       typeof output.structureHtml === "string" ? output.structureHtml : "",
     structureCss:
       typeof output.structureCss === "string" ? output.structureCss : "",
+    assets: sanitizeAiAssetSpecs(output.assets, input.generateVisualAssets),
     variants: [],
     safety: {
       warnings: [...(output.safety?.warnings ?? [])],
@@ -892,6 +902,7 @@ function buildMockCampaignSuggestion(
     design: buildDesign(input),
     structureHtml: "",
     structureCss: "",
+    assets: [],
     variants: [],
     safety: {
       warnings: [],
@@ -1301,6 +1312,61 @@ function buildVariants(
   ];
 }
 
+const ASSET_TYPES = new Set<CampaignAiAssetType>([
+  "background",
+  "icon",
+  "badge",
+  "pattern",
+  "texture",
+  "decoration",
+  "image",
+]);
+const ASSET_SOURCES = new Set<CampaignAiAssetSource>([
+  "generated",
+  "extracted",
+  "svg",
+]);
+
+// Validates the AI's asset specs. Returns [] entirely when the merchant did not
+// request visual assets, so the feature can never be triggered implicitly.
+function sanitizeAiAssetSpecs(
+  value: unknown,
+  generateVisualAssets: boolean,
+): CampaignAiAssetSpec[] {
+  if (!generateVisualAssets || !Array.isArray(value)) return [];
+
+  const specs: CampaignAiAssetSpec[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const key = String(record.key ?? "")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 40);
+    const type = record.type as CampaignAiAssetType;
+    const source = record.source as CampaignAiAssetSource;
+    if (!key || seenKeys.has(key)) continue;
+    if (!ASSET_TYPES.has(type) || !ASSET_SOURCES.has(source)) continue;
+
+    seenKeys.add(key);
+    specs.push({
+      key,
+      type,
+      source,
+      prompt: String(record.prompt ?? "").trim().slice(0, 800),
+      svg:
+        source === "svg" && typeof record.svg === "string"
+          ? record.svg
+          : undefined,
+    });
+    if (specs.length >= 8) break; // hard cap on assets per campaign
+  }
+
+  return specs;
+}
+
 function sanitizeCampaignSuggestion(
   suggestion: CampaignSuggestion,
 ): CampaignSuggestion {
@@ -1337,6 +1403,10 @@ function sanitizeCampaignSuggestion(
     structureCss: suggestion.structureCss
       ? sanitizeStructureCss(suggestion.structureCss)
       : "",
+    assets: sanitizeAiAssetSpecs(
+      suggestion.assets,
+      suggestion.input.generateVisualAssets,
+    ),
     variants: [],
     safety: {
       warnings: uniqueStrings(warnings),
@@ -1904,6 +1974,7 @@ function normalizeCampaignAiInput(input: CampaignAiInputLike): CampaignAiInput {
     followUpAnswers: normalizeAnswerMap(input.followUpAnswers),
     ctaUrl: normalizeTextInput(input.ctaUrl, 180) || defaultInput.ctaUrl,
     locales,
+    generateVisualAssets: input.generateVisualAssets === true,
   };
 }
 

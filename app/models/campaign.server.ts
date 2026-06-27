@@ -875,6 +875,47 @@ export async function updateCampaignDesignForShop(
   });
 }
 
+export type CampaignAssetRecordInput = {
+  shopifyFileId: string;
+  shopifyUrl: string;
+  assetType: string;
+  source: "GENERATED" | "EXTRACTED" | "SVG";
+  modelUsed?: string | null;
+  promptUsed?: string | null;
+};
+
+// Persists whether asset generation was requested and replaces the campaign's
+// asset rows with the freshly uploaded ones.
+export async function saveCampaignAssets(
+  campaignId: string,
+  shopId: string,
+  requested: boolean,
+  assets: CampaignAssetRecordInput[],
+) {
+  await assertCampaignBelongsToShop(campaignId, shopId);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({
+      where: { id: campaignId },
+      data: { assetsRequested: requested },
+    });
+    await tx.campaignAsset.deleteMany({ where: { campaignId } });
+    if (assets.length) {
+      await tx.campaignAsset.createMany({
+        data: assets.map((asset) => ({
+          campaignId,
+          shopifyFileId: asset.shopifyFileId,
+          shopifyUrl: asset.shopifyUrl,
+          assetType: asset.assetType,
+          source: asset.source,
+          modelUsed: asset.modelUsed ?? null,
+          promptUsed: asset.promptUsed ?? null,
+        })),
+      });
+    }
+  });
+}
+
 function toCampaignDesignJson(
   input: CampaignDesignValues,
 ): Prisma.InputJsonValue {

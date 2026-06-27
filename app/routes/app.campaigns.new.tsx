@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
 import { useEffect, useState } from "react";
-import { type Prisma } from "@prisma/client";
+import { type Prisma, type Shop } from "@prisma/client";
 
 import { AiGenerateIcon } from "../components/AiGenerateIcon";
 import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
@@ -9,6 +9,7 @@ import { CampaignForm } from "../components/CampaignForm";
 import {
   createCampaign,
   getCampaignForShop,
+  saveCampaignAssets,
   toTargetingWriteData,
   updateBadgeSettingsForShop,
   updateCampaignDesignForShop,
@@ -39,6 +40,10 @@ import {
   parseCampaignFormData,
 } from "../services/campaign-form.server";
 import { buildCampaignPersistenceError } from "../services/campaign-save-errors.server";
+import {
+  materializeCampaignAssets,
+  stripAssetPlaceholders,
+} from "../services/assets/campaignAssetPipeline.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import {
   canCreateCampaign,
@@ -95,6 +100,7 @@ type ActionData = {
 type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
+  assetsLockedReason?: string;
   defaults: CampaignFormValues;
   enabledLocales: string[];
   targetingOptions: CampaignTargetingOptions;
@@ -132,6 +138,7 @@ export const loader = async ({
           locales: settings.enabledLocales,
         }),
     aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
+    assetsLockedReason: getLockedFeatureReason(shop, "ai_visual_assets"),
     defaults: template
       ? buildCampaignFormDefaultsFromTemplate(template)
       : {
@@ -498,14 +505,18 @@ export const action = async ({
         : {}),
     });
 
+    let assetError: string | null = null;
     if (appliedAiSuggestion) {
-      await applyAiSuggestionToCampaign({
+      const applied = await applyAiSuggestionToCampaign({
+        admin,
         campaignId: campaign.id,
         formValues: parsed.values,
         locales: settings.enabledLocales,
+        shop,
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
       });
+      assetError = applied.assetError;
     }
 
     if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
@@ -519,7 +530,13 @@ export const action = async ({
       });
     }
 
-    return redirect(`/app/campaigns/${campaign.id}`);
+    return redirect(
+      assetError
+        ? `/app/campaigns/${campaign.id}?assetError=${encodeURIComponent(
+            assetError,
+          )}`
+        : `/app/campaigns/${campaign.id}`,
+    );
   } catch (error) {
     console.error("Failed to create campaign", error);
 
@@ -538,6 +555,7 @@ export default function CreateCampaignPage() {
   const {
     aiInput,
     aiLockedReason,
+    assetsLockedReason,
     defaults,
     enabledLocales,
     lockedTargetingFeatures,
@@ -627,6 +645,7 @@ export default function CreateCampaignPage() {
               errors={actionData?.aiErrors}
               followUpQuestions={actionData?.aiFollowUpQuestions}
               lockedReason={aiLockedReason}
+              assetsLockedReason={assetsLockedReason}
               onApplied={() => setIsAiDrawerOpen(false)}
               suggestion={actionData?.aiSuggestion}
               templateSourceName={templateSourceName}
@@ -641,28 +660,56 @@ export default function CreateCampaignPage() {
 }
 
 async function applyAiSuggestionToCampaign({
+  admin,
   campaignId,
   formValues,
   locales,
+  shop,
   shopId,
   suggestion,
 }: {
+  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"];
   campaignId: string;
   formValues: CampaignFormValues;
   locales: readonly string[];
+  shop: Pick<Shop, "plan">;
   shopId: string;
   suggestion: CampaignSuggestion;
-}) {
+}): Promise<{ assetError: string | null }> {
+  // Generate + upload AI visual assets (PRO + write_files only; validated inside).
+  // Any failure aborts assets entirely and is surfaced; the campaign still saves.
+  const assetResult = await materializeCampaignAssets({
+    admin,
+    shop,
+    suggestion,
+    referenceImage: null,
+  });
+
   await updateCampaignDesignForShop(
     campaignId,
     shopId,
     suggestion.design,
     suggestion.design,
     {
-      editedHtml: suggestion.structureHtml || null,
-      editedCss: suggestion.structureCss || null,
+      editedHtml: stripAssetPlaceholders(assetResult.html) || null,
+      editedCss: stripAssetPlaceholders(assetResult.css) || null,
     },
   );
+
+  await saveCampaignAssets(
+    campaignId,
+    shopId,
+    assetResult.requested,
+    assetResult.assets.map((asset) => ({
+      shopifyFileId: asset.shopifyFileId,
+      shopifyUrl: asset.shopifyUrl,
+      assetType: asset.assetType,
+      source: asset.source.toUpperCase() as "GENERATED" | "EXTRACTED" | "SVG",
+      modelUsed: asset.modelUsed,
+      promptUsed: asset.promptUsed,
+    })),
+  );
+
   await updateCampaignTranslationsForShop(
     campaignId,
     shopId,
@@ -674,6 +721,8 @@ async function applyAiSuggestionToCampaign({
     shopId,
     suggestion,
   });
+
+  return { assetError: assetResult.error };
 }
 
 async function applyAiGeneratedSettingsToCampaign({

@@ -11,6 +11,7 @@ import type {
 export type PlanFeatureKey =
   | "advanced_analytics"
   | "advanced_targeting"
+  | "ai_visual_assets"
   | "basic_targeting"
   | "behavioral_targeting"
   | "cart_drawer"
@@ -90,6 +91,7 @@ const legacyPlanAliases: Record<string, ShopPlan> = {
 const allFeatures: Record<PlanFeatureKey, boolean> = {
   advanced_analytics: false,
   advanced_targeting: false,
+  ai_visual_assets: false,
   basic_targeting: false,
   behavioral_targeting: false,
   cart_drawer: false,
@@ -235,6 +237,7 @@ const baseLimitsByPlan: Record<ShopPlan, PlanLimits> = {
       ...allFeatures,
       advanced_analytics: true,
       advanced_targeting: true,
+      ai_visual_assets: true,
       basic_targeting: true,
       behavioral_targeting: true,
       cart_drawer: true,
@@ -763,6 +766,7 @@ export function formatPlanName(plan: ShopPlan) {
 
 export function formatFeatureName(featureKey: PlanFeatureKey) {
   if (featureKey === "custom_css") return "Custom CSS";
+  if (featureKey === "ai_visual_assets") return "AI visual assets";
 
   return featureKey
     .split("_")

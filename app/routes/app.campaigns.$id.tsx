@@ -48,6 +48,7 @@ import {
 } from "../components/ExperimentsEditor";
 import { OffersEditor } from "../components/OffersEditor";
 import { NotFoundPage } from "../components/NotFoundPage";
+import { AppAlert } from "../components/Notifications";
 import { PlanUpgradeCallout } from "../components/PlanUpgradeCallout";
 import {
   UniqueCodesEditor,
@@ -282,6 +283,7 @@ type LoaderData = {
   mobileStructureEdited: boolean;
   mobileStructureHtml: string;
   mobileStructureCss: string;
+  assetError: string | null;
   designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
   discountApiError: string;
@@ -538,6 +540,7 @@ export const loader = async ({
     mobileStructureEdited,
     mobileStructureHtml,
     mobileStructureCss,
+    assetError: new URL(request.url).searchParams.get("assetError") || null,
     designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
       name: campaign.name,
@@ -1723,6 +1726,7 @@ export default function EditCampaignPage() {
     mobileStructureEdited,
     mobileStructureHtml,
     mobileStructureCss,
+    assetError,
     designMediaOptions,
     designViewModel,
     discountApiError,
@@ -2001,6 +2005,11 @@ export default function EditCampaignPage() {
         }}
       />
       <s-page inlineSize="large" heading="Edit campaign">
+        {assetError && (
+          <AppAlert tone="critical" title="Visual assets were not generated">
+            <s-paragraph>{assetError}</s-paragraph>
+          </AppAlert>
+        )}
         <CampaignEditorLayout
           attentionSectionKey={errorAttentionSectionKey}
           actionBar={{

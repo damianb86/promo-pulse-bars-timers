@@ -35,6 +35,9 @@ type AiCampaignBuilderProps = {
   errors?: CampaignAiFormErrors;
   followUpQuestions?: CampaignAiFollowUpQuestion[];
   lockedReason?: string;
+  // Set (with the upgrade reason) when the plan does not allow AI visual asset
+  // generation. Undefined means the feature is available (PRO).
+  assetsLockedReason?: string;
   locales?: readonly string[];
   onApplied?: () => void;
   suggestion?: CampaignSuggestion | null;
@@ -587,6 +590,7 @@ export function AiCampaignBuilder({
   errors = {},
   followUpQuestions = [],
   lockedReason,
+  assetsLockedReason,
   locales,
   onApplied,
   suggestion,
@@ -618,6 +622,48 @@ export function AiCampaignBuilder({
     campaignAiReferenceImageMaxBytes / (1024 * 1024),
   );
   const hasReferenceImage = Boolean(referenceImage);
+  const assetsAllowed = !assetsLockedReason;
+  const [generateVisualAssets, setGenerateVisualAssets] = useState(false);
+  const [assetScopeError, setAssetScopeError] = useState<string | null>(null);
+  // Only request assets when allowed AND a reference image is present.
+  const effectiveGenerateAssets =
+    generateVisualAssets && assetsAllowed && hasReferenceImage;
+
+  const toggleVisualAssets = async (checked: boolean) => {
+    setAssetScopeError(null);
+    if (!checked) {
+      setGenerateVisualAssets(false);
+      return;
+    }
+    // Saving assets to Shopify needs the write_files scope — request it on demand.
+    try {
+      const scopes = window.shopify?.scopes as
+        | {
+            request?: (s: string[]) => Promise<{ granted?: string[] } | void>;
+            query?: () => Promise<{ granted?: string[] }>;
+          }
+        | undefined;
+      const detail = await scopes?.request?.(["write_files"]);
+      let granted = Array.isArray(detail?.granted) ? detail!.granted : null;
+      if (!granted) {
+        const queried = await scopes?.query?.();
+        granted = queried?.granted ?? [];
+      }
+      if (granted.includes("write_files")) {
+        setGenerateVisualAssets(true);
+      } else {
+        setGenerateVisualAssets(false);
+        setAssetScopeError(
+          "The Files permission is required to generate visual assets. It was not granted.",
+        );
+      }
+    } catch {
+      setGenerateVisualAssets(false);
+      setAssetScopeError(
+        "Could not request the Files permission. Try again to enable visual assets.",
+      );
+    }
+  };
   // When a reference image is attached, every input except the campaign type is
   // ignored by default so the AI reads it from the image. We track which fields
   // the merchant explicitly un-ignored; the default (empty set) means all
@@ -1038,6 +1084,52 @@ export function AiCampaignBuilder({
                   event.currentTarget.value = "";
                 }}
               />
+
+              {/* Hidden field: the server re-validates plan + scope, so the
+                  checkbox alone never enables generation. */}
+              <input
+                name="generateVisualAssets"
+                type="hidden"
+                value={effectiveGenerateAssets ? "true" : "false"}
+              />
+
+              {assetsAllowed ? (
+                <div className="counterpulse-ai-asset-toggle">
+                  <label className="counterpulse-checkbox">
+                    <input
+                      checked={effectiveGenerateAssets}
+                      disabled={!hasReferenceImage}
+                      type="checkbox"
+                      onChange={(event) =>
+                        toggleVisualAssets(event.target.checked)
+                      }
+                    />
+                    <span>
+                      <strong>Generate visual assets from image</strong>
+                      <small>
+                        Detect and generate backgrounds, icons, badges and other
+                        assets, upload them to your Shopify Files, and use them in
+                        the campaign. Requires the Files permission.
+                      </small>
+                    </span>
+                  </label>
+                  {!hasReferenceImage && (
+                    <p className="counterpulse-design-note">
+                      Upload a reference image to enable visual asset generation.
+                    </p>
+                  )}
+                  {assetScopeError && (
+                    <AppAlert tone="critical" title="Permission required">
+                      <s-paragraph>{assetScopeError}</s-paragraph>
+                    </AppAlert>
+                  )}
+                </div>
+              ) : (
+                <PlanUpgradeCallout
+                  message={assetsLockedReason}
+                  title="AI visual assets is a Pro feature"
+                />
+              )}
             </div>
 
             <div className="counterpulse-ai-step">

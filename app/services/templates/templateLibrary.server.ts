@@ -509,6 +509,7 @@ export function buildCampaignAiInputFromTemplate(
     followUpAnswers: {},
     ctaUrl: texts.ctaUrl ?? "/collections/all",
     locales: [...locales],
+    generateVisualAssets: false,
   };
 }
 

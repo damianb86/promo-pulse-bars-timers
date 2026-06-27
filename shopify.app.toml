@@ -29,7 +29,9 @@ uri = "/webhooks/compliance"
 scopes = "read_products,read_orders,read_discounts,write_discounts,write_pixels,read_customer_events,read_markets,write_markets,read_files"
 # read_themes is optional: only requested when the merchant runs the onboarding
 # "Run setup checks" button (theme app-block detection).
-optional_scopes = [ "read_themes" ]
+# write_files is optional: only requested when a PRO merchant enables AI visual
+# asset generation (assets are uploaded to the Shopify Files library).
+optional_scopes = [ "read_themes", "write_files" ]
 
 [access.admin]
 embedded_app_direct_api_access = true

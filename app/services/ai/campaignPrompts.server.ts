@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v7";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v8";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -125,6 +125,7 @@ strings, empty arrays, false, or safe defaults, not null:
   "design": {},
   "structureHtml": "",
   "structureCss": "",
+  "assets": [],
   "safety": {
     "warnings": [],
     "blockedClaims": [],
@@ -253,6 +254,7 @@ export function buildCampaignAiUserPrompt(input: CampaignAiInput) {
     merchantNotes: input.merchantNotes || "",
     followUpAnswers: input.followUpAnswers,
     ctaUrl: input.ctaUrl || "/collections/all",
+    generateVisualAssets: input.generateVisualAssets,
   };
 
   return [
@@ -325,6 +327,24 @@ Critical rules for image mode:
 - The merchant's text description (if any) refines or overrides the image; honor it
   when the two conflict.
 
+Visual assets (only when input.generateVisualAssets is true):
+- By DEFAULT (generateVisualAssets false or absent) you MUST leave "assets" as []
+  and never reference any image/background URL you cannot see. Recreate the look
+  with colors/gradients/CSS only.
+- When input.generateVisualAssets is true, you MAY return an "assets" array of the
+  visual assets needed to recreate the image (backgrounds, icons, badges,
+  patterns, textures, decorative images). Each asset:
+  { "key": "short-id", "type": "background|icon|badge|pattern|texture|decoration|image",
+    "source": "generated|svg", "prompt": "image-model prompt describing the asset",
+    "svg": "<svg>...</svg> (only when source is svg)" }
+  - Use source "svg" for simple flat icons/badges/shapes (return clean <svg>); use
+    "generated" with a detailed prompt for photographic/complex backgrounds/textures.
+  - Reference each asset from structureHtml/structureCss with the placeholder
+    {{asset:key}} (e.g. <img src="{{asset:hero-bg}}"> or
+    background-image: url("{{asset:hero-bg}}")). The app replaces the placeholder
+    with the uploaded Shopify file URL. NEVER invent real URLs.
+  - Keep the asset count minimal (only what's needed). Max 8.
+
 ${describeDesignSettingsForAi()}
 `.trim();
 
@@ -347,6 +367,7 @@ export function buildCampaignAiImageUserPrompt(input: CampaignAiInput) {
     merchantNotes: input.merchantNotes || "",
     followUpAnswers: input.followUpAnswers,
     ctaUrl: input.ctaUrl || "/collections/all",
+    generateVisualAssets: input.generateVisualAssets,
   };
 
   return [

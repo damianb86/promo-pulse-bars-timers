@@ -3086,6 +3086,37 @@ s-page::part(page) {
   color: #6b7280;
 }
 
+.counterpulse-ai-asset-toggle {
+  display: grid;
+  gap: 8px;
+}
+
+.counterpulse-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.counterpulse-checkbox input {
+  margin-top: 3px;
+}
+
+.counterpulse-checkbox span {
+  display: grid;
+  gap: 2px;
+}
+
+.counterpulse-checkbox small {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.counterpulse-checkbox input:disabled + span {
+  opacity: 0.55;
+}
+
 .counterpulse-modal h2 {
   margin: 0;
   color: #202223;

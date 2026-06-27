@@ -705,7 +705,13 @@ function ExistingExperiment({
           designMediaOptions={designMediaOptions}
           experiment={experiment}
           isProPlan={isProPlan}
-          key={variantEditRequest?.requestId ?? "experiment-editor"}
+          // Re-mount whenever the persisted variant set changes (e.g. after a
+          // save assigns ids to new variants). Without this the editor keeps its
+          // stale state where new variants still have an empty id, so every
+          // subsequent save re-creates them as brand-new variants.
+          key={`${variantEditRequest?.requestId ?? "experiment-editor"}:${experimentVariantSignature(
+            experiment,
+          )}`}
           variantEditRequest={variantEditRequest}
           onClose={closeExperimentEditor}
         />
@@ -3722,6 +3728,17 @@ function createVariantDraft(
 
 function isControlVariantIndex(index: number) {
   return index === 0;
+}
+
+// Stable signature of an experiment's persisted variants. Changes only when the
+// server-side variant set changes (ids/statuses), so it can key the editor to
+// re-sync after a save without remounting on every design/control re-render.
+function experimentVariantSignature(experiment?: ExperimentRow) {
+  if (!experiment) return "new";
+
+  return `${experiment.id}:${experiment.variants
+    .map((variant) => `${variant.id}@${variant.status}`)
+    .join("|")}`;
 }
 
 function toArchivedVariant(variant: VariantDraft): VariantDraft {

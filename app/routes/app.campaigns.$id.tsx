@@ -1965,6 +1965,10 @@ export default function EditCampaignPage() {
               : "Publish",
             statusLabel: campaignStatusLabel,
             statusValue: activeCampaignValues.status,
+            experimentRunning: experiments.some(
+              (experiment) => experiment.status === "RUNNING",
+            ),
+            experimentSectionKey: "experiments",
           }}
           sections={[
             {

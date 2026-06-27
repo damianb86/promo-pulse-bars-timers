@@ -406,6 +406,9 @@
       variant: variant,
       placement: campaign.placement,
       design: design,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+      locale: config.locale,
       headline: texts.headline || "Free shipping",
       body: buildMessage(campaign, progress),
       timer: {

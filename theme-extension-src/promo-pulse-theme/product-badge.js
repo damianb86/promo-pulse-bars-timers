@@ -801,6 +801,9 @@
       variant: "badge",
       placement: badgePayload.placement || "PRODUCT_PAGE_BADGE",
       design: design,
+      endsAt: badgePayload.endsAt,
+      timezone: badgePayload.timezone,
+      locale: document.documentElement.lang || "en",
       headline: text,
       hasTimer: timerState.isActive,
       timer: {

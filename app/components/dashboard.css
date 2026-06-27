@@ -3232,6 +3232,19 @@ s-page::part(page) {
 
 .counterpulse-modal--wide {
   max-width: 560px;
+  max-height: min(88vh, 820px);
+}
+
+/* Let the variables list scroll when it is taller than the viewport. */
+.counterpulse-modal--wide .counterpulse-modal__header,
+.counterpulse-modal--wide .counterpulse-modal__header > div {
+  min-height: 0;
+}
+
+.counterpulse-modal--wide .counterpulse-modal__body {
+  max-height: min(64vh, 560px);
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 @keyframes counterpulse-toast-in {
@@ -4144,6 +4157,46 @@ s-page::part(page) {
   line-height: 16px;
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+.counterpulse-experiment-running-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #c9b8ff;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: #f3efff;
+  color: #5c34b8;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.counterpulse-experiment-running-badge:hover {
+  background: #ebe3ff;
+}
+
+.counterpulse-experiment-running-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #7b53d6;
+  box-shadow: 0 0 0 3px rgba(123, 83, 214, 0.18);
+  animation: counterpulse-experiment-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes counterpulse-experiment-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(123, 83, 214, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(123, 83, 214, 0.04);
+  }
 }
 
 .counterpulse-control-status-badge::before {

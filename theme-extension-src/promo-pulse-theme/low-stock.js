@@ -249,6 +249,9 @@
       variant: "block",
       placement: campaign.placement || "PRODUCT_PAGE",
       design: design,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+      locale: config.locale,
       headline: message,
       body: null,
       timer: {

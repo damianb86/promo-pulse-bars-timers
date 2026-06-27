@@ -450,6 +450,9 @@
       variant: variant,
       placement: campaign.placement,
       design: design,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+      locale: config.locale,
       headline: texts.headline || "Promo Pulse promotion",
       body: detail,
       timer: {
@@ -525,6 +528,9 @@
       variant: "badge",
       placement: campaign.placement,
       design: design,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+      locale: config.locale,
       headline: badgeText,
       hasTimer: timerState.isActive,
       timer: {

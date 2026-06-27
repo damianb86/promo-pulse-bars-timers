@@ -4417,6 +4417,66 @@ type MessageVariableGroup = {
   variables: Array<{ token: string; description: string; example: string }>;
 };
 
+const globalMessageVariables: MessageVariableGroup = {
+  title: "Global (any campaign type)",
+  description:
+    "These work in every campaign type. Drop them into any message field.",
+  variables: [
+    {
+      token: "{{time_left}}",
+      description:
+        "Live countdown remaining, shown whenever the campaign has an active timer or cutoff.",
+      example: "02h 15m",
+    },
+    {
+      token: "{{time_remaining}}",
+      description: "Alias of {{time_left}}.",
+      example: "02h 15m",
+    },
+    {
+      token: "{{year}}",
+      description: "The current calendar year.",
+      example: "2026",
+    },
+  ],
+};
+
+const timerMessageVariables: MessageVariableGroup = {
+  title: "Timer",
+  description:
+    "The campaign's scheduled end, formatted in the campaign timezone and the storefront locale.",
+  variables: [
+    {
+      token: "{{end_date}}",
+      description: "Date the timer ends.",
+      example: "Apr 15",
+    },
+    {
+      token: "{{end_time}}",
+      description: "Time the timer ends.",
+      example: "11:59 PM",
+    },
+  ],
+};
+
+const badgeMessageVariables: MessageVariableGroup = {
+  title: "Product badge",
+  description:
+    "Use the timer end so a badge can read like \"Ends {{end_date}}\". Keep badge copy short.",
+  variables: [
+    {
+      token: "{{end_date}}",
+      description: "Date the badge's offer ends.",
+      example: "Apr 15",
+    },
+    {
+      token: "{{end_time}}",
+      description: "Time the badge's offer ends.",
+      example: "11:59 PM",
+    },
+  ],
+};
+
 const freeShippingMessageVariables: MessageVariableGroup = {
   title: "Free shipping",
   description:
@@ -4464,16 +4524,6 @@ const deliveryCutoffMessageVariables: MessageVariableGroup = {
     "Computed from the cutoff, processing, and delivery settings in the campaign's timezone. Dates and weekdays follow the storefront locale.",
   variables: [
     {
-      token: "{{time_left}}",
-      description: "Live countdown until today's order-by cutoff.",
-      example: "02h 15m",
-    },
-    {
-      token: "{{time_remaining}}",
-      description: "Alias of {{time_left}}.",
-      example: "02h 15m",
-    },
-    {
       token: "{{cutoff_time}}",
       description: "Time of the daily cutoff.",
       example: "2:00 PM",
@@ -4519,11 +4569,23 @@ const deliveryCutoffMessageVariables: MessageVariableGroup = {
 function messageVariableGroupsForType(
   type: CampaignFormValues["type"],
 ): MessageVariableGroup[] {
-  if (type === "FREE_SHIPPING_GOAL") return [freeShippingMessageVariables];
-  if (type === "LOW_STOCK") return [lowStockMessageVariables];
-  if (type === "DELIVERY_CUTOFF") return [deliveryCutoffMessageVariables];
+  // Every type gets the global variables, plus the ones specific to its data.
+  const specific: MessageVariableGroup[] = [];
 
-  return [];
+  if (type === "FREE_SHIPPING_GOAL") {
+    specific.push(freeShippingMessageVariables);
+  } else if (type === "LOW_STOCK") {
+    specific.push(lowStockMessageVariables);
+  } else if (type === "DELIVERY_CUTOFF") {
+    specific.push(deliveryCutoffMessageVariables);
+  } else if (type === "PRODUCT_BADGE") {
+    specific.push(badgeMessageVariables);
+  } else {
+    // COUNTDOWN_BAR, PRODUCT_TIMER, CART_TIMER — countdown-driven types.
+    specific.push(timerMessageVariables);
+  }
+
+  return [globalMessageVariables, ...specific];
 }
 
 function MessageVariablesInfo({ type }: { type: CampaignFormValues["type"] }) {

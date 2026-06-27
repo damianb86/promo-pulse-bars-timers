@@ -58,6 +58,75 @@
     return String(value || "").replace(/["\\\n\r]/g, "");
   }
 
+  // Friendly remaining-time string for {{time_left}} (e.g. "2d 03h 15m").
+  function friendlyTimeLeft(spec) {
+    var ms = null;
+    if (spec.timer && spec.timer.isActive) {
+      ms = spec.timer.remainingMs;
+    } else if (spec.deliveryTime) {
+      var segs = String(spec.deliveryTime)
+        .split(":")
+        .map(function (value) {
+          return Number(value);
+        });
+      if (segs.length === 3 && segs.every(Number.isFinite)) {
+        ms = ((segs[0] * 60 + segs[1]) * 60 + segs[2]) * 1000;
+      }
+    }
+    if (ms == null) return "";
+
+    var total = Math.max(0, Math.floor(ms / 1000));
+    var days = Math.floor(total / 86400);
+    var hours = Math.floor((total % 86400) / 3600);
+    var minutes = Math.floor((total % 3600) / 60);
+    var seconds = total % 60;
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+    if (days > 0) return days + "d " + pad(hours) + "h " + pad(minutes) + "m";
+    if (hours > 0) return pad(hours) + "h " + pad(minutes) + "m";
+    return pad(minutes) + "m " + pad(seconds) + "s";
+  }
+
+  function formatEndsAt(spec, withTime) {
+    if (!spec.endsAt) return "";
+    var date = new Date(spec.endsAt);
+    if (Number.isNaN(date.getTime())) return "";
+    var options = withTime
+      ? { hour: "numeric", minute: "2-digit" }
+      : { day: "numeric", month: "short" };
+    if (spec.timezone) options.timeZone = spec.timezone;
+    try {
+      return new Intl.DateTimeFormat(spec.locale || "en", options).format(date);
+    } catch (error) {
+      return "";
+    }
+  }
+
+  // Replaces the global + timer message variables that apply to every campaign
+  // type. Type-specific tokens (amount, quantity, delivery_*) are already
+  // substituted by each renderer before it hands text to the surface.
+  function interpolateMessage(text, spec) {
+    if (!text || text.indexOf("{{") === -1) return text || "";
+
+    var replacements = {
+      time_left: friendlyTimeLeft(spec),
+      time_remaining: friendlyTimeLeft(spec),
+      year: String(new Date().getFullYear()),
+      end_date: formatEndsAt(spec, false),
+      end_time: formatEndsAt(spec, true),
+    };
+
+    return text.replace(
+      /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+      function (match, key) {
+        return Object.prototype.hasOwnProperty.call(replacements, key)
+          ? replacements[key]
+          : match;
+      },
+    );
+  }
+
   // Normalises a float offset to a CSS length: bare numbers become px, "auto"
   // and existing units pass through, anything else falls back.
   function cssLength(value, fallback) {
@@ -749,7 +818,10 @@
       applyStyle(badgeNode, design);
       if (spec.dataTestId) badgeNode.setAttribute("data-testid", spec.dataTestId);
       var badgeLabel = document.createElement("span");
-      badgeLabel.textContent = badge.text || spec.headline || "";
+      badgeLabel.textContent = interpolateMessage(
+        badge.text || spec.headline || "",
+        spec,
+      );
       badgeNode.appendChild(badgeLabel);
       if (spec.hasTimer) {
         var badgeTimer = buildTimer(spec, design, true);
@@ -788,7 +860,7 @@
     if (icon) message.appendChild(icon);
     var copy = el("div", "counterpulse-preview-message-copy");
     var strong = document.createElement("strong");
-    strong.textContent = spec.headline || "";
+    strong.textContent = interpolateMessage(spec.headline || "", spec);
     copy.appendChild(strong);
     if (isInline && spec.hasTimer) {
       var inlineTimer = buildTimer(spec, design, true);
@@ -796,7 +868,7 @@
     }
     if (!isInline && spec.body) {
       var body = document.createElement("span");
-      body.textContent = spec.body;
+      body.textContent = interpolateMessage(spec.body, spec);
       copy.appendChild(body);
     }
     message.appendChild(copy);

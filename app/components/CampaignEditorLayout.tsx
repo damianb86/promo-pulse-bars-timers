@@ -26,6 +26,8 @@ type CampaignEditorLayoutProps = {
     publishLabel?: string;
     statusLabel: string;
     statusValue: EditableCampaignStatusValue;
+    experimentRunning?: boolean;
+    experimentSectionKey?: string;
     isSubmitting?: boolean;
     onPublish?: () => void;
   };
@@ -76,10 +78,33 @@ export function CampaignEditorLayout({
               label={actionBar.publicationStatusLabel}
               state={actionBar.publicationState}
             />
-            <CampaignControlStatusBadge
-              label={actionBar.statusLabel}
-              status={actionBar.statusValue}
-            />
+            {/* When the campaign is LIVE the control status is always ACTIVE,
+                so the separate "Active" badge is redundant — show it only when
+                not live (Draft, Paused, published-inactive, etc.). */}
+            {actionBar.publicationState !== "live" && (
+              <CampaignControlStatusBadge
+                label={actionBar.statusLabel}
+                status={actionBar.statusValue}
+              />
+            )}
+            {actionBar.experimentRunning && (
+              <button
+                className="counterpulse-experiment-running-badge"
+                type="button"
+                title="An A/B experiment is running on this campaign"
+                onClick={() =>
+                  setActiveSectionKey(
+                    actionBar.experimentSectionKey ?? "experiments",
+                  )
+                }
+              >
+                <span
+                  className="counterpulse-experiment-running-badge__dot"
+                  aria-hidden="true"
+                />
+                EXPERIMENT RUNNING
+              </button>
+            )}
             <button
               className="counterpulse-button-secondary"
               type="button"

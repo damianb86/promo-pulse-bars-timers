@@ -613,6 +613,9 @@
       variant: "block",
       placement: campaign.placement || (isDrawer ? "CART_DRAWER" : "CART_PAGE"),
       design: design,
+      endsAt: campaign.endsAt,
+      timezone: campaign.timezone,
+      locale: config.locale,
       headline: texts.headline || defaultHeadline(campaign),
       body: detail,
       timer: {

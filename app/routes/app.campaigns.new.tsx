@@ -393,6 +393,7 @@ export const action = async ({
               ctaText: parsed.values.ctaText,
               ctaUrl: parsed.values.ctaUrl,
               expiredText: parsed.values.expiredText,
+              badgeText: parsed.values.badgeText,
             },
           },
         }),

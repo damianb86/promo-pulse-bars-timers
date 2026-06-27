@@ -245,6 +245,16 @@
       );
     }
 
+    var inventory = currentInventory(config);
+    var lowStockVariables = {};
+    if (
+      (campaign.lowStock || {}).showExactQuantity &&
+      typeof inventory === "number"
+    ) {
+      lowStockVariables.quantity = String(Math.floor(inventory));
+      lowStockVariables.count = lowStockVariables.quantity;
+    }
+
     card = window.CountPulseSurface.build({
       variant: "block",
       placement: campaign.placement || "PRODUCT_PAGE",
@@ -252,6 +262,7 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
+      variables: lowStockVariables,
       headline: message,
       body: null,
       timer: {
@@ -333,19 +344,61 @@
       safeQuerySelector(config.customProductFormSelector) ||
       root.closest("form[action*='/cart/add']") ||
       document.querySelector("form[action*='/cart/add']");
-    var controls;
 
-    if (!form) return;
+    // Re-evaluates the currently selected variant from every signal a theme
+    // might use, and re-renders only when it actually changed. Low-stock copy
+    // shows/hides based on the new variant's inventory.
+    function syncSelectedVariant(nextId) {
+      var resolved = normalizeVariantId(
+        nextId || getSelectedVariantId(form),
+      );
+      if (!resolved || resolved === config.selectedVariantId) return;
+      config.selectedVariantId = resolved;
+      renderAll(root, campaigns, config);
+    }
 
-    controls = [].slice.call(form.querySelectorAll("[name='id']"));
-    if (!controls.length) return;
-
-    controls.forEach(function (control) {
-      control.addEventListener("change", function () {
-        config.selectedVariantId = normalizeVariantId(readVariantId(form));
-        renderAll(root, campaigns, config);
+    // 1) Direct form controls (radios, selects, hidden id input).
+    if (form) {
+      ["change", "input"].forEach(function (eventName) {
+        form.addEventListener(eventName, function () {
+          syncSelectedVariant();
+        });
       });
+    }
+
+    // 2) Theme variant-change custom events (Dawn and most modern themes).
+    ["variant:change", "on:variant:change", "variantChange"].forEach(
+      function (eventName) {
+        document.addEventListener(eventName, function (event) {
+          var detail = event && event.detail;
+          var variant = detail && (detail.variant || detail.selectedVariant);
+          syncSelectedVariant(variant && (variant.id || variant.variantId));
+        });
+      },
+    );
+
+    // 3) URL-driven selection (?variant=) for themes that update history.
+    window.addEventListener("popstate", function () {
+      syncSelectedVariant();
     });
+
+    // 4) Polling fallback catches programmatic updates that fire no event.
+    window.setInterval(function () {
+      if (!root.isConnected) return;
+      syncSelectedVariant();
+    }, 700);
+  }
+
+  function getSelectedVariantId(form) {
+    // The ?variant= URL param is the source of truth once a shopper selects a
+    // variant in most themes; fall back to the cart form's id field.
+    try {
+      var fromUrl = new URLSearchParams(window.location.search).get("variant");
+      if (fromUrl) return fromUrl;
+    } catch {
+      /* URL not parseable */
+    }
+    return form ? readVariantId(form) : "";
   }
 
   function currentInventory(config) {

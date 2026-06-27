@@ -582,18 +582,41 @@ function PromoSurface({
   }
 
   const lowStockPreview = buildLowStockPreview(viewModel);
-  const headlineText = lowStockPreview
-    ? lowStockPreview.headline
-    : viewModel.headline;
-  const bodyText = deliveryPreview
-    ? deliveryPreview.message
-    : lowStockPreview
-      ? lowStockPreview.detail
-      : freeShippingPreview
-        ? freeShippingPreview.message
-        : timerState?.isExpired && viewModel.expiredText
-          ? viewModel.expiredText
-          : viewModel.subheadline;
+  // Dynamic variables work in every field, so interpolate the headline/body/CTA
+  // for the preview the same way the storefront surface does.
+  const previewVariables: Record<string, string> = {
+    year: String(new Date().getFullYear()),
+  };
+  if (timerState?.isActive) {
+    previewVariables.time_left = formatPreviewTimeLeft(timerState.remainingMs);
+  } else if (deliveryPreview) {
+    previewVariables.time_left = deliveryPreview.timeRemaining;
+  }
+  Object.assign(
+    previewVariables,
+    freeShippingPreview?.variables ?? {},
+    lowStockPreview?.variables ?? {},
+    deliveryPreview?.variables ?? {},
+  );
+  if (!previewVariables.time_remaining && previewVariables.time_left) {
+    previewVariables.time_remaining = previewVariables.time_left;
+  }
+  const interpolate = (text: string) =>
+    interpolatePreviewMessage(text, previewVariables);
+  const headlineText = interpolate(
+    lowStockPreview ? lowStockPreview.headline : viewModel.headline,
+  );
+  const bodyText = interpolate(
+    deliveryPreview
+      ? deliveryPreview.message
+      : lowStockPreview
+        ? lowStockPreview.detail
+        : freeShippingPreview
+          ? freeShippingPreview.message
+          : timerState?.isExpired && viewModel.expiredText
+            ? viewModel.expiredText
+            : viewModel.subheadline,
+  );
   const hasTimer = Boolean(
     deliveryPreview?.beforeCutoff || timerState?.isActive,
   );
@@ -655,7 +678,7 @@ function PromoSurface({
           <OfferPreview design={design} viewModel={viewModel} />
           {hasCta && (
             <span className="counterpulse-preview-cta">
-              {viewModel.ctaText}
+              {interpolate(viewModel.ctaText)}
             </span>
           )}
         </div>
@@ -1110,7 +1133,38 @@ function buildLowStockPreview(viewModel: CampaignViewModel) {
   return {
     headline: message,
     detail: "",
+    variables: viewModel.lowStock.showExactQuantity
+      ? {
+          quantity: String(sampleQuantity),
+          count: String(sampleQuantity),
+        }
+      : {},
   };
+}
+
+function formatPreviewTimeLeft(remainingMs: number) {
+  const total = Math.max(0, Math.floor(remainingMs / 1000));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const p = (value: number) => String(value).padStart(2, "0");
+  if (days > 0) return `${days}d ${p(hours)}h ${p(minutes)}m`;
+  if (hours > 0) return `${p(hours)}h ${p(minutes)}m`;
+  return `${p(minutes)}m ${p(seconds)}s`;
+}
+
+function interpolatePreviewMessage(
+  text: string,
+  variables: Record<string, string>,
+) {
+  if (!text || !text.includes("{{")) return text ?? "";
+
+  return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key) =>
+    Object.prototype.hasOwnProperty.call(variables, key)
+      ? variables[key]
+      : match,
+  );
 }
 
 function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
@@ -1143,6 +1197,7 @@ function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
     beforeCutoff: promise.beforeCutoff,
     message: formatDeliveryPromiseMessage(template, promise.messageVariables),
     timeRemaining: promise.messageVariables.time_remaining,
+    variables: promise.messageVariables as Record<string, string>,
   };
 }
 
@@ -1178,6 +1233,7 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
       percentage: progress.percentage,
       progressStyle: viewModel.freeShipping.progressStyle,
       unlocked: progress.unlocked,
+      variables: { amount, remaining: amount, remaining_amount: amount },
     };
   }
 
@@ -1194,6 +1250,7 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
     percentage: progress.percentage,
     progressStyle: viewModel.freeShipping.progressStyle,
     unlocked: progress.unlocked,
+    variables: { amount, remaining: amount, remaining_amount: amount },
   };
 }
 

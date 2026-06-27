@@ -665,10 +665,14 @@ export function CampaignForm({
     confirmLabel: submitLabel,
     title: mode === "create" ? "Save this campaign?" : "Update this campaign?",
     children: (
-      <p>
-        Confirming will save these campaign settings. If the campaign is active,
-        the storefront may update as soon as the request completes.
-      </p>
+      <>
+        <p>Confirming will save these campaign settings.</p>
+        <p>
+          Because the storefront is cached, changes can take up to about 5
+          minutes to appear for shoppers who already loaded the page. New
+          visitors see the update right away.
+        </p>
+      </>
     ),
   });
   const activeGoalLabel =
@@ -750,6 +754,7 @@ export function CampaignForm({
         ctaText: nextMessage.ctaText,
         ctaUrl: nextMessage.ctaUrl,
         expiredText: nextMessage.expiredText,
+        badgeText: nextMessage.badgeText,
       }));
     },
     [messageLocaleOptions],
@@ -839,12 +844,20 @@ export function CampaignForm({
         })),
         translations: [
           {
+            // Start from the resolved message-editor values so every message
+            // field (badge text, free shipping, delivery, low stock) is
+            // reflected in the live preview...
+            ...(effectiveMessageResolvedTranslations?.[messageInitialLocale] ??
+              effectiveMessageResolvedTranslations?.en ??
+              {}),
             locale: "en",
+            // ...then override the primary fields with the live form values.
             headline: formValues.headline || activeGoalLabel,
             subheadline: formValues.subheadline,
             ctaText: formValues.ctaText || "Shop now",
             ctaUrl: formValues.ctaUrl || "#",
             expiredText: formValues.expiredText || "This offer has ended.",
+            badgeText: formValues.badgeText,
           },
         ],
         design: effectiveDesign,
@@ -874,11 +887,13 @@ export function CampaignForm({
     [
       activeGoalLabel,
       effectiveDesign,
+      effectiveMessageResolvedTranslations,
       formValues,
       isBadgeCampaign,
       isCartRescueCampaign,
       isDeliveryCutoffCampaign,
       isLowStockCampaign,
+      messageInitialLocale,
       usesFreeShippingSettings,
     ],
   );

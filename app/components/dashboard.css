@@ -221,6 +221,15 @@ s-page::part(page) {
   gap: 12px;
 }
 
+.counterpulse-checklist__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
 .counterpulse-checklist__item {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;

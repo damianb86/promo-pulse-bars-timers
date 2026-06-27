@@ -1562,6 +1562,7 @@ export const action = async ({
       ctaText: parsed.values.ctaText,
       ctaUrl: parsed.values.ctaUrl,
       expiredText: parsed.values.expiredText,
+      badgeText: parsed.values.badgeText,
       cartRescueSettings:
         parsed.values.type === "CART_TIMER" ||
         parsed.values.goal === "CART_RESCUE"

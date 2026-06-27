@@ -47,6 +47,7 @@ export type DashboardSummary = {
 export async function getDashboardSummary(
   shopifyDomain: string | null,
   admin?: ShopifyGraphqlClient | null,
+  options: { inspectTheme?: boolean } = {},
 ): Promise<DashboardSummary> {
   const liveShop = shopifyDomain
     ? await prisma.shop.findUnique({ where: { shopifyDomain } })
@@ -114,7 +115,9 @@ export async function getDashboardSummary(
       },
       _sum: { revenueAmount: true },
     }),
-    detectThemeAppBlockStatus(admin),
+    options.inspectTheme
+      ? detectThemeAppBlockStatus(admin)
+      : Promise.resolve(null),
   ]);
 
   const campaignCounts = campaigns.reduce(
@@ -130,7 +133,10 @@ export async function getDashboardSummary(
   const onboarding = await getOnboardingChecklistStatus(shop.id, {
     firstCampaignCreated: campaigns.length > 0,
     firstImpressionReceived: impressionsAllTime > 0,
-    ...themeAppBlockStatus,
+    // Theme app-block checks only run when explicitly requested (the "Run setup
+    // checks" button), so the dashboard never needs theme permission just to
+    // load.
+    ...(themeAppBlockStatus ?? {}),
   });
 
   return {

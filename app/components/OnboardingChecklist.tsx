@@ -8,19 +8,38 @@ export type OnboardingChecklistItem = {
 
 type OnboardingChecklistProps = {
   items: OnboardingChecklistItem[];
+  isRunning?: boolean;
+  onRunChecks?: () => void;
 };
 
-export function OnboardingChecklist({ items }: OnboardingChecklistProps) {
+export function OnboardingChecklist({
+  items,
+  isRunning = false,
+  onRunChecks,
+}: OnboardingChecklistProps) {
   const completedCount = items.filter((item) => item.completed).length;
 
   return (
     <s-section
       heading={`Onboarding checklist (${completedCount}/${items.length})`}
     >
-      <s-paragraph>
-        Setup progress is checked automatically. Use the links below to finish
-        any step that is not done yet.
-      </s-paragraph>
+      <div className="counterpulse-checklist__toolbar">
+        <s-paragraph>
+          Campaign and analytics steps are checked automatically. Run the checks
+          to also detect your theme app embed and blocks (this asks for theme
+          access the first time).
+        </s-paragraph>
+        {onRunChecks && (
+          <button
+            className="counterpulse-button-secondary"
+            disabled={isRunning}
+            type="button"
+            onClick={onRunChecks}
+          >
+            {isRunning ? "Running checks…" : "Run setup checks"}
+          </button>
+        )}
+      </div>
       <div className="counterpulse-checklist">
         {items.map((item) => (
           <div className="counterpulse-checklist__item" key={item.label}>

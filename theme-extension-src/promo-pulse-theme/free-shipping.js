@@ -402,6 +402,10 @@
         ? "bar"
         : "block";
 
+    var amount = money(
+      progress.amountRemaining,
+      (campaign.freeShipping || {}).currencyCode,
+    );
     var bar = window.CountPulseSurface.build({
       variant: variant,
       placement: campaign.placement,
@@ -409,6 +413,11 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
+      variables: {
+        amount: amount,
+        remaining: amount,
+        remaining_amount: amount,
+      },
       headline: texts.headline || "Free shipping",
       body: buildMessage(campaign, progress),
       timer: {

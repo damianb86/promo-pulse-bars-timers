@@ -67,6 +67,7 @@ type CampaignBasicsInput = {
   ctaText: string;
   ctaUrl: string;
   expiredText: string;
+  badgeText?: string;
   cartRescueSettings: CartRescueSettingsInput | null;
   timerSettings: {
     mode: TimerMode;
@@ -301,6 +302,9 @@ export async function updateCampaignBasicsForShop(
         ctaText: input.ctaText,
         ctaUrl: input.ctaUrl,
         expiredText: input.expiredText,
+        ...(input.badgeText !== undefined
+          ? { badgeText: input.badgeText }
+          : {}),
       },
       update: {
         headline: input.headline,
@@ -308,6 +312,9 @@ export async function updateCampaignBasicsForShop(
         ctaText: input.ctaText,
         ctaUrl: input.ctaUrl,
         expiredText: input.expiredText,
+        ...(input.badgeText !== undefined
+          ? { badgeText: input.badgeText }
+          : {}),
       },
     });
 

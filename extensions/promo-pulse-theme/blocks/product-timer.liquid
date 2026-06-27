@@ -15,7 +15,7 @@
     data-compact="{{ block.settings.compactMode }}"
     data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
     data-debug="{{ block.settings.debugMode }}"
-    data-debug-block="Promo Pulse product timer"
+    data-debug-block="Promo Pulse product promotion"
     {{ block.shopify_attributes }}
   ></div>
   <script id="promo-pulse-variants-{{ block.id }}" type="application/json">
@@ -40,7 +40,7 @@
 
 {% schema %}
 {
-  "name": "Promo Pulse product timer",
+  "name": "Promo Pulse product promotion",
   "target": "section",
   "stylesheet": "promo-pulse.css",
   "templates": ["product"],

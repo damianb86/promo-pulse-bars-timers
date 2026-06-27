@@ -12,7 +12,7 @@
   data-compact="{{ block.settings.compactMode }}"
   data-api-base-url="{{ block.settings.apiBaseUrl | escape }}"
   data-debug="{{ block.settings.debugMode }}"
-  data-debug-block="Promo Pulse cart timer"
+  data-debug-block="Promo Pulse cart promotion"
   {{ block.shopify_attributes }}
 ></div>
 {{ 'campaign-surface.css' | asset_url | stylesheet_tag }}
@@ -22,7 +22,7 @@
 
 {% schema %}
 {
-  "name": "Promo Pulse cart timer",
+  "name": "Promo Pulse cart promotion",
   "target": "section",
   "stylesheet": "promo-pulse.css",
   "templates": ["cart"],

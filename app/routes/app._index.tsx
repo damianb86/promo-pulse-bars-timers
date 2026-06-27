@@ -1,5 +1,9 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { AppAlert } from "../components/Notifications";
@@ -46,8 +50,33 @@ export const loader = async ({
   }
 };
 
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session, admin } = await authenticateAdmin(request);
+
+  // Runs every onboarding check, including the theme app-block inspection that
+  // needs the (optional) read_themes scope. The scope is requested client-side
+  // before this submits, so it only happens when the button is pressed.
+  await getDashboardSummary(session.shop, admin, { inspectTheme: true });
+
+  return { ok: true };
+};
+
 export default function Dashboard() {
   const { dashboard, error } = useLoaderData<typeof loader>();
+  const checksFetcher = useFetcher();
+  const isRunningChecks = checksFetcher.state !== "idle";
+
+  const runOnboardingChecks = async () => {
+    // Request the theme permission on demand; ignore the result so the checks
+    // still run (the theme inspection simply returns nothing without it).
+    try {
+      await window.shopify?.scopes?.request?.(["read_themes"]);
+    } catch {
+      // Permission declined or unavailable — continue with the other checks.
+    }
+
+    checksFetcher.submit({ _action: "runOnboardingChecks" }, { method: "post" });
+  };
   const revenue = new Intl.NumberFormat("en", {
     style: "currency",
     currency: dashboard.metrics.currencyCode,
@@ -183,6 +212,8 @@ export default function Dashboard() {
       </s-section>
 
       <OnboardingChecklist
+        isRunning={isRunningChecks}
+        onRunChecks={runOnboardingChecks}
         items={[
           {
             label: "Create first campaign",

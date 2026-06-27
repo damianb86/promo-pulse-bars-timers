@@ -34,6 +34,10 @@ declare global {
         ) => Promise<ShopifyFileIntentActivity>;
       };
       saveBar?: ShopifySaveBarController;
+      scopes?: {
+        request?: (scopes: string[]) => Promise<unknown>;
+        query?: () => Promise<unknown>;
+      };
     };
   }
 

@@ -597,6 +597,21 @@
       };
     }
 
+    var variables = {};
+    if (campaign.type === "FREE_SHIPPING_GOAL") {
+      var threshold = Number((campaign.freeShipping || {}).thresholdAmount || 0);
+      var subtotal = Number(config.cartSubtotal || 0);
+      var remaining =
+        threshold <= 0 || subtotal >= threshold
+          ? 0
+          : Math.max(0, threshold - subtotal);
+      var amount = money(
+        Math.round(remaining * 100) / 100,
+        (campaign.freeShipping || {}).currencyCode || config.currency,
+      );
+      variables = { amount: amount, remaining: amount, remaining_amount: amount };
+    }
+
     var ctaLabel = texts.ctaText;
     var ctaUrl = texts.ctaUrl;
     if (!ctaLabel && campaign.type === "CART_TIMER") {
@@ -616,6 +631,7 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
+      variables: variables,
       headline: texts.headline || defaultHeadline(campaign),
       body: detail,
       timer: {

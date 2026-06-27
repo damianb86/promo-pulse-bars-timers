@@ -117,6 +117,15 @@
       end_time: formatEndsAt(spec, true),
     };
 
+    // Campaign-type-specific values (amount, quantity, delivery_*, ...) so any
+    // field — headline, body, CTA, badge — can use them, not just the body.
+    if (spec.variables && typeof spec.variables === "object") {
+      Object.keys(spec.variables).forEach(function (key) {
+        var value = spec.variables[key];
+        if (value != null && value !== "") replacements[key] = String(value);
+      });
+    }
+
     return text.replace(
       /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
       function (match, key) {
@@ -893,13 +902,14 @@
       var actions = el("div", "counterpulse-preview-actions");
       if (offerNode) actions.appendChild(offerNode);
       if (hasCta) {
+        var ctaText = interpolateMessage(spec.cta, spec);
         var cta = el("span", "counterpulse-preview-cta");
-        cta.textContent = spec.cta;
+        cta.textContent = ctaText;
         if (spec.ctaUrl) {
           var link = document.createElement("a");
           link.className = "counterpulse-preview-cta";
           link.href = spec.ctaUrl;
-          link.textContent = spec.cta;
+          link.textContent = ctaText;
           actions.appendChild(link);
         } else {
           actions.appendChild(cta);

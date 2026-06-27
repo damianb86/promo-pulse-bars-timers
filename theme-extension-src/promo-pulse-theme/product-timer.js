@@ -273,16 +273,21 @@
     }
 
     var progress = null;
-    if (
-      campaign.type === "FREE_SHIPPING_GOAL" &&
-      design.showProgressBar !== false
-    ) {
+    var variables = {};
+    if (campaign.type === "FREE_SHIPPING_GOAL") {
       var fs = calculateFreeShippingProgress(campaign, config);
-      progress = {
-        percentage: fs.percentage,
-        style: readProgressStyle(campaign),
-        unlocked: fs.unlocked,
-      };
+      var amount = money(
+        fs.amountRemaining,
+        (campaign.freeShipping || {}).currencyCode || config.currency,
+      );
+      variables = { amount: amount, remaining: amount, remaining_amount: amount };
+      if (design.showProgressBar !== false) {
+        progress = {
+          percentage: fs.percentage,
+          style: readProgressStyle(campaign),
+          unlocked: fs.unlocked,
+        };
+      }
     }
 
     var card = window.CountPulseSurface.build({
@@ -292,6 +297,7 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
+      variables: variables,
       headline: texts.headline || "Limited-time offer",
       body: detail,
       timer: {

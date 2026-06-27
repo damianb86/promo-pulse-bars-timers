@@ -392,6 +392,7 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
+      variables: promise.vars,
       headline: texts.headline || "Delivery promise",
       body: deliveryMessage(campaign, promise),
       deliveryTime: promise.beforeCutoff ? deliveryClock(promise.remainingMs) : null,

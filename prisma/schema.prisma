@@ -1112,6 +1112,9 @@ enum DesignLayout {
   CTA_RIGHT
   CTA_LEFT
   CTA_TOP
+  HERO_TIMER
+  SIDE_RAIL
+  SPREAD
   MOBILE_BANNER
   MOBILE_CARD
   MOBILE_SHEET
@@ -1206,6 +1209,14 @@ enum CampaignDesignIcon {
   TRUCK
   GIFT
   TAG
+  STAR
+  BOLT
+  HEART
+  CART
+  PERCENT
+  BELL
+  ROCKET
+  CHECK
   CUSTOM
   NONE
 }

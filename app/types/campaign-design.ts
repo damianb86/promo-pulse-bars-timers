@@ -8,6 +8,9 @@ export type DesignLayoutValue =
   | "CTA_RIGHT"
   | "CTA_LEFT"
   | "CTA_TOP"
+  | "HERO_TIMER"
+  | "SIDE_RAIL"
+  | "SPREAD"
   | "MOBILE_BANNER"
   | "MOBILE_CARD"
   | "MOBILE_SHEET"
@@ -49,6 +52,14 @@ export type CampaignDesignIconValue =
   | "TRUCK"
   | "GIFT"
   | "TAG"
+  | "STAR"
+  | "BOLT"
+  | "HEART"
+  | "CART"
+  | "PERCENT"
+  | "BELL"
+  | "ROCKET"
+  | "CHECK"
   | "CUSTOM"
   | "NONE";
 
@@ -632,6 +643,24 @@ export const designLayoutOptions: Array<{
     description: "Main action is placed above the message for priority offers.",
   },
   {
+    value: "HERO_TIMER",
+    label: "Timer hero",
+    description:
+      "Puts the countdown first as a large centered hero, with the message below it and a full-width action last — makes the timer the focal point.",
+  },
+  {
+    value: "SIDE_RAIL",
+    label: "Side rail",
+    description:
+      "A distinct left rail holds the icon and timer stacked and vertically centered; the message sits top-right with the action beneath it. A card-like composition you cannot build with alignment alone.",
+  },
+  {
+    value: "SPREAD",
+    label: "Spread row",
+    description:
+      "One justified row that pins the message to the far left, centers the timer, and pushes the action to the far right edge — maximum horizontal separation for wide bars.",
+  },
+  {
     value: "MOBILE_BANNER",
     label: "Mobile banner",
     description:
@@ -863,6 +892,14 @@ export const designIconOptions: Array<{
   { value: "TRUCK", label: "Truck" },
   { value: "GIFT", label: "Gift" },
   { value: "TAG", label: "Tag" },
+  { value: "STAR", label: "Star" },
+  { value: "BOLT", label: "Lightning bolt" },
+  { value: "HEART", label: "Heart" },
+  { value: "CART", label: "Cart" },
+  { value: "PERCENT", label: "Percent" },
+  { value: "BELL", label: "Bell" },
+  { value: "ROCKET", label: "Rocket" },
+  { value: "CHECK", label: "Checkmark" },
   { value: "CUSTOM", label: "Custom" },
   { value: "NONE", label: "None" },
 ];

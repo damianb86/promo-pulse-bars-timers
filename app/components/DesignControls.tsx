@@ -1844,6 +1844,50 @@ function CardDesignPanel({
               onChange={(value) => onNumberChange("paddingInline", value)}
             />
             <CardNumberField
+              description="Outer space above"
+              error={errors.marginTop}
+              icon={<CardControlIcon kind="verticalPadding" />}
+              label="Margin top"
+              max={200}
+              min={0}
+              name="marginTop"
+              value={values.marginTop}
+              onChange={(value) => onNumberChange("marginTop", value)}
+            />
+            <CardNumberField
+              description="Outer space below"
+              error={errors.marginBottom}
+              icon={<CardControlIcon kind="verticalPadding" />}
+              label="Margin bottom"
+              max={200}
+              min={0}
+              name="marginBottom"
+              value={values.marginBottom}
+              onChange={(value) => onNumberChange("marginBottom", value)}
+            />
+            <CardNumberField
+              description="Outer space left"
+              error={errors.marginLeft}
+              icon={<CardControlIcon kind="horizontalPadding" />}
+              label="Margin left"
+              max={200}
+              min={0}
+              name="marginLeft"
+              value={values.marginLeft}
+              onChange={(value) => onNumberChange("marginLeft", value)}
+            />
+            <CardNumberField
+              description="Outer space right"
+              error={errors.marginRight}
+              icon={<CardControlIcon kind="horizontalPadding" />}
+              label="Margin right"
+              max={200}
+              min={0}
+              name="marginRight"
+              value={values.marginRight}
+              onChange={(value) => onNumberChange("marginRight", value)}
+            />
+            <CardNumberField
               description="Space between elements"
               error={errors.contentGap}
               icon={<CardControlIcon kind="gap" />}

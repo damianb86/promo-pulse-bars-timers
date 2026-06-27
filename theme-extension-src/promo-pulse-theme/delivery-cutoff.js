@@ -565,12 +565,24 @@
 
   function getConfiguredSelector(placement) {
     var settings = window.PromoPulseSettings || {};
+    var key =
+      placement === "TOP_BAR"
+        ? "customTopBarSelector"
+        : placement === "BOTTOM_BAR"
+          ? "customBottomBarSelector"
+          : "";
+    if (!key) return "";
 
-    if (placement === "TOP_BAR") return settings.customTopBarSelector || "";
-    if (placement === "BOTTOM_BAR")
-      return settings.customBottomBarSelector || "";
+    if (
+      settings.separateMobileSelectors &&
+      device === "mobile" &&
+      settings.mobileSelectors &&
+      settings.mobileSelectors[key]
+    ) {
+      return settings.mobileSelectors[key];
+    }
 
-    return "";
+    return settings[key] || "";
   }
 
   function querySelectorList(selector) {

@@ -95,6 +95,10 @@ export type CampaignDesignValues = {
   timerSurfaceRadius: number;
   paddingBlock: number;
   paddingInline: number;
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
   contentGap: number;
   contentMaxWidth: number;
   fullWidth: boolean;
@@ -217,6 +221,10 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   timerSurfaceRadius: 8,
   paddingBlock: 20,
   paddingInline: 24,
+  marginTop: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+  marginRight: 0,
   contentGap: 8,
   contentMaxWidth: 960,
   fullWidth: false,

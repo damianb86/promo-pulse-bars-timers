@@ -335,11 +335,13 @@
     if (!block) return;
 
     if (isFullWidth) {
+      // Product-page (and other non-bar) placements fill their container, not
+      // the viewport. Only TOP_BAR / BOTTOM_BAR break out to 100vw.
       block.dataset.ppProductTimerFullWidth = "true";
-      block.style.setProperty("width", "100vw");
-      block.style.setProperty("max-width", "100vw");
-      block.style.setProperty("margin-left", "calc(50% - 50vw)");
-      block.style.setProperty("margin-right", "calc(50% - 50vw)");
+      block.style.setProperty("width", "100%");
+      block.style.setProperty("max-width", "100%");
+      block.style.removeProperty("margin-left");
+      block.style.removeProperty("margin-right");
       return;
     }
 

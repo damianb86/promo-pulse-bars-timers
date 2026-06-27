@@ -82,6 +82,8 @@ model ShopSettings {
   customThankYouPageSelector     String?
   customOrderStatusPageSelector  String?
   customHtmlSlotSelector         String?
+  separateMobileSelectors        Boolean     @default(false)
+  mobileSelectors                Json?
   analyticsEnabled               Boolean     @default(true)
   respectDoNotTrack              Boolean     @default(true)
   consentMode                    ConsentMode @default(BASIC)
@@ -233,6 +235,10 @@ model CampaignDesign {
   timerSurfaceRadius       Int                      @default(8)
   paddingBlock             Int                      @default(20)
   paddingInline            Int                      @default(24)
+  marginTop                Int                      @default(0)
+  marginBottom             Int                      @default(0)
+  marginLeft               Int                      @default(0)
+  marginRight              Int                      @default(0)
   contentGap               Int                      @default(8)
   contentMaxWidth          Int                      @default(960)
   fullWidth                Boolean                  @default(false)

@@ -835,20 +835,31 @@
 
   function getConfiguredSelector(placement) {
     var settings = window.PromoPulseSettings || {};
-    var selectors = {
-      TOP_BAR: settings.customTopBarSelector,
-      BOTTOM_BAR: settings.customBottomBarSelector,
-      PRODUCT_PAGE: settings.customProductPageSelector,
-      PRODUCT_PAGE_BADGE: settings.customProductPageBadgeSelector,
-      COLLECTION_CARD: settings.customCollectionCardSelector,
-      CART_PAGE: settings.customCartPageSelector,
-      CART_DRAWER: settings.customCartDrawerSelector,
-      THANK_YOU_PAGE: settings.customThankYouPageSelector,
-      ORDER_STATUS_PAGE: settings.customOrderStatusPageSelector,
-      CUSTOM_SELECTOR: settings.customHtmlSlotSelector,
+    var keys = {
+      TOP_BAR: "customTopBarSelector",
+      BOTTOM_BAR: "customBottomBarSelector",
+      PRODUCT_PAGE: "customProductPageSelector",
+      PRODUCT_PAGE_BADGE: "customProductPageBadgeSelector",
+      COLLECTION_CARD: "customCollectionCardSelector",
+      CART_PAGE: "customCartPageSelector",
+      CART_DRAWER: "customCartDrawerSelector",
+      THANK_YOU_PAGE: "customThankYouPageSelector",
+      ORDER_STATUS_PAGE: "customOrderStatusPageSelector",
+      CUSTOM_SELECTOR: "customHtmlSlotSelector",
     };
+    var key = keys[placement];
+    if (!key) return "";
 
-    return selectors[placement] || "";
+    if (
+      settings.separateMobileSelectors &&
+      config.device === "mobile" &&
+      settings.mobileSelectors &&
+      settings.mobileSelectors[key]
+    ) {
+      return settings.mobileSelectors[key];
+    }
+
+    return settings[key] || "";
   }
 
   function querySelectorList(selector) {

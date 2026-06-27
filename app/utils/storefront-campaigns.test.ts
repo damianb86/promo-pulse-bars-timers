@@ -893,13 +893,13 @@ describe("storefront campaign serialization", () => {
     );
 
     expect(context.placement).toBe("");
+    // Badge placements are served by the dedicated badges endpoint, so the
+    // campaigns token deliberately excludes them.
     expect(context.placements).toEqual([
       "TOP_BAR",
       "BOTTOM_BAR",
       "CUSTOM_SELECTOR",
       "PRODUCT_PAGE",
-      "PRODUCT_PAGE_BADGE",
-      "COLLECTION_CARD",
       "CART_PAGE",
       "CART_DRAWER",
     ]);

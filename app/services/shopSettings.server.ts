@@ -1,4 +1,4 @@
-import { ConsentMode, type ShopSettings } from "@prisma/client";
+import { ConsentMode, Prisma, type ShopSettings } from "@prisma/client";
 
 import prisma from "../db.server";
 import { invalidateStorefrontCacheForShopId } from "./storefront-cache.server";
@@ -28,6 +28,8 @@ export type ShopSettingsValues = {
   customThankYouPageSelector: string;
   customOrderStatusPageSelector: string;
   customHtmlSlotSelector: string;
+  separateMobileSelectors: boolean;
+  mobileSelectors: Record<string, string>;
   analyticsEnabled: boolean;
   respectDoNotTrack: boolean;
   consentMode: ConsentMode;
@@ -64,6 +66,8 @@ export type PublicShopSettings = Pick<
   | "customThankYouPageSelector"
   | "customOrderStatusPageSelector"
   | "customHtmlSlotSelector"
+  | "separateMobileSelectors"
+  | "mobileSelectors"
   | "analyticsEnabled"
   | "respectDoNotTrack"
   | "consentMode"
@@ -89,6 +93,8 @@ export const defaultShopSettingsValues: ShopSettingsValues = {
   customThankYouPageSelector: "",
   customOrderStatusPageSelector: "",
   customHtmlSlotSelector: "",
+  separateMobileSelectors: false,
+  mobileSelectors: {},
   analyticsEnabled: true,
   respectDoNotTrack: true,
   consentMode: "BASIC",
@@ -206,6 +212,8 @@ export function parseShopSettingsFormData(
       "customOrderStatusPageSelector",
     ),
     customHtmlSlotSelector: readString(formData, "customHtmlSlotSelector"),
+    separateMobileSelectors: readBoolean(formData, "separateMobileSelectors"),
+    mobileSelectors: readMobileSelectors(formData),
     analyticsEnabled: readBoolean(formData, "analyticsEnabled"),
     respectDoNotTrack: readBoolean(formData, "respectDoNotTrack"),
     consentMode:
@@ -311,6 +319,10 @@ export function toShopSettingsValues(
     customThankYouPageSelector: settings.customThankYouPageSelector ?? "",
     customOrderStatusPageSelector: settings.customOrderStatusPageSelector ?? "",
     customHtmlSlotSelector: settings.customHtmlSlotSelector ?? "",
+    separateMobileSelectors: settings.separateMobileSelectors ?? false,
+    mobileSelectors: normalizeMobileSelectors(
+      (settings as ShopSettings).mobileSelectors ?? settings.mobileSelectors,
+    ),
   };
 }
 
@@ -336,6 +348,8 @@ export function serializePublicShopSettings(
     customThankYouPageSelector: settings.customThankYouPageSelector,
     customOrderStatusPageSelector: settings.customOrderStatusPageSelector,
     customHtmlSlotSelector: settings.customHtmlSlotSelector,
+    separateMobileSelectors: settings.separateMobileSelectors,
+    mobileSelectors: settings.mobileSelectors,
     analyticsEnabled: settings.analyticsEnabled,
     respectDoNotTrack: settings.respectDoNotTrack,
     consentMode: settings.consentMode,
@@ -390,6 +404,10 @@ function toPrismaSettingsInput(values: ShopSettingsValues) {
       values.customOrderStatusPageSelector,
     ),
     customHtmlSlotSelector: nullableString(values.customHtmlSlotSelector),
+    separateMobileSelectors: values.separateMobileSelectors,
+    mobileSelectors: values.separateMobileSelectors
+      ? (values.mobileSelectors as Prisma.InputJsonValue)
+      : Prisma.JsonNull,
     analyticsEnabled: values.analyticsEnabled,
     respectDoNotTrack: values.respectDoNotTrack,
     consentMode: values.consentMode,
@@ -417,6 +435,31 @@ function readString(formData: FormData, key: keyof ShopSettingsValues) {
 
 function readBoolean(formData: FormData, key: keyof ShopSettingsValues) {
   return formData.get(key) === "on" || formData.get(key) === "true";
+}
+
+// Mobile variants of each theme selector are submitted as `<key>Mobile`.
+function readMobileSelectors(formData: FormData) {
+  const result: Record<string, string> = {};
+
+  for (const key of selectorSettingKeys) {
+    const value = formData.get(`${key}Mobile`);
+    const trimmed = typeof value === "string" ? value.trim() : "";
+    if (trimmed) result[key] = trimmed;
+  }
+
+  return result;
+}
+
+function normalizeMobileSelectors(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  const result: Record<string, string> = {};
+  for (const key of selectorSettingKeys) {
+    const raw = (value as Record<string, unknown>)[key];
+    if (typeof raw === "string" && raw.trim()) result[key] = raw.trim();
+  }
+
+  return result;
 }
 
 function isValidTimezone(value: string) {

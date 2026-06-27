@@ -479,10 +479,10 @@ async function loadSimpleBadgeFallbackCampaigns({
     placementType,
   );
 
-  return campaigns.filter(
-    (campaign) =>
-      campaign.type === CampaignType.PRODUCT_BADGE &&
-      isCampaignAllowedByPlan(shop, campaign, placementType),
+  // Any active campaign the merchant placed on a badge placement renders as a
+  // simple badge (using its badge text), not only PRODUCT_BADGE-type campaigns.
+  return campaigns.filter((campaign) =>
+    isCampaignAllowedByPlan(shop, campaign, placementType),
   );
 }
 
@@ -498,7 +498,10 @@ function buildSimpleBadgeFallback({
   const serializedCampaigns = serializeStorefrontCampaigns(campaigns, context);
 
   return serializedCampaigns
-    .filter((campaign) => campaign.badge)
+    .filter(
+      (campaign) =>
+        campaign.badge?.badgeText || campaign.texts?.badgeText,
+    )
     .map(toSimpleStorefrontBadge);
 }
 

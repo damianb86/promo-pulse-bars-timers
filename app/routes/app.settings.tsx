@@ -8,6 +8,7 @@ import {
 } from "react-router";
 
 import { AppAlert, AppToast } from "../components/Notifications";
+import { DevicePreviewToggle } from "../components/DevicePreviewToggle";
 import { TimezoneCombobox } from "../components/TimezoneCombobox";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
@@ -403,6 +404,22 @@ function SettingsForm({
     updateField(field, value);
   };
 
+  const [selectorDevice, setSelectorDevice] = useState<"desktop" | "mobile">(
+    "desktop",
+  );
+
+  const updateMobileSelector = (field: SelectorSettingKey, value: string) => {
+    setFormValues((current) => {
+      const mobileSelectors = { ...current.mobileSelectors };
+      if (value.trim()) {
+        mobileSelectors[field] = value;
+      } else {
+        delete mobileSelectors[field];
+      }
+      return { ...current, mobileSelectors };
+    });
+  };
+
   const updateDefaultLocale = (defaultLocale: string) => {
     setFormValues((current) => ({
       ...current,
@@ -711,26 +728,86 @@ function SettingsForm({
             description="Choose default DOM targets for every campaign placement. Leave a field empty to use Promo Pulse detection, pick a preset from the selector suggestions, or type a custom CSS selector."
             title="Theme selectors"
           >
-            <div className="counterpulse-selector-grid">
-              {themeSelectorSettings.map((setting) => (
-                <SelectorSettingField
-                  defaultSelector={setting.defaultSelector}
-                  error={errors[setting.field]}
-                  field={setting.field}
-                  hint={setting.hint}
-                  key={setting.field}
-                  label={setting.label}
-                  options={setting.options}
-                  placement={setting.placement}
-                  value={formValues[setting.field]}
-                  onChange={(value) => updateTextField(setting.field, value)}
+            <div className="counterpulse-selector-toolbar counterpulse-form-field--full">
+              <label className="counterpulse-toggle">
+                <input
+                  checked={formValues.separateMobileSelectors}
+                  name="separateMobileSelectors"
+                  type="checkbox"
+                  onChange={(event) => {
+                    updateField(
+                      "separateMobileSelectors",
+                      event.currentTarget.checked,
+                    );
+                    if (!event.currentTarget.checked) {
+                      setSelectorDevice("desktop");
+                    }
+                  }}
                 />
-              ))}
+                Use different selectors for mobile and desktop
+              </label>
+              {formValues.separateMobileSelectors && (
+                <DevicePreviewToggle
+                  value={selectorDevice}
+                  onChange={setSelectorDevice}
+                />
+              )}
+            </div>
+
+            <div className="counterpulse-selector-grid">
+              {themeSelectorSettings.map((setting) => {
+                const useMobile =
+                  formValues.separateMobileSelectors &&
+                  selectorDevice === "mobile";
+                const mobileValue =
+                  formValues.mobileSelectors[setting.field] ?? "";
+
+                return (
+                  <SelectorSettingField
+                    defaultSelector={setting.defaultSelector}
+                    error={errors[setting.field]}
+                    field={setting.field}
+                    hint={setting.hint}
+                    inputName={
+                      useMobile ? `${setting.field}Mobile` : setting.field
+                    }
+                    hiddenName={
+                      formValues.separateMobileSelectors
+                        ? useMobile
+                          ? setting.field
+                          : `${setting.field}Mobile`
+                        : undefined
+                    }
+                    hiddenValue={
+                      formValues.separateMobileSelectors
+                        ? useMobile
+                          ? formValues[setting.field]
+                          : mobileValue
+                        : undefined
+                    }
+                    key={setting.field}
+                    label={
+                      useMobile ? `${setting.label} (mobile)` : setting.label
+                    }
+                    options={setting.options}
+                    placement={setting.placement}
+                    value={useMobile ? mobileValue : formValues[setting.field]}
+                    onChange={(value) =>
+                      useMobile
+                        ? updateMobileSelector(setting.field, value)
+                        : updateTextField(setting.field, value)
+                    }
+                  />
+                );
+              })}
 
               <div className="counterpulse-settings-note counterpulse-form-field--full">
                 Campaign-level selectors keep priority. These defaults are used
                 only when a campaign or Shopify block does not provide a more
                 specific mount point.
+                {formValues.separateMobileSelectors
+                  ? " Mobile selectors apply on phones; desktop selectors apply everywhere else."
+                  : ""}
               </div>
             </div>
           </SettingsPanel>
@@ -856,6 +933,9 @@ function SelectorSettingField({
   error,
   field,
   hint,
+  inputName,
+  hiddenName,
+  hiddenValue,
   label,
   onChange,
   options,
@@ -866,6 +946,9 @@ function SelectorSettingField({
   error?: string;
   field: SelectorSettingKey;
   hint: string;
+  inputName?: string;
+  hiddenName?: string;
+  hiddenValue?: string;
   label: string;
   onChange: (value: string) => void;
   options: string[];
@@ -884,11 +967,14 @@ function SelectorSettingField({
         aria-label={label}
         autoComplete="off"
         list={datalistId}
-        name={field}
+        name={inputName ?? field}
         placeholder={defaultSelector}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
+      {hiddenName ? (
+        <input name={hiddenName} type="hidden" value={hiddenValue ?? ""} />
+      ) : null}
       <SelectorDatalist id={datalistId} options={options} />
       {error && <span className="counterpulse-form-error">{error}</span>}
       <span className="counterpulse-selector-field__default">

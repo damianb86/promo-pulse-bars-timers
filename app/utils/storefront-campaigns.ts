@@ -739,13 +739,15 @@ function readList(searchParams: URLSearchParams, key: string) {
 // front (storefront-renderable) placements.
 export const ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN = "ALL_FRONT_DEFAULT_PLACEMENTS";
 
+// Placements rendered from the campaigns endpoint. Badge placements
+// (PRODUCT_PAGE_BADGE, COLLECTION_CARD) are intentionally excluded: they are
+// served by the dedicated badges endpoint, so including them here only made the
+// campaigns payload return the same campaign once per badge placement.
 export const STOREFRONT_FRONT_PLACEMENTS = [
   "TOP_BAR",
   "BOTTOM_BAR",
   "CUSTOM_SELECTOR",
   "PRODUCT_PAGE",
-  "PRODUCT_PAGE_BADGE",
-  "COLLECTION_CARD",
   "CART_PAGE",
   "CART_DRAWER",
 ] as const;

@@ -177,6 +177,26 @@ export function parseCampaignDesignFormData(
       "paddingInline",
       defaultCampaignDesignValues.paddingInline,
     ),
+    marginTop: readInteger(
+      formData,
+      "marginTop",
+      defaultCampaignDesignValues.marginTop,
+    ),
+    marginBottom: readInteger(
+      formData,
+      "marginBottom",
+      defaultCampaignDesignValues.marginBottom,
+    ),
+    marginLeft: readInteger(
+      formData,
+      "marginLeft",
+      defaultCampaignDesignValues.marginLeft,
+    ),
+    marginRight: readInteger(
+      formData,
+      "marginRight",
+      defaultCampaignDesignValues.marginRight,
+    ),
     contentGap: readInteger(
       formData,
       "contentGap",

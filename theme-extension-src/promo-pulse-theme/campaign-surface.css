@@ -181,6 +181,8 @@
   align-items: center;
   justify-items: center;
   gap: var(--cp-gap);
+  margin: var(--cp-margin-top, 0) var(--cp-margin-right, 0)
+    var(--cp-margin-bottom, 0) var(--cp-margin-left, 0);
   padding: var(--cp-padding-block) var(--cp-padding-inline);
   border-radius: var(--cp-radius);
   border: var(--cp-border-size) solid var(--cp-border-color);
@@ -217,7 +219,7 @@
 
 .counterpulse-preview-promo--bar {
   width: calc(100% - 96px);
-  margin: 20px auto 0;
+  margin: 0 auto 0;
 }
 
 

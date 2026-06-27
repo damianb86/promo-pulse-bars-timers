@@ -44,7 +44,21 @@ describe("sanitizeStructureHtml", () => {
       '<section class="cp-promo"><a href="javascript:bad()">x</a></section>',
     );
     expect(tree).not.toBeNull();
-    expect(tree!.children?.[0].href).toBeUndefined();
+    // The unsafe href is stripped from the anchor's attributes.
+    expect(tree!.children?.[0].attrs?.href).toBeUndefined();
+  });
+
+  it("preserves arbitrary safe tags, ids, data-attrs and images", () => {
+    const html = sanitizeStructureHtml(
+      '<div class="promo" id="hero" data-x="1">' +
+        '<img src="/image.png" alt="Sale"><h1>Summer Sale</h1>' +
+        "<button>Buy Now</button></div>",
+    );
+    expect(html).toContain('id="hero"');
+    expect(html).toContain('data-x="1"');
+    expect(html).toContain('src="/image.png"');
+    expect(html).toContain("<h1>Summer Sale</h1>");
+    expect(html).toContain("<button>Buy Now</button>");
   });
 });
 

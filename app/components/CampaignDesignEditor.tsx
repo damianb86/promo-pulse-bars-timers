@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppAlert, InfoModal } from "./Notifications";
 
 import { DesignControls } from "./DesignControls";
@@ -44,6 +44,11 @@ type CampaignDesignEditorProps = {
   mobileStructureEdited?: boolean;
   mobileStructureHtml?: string;
   mobileStructureCss?: string;
+  // Bumped by the parent on discard so the structure surfaces reset to saved.
+  resetSignal?: number;
+  // Reports whether the structural HTML/CSS overrides differ from saved, to drive
+  // the contextual save bar.
+  onStructureDirtyChange?: (dirty: boolean) => void;
 };
 
 export function CampaignDesignEditor({
@@ -64,6 +69,8 @@ export function CampaignDesignEditor({
   mobileStructureEdited: initialMobileStructureEdited = false,
   mobileStructureHtml: initialMobileStructureHtml = "",
   mobileStructureCss: initialMobileStructureCss = "",
+  resetSignal = 0,
+  onStructureDirtyChange,
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
     () =>
@@ -130,11 +137,17 @@ export function CampaignDesignEditor({
   // mobile" is on.
   const [htmlModalOpen, setHtmlModalOpen] = useState(false);
   const [cssModalOpen, setCssModalOpen] = useState(false);
-  const desktopSurface = useStructureSurface(viewModel, design, primaryPlacement, {
-    edited: initialStructureEdited,
-    html: initialStructureHtml,
-    css: initialStructureCss,
-  });
+  const desktopSurface = useStructureSurface(
+    viewModel,
+    design,
+    primaryPlacement,
+    {
+      edited: initialStructureEdited,
+      html: initialStructureHtml,
+      css: initialStructureCss,
+    },
+    resetSignal,
+  );
   const mobileSurface = useStructureSurface(
     viewModel,
     previewMobileDesign,
@@ -144,10 +157,24 @@ export function CampaignDesignEditor({
       html: initialMobileStructureHtml,
       css: initialMobileStructureCss,
     },
+    resetSignal,
   );
   const isMobileSurface = device === "mobile" && design.separateMobileDesign;
   const activeSurface = isMobileSurface ? mobileSurface : desktopSurface;
   const surfaceLabel = isMobileSurface ? "mobile" : "desktop";
+
+  // Report structure dirtiness (any override differs from saved) to the save bar.
+  useEffect(() => {
+    const dirty =
+      desktopSurface.dirty ||
+      (design.separateMobileDesign && mobileSurface.dirty);
+    onStructureDirtyChange?.(dirty);
+  }, [
+    desktopSurface.dirty,
+    mobileSurface.dirty,
+    design.separateMobileDesign,
+    onStructureDirtyChange,
+  ]);
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -451,6 +478,7 @@ function StructureCodeModal({
 
 type StructureSurface = {
   edited: boolean;
+  dirty: boolean;
   displayedHtml: string;
   displayedCss: string;
   tree: StructureNode | null;
@@ -460,13 +488,14 @@ type StructureSurface = {
 };
 
 // Manages one structural-HTML override surface (desktop or mobile): the live
-// auto-generated HTML/CSS, the merchant's edits, and the parsed tree used to
-// drive the live preview.
+// auto-generated HTML/CSS, the merchant's edits, the parsed tree used to drive
+// the live preview, and whether it differs from the saved value.
 function useStructureSurface(
   viewModel: CampaignViewModel,
   designForSurface: CampaignDesignValues,
   placement: PreviewPlacement,
   init: { edited: boolean; html: string; css: string },
+  resetSignal: number,
 ): StructureSurface {
   const generatedHtml = useMemo(
     () =>
@@ -489,6 +518,18 @@ function useStructureSurface(
   const [edited, setEdited] = useState(init.edited);
   const [html, setHtml] = useState(init.html || generatedHtml);
   const [css, setCss] = useState(init.css || generatedCss);
+  const [dirty, setDirty] = useState(false);
+
+  // Reset to the saved value when the parent discards.
+  const initialResetSignal = useRef(resetSignal);
+  useEffect(() => {
+    if (resetSignal === initialResetSignal.current) return;
+    initialResetSignal.current = resetSignal;
+    setEdited(init.edited);
+    setHtml(init.html || generatedHtml);
+    setCss(init.css || generatedCss);
+    setDirty(false);
+  }, [resetSignal, init.edited, init.html, init.css, generatedHtml, generatedCss]);
 
   const displayedHtml = edited ? html : generatedHtml;
   const displayedCss = edited ? css : generatedCss;
@@ -497,16 +538,19 @@ function useStructureSurface(
     setEdited(false);
     setHtml(generatedHtml);
     setCss(generatedCss);
+    setDirty(true);
   };
   const changeHtml = (value: string) => {
     setHtml(value);
     setCss((current) => (edited ? current : generatedCss));
     setEdited(true);
+    setDirty(true);
   };
   const changeCss = (value: string) => {
     setCss(value);
     setHtml((current) => (edited ? current : generatedHtml));
     setEdited(true);
+    setDirty(true);
   };
 
   const tree = useMemo(
@@ -516,6 +560,7 @@ function useStructureSurface(
 
   return {
     edited,
+    dirty,
     displayedHtml,
     displayedCss,
     tree,

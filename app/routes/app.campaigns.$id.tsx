@@ -1771,6 +1771,10 @@ export default function EditCampaignPage() {
       dirty: false,
       saving: false,
     });
+  // The structural HTML/CSS overrides live in their own modals (not in the
+  // tracked design values), so they report dirtiness explicitly to drive the
+  // contextual save bar.
+  const [structureDirty, setStructureDirty] = useState(false);
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
@@ -1794,7 +1798,8 @@ export default function EditCampaignPage() {
   const hasUnsavedChanges =
     hasCampaignDraftUnsavedChanges ||
     experimentAutoWinnerSaveBarState.dirty ||
-    behaviorTargetingSaveBarState.dirty;
+    behaviorTargetingSaveBarState.dirty ||
+    structureDirty;
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
     draftCampaignValues.goal === "FREE_SHIPPING";
@@ -1856,6 +1861,7 @@ export default function EditCampaignPage() {
     setDraftCampaignValues(activeCampaignValues);
     setDraftDesignValues(activeDesignValues);
     setDraftMobileDesignValues(activeMobileDesignValues);
+    setStructureDirty(false);
     setDiscardVersion((version) => version + 1);
     window.dispatchEvent(new CustomEvent("promo-pulse:campaign-discard"));
     window.dispatchEvent(
@@ -2297,6 +2303,8 @@ export default function EditCampaignPage() {
                   mobileStructureEdited={mobileStructureEdited}
                   mobileStructureHtml={mobileStructureHtml}
                   mobileStructureCss={mobileStructureCss}
+                  resetSignal={discardVersion}
+                  onStructureDirtyChange={setStructureDirty}
                 />
               ),
             },

@@ -1130,41 +1130,42 @@
   // Falls back to null so build() can use the legacy path on any problem.
   // -------------------------------------------------------------------------
 
-  function structureLongClass(shortClass) {
-    return shortClass.indexOf("cp-") === 0
-      ? "counterpulse-preview-" + shortClass.slice(3)
-      : shortClass;
-  }
+  var SVG_TAGS = {
+    svg: 1, path: 1, circle: 1, line: 1, rect: 1, polygon: 1, polyline: 1,
+    ellipse: 1, g: 1, defs: 1, use: 1, title: 1,
+  };
+  var SVG_NS = "http://www.w3.org/2000/svg";
 
+  // Rebuilds the exact DOM from the faithful packed AST. No class/tag rewriting:
+  // what the merchant authored is what renders. Element node = [tagId, attrPairs,
+  // children]; text node = [tagIdOf("#text"), text].
   function unpackStructureToDom(packed) {
     var tags = packed.t || [];
-    var classes = packed.c || [];
+    var attrNames = packed.a || [];
 
-    function buildNode(arr) {
-      var tag = tags[arr[0]] || "div";
-      var node = document.createElement(tag);
-      var clsIds = arr[1] || [];
-      if (clsIds.length) {
-        node.className = clsIds
-          .map(function (id) {
-            return structureLongClass(classes[id]);
-          })
-          .join(" ");
+    function buildNode(arr, svgContext) {
+      var tag = tags[arr[0]];
+      if (tag === "#text") {
+        return document.createTextNode(String(arr[1] == null ? "" : arr[1]));
       }
-      var slot = arr[2];
-      if (slot) node.setAttribute("data-cp-slot", slot);
-      var text = arr[3];
-      if (text) node.textContent = String(text);
-      var href = arr[4];
-      if (href && node.tagName === "A") node.setAttribute("href", String(href));
-      var children = arr[5] || [];
+      var isSvg = svgContext || SVG_TAGS[tag];
+      var node = isSvg
+        ? document.createElementNS(SVG_NS, tag)
+        : document.createElement(tag || "div");
+      var attrPairs = arr[1] || [];
+      for (var a = 0; a < attrPairs.length; a += 1) {
+        var name = attrNames[attrPairs[a][0]];
+        var value = attrPairs[a][1];
+        if (name) node.setAttribute(name, String(value == null ? "" : value));
+      }
+      var children = arr[2] || [];
       for (var i = 0; i < children.length; i += 1) {
-        node.appendChild(buildNode(children[i]));
+        node.appendChild(buildNode(children[i], isSvg));
       }
       return node;
     }
 
-    return packed && packed.n ? buildNode(packed.n) : null;
+    return packed && packed.n ? buildNode(packed.n, false) : null;
   }
 
   function uniqueScopeId() {
@@ -1182,6 +1183,15 @@
   }
 
   function fixRootClasses(root, variant, placement) {
+    // Only normalize the auto-generated default surface. Fully custom merchant
+    // HTML is rendered exactly as written.
+    if (
+      (root.getAttribute("class") || "").indexOf(
+        "counterpulse-preview-promo",
+      ) === -1
+    ) {
+      return;
+    }
     var keep = [];
     (root.className || "").split(/\s+/).forEach(function (token) {
       if (!token) return;

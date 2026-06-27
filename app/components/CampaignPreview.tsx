@@ -10,7 +10,11 @@ import {
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 import type { CampaignDesignValues } from "../types/campaign-design";
 import { sanitizeBasicHtml } from "../utils/basic-html";
-import type { StructureNode } from "../utils/campaign-structure";
+import {
+  getNodeSlot,
+  TEXT_TAG,
+  type StructureNode,
+} from "../utils/campaign-structure";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import {
   calculateFreeShippingProgress,
@@ -798,15 +802,22 @@ function PromoSurface({
 // saved tree renders correctly for any preview placement/variant. Mirrors
 // fixRootClasses() in campaign-surface.js.
 function fixStructureRootClasses(
-  cls: string[] | undefined,
+  classValue: string | undefined,
   variant: "bar" | "block",
   placement: PreviewPlacement,
 ) {
-  const keep = (cls ?? []).filter(
-    (token) =>
-      !/counterpulse-preview-promo--(bar|block|badge)$/.test(token) &&
-      !/counterpulse-preview-promo--placement-/.test(token),
-  );
+  // Only normalize the auto-generated default surface; render custom HTML as-is.
+  if (!(classValue ?? "").includes("counterpulse-preview-promo")) {
+    return classValue ?? "";
+  }
+  const keep = (classValue ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(
+      (token) =>
+        !/counterpulse-preview-promo--(bar|block|badge)$/.test(token) &&
+        !/counterpulse-preview-promo--placement-/.test(token),
+    );
   keep.push(`counterpulse-preview-promo--${variant}`);
   keep.push(
     `counterpulse-preview-promo--placement-${placement
@@ -905,8 +916,12 @@ function StructurePromoSurface({
   className?: string;
   dataTestId?: string;
 }) {
-  const renderSlot = (node: StructureNode, key: string): ReactNode => {
-    switch (node.slot) {
+  const renderSlot = (
+    node: StructureNode,
+    slot: string,
+    key: string,
+  ): ReactNode => {
+    switch (slot) {
       case "headline":
         return (
           <strong
@@ -925,7 +940,7 @@ function StructurePromoSurface({
       case "cta":
         if (!hasCta) return null;
         return createElement(
-          node.tag === "a" ? "a" : "span",
+          node.tag === "a" ? "a" : node.tag === TEXT_TAG ? "span" : node.tag,
           { key, className: "counterpulse-preview-cta" },
           ctaText,
         );
@@ -968,22 +983,21 @@ function StructurePromoSurface({
   };
 
   const renderNode = (node: StructureNode, key: string): ReactNode => {
-    if (node.slot) return renderSlot(node, key);
+    if (node.tag === TEXT_TAG) return node.text ?? "";
+    const slot = getNodeSlot(node);
+    if (slot) return renderSlot(node, slot, key);
     const children = node.children?.map((child, index) =>
       renderNode(child, `${key}-${index}`),
     );
     return createElement(
       node.tag,
-      {
-        key,
-        className: node.cls && node.cls.length ? node.cls.join(" ") : undefined,
-      },
+      structureNodeProps(node, key),
       children && children.length ? children : undefined,
     );
   };
 
   const rootClassName = [
-    fixStructureRootClasses(tree.cls, variant, placement),
+    fixStructureRootClasses(tree.attrs?.class, variant, placement),
     className ?? "",
   ]
     .filter(Boolean)
@@ -992,6 +1006,7 @@ function StructurePromoSurface({
   return createElement(
     tree.tag,
     {
+      ...structureNodeProps(tree, undefined),
       className: rootClassName,
       style,
       "data-testid": dataTestId,
@@ -1011,6 +1026,57 @@ function StructurePromoSurface({
       ) : null,
     ],
   );
+}
+
+// HTML attribute names that React needs in a specific (camelCase) form.
+const REACT_ATTR_NAMES: Record<string, string> = {
+  class: "className",
+  for: "htmlFor",
+  tabindex: "tabIndex",
+  colspan: "colSpan",
+  rowspan: "rowSpan",
+  viewbox: "viewBox",
+  "stroke-width": "strokeWidth",
+  "stroke-linecap": "strokeLinecap",
+  "stroke-linejoin": "strokeLinejoin",
+  "stroke-dasharray": "strokeDasharray",
+  "fill-rule": "fillRule",
+  "clip-rule": "clipRule",
+  preserveaspectratio: "preserveAspectRatio",
+};
+
+function parseStyleString(value: string): Record<string, string> {
+  return value.split(";").reduce<Record<string, string>>((style, decl) => {
+    const idx = decl.indexOf(":");
+    if (idx <= 0) return style;
+    const prop = decl
+      .slice(0, idx)
+      .trim()
+      .replace(/-([a-z])/g, (_match, char: string) => char.toUpperCase());
+    const propValue = decl.slice(idx + 1).trim();
+    if (prop && propValue) style[prop] = propValue;
+    return style;
+  }, {});
+}
+
+// Converts a faithful node's HTML attributes into React props so arbitrary
+// merchant HTML (ids, data-*, src, alt, style, ...) renders as written.
+function structureNodeProps(
+  node: StructureNode,
+  key: string | undefined,
+): Record<string, unknown> {
+  const props: Record<string, unknown> = {};
+  if (key !== undefined) props.key = key;
+  const attrs = node.attrs ?? {};
+  for (const name of Object.keys(attrs)) {
+    const value = attrs[name];
+    if (name === "style") {
+      props.style = parseStyleString(value);
+      continue;
+    }
+    props[REACT_ATTR_NAMES[name] ?? name] = value;
+  }
+  return props;
 }
 
 function OfferPreview({

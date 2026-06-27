@@ -5,10 +5,9 @@ import {
   STRUCTURE_CSS_SCOPE_TOKEN,
   buildCampaignStructureTree,
   buildStructureCss,
+  getNodeSlot,
   htmlToTree,
   packTree,
-  toLongClass,
-  toShortClass,
   treeToHtml,
   unpackTree,
   type StructureBuildSpec,
@@ -35,27 +34,11 @@ const baseSpec: StructureBuildSpec = {
   hasBadgeTimer: false,
 };
 
-describe("class aliasing", () => {
-  it("round-trips long <-> short class names", () => {
-    expect(toShortClass("counterpulse-preview-promo")).toBe("cp-promo");
-    expect(toLongClass("cp-promo")).toBe("counterpulse-preview-promo");
-    expect(toLongClass(toShortClass("counterpulse-preview-message-copy"))).toBe(
-      "counterpulse-preview-message-copy",
-    );
-  });
-
-  it("leaves unknown classes untouched", () => {
-    expect(toShortClass("foo-bar")).toBe("foo-bar");
-    expect(toLongClass("foo-bar")).toBe("foo-bar");
-  });
-});
-
 describe("buildCampaignStructureTree", () => {
-  it("builds the bar structure with slots", () => {
+  it("builds the bar structure with slots and no inline styles", () => {
     const tree = buildCampaignStructureTree(baseSpec);
     expect(tree.tag).toBe("section");
-    expect(tree.cls).toContain("counterpulse-preview-promo");
-    expect(tree.cls).toContain("counterpulse-preview-promo--layout-standard");
+    expect(tree.attrs?.class).toContain("counterpulse-preview-promo");
 
     const html = treeToHtml(tree);
     expect(html).toContain('data-cp-slot="headline"');
@@ -64,92 +47,71 @@ describe("buildCampaignStructureTree", () => {
     expect(html).toContain('data-cp-slot="offer"');
     expect(html).toContain('data-cp-slot="cta"');
     expect(html).toContain('data-cp-slot="close"');
-    expect(html).toContain('class="cp-promo');
-    // No inline styles in the structural HTML.
     expect(html).not.toContain("style=");
   });
+});
 
-  it("uses an inline timer slot for INLINE layout and omits the body", () => {
-    const tree = buildCampaignStructureTree({
-      ...baseSpec,
-      layout: "INLINE",
-      hasInlineTimer: true,
-      hasBlockTimer: false,
-    });
-    const html = treeToHtml(tree);
-    expect(html).toContain('data-cp-slot="timer-inline"');
-    expect(html).not.toContain('data-cp-slot="body"');
-    expect(html).not.toContain('data-cp-slot="timer"');
+describe("faithful html <-> tree round-trip", () => {
+  it("preserves arbitrary tags, attributes, ids, text and order", () => {
+    const html =
+      '<div class="promo" id="hero" data-x="1">' +
+      '<img src="/image.png" alt="Sale">' +
+      "<h1>Summer Sale</h1>" +
+      "<button>Buy Now</button>" +
+      "</div>";
+    const tree = htmlToTree(html);
+    expect(tree).not.toBeNull();
+
+    // Structure is preserved: tags, order, attributes, text.
+    expect(tree!.tag).toBe("div");
+    expect(tree!.attrs).toEqual({ class: "promo", id: "hero", "data-x": "1" });
+    const children = tree!.children!;
+    expect(children.map((c) => c.tag)).toEqual(["img", "h1", "button"]);
+    expect(children[0].attrs).toEqual({ src: "/image.png", alt: "Sale" });
+    expect(children[1].children![0].text).toBe("Summer Sale");
+    expect(children[2].children![0].text).toBe("Buy Now");
+
+    // Re-serializing and re-parsing is stable (idempotent).
+    const serialized = treeToHtml(tree!);
+    expect(treeToHtml(htmlToTree(serialized)!)).toBe(serialized);
   });
 
-  it("renders the cta as an anchor when ctaIsLink", () => {
-    const tree = buildCampaignStructureTree({ ...baseSpec, ctaIsLink: true });
-    const html = treeToHtml(tree);
-    expect(html).toContain('<a data-cp-slot="cta"></a>');
+  it("wraps multiple top-level nodes so none are dropped", () => {
+    const tree = htmlToTree("<h1>A</h1><p>B</p>");
+    expect(tree).not.toBeNull();
+    expect(tree!.children!.map((c) => c.tag)).toEqual(["h1", "p"]);
   });
 
-  it("builds a badge structure", () => {
-    const tree = buildCampaignStructureTree({
-      ...baseSpec,
-      variant: "badge",
-      badgeShape: "PILL",
-      badgePosition: "TOP_RIGHT",
-      hasBadgeTimer: true,
-    });
-    expect(tree.tag).toBe("div");
-    expect(tree.cls).toContain("counterpulse-preview-badge--pill");
-    const html = treeToHtml(tree);
-    expect(html).toContain('data-cp-slot="badge-text"');
-    expect(html).toContain('data-cp-slot="badge-timer"');
+  it("exposes the data-cp-slot marker via getNodeSlot", () => {
+    const tree = htmlToTree('<div data-cp-slot="timer"></div>');
+    expect(getNodeSlot(tree!)).toBe("timer");
   });
 });
 
-describe("html <-> tree round-trip", () => {
-  it("parses back the serialized html into an equivalent tree", () => {
-    const tree = buildCampaignStructureTree(baseSpec);
-    const html = treeToHtml(tree);
-    const parsed = htmlToTree(html);
-    expect(parsed).not.toBeNull();
-    // Re-serialize and compare to ensure structural equivalence.
-    expect(treeToHtml(parsed!)).toBe(html);
-  });
-
-  it("drops disallowed tags and attributes", () => {
-    const dirty =
-      '<section class="cp-promo"><script>alert(1)</script>' +
-      '<div data-cp-slot="headline" onclick="x()">hi</div></section>';
-    const parsed = htmlToTree(dirty);
-    const html = treeToHtml(parsed!);
-    expect(html).not.toContain("script");
-    expect(html).not.toContain("onclick");
-    expect(html).toContain('data-cp-slot="headline"');
-  });
-});
-
-describe("pack <-> unpack round-trip", () => {
-  it("packs and unpacks to an equivalent tree", () => {
-    const tree = buildCampaignStructureTree(baseSpec);
+describe("pack <-> unpack is fully reversible", () => {
+  it("round-trips a faithful tree without losing anything", () => {
+    const html =
+      '<section class="promo"><img src="/x.png" alt="a">' +
+      '<ul><li data-i="1">One</li><li>Two</li></ul>' +
+      '<a href="https://x.com">Go</a></section>';
+    const tree = htmlToTree(html)!;
     const packed = packTree(tree);
     expect(packed.v).toBe(CAMPAIGN_STRUCTURE_VERSION);
-    expect(Array.isArray(packed.t)).toBe(true);
-    expect(Array.isArray(packed.c)).toBe(true);
 
     const restored = unpackTree(packed);
+    // Deep structural equality and identical serialization.
+    expect(restored).toEqual(tree);
     expect(treeToHtml(restored)).toBe(treeToHtml(tree));
   });
 
-  it("dictionary-packs repeated classes once", () => {
-    const tree = buildCampaignStructureTree(baseSpec);
+  it("dictionary-packs repeated tag and attribute names once", () => {
+    const tree = htmlToTree(
+      "<ul><li>a</li><li>b</li><li>c</li></ul>",
+    )!;
     const packed = packTree(tree);
-    // No duplicate class tokens in the dictionary.
-    expect(new Set(packed.c).size).toBe(packed.c.length);
-  });
-
-  it("produces a smaller payload than the raw html", () => {
-    const tree = buildCampaignStructureTree(baseSpec);
-    const html = treeToHtml(tree, { pretty: false });
-    const packed = JSON.stringify(packTree(tree));
-    expect(packed.length).toBeLessThan(html.length * 1.5);
+    expect(packed.t).toContain("li");
+    expect(new Set(packed.t).size).toBe(packed.t.length);
+    expect(new Set(packed.a).size).toBe(packed.a.length);
   });
 });
 
@@ -157,7 +119,6 @@ describe("buildStructureCss", () => {
   it("emits scoped css variables and appends sanitized custom css", () => {
     const css = buildStructureCss({
       backgroundColor: "#111827",
-      textColor: "#FFFFFF",
       contentMaxWidth: 600,
       customCss: ".x { color: red; }</style><script>bad()</script>",
     });

@@ -27,24 +27,13 @@
  * sees/edits is clean and small.
  */
 
-export const CAMPAIGN_STRUCTURE_VERSION = 1;
+export const CAMPAIGN_STRUCTURE_VERSION = 2;
 
-const LONG_CLASS_PREFIX = "counterpulse-preview-";
-const SHORT_CLASS_PREFIX = "cp-";
-
-// Reversible alias between the rendered (long) class names and the short names
-// shown in the editor + stored in the compact AST.
-export function toShortClass(longClass: string): string {
-  return longClass.startsWith(LONG_CLASS_PREFIX)
-    ? SHORT_CLASS_PREFIX + longClass.slice(LONG_CLASS_PREFIX.length)
-    : longClass;
-}
-
-export function toLongClass(shortClass: string): string {
-  return shortClass.startsWith(SHORT_CLASS_PREFIX)
-    ? LONG_CLASS_PREFIX + shortClass.slice(SHORT_CLASS_PREFIX.length)
-    : shortClass;
-}
+// The structural HTML the merchant writes is the single source of truth. The AST
+// is a faithful, fully reversible representation of that HTML: every safe tag,
+// attribute (id, class, data-*, src, alt, ...), text node, and child order is
+// preserved. Class names are stored verbatim — never transformed — so what the
+// user writes is exactly what renders everywhere (preview + storefront).
 
 // Slots that the hydrator REPLACES with a freshly built dynamic node (the slot
 // element itself is discarded). FILL slots keep their element and only receive
@@ -78,17 +67,23 @@ export function isFillSlot(slot: string): boolean {
   return (FILL_SLOTS as readonly string[]).includes(slot);
 }
 
-// One node of the structural AST. `cls` holds long (rendered) class names.
+// One node of the structural AST. A text node has tag "#text" and a `text`
+// value; an element node has a tag, ordered `attrs`, and ordered `children`
+// (which may be elements or text nodes). Nothing is normalized away, so the AST
+// can rebuild the exact HTML it was parsed from.
+export const TEXT_TAG = "#text";
+
 export type StructureNode = {
   tag: string;
-  cls?: string[];
-  slot?: StructureSlot;
-  // Static text content (only used for FILL slots that have authored defaults or
-  // when HTML is hand-edited; normally text is injected by hydration).
   text?: string;
-  href?: string;
+  attrs?: Record<string, string>;
   children?: StructureNode[];
 };
+
+// Reads the dynamic-slot marker (data-cp-slot) from a node, if any.
+export function getNodeSlot(node: StructureNode): string | undefined {
+  return node.attrs?.["data-cp-slot"];
+}
 
 // ---------------------------------------------------------------------------
 // Tree builder — mirrors build() in campaign-surface.js and PromoSurface().
@@ -127,26 +122,27 @@ function dash(value: string): string {
   return lower(value).replace(/_/g, "-");
 }
 
+// Class prefix used by the auto-generated default structure so the shared
+// stylesheet (campaign-surface.css / the React preview) styles it. Merchant-
+// authored HTML can use any class names it wants.
 function cpClass(suffix: string): string {
-  return LONG_CLASS_PREFIX + suffix;
+  return "counterpulse-preview-" + suffix;
 }
 
 function node(
   tag: string,
   cls: string[] | undefined,
-  extra?: Partial<StructureNode>,
+  extra?: { children?: StructureNode[] },
 ): StructureNode {
   const result: StructureNode = { tag };
-  if (cls && cls.length) result.cls = cls;
-  if (extra?.slot) result.slot = extra.slot;
-  if (extra?.text != null) result.text = extra.text;
-  if (extra?.href != null) result.href = extra.href;
+  const classValue = (cls ?? []).filter(Boolean).join(" ");
+  if (classValue) result.attrs = { class: classValue };
   if (extra?.children && extra.children.length) result.children = extra.children;
   return result;
 }
 
 function slotNode(slot: StructureSlot, tag = "div"): StructureNode {
-  return { tag, slot };
+  return { tag, attrs: { "data-cp-slot": slot } };
 }
 
 export function buildCampaignStructureTree(
@@ -331,8 +327,6 @@ function escapeText(value: string): string {
 }
 
 export type TreeToHtmlOptions = {
-  // Emit short `cp-*` class names (for the editor view). Defaults to true.
-  short?: boolean;
   // Pretty-print with indentation. Defaults to true.
   pretty?: boolean;
 };
@@ -341,76 +335,72 @@ export function treeToHtml(
   tree: StructureNode,
   options: TreeToHtmlOptions = {},
 ): string {
-  const short = options.short !== false;
   const pretty = options.pretty !== false;
-  return renderNode(tree, short, pretty, 0).trimEnd();
+  return renderNode(tree, pretty, 0).trimEnd();
+}
+
+function serializeAttrs(attrs: Record<string, string> | undefined): string {
+  if (!attrs) return "";
+  const parts = Object.keys(attrs).map((name) =>
+    attrs[name] === ""
+      ? name
+      : `${name}="${escapeAttr(attrs[name])}"`,
+  );
+  return parts.length ? " " + parts.join(" ") : "";
+}
+
+function isTextOnly(node: StructureNode): boolean {
+  return Boolean(
+    node.children &&
+      node.children.length > 0 &&
+      node.children.every((child) => child.tag === TEXT_TAG),
+  );
 }
 
 function renderNode(
   current: StructureNode,
-  short: boolean,
   pretty: boolean,
   depth: number,
 ): string {
   const indent = pretty ? "  ".repeat(depth) : "";
   const nl = pretty ? "\n" : "";
-  const tag = current.tag;
-  const attrs: string[] = [];
 
-  if (current.cls && current.cls.length) {
-    const classValue = current.cls
-      .map((c) => (short ? toShortClass(c) : c))
-      .join(" ");
-    attrs.push(`class="${escapeAttr(classValue)}"`);
+  if (current.tag === TEXT_TAG) {
+    return `${indent}${escapeText(current.text ?? "")}${nl}`;
   }
-  if (current.slot) attrs.push(`data-cp-slot="${escapeAttr(current.slot)}"`);
-  if (current.href != null) attrs.push(`href="${escapeAttr(current.href)}"`);
 
-  const attrString = attrs.length ? " " + attrs.join(" ") : "";
+  const tag = current.tag;
+  const attrString = serializeAttrs(current.attrs);
 
   if (VOID_TAGS.has(tag)) {
     return `${indent}<${tag}${attrString}>${nl}`;
   }
 
-  const hasChildren = Boolean(current.children && current.children.length);
-  const hasText = current.text != null && current.text !== "";
-
-  if (!hasChildren && !hasText) {
+  const children = current.children ?? [];
+  if (children.length === 0) {
     return `${indent}<${tag}${attrString}></${tag}>${nl}`;
   }
 
-  if (!hasChildren && hasText) {
-    return `${indent}<${tag}${attrString}>${escapeText(current.text!)}</${tag}>${nl}`;
+  // Keep elements whose children are all text on a single line for readability
+  // (e.g. <h1>Summer Sale</h1>).
+  if (isTextOnly(current)) {
+    const text = children.map((child) => escapeText(child.text ?? "")).join("");
+    return `${indent}<${tag}${attrString}>${text}</${tag}>${nl}`;
   }
 
   let inner = "";
-  for (const child of current.children!) {
-    inner += renderNode(child, short, pretty, depth + 1);
+  for (const child of children) {
+    inner += renderNode(child, pretty, depth + 1);
   }
   return `${indent}<${tag}${attrString}>${nl}${inner}${indent}</${tag}>${nl}`;
 }
 
 // ---------------------------------------------------------------------------
-// HTML parsing (clean HTML -> tree). Tolerant, allowlist-based; meant for the
-// limited structural markup produced by treeToHtml and hand-edited by merchants.
-// Security sanitization of arbitrary input lives in structure-html.ts; this
-// parser only understands tag/class/slot/href and drops everything else.
+// HTML parsing (HTML -> faithful tree). Preserves every tag, attribute, text
+// node, and child order. It does NOT enforce security — that is the job of
+// sanitizeStructureHtml (structure-html.ts), which runs before storage. This
+// parser only normalizes whitespace-only text between elements.
 // ---------------------------------------------------------------------------
-
-const ALLOWED_TAGS: ReadonlySet<string> = new Set([
-  "section",
-  "div",
-  "span",
-  "strong",
-  "small",
-  "p",
-  "a",
-  "button",
-  "ul",
-  "li",
-  "img",
-  "br",
-]);
 
 export function htmlToTree(html: string): StructureNode | null {
   const tokens = tokenizeHtml(html);
@@ -420,26 +410,23 @@ export function htmlToTree(html: string): StructureNode | null {
   for (const token of tokens) {
     const top = stack[stack.length - 1];
     if (token.type === "text") {
-      const text = token.value.trim();
-      if (text && top.tag !== "#root") {
-        top.text = (top.text ?? "") + text;
-      }
+      // Decode entities back to characters so a re-serialization is stable.
+      const value = decodeEntities(token.value);
+      if (value.trim().length === 0) continue; // drop whitespace-only nodes
+      (top.children ??= []).push({ tag: TEXT_TAG, text: value });
       continue;
     }
     if (token.type === "open") {
-      if (!ALLOWED_TAGS.has(token.tag)) {
-        // Skip the tag but keep parsing its children into the current parent.
-        continue;
-      }
-      const built = parseOpenTag(token);
+      const built: StructureNode = { tag: token.tag };
+      const attrs = parseAttributes(token.rawAttrs);
+      if (Object.keys(attrs).length) built.attrs = attrs;
       (top.children ??= []).push(built);
       if (!token.selfClosing && !VOID_TAGS.has(token.tag)) {
         stack.push(built);
       }
       continue;
     }
-    // close
-    if (!ALLOWED_TAGS.has(token.tag)) continue;
+    // close — unwind to the matching open tag.
     for (let i = stack.length - 1; i > 0; i -= 1) {
       if (stack[i].tag === token.tag) {
         stack.length = i;
@@ -449,9 +436,18 @@ export function htmlToTree(html: string): StructureNode | null {
   }
 
   const children = root.children ?? [];
-  if (children.length === 0) return null;
-  // The structural document has a single root element.
-  return children[0];
+  const firstElement = children.find((child) => child.tag !== TEXT_TAG);
+  if (!firstElement) return null;
+
+  // The structural document is wrapped in a single root element. If the user
+  // wrote multiple top-level nodes, wrap them so nothing is dropped.
+  const elementCount = children.filter(
+    (child) => child.tag !== TEXT_TAG,
+  ).length;
+  if (elementCount === 1 && children[0] === firstElement) {
+    return firstElement;
+  }
+  return { tag: "div", attrs: { class: "cp-root" }, children };
 }
 
 type HtmlToken =
@@ -485,7 +481,7 @@ function tokenizeHtml(html: string): HtmlToken[] {
     }
     const selfClosing = raw.endsWith("/");
     const body = selfClosing ? raw.slice(0, -1) : raw;
-    const match = /^([a-zA-Z][a-zA-Z0-9]*)([\s\S]*)$/.exec(body.trim());
+    const match = /^([a-zA-Z][a-zA-Z0-9-]*)([\s\S]*)$/.exec(body.trim());
     if (!match) continue;
     tokens.push({
       type: "open",
@@ -497,51 +493,46 @@ function tokenizeHtml(html: string): HtmlToken[] {
   return tokens;
 }
 
-function parseOpenTag(token: {
-  tag: string;
-  rawAttrs: string;
-}): StructureNode {
-  const built: StructureNode = { tag: token.tag };
-  const classValue = readAttr(token.rawAttrs, "class");
-  if (classValue) {
-    const cls = classValue
-      .split(/\s+/)
-      .map((c) => c.replace(/[^a-zA-Z0-9_-]/g, ""))
-      .filter(Boolean)
-      .map((c) => toLongClass(c));
-    if (cls.length) built.cls = cls;
+// Parses a tag's raw attribute text into an ordered name->value map. Boolean
+// attributes get an empty-string value. Names are lower-cased.
+function parseAttributes(rawAttrs: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const regex =
+    /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(rawAttrs))) {
+    const name = match[1];
+    if (!name) continue;
+    const rawValue = match[3] ?? match[4] ?? match[5] ?? "";
+    attrs[name.toLowerCase()] = decodeEntities(rawValue);
   }
-  const slot = readAttr(token.rawAttrs, "data-cp-slot");
-  if (slot && isStructureSlot(slot)) built.slot = slot;
-  if (token.tag === "a") {
-    const href = readAttr(token.rawAttrs, "href");
-    if (href) built.href = href;
-  }
-  return built;
+  return attrs;
 }
 
-function readAttr(rawAttrs: string, name: string): string | null {
-  const regex = new RegExp(
-    `(?:^|\\s)${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
-    "i",
-  );
-  const match = regex.exec(rawAttrs);
-  if (!match) return null;
-  return match[2] ?? match[3] ?? match[4] ?? "";
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 // ---------------------------------------------------------------------------
-// Compact AST (dictionary-packed) — for storage + transmission.
+// Compact AST (dictionary-packed) — a storage/transmission optimization only.
+// It is fully reversible: unpack(pack(tree)) deep-equals tree, so the exact HTML
+// can be rebuilt with treeToHtml.
 //
-// Shape: { v, t:[tags], c:[short class tokens], n:<packed node> }
-// packed node = [tagIdx, [classIdx...], slot|0, text|0, href|0, [children...]]
-// with trailing zero/empty entries trimmed for size.
+// Shape: { v, t:[tagNames], a:[attrNames], n:<packed node> }
+//   element node = [tagId, [[attrNameId, value], ...], [children...]]
+//   text node    = [tagId(of "#text"), textString]
+// Trailing empty entries on element nodes are trimmed for size.
 // ---------------------------------------------------------------------------
 
 export type PackedStructure = {
   v: number;
   t: string[];
-  c: string[];
+  a: string[];
   n: PackedNode;
 };
 
@@ -549,50 +540,56 @@ type PackedNode = unknown[];
 
 export function packTree(tree: StructureNode): PackedStructure {
   const tags: string[] = [];
-  const classes: string[] = [];
+  const attrNames: string[] = [];
   const tagIndex = new Map<string, number>();
-  const classIndex = new Map<string, number>();
+  const attrIndex = new Map<string, number>();
 
-  const internTag = (tag: string): number => {
-    let id = tagIndex.get(tag);
+  const intern = (
+    value: string,
+    list: string[],
+    index: Map<string, number>,
+  ): number => {
+    let id = index.get(value);
     if (id === undefined) {
-      id = tags.length;
-      tags.push(tag);
-      tagIndex.set(tag, id);
-    }
-    return id;
-  };
-  const internClass = (cls: string): number => {
-    const short = toShortClass(cls);
-    let id = classIndex.get(short);
-    if (id === undefined) {
-      id = classes.length;
-      classes.push(short);
-      classIndex.set(short, id);
+      id = list.length;
+      list.push(value);
+      index.set(value, id);
     }
     return id;
   };
 
   const pack = (current: StructureNode): PackedNode => {
+    const tagId = intern(current.tag, tags, tagIndex);
+    if (current.tag === TEXT_TAG) {
+      return [tagId, current.text ?? ""];
+    }
+    const attrs = current.attrs ?? {};
+    const attrPairs = Object.keys(attrs).map((name) => [
+      intern(name, attrNames, attrIndex),
+      attrs[name],
+    ]);
     const arr: unknown[] = [
-      internTag(current.tag),
-      (current.cls ?? []).map(internClass),
-      current.slot ?? 0,
-      current.text ?? 0,
-      current.href ?? 0,
+      tagId,
+      attrPairs,
       (current.children ?? []).map(pack),
     ];
-    // Trim trailing empties to keep the payload small.
-    while (arr.length > 2) {
+    while (arr.length > 1) {
       const last = arr[arr.length - 1];
-      const empty = Array.isArray(last) ? last.length === 0 : !last;
-      if (!empty) break;
-      arr.pop();
+      if (Array.isArray(last) && last.length === 0) {
+        arr.pop();
+      } else {
+        break;
+      }
     }
     return arr;
   };
 
-  return { v: CAMPAIGN_STRUCTURE_VERSION, t: tags, c: classes, n: pack(tree) };
+  return {
+    v: CAMPAIGN_STRUCTURE_VERSION,
+    t: tags,
+    a: attrNames,
+    n: pack(tree),
+  };
 }
 
 // The dictionary-packed AST is stored as a compact JSON string. Encoding/decoding
@@ -607,7 +604,12 @@ export function decodePackedStructure(
   if (!encoded) return null;
   try {
     const parsed = JSON.parse(encoded) as PackedStructure;
-    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.t)) {
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !Array.isArray(parsed.t) ||
+      !Array.isArray(parsed.a)
+    ) {
       return null;
     }
     return parsed;
@@ -617,22 +619,23 @@ export function decodePackedStructure(
 }
 
 export function unpackTree(packed: PackedStructure): StructureNode {
-  const { t: tags, c: classes } = packed;
+  const { t: tags, a: attrNames } = packed;
 
   const unpack = (arr: PackedNode): StructureNode => {
     const tag = tags[arr[0] as number];
-    const result: StructureNode = { tag };
-    const classIds = (arr[1] as number[]) ?? [];
-    if (classIds.length) {
-      result.cls = classIds.map((id) => toLongClass(classes[id]));
+    if (tag === TEXT_TAG) {
+      return { tag, text: String(arr[1] ?? "") };
     }
-    const slot = arr[2];
-    if (slot && isStructureSlot(slot)) result.slot = slot;
-    const text = arr[3];
-    if (text) result.text = String(text);
-    const href = arr[4];
-    if (href) result.href = String(href);
-    const children = arr[5] as PackedNode[] | undefined;
+    const result: StructureNode = { tag };
+    const attrPairs = (arr[1] as Array<[number, string]>) ?? [];
+    if (attrPairs.length) {
+      const attrs: Record<string, string> = {};
+      for (const [nameId, value] of attrPairs) {
+        attrs[attrNames[nameId]] = String(value ?? "");
+      }
+      result.attrs = attrs;
+    }
+    const children = arr[2] as PackedNode[] | undefined;
     if (children && children.length) {
       result.children = children.map(unpack);
     }

@@ -4005,6 +4005,9 @@ s-page::part(page) {
   min-height: 0;
   align-items: start;
   overflow: auto;
+  transform: scale(.5);
+  transform-origin: left top;
+  width: 1000px;
 }
 
 .counterpulse-ai-drawer__header {
@@ -4290,6 +4293,7 @@ s-page::part(page) {
   display: grid;
   gap: 6px;
   margin-bottom: 12px;
+  max-height: 120px;
 }
 
 .counterpulse-ai-option-grid,

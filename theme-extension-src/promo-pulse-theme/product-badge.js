@@ -764,9 +764,23 @@
 
     root.replaceChildren();
     renderableBadges.forEach(function (badge) {
-      root.appendChild(renderBadge(badge, isAutomaticSlot));
+      root.appendChild(renderBadge(badge, isAutomaticSlot, root));
       emitBadgeImpression(badge);
     });
+  }
+
+  // Product context for message variables (e.g. {{quantity}} in badge text).
+  function badgeContextVariables(slot) {
+    var variables = {};
+    if (!slot || !slot.dataset) return variables;
+
+    var raw = slot.dataset.inventoryQuantity;
+    var inventory = raw === "" || raw == null ? NaN : Number(raw);
+    if (Number.isFinite(inventory)) {
+      variables.quantity = String(Math.floor(inventory));
+      variables.count = variables.quantity;
+    }
+    return variables;
   }
 
   function selectRenderableBadges(badges, maxBadges) {
@@ -786,7 +800,7 @@
     return output;
   }
 
-  function renderBadge(badgePayload, isAutomaticSlot) {
+  function renderBadge(badgePayload, isAutomaticSlot, slot) {
     var badge = badgePayload.badge || {};
     var design = badgePayload.design || {};
     var text = badge.badgeText || badgePayload.text || "Limited offer";
@@ -804,6 +818,7 @@
       endsAt: badgePayload.endsAt,
       timezone: badgePayload.timezone,
       locale: document.documentElement.lang || "en",
+      variables: badgeContextVariables(slot),
       headline: text,
       hasTimer: timerState.isActive,
       timer: {

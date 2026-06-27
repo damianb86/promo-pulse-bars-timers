@@ -1006,7 +1006,10 @@
       return false;
     }
 
-    return /^\/cart\/(add|change|update|clear)(\.js)?$/.test(pathname);
+    // Match cart routes even when the storefront prefixes them with a locale or
+    // market path (e.g. /en-gb/cart/add.js), so "Add to cart" is detected on
+    // localized stores, not only /cart/add.js.
+    return /(^|\/)cart\/(add|change|update|clear)(\.js)?$/.test(pathname);
   }
 
   function readAjaxCartState() {

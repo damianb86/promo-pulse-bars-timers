@@ -3437,6 +3437,25 @@ function getLifecycleConfirmationCopy(
   };
 }
 
+// Maps a campaign placement to the right preview surface so the variant
+// thumbnail renders as a badge for badge placements, a bar for top/bottom bars,
+// and a card/block for everything else.
+function resolveVariantPreviewSurface(placement: string | undefined): {
+  placement: "TOP_BAR" | "BOTTOM_BAR" | "PRODUCT_PAGE" | "CART_PAGE" | "CART_DRAWER" | "PRODUCT_BADGE";
+  variant: "bar" | "block" | "badge";
+} {
+  if (placement === "PRODUCT_PAGE_BADGE" || placement === "COLLECTION_CARD") {
+    return { placement: "PRODUCT_BADGE", variant: "badge" };
+  }
+  if (placement === "TOP_BAR" || placement === "BOTTOM_BAR") {
+    return { placement, variant: "bar" };
+  }
+  if (placement === "CART_PAGE" || placement === "CART_DRAWER") {
+    return { placement, variant: "block" };
+  }
+  return { placement: "PRODUCT_PAGE", variant: "block" };
+}
+
 function VariantMiniPreview({
   design,
   viewModel,
@@ -3444,17 +3463,9 @@ function VariantMiniPreview({
   design: CampaignDesignValues;
   viewModel: CampaignViewModel;
 }) {
-  const previewPlacements = [
-    "TOP_BAR",
-    "BOTTOM_BAR",
-    "PRODUCT_PAGE",
-    "CART_PAGE",
-    "CART_DRAWER",
-    "PRODUCT_BADGE",
-  ] as const;
-  const placement =
-    previewPlacements.find((option) => option === viewModel.placements[0]) ??
-    "TOP_BAR";
+  const { placement, variant } = resolveVariantPreviewSurface(
+    viewModel.placements[0],
+  );
 
   return (
     <div className="counterpulse-variant-preview">
@@ -3470,7 +3481,7 @@ function VariantMiniPreview({
         dataTestId="variant-preview-surface"
         design={design}
         placement={placement}
-        variant="bar"
+        variant={variant}
         viewModel={viewModel}
       />
     </div>

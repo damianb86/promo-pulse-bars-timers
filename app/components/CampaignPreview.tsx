@@ -544,7 +544,39 @@ function PromoSurface({
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
   const hasBadgeTimer = Boolean(timerState?.isActive || deliveryPreview);
 
+  const lowStockPreview = buildLowStockPreview(viewModel);
+  // Dynamic variables work in every field, so interpolate the headline/body/CTA
+  // (and badge text) for the preview the same way the storefront surface does.
+  const previewVariables: Record<string, string> = {
+    year: String(new Date().getFullYear()),
+    // A representative stock value so {{quantity}} renders in the preview for
+    // any field (the storefront uses the real product inventory).
+    quantity: "5",
+    count: "5",
+  };
+  if (timerState?.isActive) {
+    previewVariables.time_left = formatPreviewTimeLeft(timerState.remainingMs);
+  } else if (deliveryPreview) {
+    previewVariables.time_left = deliveryPreview.timeRemaining;
+  }
+  Object.assign(
+    previewVariables,
+    freeShippingPreview?.variables ?? {},
+    lowStockPreview?.variables ?? {},
+    deliveryPreview?.variables ?? {},
+  );
+  if (!previewVariables.time_remaining && previewVariables.time_left) {
+    previewVariables.time_remaining = previewVariables.time_left;
+  }
+  const interpolate = (text: string) =>
+    interpolatePreviewMessage(text, previewVariables);
+
   if (variant === "badge") {
+    const badgeText = interpolate(
+      viewModel.badge?.badgeText ||
+        viewModel.badgeText ||
+        viewModel.headline,
+    );
     return (
       <div
         className={[
@@ -564,11 +596,7 @@ function PromoSurface({
         data-testid={dataTestId}
         style={style}
       >
-        <span>
-          {viewModel.badge?.badgeText ||
-            viewModel.badgeText ||
-            viewModel.headline}
-        </span>
+        <span>{badgeText}</span>
         {hasBadgeTimer ? (
           <TimerDisplay
             compact
@@ -581,28 +609,6 @@ function PromoSurface({
     );
   }
 
-  const lowStockPreview = buildLowStockPreview(viewModel);
-  // Dynamic variables work in every field, so interpolate the headline/body/CTA
-  // for the preview the same way the storefront surface does.
-  const previewVariables: Record<string, string> = {
-    year: String(new Date().getFullYear()),
-  };
-  if (timerState?.isActive) {
-    previewVariables.time_left = formatPreviewTimeLeft(timerState.remainingMs);
-  } else if (deliveryPreview) {
-    previewVariables.time_left = deliveryPreview.timeRemaining;
-  }
-  Object.assign(
-    previewVariables,
-    freeShippingPreview?.variables ?? {},
-    lowStockPreview?.variables ?? {},
-    deliveryPreview?.variables ?? {},
-  );
-  if (!previewVariables.time_remaining && previewVariables.time_left) {
-    previewVariables.time_remaining = previewVariables.time_left;
-  }
-  const interpolate = (text: string) =>
-    interpolatePreviewMessage(text, previewVariables);
   const headlineText = interpolate(
     lowStockPreview ? lowStockPreview.headline : viewModel.headline,
   );

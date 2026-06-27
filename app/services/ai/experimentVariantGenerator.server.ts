@@ -402,8 +402,21 @@ async function requestOpenAiVariantJson(
 }
 
 function buildVariantPrompt(input: ExperimentVariantAiInput) {
+  const placements = input.campaign.placements ?? [];
+  const isBadgeOnlyCampaign =
+    placements.length > 0 &&
+    placements.every(
+      (placement) =>
+        placement === "PRODUCT_PAGE_BADGE" || placement === "COLLECTION_CARD",
+    );
+
   return [
     "Create exactly one new experiment variant.",
+    ...(isBadgeOnlyCampaign
+      ? [
+          "This is a BADGE campaign (it only targets badge placements: product-page badge and/or collection card). The variant MUST stay a badge: vary text.badgeText and the badge look (colors, shape via design, icon), keep a badge placement, and do NOT switch it to a bar/card layout or a non-badge placement. Badges are tiny, so keep badgeText to a few words.",
+        ]
+      : []),
     "Allowed changes: message copy, CTA text, CTA URL, placement override, layout, preset/templateKey, images, colors, typography, timer style, behavior, motion, icon, and other design values.",
     "Forbidden changes: offers, discounts, coupon rules, targeting, markets, schedule, products, or audience rules. Inherit those from the base campaign.",
     "Keep all claims realistic. Do not invent reviews, stock counts, guarantees, discount amounts, or deadlines that are not in the provided campaign text.",

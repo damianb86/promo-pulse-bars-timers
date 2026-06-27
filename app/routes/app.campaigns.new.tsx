@@ -653,7 +653,16 @@ async function applyAiSuggestionToCampaign({
   shopId: string;
   suggestion: CampaignSuggestion;
 }) {
-  await updateCampaignDesignForShop(campaignId, shopId, suggestion.design);
+  await updateCampaignDesignForShop(
+    campaignId,
+    shopId,
+    suggestion.design,
+    suggestion.design,
+    {
+      editedHtml: suggestion.structureHtml || null,
+      editedCss: suggestion.structureCss || null,
+    },
+  );
   await updateCampaignTranslationsForShop(
     campaignId,
     shopId,

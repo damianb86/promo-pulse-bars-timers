@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v6";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v7";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -123,6 +123,8 @@ strings, empty arrays, false, or safe defaults, not null:
     "locale-from-targetLocales": {}
   },
   "design": {},
+  "structureHtml": "",
+  "structureCss": "",
   "safety": {
     "warnings": [],
     "blockedClaims": [],
@@ -178,6 +180,56 @@ Custom CSS:
   - .counterpulse-preview-close — the close button
 - Prefer the structured design settings first; use customCss only for accents
   that the settings cannot achieve, and keep it short.
+
+Structural HTML (structureHtml) — reshape the layout when needed:
+- Leave structureHtml as "" to use the structure generated from design.layout +
+  the settings (the normal case). ONLY return structureHtml when the merchant's
+  goal needs a structure none of the layouts produce (reordering blocks, extra
+  wrappers, custom grouping). When you do, it becomes the exact markup rendered on
+  the storefront, so it must be correct and complete.
+- The HTML carries STRUCTURE ONLY — never inline styles, never colors. All styling
+  goes in structureCss (see below). Use only these tags: section, div, span,
+  strong, small, p, a, button, ul, li, img, br. Anything else is stripped.
+- The dynamic parts are NOT written as literal text; they are empty placeholder
+  elements marked with data-cp-slot, which the app fills at render time. Include
+  the slots the campaign needs, each at most once:
+  - data-cp-slot="headline" (use on a <strong>) — the headline text
+  - data-cp-slot="body" (a <span>) — the supporting line
+  - data-cp-slot="cta" (a <span>, or <a> for a link) — the action button
+  - data-cp-slot="icon" — the icon (only if design.icon is not NONE)
+  - data-cp-slot="timer" — the countdown (use "timer-inline" instead inside the
+    message copy for inline/one-line layouts)
+  - data-cp-slot="offer" — the discount code / copy / apply controls
+  - data-cp-slot="close" — the dismiss button
+  - data-cp-slot="progress" — the free-shipping progress bar
+- Use short, clean class names with the cp- prefix. The standard wrappers are:
+  cp-promo (root <section>), cp-message and cp-message-copy (message block),
+  cp-actions (action area). You may add your own cp-* classes on extra wrappers
+  and target them from structureCss.
+- Example skeleton (adapt to the campaign; drop slots that do not apply):
+  <section class="cp-promo">
+    <div class="cp-message"><span data-cp-slot="icon"></span>
+      <div class="cp-message-copy"><strong data-cp-slot="headline"></strong>
+        <span data-cp-slot="body"></span></div></div>
+    <div data-cp-slot="timer"></div>
+    <div class="cp-actions"><span data-cp-slot="offer"></span>
+      <span data-cp-slot="cta"></span></div>
+    <span data-cp-slot="close"></span>
+  </section>
+
+Structural CSS (structureCss) — style the structure and add effects:
+- Put ALL styles for a custom structure here (and any extra effects/animations you
+  want). Plain CSS only: no <style> tags, no @import, no JavaScript, no
+  javascript:/data: URLs.
+- Scope every rule to this campaign with the __CP_SCOPE__ placeholder, which the
+  app replaces with a unique per-campaign selector at render time. Put the design
+  variables on the root and target your classes beneath it, e.g.:
+  __CP_SCOPE__ { --cp-bg: #111827; --cp-text: #ffffff; }
+  __CP_SCOPE__ .cp-promo { background: var(--cp-bg); color: var(--cp-text); }
+  __CP_SCOPE__ .cp-actions { gap: 12px; }
+- When you return structureHtml you SHOULD return structureCss too, otherwise the
+  custom structure will render unstyled. If structureHtml is "", leave
+  structureCss "" as well.
 
 ${describeDesignLayoutsForAi()}
 `.trim();

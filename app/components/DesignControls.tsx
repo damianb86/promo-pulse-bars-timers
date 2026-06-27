@@ -67,8 +67,12 @@ type DesignControlsProps = {
   isProPlan: boolean;
   device?: "desktop" | "mobile";
   progressStyle?: FreeShippingProgressStyleValue;
+  structureEdited?: boolean;
   onChange: (values: CampaignDesignValues) => void;
   onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
+  onEditStructureHtml?: () => void;
+  onEditStructureCss?: () => void;
+  onResetStructure?: () => void;
 };
 
 export function DesignControls({
@@ -79,8 +83,12 @@ export function DesignControls({
   isProPlan,
   device = "desktop",
   progressStyle,
+  structureEdited = false,
   onChange,
   onProgressStyleChange,
+  onEditStructureHtml,
+  onEditStructureCss,
+  onResetStructure,
 }: DesignControlsProps) {
   const [customIconError, setCustomIconError] = useState<string | null>(null);
   const [backgroundImageError, setBackgroundImageError] = useState<
@@ -192,11 +200,15 @@ export function DesignControls({
   const selectLayout = (layout: CampaignDesignValues["layout"]) => {
     onChange(applyCampaignLayoutDefaults({ ...values, layout }));
     setOpenTemplateDropdown(null);
+    // Layout changes the structural HTML, so drop any custom HTML override and
+    // regenerate it from the new layout. Other settings keep their override.
+    onResetStructure?.();
   };
 
   const selectTemplate = (template: CampaignDesignTemplate) => {
     onChange(applyCampaignDesignTemplate(template.templateKey, values));
     setOpenTemplateDropdown(null);
+    onResetStructure?.();
   };
 
   return (
@@ -287,6 +299,36 @@ export function DesignControls({
           <input name="textColor" type="hidden" value={values.textColor} />
           <input name="fontSize" type="hidden" value={values.fontSize} />
         </DesignGroup>
+
+        {(onEditStructureHtml || onEditStructureCss) && (
+          <DesignGroup label="HTML & CSS">
+            <div className="counterpulse-structure-html-row">
+              {onEditStructureHtml && (
+                <button
+                  className="counterpulse-button-secondary"
+                  type="button"
+                  onClick={onEditStructureHtml}
+                >
+                  View / edit HTML
+                </button>
+              )}
+              {onEditStructureCss && (
+                <button
+                  className="counterpulse-button-secondary"
+                  type="button"
+                  onClick={onEditStructureCss}
+                >
+                  View / edit CSS
+                </button>
+              )}
+            </div>
+            <p className="counterpulse-design-note">
+              {structureEdited
+                ? "Custom HTML/CSS is in use. Changing the layout or preset above resets it."
+                : "Structure & styles are generated from the design settings."}
+            </p>
+          </DesignGroup>
+        )}
       </DesignPanel>
 
       <CardDesignPanel

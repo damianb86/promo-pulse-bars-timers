@@ -6,6 +6,10 @@ import {
 } from "../../types/campaign-design";
 import type { CampaignDesignValues } from "../../types/campaign-design";
 import {
+  sanitizeStructureCss,
+  sanitizeStructureHtml,
+} from "../../utils/structure-html";
+import {
   campaignGoalOptions,
   getDefaultPlacementForCampaignType,
   type CampaignGoalValue,
@@ -86,6 +90,8 @@ type CampaignAiProviderOutput = {
     Record<StorefrontLocale, Partial<CampaignAiTranslation>>
   >;
   design?: Partial<CampaignDesignValues>;
+  structureHtml?: string;
+  structureCss?: string;
   safety?: Partial<CampaignSuggestion["safety"]>;
 };
 
@@ -179,6 +185,8 @@ const openAiJsonKeys = [
   "deliveryCutoff",
   "translations",
   "design",
+  "structureHtml",
+  "structureCss",
 ];
 
 export function buildDefaultCampaignAiInput(
@@ -634,6 +642,8 @@ export function parseAppliedCampaignSuggestion(
         deliveryCutoff: parsed.deliveryCutoff,
         translations: parsed.translations,
         design: parsed.design,
+        structureHtml: parsed.structureHtml,
+        structureCss: parsed.structureCss,
         safety: parsed.safety,
       },
       parsed.source === "provider" ? "provider" : "mock",
@@ -847,6 +857,10 @@ function completeCampaignSuggestion(
       fallback.design,
       allowVisualOverrides,
     ),
+    structureHtml:
+      typeof output.structureHtml === "string" ? output.structureHtml : "",
+    structureCss:
+      typeof output.structureCss === "string" ? output.structureCss : "",
     variants: [],
     safety: {
       warnings: [...(output.safety?.warnings ?? [])],
@@ -876,6 +890,8 @@ function buildMockCampaignSuggestion(
     deliveryCutoff: buildDeliveryCutoff(input),
     translations: buildTranslations(input, campaign),
     design: buildDesign(input),
+    structureHtml: "",
+    structureCss: "",
     variants: [],
     safety: {
       warnings: [],
@@ -1315,6 +1331,12 @@ function sanitizeCampaignSuggestion(
       buildDesign(suggestion.input),
       Boolean(suggestion.referenceImageUsed),
     ),
+    // Sanitize any AI-authored structural HTML / CSS to the safe allowlist so a
+    // generated override can never inject unsafe markup or styles.
+    structureHtml: sanitizeStructureHtml(suggestion.structureHtml),
+    structureCss: suggestion.structureCss
+      ? sanitizeStructureCss(suggestion.structureCss)
+      : "",
     variants: [],
     safety: {
       warnings: uniqueStrings(warnings),

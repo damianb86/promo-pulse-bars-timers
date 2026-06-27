@@ -249,6 +249,12 @@ export type CampaignSuggestion = {
   deliveryCutoff: CampaignAiDeliveryCutoffSettings;
   translations: Record<StorefrontLocale, CampaignAiTranslation>;
   design: CampaignDesignValues;
+  // Optional structural HTML / CSS overrides. When the AI needs to reshape the
+  // layout beyond what the design settings allow, it returns clean structural
+  // HTML (cp-* classes + data-cp-slot placeholders) and/or scoped CSS here. Empty
+  // string means "no override — use the structure generated from the settings".
+  structureHtml: string;
+  structureCss: string;
   variants: CampaignAiVariant[];
   safety: CampaignAiSafety;
 };

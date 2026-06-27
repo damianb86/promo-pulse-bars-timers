@@ -278,6 +278,10 @@ type LoaderData = {
   mobileDesignValues: CampaignDesignValues;
   structureEdited: boolean;
   structureHtml: string;
+  structureCss: string;
+  mobileStructureEdited: boolean;
+  mobileStructureHtml: string;
+  mobileStructureCss: string;
   designMediaOptions: CampaignDesignMediaOptions;
   designViewModel: CampaignViewModel;
   discountApiError: string;
@@ -392,6 +396,15 @@ export const loader = async ({
   const structureHtml = structureEdited
     ? decodeStructureHtml(campaign.design?.structureCompact)
     : "";
+  const structureCss = structureEdited
+    ? (campaign.design?.structureCss ?? "")
+    : "";
+  const mobileStructure = readMobileStructure(campaign.design?.mobileDesign);
+  const mobileStructureEdited = Boolean(mobileStructure);
+  const mobileStructureHtml = mobileStructure
+    ? decodeStructureHtml(mobileStructure.mobileStructureCompact)
+    : "";
+  const mobileStructureCss = mobileStructure?.mobileStructureCss ?? "";
   const effectivePlan = getEffectiveShopPlan(shop);
   const lockedFeatures = {
     customCss: getLockedFeatureReason(shop, "custom_css"),
@@ -521,6 +534,10 @@ export const loader = async ({
     mobileDesignValues,
     structureEdited,
     structureHtml,
+    structureCss,
+    mobileStructureEdited,
+    mobileStructureHtml,
+    mobileStructureCss,
     designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
       name: campaign.name,
@@ -1702,6 +1719,10 @@ export default function EditCampaignPage() {
     mobileDesignValues,
     structureEdited,
     structureHtml,
+    structureCss,
+    mobileStructureEdited,
+    mobileStructureHtml,
+    mobileStructureCss,
     designMediaOptions,
     designViewModel,
     discountApiError,
@@ -2272,6 +2293,10 @@ export default function EditCampaignPage() {
                   viewModel={draftPreviewViewModel}
                   structureEdited={structureEdited}
                   structureHtml={structureHtml}
+                  structureCss={structureCss}
+                  mobileStructureEdited={mobileStructureEdited}
+                  mobileStructureHtml={mobileStructureHtml}
+                  mobileStructureCss={mobileStructureCss}
                 />
               ),
             },
@@ -3956,6 +3981,24 @@ function decodeStructureHtml(compact: string | null | undefined): string {
   } catch {
     return "";
   }
+}
+
+// Reads the mobile structure override (stored inside the mobile design JSON).
+function readMobileStructure(value: unknown): {
+  mobileStructureCompact?: string | null;
+  mobileStructureCss?: string | null;
+} | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const compact = record.mobileStructureCompact;
+  if (typeof compact !== "string" || !compact) return null;
+  return {
+    mobileStructureCompact: compact,
+    mobileStructureCss:
+      typeof record.mobileStructureCss === "string"
+        ? record.mobileStructureCss
+        : "",
+  };
 }
 
 function toCampaignDesignValues(

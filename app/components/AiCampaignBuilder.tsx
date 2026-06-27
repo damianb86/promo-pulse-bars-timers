@@ -870,7 +870,11 @@ export function AiCampaignBuilder({
             </div>
           </div>
 
-          <Form method="post" className="counterpulse-form">
+          <Form
+            id="ai-campaign-generate-form"
+            method="post"
+            className="counterpulse-form"
+          >
             <input
               name="_action"
               type="hidden"
@@ -1665,6 +1669,14 @@ export function AiCampaignBuilder({
                     type="button"
                   >
                     Apply suggestion
+                  </button>
+                  <button
+                    className="counterpulse-button-secondary"
+                    disabled={isGenerating}
+                    form="ai-campaign-generate-form"
+                    type="submit"
+                  >
+                    {isGenerating ? "Regenerating..." : "Regenerate"}
                   </button>
                 </div>
 

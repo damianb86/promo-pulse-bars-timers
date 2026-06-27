@@ -1,5 +1,12 @@
 # Agent Instructions
 
+## Design Principles
+
+- There are NO legacy campaigns and no backward-compatibility constraints. Always
+  design and implement changes from scratch for the current model. Never add code
+  paths, fallbacks, or migrations whose only purpose is supporting an older
+  configuration or previous behavior.
+
 ## Testing Discipline
 
 - Before finishing a feature, run the relevant tests. Prefer at least

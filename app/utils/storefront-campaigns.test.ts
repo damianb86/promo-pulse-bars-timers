@@ -2,11 +2,77 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseStorefrontCampaignContext,
+  serializeDesign,
   serializeStorefrontCampaign,
   serializeStorefrontCampaigns,
   type StorefrontCampaignContext,
   type StorefrontCampaignSource,
 } from "./storefront-campaigns";
+import {
+  buildCampaignStructureTree,
+  encodePackedStructure,
+  packTree,
+} from "./campaign-structure";
+
+describe("serializeDesign structure payload", () => {
+  const baseSpec = {
+    variant: "block" as const,
+    placement: "PRODUCT_PAGE",
+    layout: "STANDARD",
+    fullWidth: false,
+    positionMode: "FLOW",
+    floatPosition: "FIXED",
+    entranceAnimation: "FADE",
+    exitAnimation: "FADE",
+    hasIcon: false,
+    hasInlineTimer: false,
+    hasBlockTimer: true,
+    hasBody: true,
+    hasOffer: false,
+    hasCta: true,
+    ctaIsLink: false,
+    hasClose: true,
+    hasProgress: false,
+    hasBadgeTimer: false,
+  };
+  const compact = encodePackedStructure(
+    packTree(buildCampaignStructureTree(baseSpec)),
+  );
+
+  it("emits decoded structure and never leaks internal storage columns", () => {
+    const design = {
+      icon: "NONE",
+      customCss: ".x{color:red}",
+      structureCompact: compact,
+      structureCss: '__CP_SCOPE__{--cp-bg:#000}\n.x{color:red}',
+      structureVersion: 1,
+      structureEdited: true,
+    } as unknown as Parameters<typeof serializeDesign>[0];
+
+    const result = serializeDesign(design) as Record<string, unknown>;
+
+    expect(result.structure).not.toBeNull();
+    expect(result).not.toHaveProperty("structureCompact");
+    expect(result).not.toHaveProperty("structureVersion");
+    expect(result).not.toHaveProperty("structureEdited");
+    // structureCss is exposed only inside `structure`, not as a top-level field.
+    expect(result).not.toHaveProperty("structureCss");
+    // customCss is baked into structure.css, so it is not shipped twice.
+    expect(result.customCss).toBe("");
+  });
+
+  it("keeps customCss and omits structure for legacy designs", () => {
+    const design = {
+      icon: "NONE",
+      customCss: ".x{color:red}",
+      structureCompact: null,
+    } as unknown as Parameters<typeof serializeDesign>[0];
+
+    const result = serializeDesign(design) as Record<string, unknown>;
+    expect(result.structure).toBeNull();
+    expect(result.customCss).toBe(".x{color:red}");
+  });
+});
 
 describe("storefront campaign serialization", () => {
   it("serializes only storefront-safe campaign fields", () => {

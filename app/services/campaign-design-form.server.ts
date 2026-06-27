@@ -28,7 +28,10 @@ import {
   validateCampaignDesignValues,
 } from "../utils/campaign-design";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
-import { sanitizeStructureHtml } from "../utils/structure-html";
+import {
+  sanitizeStructureCss,
+  sanitizeStructureHtml,
+} from "../utils/structure-html";
 import { canUseFeature } from "./planLimits.server";
 
 export type ParsedCampaignDesignForm = {
@@ -357,20 +360,39 @@ export type ParsedCampaignStructureForm = {
   // Sanitized hand-edited structural HTML, or null when the merchant has not
   // overridden the auto-generated structure (regenerate from settings).
   editedHtml: string | null;
+  // Sanitized hand-edited CSS override, or null to regenerate CSS from settings.
+  editedCss: string | null;
+  // Mobile override (only when "Separate desktop and mobile" is on and the
+  // mobile HTML was edited). null means the mobile surface reuses desktop.
+  editedMobileHtml: string | null;
+  editedMobileCss: string | null;
 };
 
-// Reads the optional structural-HTML override coming from the design editor's
-// HTML modal. The HTML is sanitized here before it ever reaches the model layer.
+// Reads the optional structural-HTML + CSS override coming from the design
+// editor's HTML/CSS modals. Both are sanitized here before reaching the model.
 export function parseCampaignStructureForm(
   formData: FormData,
 ): ParsedCampaignStructureForm {
   const edited = readFormString(formData, "structureEdited") === "true";
-  if (!edited) return { editedHtml: null };
+  const mobileEdited =
+    readFormString(formData, "mobileStructureEdited") === "true";
 
-  const sanitized = sanitizeStructureHtml(
-    readFormString(formData, "structureHtml"),
-  );
-  return { editedHtml: sanitized || null };
+  return {
+    editedHtml: edited
+      ? sanitizeStructureHtml(readFormString(formData, "structureHtml")) || null
+      : null,
+    editedCss: edited
+      ? sanitizeStructureCss(readFormString(formData, "structureCss")) || null
+      : null,
+    editedMobileHtml: mobileEdited
+      ? sanitizeStructureHtml(readFormString(formData, "mobileStructureHtml")) ||
+        null
+      : null,
+    editedMobileCss: mobileEdited
+      ? sanitizeStructureCss(readFormString(formData, "mobileStructureCss")) ||
+        null
+      : null,
+  };
 }
 
 function readString(formData: FormData, key: keyof CampaignDesignValues) {

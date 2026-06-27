@@ -63,6 +63,31 @@ describe("AI campaign generator", () => {
     expect(parseAppliedCampaignSuggestion("")).toBeNull();
   });
 
+  it("keeps AI structural HTML/CSS overrides but sanitizes unsafe content", () => {
+    const payload = JSON.stringify({
+      source: "provider",
+      structureHtml:
+        '<section class="cp-promo"><script>alert(1)</script>' +
+        '<strong data-cp-slot="headline"></strong></section>',
+      structureCss:
+        "__CP_SCOPE__ .cp-promo{color:red}</style><script>bad()</script>",
+    });
+
+    const applied = parseAppliedCampaignSuggestion(payload);
+
+    expect(applied).not.toBeNull();
+    expect(applied!.structureHtml).toContain('data-cp-slot="headline"');
+    expect(applied!.structureHtml).not.toContain("script");
+    expect(applied!.structureCss).toContain("color:red");
+    expect(applied!.structureCss).not.toContain("</style>");
+  });
+
+  it("exposes structureHtml/structureCss in the provider JSON schema", () => {
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("structureHtml");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("data-cp-slot");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("__CP_SCOPE__");
+  });
+
   it("falls back to English for unsupported requested locales", async () => {
     const formData = new FormData();
     formData.set("objective", "FLASH_SALE");

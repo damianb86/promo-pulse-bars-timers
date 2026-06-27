@@ -382,18 +382,46 @@ export function serializeDesign(
     ? resolveMobileCampaignDesign(desktopDesign, mobileDesign)
     : desktopDesign;
 
+  const structure = serializeStructure(design, isMobileDevice ? mobileDesign : null);
+
   return {
     ...resolvedDesign,
     showIcon: resolvedDesign.icon !== "NONE",
-    structure: serializeStructure(design),
+    // In structure mode the merchant custom CSS is already baked into
+    // structure.css, so don't ship it twice.
+    customCss: structure ? "" : resolvedDesign.customCss,
+    structure,
   };
 }
 
 // Emits the per-campaign structural HTML (dictionary-packed AST) + CSS for the
 // storefront. Returns null for legacy campaigns with no saved structure, in which
-// case the theme extension falls back to its built-in surface builder.
-function serializeStructure(design: CampaignDesign | null) {
+// case the theme extension falls back to its built-in surface builder. On mobile
+// the mobile override (stored in the mobile design JSON) is used when present;
+// otherwise the desktop structure is reused (so identical mobile HTML is never
+// duplicated).
+function serializeStructure(
+  design: CampaignDesign | null,
+  mobileOverride: Partial<CampaignDesignValues> | null,
+) {
   if (!design) return null;
+
+  const mobileSource = mobileOverride as
+    | {
+        mobileStructureCompact?: string | null;
+        mobileStructureCss?: string | null;
+        mobileStructureVersion?: number | null;
+      }
+    | null;
+
+  const mobilePacked = decodePackedStructure(mobileSource?.mobileStructureCompact);
+  if (mobilePacked) {
+    return {
+      packed: mobilePacked,
+      css: mobileSource?.mobileStructureCss ?? "",
+      version: mobileSource?.mobileStructureVersion ?? 1,
+    };
+  }
 
   const structureDesign = design as CampaignDesign & {
     structureCompact?: string | null;
@@ -421,8 +449,19 @@ function serializeDesktopDesign(design: CampaignDesign | null) {
   const desktopDesign = { ...design } as Partial<CampaignDesignValues> & {
     mobileDesign?: unknown;
     customCss?: string | null;
+    structureCompact?: unknown;
+    structureCss?: unknown;
+    structureVersion?: unknown;
+    structureEdited?: unknown;
   };
   delete desktopDesign.mobileDesign;
+  // Internal structure storage columns: the storefront only consumes the decoded
+  // `structure` field (see serializeStructure), so never leak the raw stored
+  // copy into the payload.
+  delete desktopDesign.structureCompact;
+  delete desktopDesign.structureCss;
+  delete desktopDesign.structureVersion;
+  delete desktopDesign.structureEdited;
 
   return {
     ...defaultCampaignDesignValues,

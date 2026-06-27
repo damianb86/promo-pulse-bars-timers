@@ -4,6 +4,7 @@ import { CampaignPreview } from "./CampaignPreview";
 import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import type { CampaignDesignValues } from "../types/campaign-design";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
+import type { StructureNode } from "../utils/campaign-structure";
 import { resolveMobileCampaignDesign } from "../utils/responsive-design";
 
 export type PreviewPlacement =
@@ -36,6 +37,8 @@ type CampaignPreviewPanelProps = {
   mobileDesign?: CampaignDesignValues;
   placement: PreviewPlacement;
   viewModel: CampaignViewModel;
+  structureTree?: StructureNode | null;
+  mobileStructureTree?: StructureNode | null;
   onDeviceChange: (device: PreviewDevice) => void;
   onPlacementChange: (placement: PreviewPlacement) => void;
 };
@@ -50,6 +53,8 @@ export function CampaignPreviewPanel({
   mobileDesign,
   placement,
   viewModel,
+  structureTree = null,
+  mobileStructureTree = null,
   onDeviceChange,
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
@@ -69,6 +74,10 @@ export function CampaignPreviewPanel({
     device === "mobile"
       ? resolveMobileCampaignDesign(design, mobileDesign)
       : design;
+  const resolvedStructureTree =
+    device === "mobile"
+      ? (mobileStructureTree ?? structureTree)
+      : structureTree;
 
   return (
     <div
@@ -100,6 +109,7 @@ export function CampaignPreviewPanel({
         design={resolvedDesign}
         device={device}
         placement={selectedPlacement}
+        structureTree={resolvedStructureTree}
         viewModel={viewModel}
       />
       {meta}

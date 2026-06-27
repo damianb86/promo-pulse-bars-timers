@@ -3043,18 +3043,23 @@ s-page::part(page) {
   width: min(92vw, 1180px);
   max-width: calc(100vw - 32px);
   max-height: min(88vh, 920px);
-  overflow: hidden;
+  overflow-y: auto;
+}
+
+/* This modal has no icon column, so reset the icon grid inherited from
+   .counterpulse-modal__header and let the heading use the full width. */
+.counterpulse-modal--html .counterpulse-modal__header {
+  display: block;
 }
 
 .counterpulse-modal--html .counterpulse-modal__body {
-  max-height: min(70vh, 740px);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .counterpulse-structure-html-textarea {
   box-sizing: border-box;
   width: 100%;
-  min-height: min(60vh, 620px);
+  min-height: min(56vh, 560px);
   resize: vertical;
   border: 1px solid #dfe3e8;
   border-radius: 8px;

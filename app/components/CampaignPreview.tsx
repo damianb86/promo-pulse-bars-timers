@@ -1,4 +1,5 @@
 import {
+  createElement,
   useEffect,
   useMemo,
   useState,
@@ -9,6 +10,7 @@ import {
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 import type { CampaignDesignValues } from "../types/campaign-design";
 import { sanitizeBasicHtml } from "../utils/basic-html";
+import type { StructureNode } from "../utils/campaign-structure";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import {
   calculateFreeShippingProgress,
@@ -40,6 +42,10 @@ type CampaignPreviewProps = {
   design: CampaignDesignValues;
   device: PreviewDevice;
   placement: PreviewPlacement;
+  // When provided, the preview renders from this saved/edited structural HTML
+  // tree (slots hydrated with the live preview pieces) instead of the built-in
+  // settings layout. Mirrors the storefront's structure-driven rendering.
+  structureTree?: StructureNode | null;
 };
 
 const placementLabels: Record<PreviewPlacement, string> = {
@@ -100,6 +106,7 @@ export function CampaignPromoSurface({
   variant = "bar",
   className,
   dataTestId,
+  structureTree = null,
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -107,6 +114,7 @@ export function CampaignPromoSurface({
   variant?: "bar" | "block" | "badge";
   className?: string;
   dataTestId?: string;
+  structureTree?: StructureNode | null;
 }) {
   const now = usePreviewClock();
   const evergreenStorage = useMemo(
@@ -130,6 +138,7 @@ export function CampaignPromoSurface({
       design={design}
       now={now}
       placement={placement}
+      structureTree={structureTree}
       style={buildPreviewStyle(design)}
       timerState={timerState}
       variant={variant}
@@ -143,6 +152,7 @@ export function CampaignPreview({
   design,
   device,
   placement,
+  structureTree = null,
 }: CampaignPreviewProps) {
   const now = usePreviewClock();
   const evergreenStorage = useMemo(
@@ -167,6 +177,7 @@ export function CampaignPreview({
       design={design}
       now={now}
       placement={placement}
+      structureTree={structureTree}
       style={previewStyle}
       timerState={timerState}
       variant={variant}
@@ -530,6 +541,7 @@ function PromoSurface({
   style,
   className,
   dataTestId,
+  structureTree = null,
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -540,6 +552,7 @@ function PromoSurface({
   style: CSSProperties;
   className?: string;
   dataTestId?: string;
+  structureTree?: StructureNode | null;
 }) {
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
@@ -631,6 +644,33 @@ function PromoSurface({
     design.showButton &&
     viewModel.cartRescue?.showButton !== false &&
     Boolean(viewModel.ctaText);
+
+  // Structure-driven render: when a saved/edited HTML tree is supplied, render
+  // from it (slots hydrated with the live preview pieces) so the preview matches
+  // what the storefront will render. Badge keeps the built-in layout.
+  if (structureTree) {
+    return (
+      <StructurePromoSurface
+        className={className}
+        ctaText={interpolate(viewModel.ctaText)}
+        dataTestId={dataTestId}
+        deliveryPreview={deliveryPreview}
+        design={design}
+        freeShippingPreview={freeShippingPreview}
+        hasCta={hasCta}
+        hasOffer={hasOffer}
+        hasTimer={hasTimer}
+        headlineHtml={sanitizeBasicHtml(headlineText)}
+        bodyHtml={bodyText ? sanitizeBasicHtml(bodyText) : ""}
+        placement={placement}
+        style={style}
+        timerState={timerState}
+        tree={structureTree}
+        variant={variant}
+        viewModel={viewModel}
+      />
+    );
+  }
 
   return (
     <section
@@ -751,6 +791,225 @@ function PromoSurface({
         />
       ) : null}
     </section>
+  );
+}
+
+// Replaces the variant/placement classes on a stored structure root so the same
+// saved tree renders correctly for any preview placement/variant. Mirrors
+// fixRootClasses() in campaign-surface.js.
+function fixStructureRootClasses(
+  cls: string[] | undefined,
+  variant: "bar" | "block",
+  placement: PreviewPlacement,
+) {
+  const keep = (cls ?? []).filter(
+    (token) =>
+      !/counterpulse-preview-promo--(bar|block|badge)$/.test(token) &&
+      !/counterpulse-preview-promo--placement-/.test(token),
+  );
+  keep.push(`counterpulse-preview-promo--${variant}`);
+  keep.push(
+    `counterpulse-preview-promo--placement-${placement
+      .toLowerCase()
+      .replace(/_/g, "-")}`,
+  );
+  return keep.join(" ");
+}
+
+function PreviewCloseButton({ design }: { design: CampaignDesignValues }) {
+  return (
+    <span
+      className="counterpulse-preview-close"
+      aria-hidden="true"
+      style={{
+        width: `${design.closeButtonSize}px`,
+        height: `${design.closeButtonSize}px`,
+      }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width={design.closeButtonSize}
+        height={design.closeButtonSize}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      >
+        <line x1="6" y1="6" x2="18" y2="18" />
+        <line x1="18" y1="6" x2="6" y2="18" />
+      </svg>
+    </span>
+  );
+}
+
+function PreviewProgress({
+  preview,
+}: {
+  preview: NonNullable<ReturnType<typeof buildFreeShippingPreview>>;
+}) {
+  return (
+    <div
+      className={[
+        "counterpulse-preview-progress",
+        `counterpulse-preview-progress--${preview.progressStyle.toLowerCase()}`,
+        preview.unlocked ? "counterpulse-preview-progress--unlocked" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ "--cp-progress": `${preview.percentage}%` } as CSSProperties}
+    >
+      <span>
+        <span style={{ width: `${preview.percentage}%` }} />
+      </span>
+    </div>
+  );
+}
+
+// Renders a campaign from a structural HTML AST, hydrating `data-cp-slot`
+// placeholders with the same live preview pieces the legacy layout uses. This is
+// the React mirror of buildFromStructure() in campaign-surface.js.
+function StructurePromoSurface({
+  tree,
+  viewModel,
+  design,
+  style,
+  placement,
+  variant,
+  timerState,
+  deliveryPreview,
+  freeShippingPreview,
+  headlineHtml,
+  bodyHtml,
+  ctaText,
+  hasTimer,
+  hasOffer,
+  hasCta,
+  className,
+  dataTestId,
+}: {
+  tree: StructureNode;
+  viewModel: CampaignViewModel;
+  design: CampaignDesignValues;
+  style: CSSProperties;
+  placement: PreviewPlacement;
+  variant: "bar" | "block";
+  timerState: TimerState | null;
+  deliveryPreview: ReturnType<typeof buildDeliveryPreview>;
+  freeShippingPreview: ReturnType<typeof buildFreeShippingPreview>;
+  headlineHtml: string;
+  bodyHtml: string;
+  ctaText: string;
+  hasTimer: boolean;
+  hasOffer: boolean;
+  hasCta: boolean;
+  className?: string;
+  dataTestId?: string;
+}) {
+  const renderSlot = (node: StructureNode, key: string): ReactNode => {
+    switch (node.slot) {
+      case "headline":
+        return (
+          <strong
+            key={key}
+            dangerouslySetInnerHTML={{ __html: headlineHtml }}
+          />
+        );
+      case "body":
+        return bodyHtml ? (
+          <span
+            key={key}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
+        ) : null;
+      case "cta":
+        if (!hasCta) return null;
+        return createElement(
+          node.tag === "a" ? "a" : "span",
+          { key, className: "counterpulse-preview-cta" },
+          ctaText,
+        );
+      case "icon":
+        return <PreviewIcon key={key} design={design} />;
+      case "timer":
+        return hasTimer ? (
+          <TimerDisplay
+            key={key}
+            design={design}
+            deliveryTime={deliveryPreview?.timeRemaining}
+            timerState={timerState}
+          />
+        ) : null;
+      case "timer-inline":
+        return hasTimer ? (
+          <TimerDisplay
+            key={key}
+            compact
+            design={design}
+            deliveryTime={deliveryPreview?.timeRemaining}
+            timerState={timerState}
+          />
+        ) : null;
+      case "offer":
+        return hasOffer ? (
+          <OfferPreview key={key} design={design} viewModel={viewModel} />
+        ) : null;
+      case "close":
+        return design.showCloseButton ? (
+          <PreviewCloseButton key={key} design={design} />
+        ) : null;
+      case "progress":
+        return freeShippingPreview && design.showProgressBar !== false ? (
+          <PreviewProgress key={key} preview={freeShippingPreview} />
+        ) : null;
+      default:
+        return null;
+    }
+  };
+
+  const renderNode = (node: StructureNode, key: string): ReactNode => {
+    if (node.slot) return renderSlot(node, key);
+    const children = node.children?.map((child, index) =>
+      renderNode(child, `${key}-${index}`),
+    );
+    return createElement(
+      node.tag,
+      {
+        key,
+        className: node.cls && node.cls.length ? node.cls.join(" ") : undefined,
+      },
+      children && children.length ? children : undefined,
+    );
+  };
+
+  const rootClassName = [
+    fixStructureRootClasses(tree.cls, variant, placement),
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return createElement(
+    tree.tag,
+    {
+      className: rootClassName,
+      style,
+      "data-testid": dataTestId,
+      suppressHydrationWarning: true,
+    },
+    [
+      ...(tree.children ?? []).map((child, index) =>
+        renderNode(child, String(index)),
+      ),
+      design.customCss.trim() ? (
+        <style
+          key="custom-css"
+          dangerouslySetInnerHTML={{
+            __html: design.customCss.replace(/<\/?\s*style/gi, ""),
+          }}
+        />
+      ) : null,
+    ],
   );
 }
 

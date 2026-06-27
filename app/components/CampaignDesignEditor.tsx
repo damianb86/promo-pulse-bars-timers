@@ -19,8 +19,11 @@ import type { CampaignViewModel } from "../utils/campaign-view-model";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import {
   buildCampaignStructureTree,
+  buildStructureCss,
   deriveCampaignStructureSpec,
+  htmlToTree,
   treeToHtml,
+  type StructureNode,
 } from "../utils/campaign-structure";
 
 type CampaignDesignEditorProps = {
@@ -37,6 +40,10 @@ type CampaignDesignEditorProps = {
   viewModel: CampaignViewModel;
   structureEdited?: boolean;
   structureHtml?: string;
+  structureCss?: string;
+  mobileStructureEdited?: boolean;
+  mobileStructureHtml?: string;
+  mobileStructureCss?: string;
 };
 
 export function CampaignDesignEditor({
@@ -53,6 +60,10 @@ export function CampaignDesignEditor({
   viewModel,
   structureEdited: initialStructureEdited = false,
   structureHtml: initialStructureHtml = "",
+  structureCss: initialStructureCss = "",
+  mobileStructureEdited: initialMobileStructureEdited = false,
+  mobileStructureHtml: initialMobileStructureHtml = "",
+  mobileStructureCss: initialMobileStructureCss = "",
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
     () =>
@@ -112,35 +123,31 @@ export function CampaignDesignEditor({
   );
   const [openErrorModalKey, setOpenErrorModalKey] = useState("");
 
-  // Structural HTML modal. The HTML is auto-generated from the visual settings;
-  // when the merchant edits it, it becomes the saved structure (structureEdited).
+  // Structure modals. The HTML + CSS are auto-generated from the visual settings;
+  // when the merchant (or the AI) edits either, they become the saved structure
+  // override so both can be customized independently. Desktop and mobile keep
+  // separate overrides so the mobile HTML can differ when "Separate desktop and
+  // mobile" is on.
   const [htmlModalOpen, setHtmlModalOpen] = useState(false);
-  const [structureEdited, setStructureEdited] = useState(
-    initialStructureEdited,
+  const [cssModalOpen, setCssModalOpen] = useState(false);
+  const desktopSurface = useStructureSurface(viewModel, design, primaryPlacement, {
+    edited: initialStructureEdited,
+    html: initialStructureHtml,
+    css: initialStructureCss,
+  });
+  const mobileSurface = useStructureSurface(
+    viewModel,
+    previewMobileDesign,
+    primaryPlacement,
+    {
+      edited: initialMobileStructureEdited,
+      html: initialMobileStructureHtml,
+      css: initialMobileStructureCss,
+    },
   );
-  const generatedStructureHtml = useMemo(() => {
-    const spec = deriveCampaignStructureSpec(
-      viewModel,
-      design,
-      "block",
-      primaryPlacement,
-    );
-    return treeToHtml(buildCampaignStructureTree(spec));
-  }, [viewModel, design, primaryPlacement]);
-  const [editedStructureHtml, setEditedStructureHtml] = useState(
-    initialStructureHtml || generatedStructureHtml,
-  );
-  const displayedStructureHtml = structureEdited
-    ? editedStructureHtml
-    : generatedStructureHtml;
-  const resetStructureFromDesign = () => {
-    setStructureEdited(false);
-    setEditedStructureHtml(generatedStructureHtml);
-  };
-  const handleStructureHtmlChange = (value: string) => {
-    setEditedStructureHtml(value);
-    setStructureEdited(true);
-  };
+  const isMobileSurface = device === "mobile" && design.separateMobileDesign;
+  const activeSurface = isMobileSurface ? mobileSurface : desktopSurface;
+  const surfaceLabel = isMobileSurface ? "mobile" : "desktop";
   const previewViewModel = useMemo(
     () => ({
       ...viewModel,
@@ -200,27 +207,72 @@ export function CampaignDesignEditor({
         <p>{designErrorSummary?.message}</p>
       </InfoModal>
 
-      {/* Hidden inputs so the structural HTML override travels with the design
-          form. When not edited, structureHtml stays empty and the backend
-          regenerates the structure from the visual settings. */}
+      {/* Hidden inputs so the structural HTML + CSS overrides travel with the
+          design form. When not edited, they stay empty and the backend
+          regenerates the structure from the visual settings. Desktop and mobile
+          submit independently; the backend only stores the mobile structure when
+          it differs from desktop. */}
       <input
         name="structureEdited"
         type="hidden"
-        value={structureEdited ? "true" : "false"}
+        value={desktopSurface.edited ? "true" : "false"}
       />
       <input
         name="structureHtml"
         type="hidden"
-        value={structureEdited ? editedStructureHtml : ""}
+        value={desktopSurface.edited ? desktopSurface.displayedHtml : ""}
+      />
+      <input
+        name="structureCss"
+        type="hidden"
+        value={desktopSurface.edited ? desktopSurface.displayedCss : ""}
+      />
+      <input
+        name="mobileStructureEdited"
+        type="hidden"
+        value={
+          design.separateMobileDesign && mobileSurface.edited ? "true" : "false"
+        }
+      />
+      <input
+        name="mobileStructureHtml"
+        type="hidden"
+        value={
+          design.separateMobileDesign && mobileSurface.edited
+            ? mobileSurface.displayedHtml
+            : ""
+        }
+      />
+      <input
+        name="mobileStructureCss"
+        type="hidden"
+        value={
+          design.separateMobileDesign && mobileSurface.edited
+            ? mobileSurface.displayedCss
+            : ""
+        }
       />
 
-      <StructureHtmlModal
-        edited={structureEdited}
-        html={displayedStructureHtml}
+      <StructureCodeModal
+        description={`The structural HTML below is what renders the ${surfaceLabel} campaign on your storefront. Styling lives separately in the CSS editor, so this stays clean. Edit it to customize the structure; reset to regenerate it from the design settings.`}
+        edited={activeSurface.edited}
         open={htmlModalOpen}
-        onChange={handleStructureHtmlChange}
+        title={`Campaign HTML structure (${surfaceLabel})`}
+        value={activeSurface.displayedHtml}
+        onChange={activeSurface.changeHtml}
         onClose={() => setHtmlModalOpen(false)}
-        onReset={resetStructureFromDesign}
+        onReset={activeSurface.reset}
+      />
+
+      <StructureCodeModal
+        description="These are the styles applied to the campaign. The __CP_SCOPE__ placeholder is replaced with this campaign's unique scope at render time — keep it on the variable block. Edit to customize the styles; reset to regenerate them from the design settings."
+        edited={activeSurface.edited}
+        open={cssModalOpen}
+        title={`Campaign CSS (${surfaceLabel})`}
+        value={activeSurface.displayedCss}
+        onChange={activeSurface.changeCss}
+        onClose={() => setCssModalOpen(false)}
+        onReset={activeSurface.reset}
       />
 
       {errors?.form && (
@@ -271,20 +323,6 @@ export function CampaignDesignEditor({
                   ? `You are editing the ${device} design. Switching device changes which campaign design is edited.`
                   : "You are editing one shared design. Use Mobile preview to verify the automatic typography adjustment."}
               </p>
-              <div className="counterpulse-structure-html-row">
-                <button
-                  className="counterpulse-button-secondary"
-                  type="button"
-                  onClick={() => setHtmlModalOpen(true)}
-                >
-                  View / edit HTML
-                </button>
-                <span>
-                  {structureEdited
-                    ? "Custom HTML structure is in use."
-                    : "Structure is generated from the design settings."}
-                </span>
-              </div>
             </div>
           </section>
 
@@ -300,9 +338,13 @@ export function CampaignDesignEditor({
                 : "desktop"
             }
             progressStyle={progressStyle}
+            structureEdited={activeSurface.edited}
             values={activeDesign}
             onChange={updateActiveDesign}
+            onEditStructureCss={() => setCssModalOpen(true)}
+            onEditStructureHtml={() => setHtmlModalOpen(true)}
             onProgressStyleChange={onProgressStyleChange}
+            onResetStructure={activeSurface.reset}
           />
         </div>
 
@@ -313,7 +355,11 @@ export function CampaignDesignEditor({
           design={design}
           device={device}
           mobileDesign={previewMobileDesign}
+          mobileStructureTree={
+            design.separateMobileDesign ? mobileSurface.tree : null
+          }
           placement={placement}
+          structureTree={desktopSurface.tree}
           viewModel={previewViewModel}
           onDeviceChange={setDevice}
           onPlacementChange={selectPreviewPlacement}
@@ -323,16 +369,20 @@ export function CampaignDesignEditor({
   );
 }
 
-function StructureHtmlModal({
+function StructureCodeModal({
   open,
-  html,
+  title,
+  description,
+  value,
   edited,
   onChange,
   onReset,
   onClose,
 }: {
   open: boolean;
-  html: string;
+  title: string;
+  description: string;
+  value: string;
   edited: boolean;
   onChange: (value: string) => void;
   onReset: () => void;
@@ -361,28 +411,23 @@ function StructureHtmlModal({
         onClick={onClose}
       />
       <div
-        aria-label="Campaign HTML structure"
+        aria-label={title}
         aria-modal="true"
         className="counterpulse-modal counterpulse-modal--html"
         role="dialog"
       >
         <div className="counterpulse-modal__header">
           <div>
-            <h2>Campaign HTML structure</h2>
-            <p className="counterpulse-design-note">
-              The structural HTML below is what renders the campaign on your
-              storefront. Styling lives separately as CSS, so this stays clean.
-              Edit it to customize the structure; reset to regenerate it from the
-              design settings.
-            </p>
+            <h2>{title}</h2>
+            <p className="counterpulse-design-note">{description}</p>
           </div>
         </div>
         <div className="counterpulse-modal__body">
           <textarea
-            aria-label="Campaign HTML structure"
+            aria-label={title}
             className="counterpulse-structure-html-textarea"
             spellCheck={false}
-            value={html}
+            value={value}
             onChange={(event) => onChange(event.target.value)}
           />
         </div>
@@ -402,6 +447,82 @@ function StructureHtmlModal({
       </div>
     </div>
   );
+}
+
+type StructureSurface = {
+  edited: boolean;
+  displayedHtml: string;
+  displayedCss: string;
+  tree: StructureNode | null;
+  reset: () => void;
+  changeHtml: (value: string) => void;
+  changeCss: (value: string) => void;
+};
+
+// Manages one structural-HTML override surface (desktop or mobile): the live
+// auto-generated HTML/CSS, the merchant's edits, and the parsed tree used to
+// drive the live preview.
+function useStructureSurface(
+  viewModel: CampaignViewModel,
+  designForSurface: CampaignDesignValues,
+  placement: PreviewPlacement,
+  init: { edited: boolean; html: string; css: string },
+): StructureSurface {
+  const generatedHtml = useMemo(
+    () =>
+      treeToHtml(
+        buildCampaignStructureTree(
+          deriveCampaignStructureSpec(
+            viewModel,
+            designForSurface,
+            "block",
+            placement,
+          ),
+        ),
+      ),
+    [viewModel, designForSurface, placement],
+  );
+  const generatedCss = useMemo(
+    () => buildStructureCss(designForSurface),
+    [designForSurface],
+  );
+  const [edited, setEdited] = useState(init.edited);
+  const [html, setHtml] = useState(init.html || generatedHtml);
+  const [css, setCss] = useState(init.css || generatedCss);
+
+  const displayedHtml = edited ? html : generatedHtml;
+  const displayedCss = edited ? css : generatedCss;
+
+  const reset = () => {
+    setEdited(false);
+    setHtml(generatedHtml);
+    setCss(generatedCss);
+  };
+  const changeHtml = (value: string) => {
+    setHtml(value);
+    setCss((current) => (edited ? current : generatedCss));
+    setEdited(true);
+  };
+  const changeCss = (value: string) => {
+    setCss(value);
+    setHtml((current) => (edited ? current : generatedHtml));
+    setEdited(true);
+  };
+
+  const tree = useMemo(
+    () => (edited ? htmlToTree(displayedHtml) : null),
+    [edited, displayedHtml],
+  );
+
+  return {
+    edited,
+    displayedHtml,
+    displayedCss,
+    tree,
+    reset,
+    changeHtml,
+    changeCss,
+  };
 }
 
 function toSeparateMobileDesign(

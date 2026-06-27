@@ -749,14 +749,25 @@ export type CampaignStructureSaveOptions = {
   // structure and the campaign is marked structureEdited. When omitted/empty the
   // structure is regenerated from the visual settings.
   editedHtml?: string | null;
+  // Sanitized, hand-edited CSS override saved alongside the edited HTML. When
+  // omitted the CSS is regenerated from the visual settings.
+  editedCss?: string | null;
+  // Sanitized mobile HTML/CSS override (only when "Separate desktop and mobile"
+  // is on and the mobile HTML was edited).
+  editedMobileHtml?: string | null;
+  editedMobileCss?: string | null;
 };
 
 // Regenerates the campaign's structural HTML + CSS so the saved HTML stays the
 // source of truth for storefront rendering. When the merchant has hand-edited
 // the HTML we keep their structure; otherwise we mirror the visual settings.
+// Returns the desktop structure columns plus an optional mobile structure that
+// is only kept when it actually differs from the desktop one (so identical
+// mobile HTML is never stored or sent to the storefront).
 function buildCampaignStructureWriteData(
   campaign: CampaignDetailsRecord,
   design: CampaignDesignValues,
+  mobileDesign: CampaignDesignValues,
   options: CampaignStructureSaveOptions,
 ) {
   const viewModel = buildCampaignViewModel({
@@ -777,26 +788,38 @@ function buildCampaignStructureWriteData(
   });
 
   const editedHtml = options.editedHtml?.trim();
-  const structure = editedHtml
-    ? generateStructureFromHtml(editedHtml, design)
-    : null;
+  const desktop = editedHtml
+    ? (generateStructureFromHtml(editedHtml, design, options.editedCss) ??
+      generateStructureFromSettings(viewModel, design))
+    : generateStructureFromSettings(viewModel, design);
 
-  if (structure) {
-    return {
-      structureCompact: structure.compact,
-      structureCss: structure.css,
-      structureVersion: CAMPAIGN_STRUCTURE_VERSION,
-      structureEdited: true,
-    };
-  }
-
-  const generated = generateStructureFromSettings(viewModel, design);
-  return {
-    structureCompact: generated.compact,
-    structureCss: generated.css,
+  const columns = {
+    structureCompact: desktop.compact,
+    structureCss: desktop.css,
     structureVersion: CAMPAIGN_STRUCTURE_VERSION,
-    structureEdited: false,
+    structureEdited: Boolean(editedHtml),
   };
+
+  // Mobile override: only keep it when the merchant edited a separate mobile
+  // HTML AND it actually differs from the desktop structure.
+  const editedMobileHtml = options.editedMobileHtml?.trim();
+  const mobileStructure = editedMobileHtml
+    ? generateStructureFromHtml(
+        editedMobileHtml,
+        mobileDesign,
+        options.editedMobileCss,
+      )
+    : null;
+  const mobile =
+    mobileStructure && mobileStructure.compact !== desktop.compact
+      ? {
+          mobileStructureCompact: mobileStructure.compact,
+          mobileStructureCss: mobileStructure.css,
+          mobileStructureVersion: CAMPAIGN_STRUCTURE_VERSION,
+        }
+      : null;
+
+  return { columns, mobile };
 }
 
 export async function updateCampaignDesignForShop(
@@ -821,12 +844,24 @@ export async function updateCampaignDesignForShop(
     const structureData = buildCampaignStructureWriteData(
       campaign,
       input,
+      mobileInput,
       structureOptions,
     );
 
+    const baseWriteData = toCampaignDesignWriteData(input, mobileInput);
+    // The mobile structure override (when it differs) rides inside the mobile
+    // design JSON so no extra columns are needed.
+    const mobileDesignJson = structureData.mobile
+      ? {
+          ...(baseWriteData.mobileDesign as Prisma.JsonObject),
+          ...structureData.mobile,
+        }
+      : baseWriteData.mobileDesign;
+
     const writeData = {
-      ...toCampaignDesignWriteData(input, mobileInput),
-      ...structureData,
+      ...baseWriteData,
+      mobileDesign: mobileDesignJson,
+      ...structureData.columns,
     };
 
     return tx.campaignDesign.upsert({

@@ -41,16 +41,22 @@ export function generateStructureFromSettings(
   };
 }
 
-// Builds the stored structure from hand-edited (already sanitized) HTML, keeping
-// the CSS regenerated from settings.
+// Builds the stored structure from hand-edited (already sanitized) HTML and an
+// optional hand-edited CSS override. When no CSS override is given the CSS is
+// regenerated from the visual settings.
 export function generateStructureFromHtml(
   html: string,
   design: StyleDesignInput,
+  cssOverride?: string | null,
 ): GeneratedStructure | null {
   const tree = parseSafeStructureTree(html);
   if (!tree) return null;
+  const css =
+    typeof cssOverride === "string" && cssOverride.trim()
+      ? cssOverride
+      : buildStructureCss(design);
   return {
     compact: encodePackedStructure(packTree(tree)),
-    css: buildStructureCss(design),
+    css,
   };
 }

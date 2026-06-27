@@ -131,6 +131,7 @@
             : cartState.subtotal;
         config.currency = cartState.currency || config.currency;
         config.cartToken = cartState.token || config.cartToken;
+        applyCartStateSignals(config, cartState);
         root.__promoPulseCartConfig = config;
 
         if (Array.isArray(root.__promoPulseCartCampaigns)) {
@@ -216,6 +217,7 @@
         config.cartSubtotal = cartState.subtotal;
         config.currency = cartState.currency || config.currency;
         config.cartToken = cartState.token || config.cartToken;
+        applyCartStateSignals(config, cartState);
         if (drawerCampaignsLoaded && shouldFetchCampaigns === false) {
           return drawerCampaigns;
         }
@@ -282,6 +284,8 @@
       cartSubtotal: subtotal,
       currency: root.dataset.cartCurrency || detectCurrency(),
       cartToken: root.dataset.cartToken || "",
+      cartItemCount: readIntDataset(root.dataset.cartItemCount),
+      cartHasDiscount: root.dataset.cartHasDiscount === "true",
       campaignId: root.dataset.campaignId || "",
       fallbackMode: root.dataset.fallbackMode || "AUTO_ELIGIBLE",
       alignment: root.dataset.alignment || "CENTER",
@@ -305,6 +309,8 @@
       cartSubtotal: detectWindowCartSubtotal(),
       currency: detectCurrency(),
       cartToken: "",
+      cartItemCount: null,
+      cartHasDiscount: false,
       campaignId: "",
       fallbackMode: "AUTO_ELIGIBLE",
       alignment: "CENTER",
@@ -539,6 +545,13 @@
     var isInline = layout === "inline";
     var card;
 
+    if (shouldHideUntilTrigger(campaign, config)) {
+      updateDebug(
+        root,
+        "Campana Cart Rescue oculta hasta que se cumpla el disparador del contador (descuento aplicado).",
+      );
+      return null;
+    }
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) {
       updateDebug(
         root,
@@ -1192,19 +1205,36 @@
 
   function calculateCartReserveTimer(campaign, now, config) {
     var timer = campaign.timer || {};
+    var timerStart = cartRescueTimerStart(campaign);
     var duration = Number(timer.durationMinutes);
+
+    // DISCOUNT_APPLIED gates the countdown until the cart carries a discount.
+    if (timerStart === "DISCOUNT_APPLIED" && !config.cartHasDiscount) {
+      return buildTimerState(now, null);
+    }
+
+    // FIRST_ITEM keeps a single fixed deadline for the life of the cart, so it
+    // always persists in localStorage regardless of the session reset behavior.
+    var useLocalStorage =
+      timerStart === "FIRST_ITEM" || timer.resetBehavior !== "ON_SESSION_END";
     var storage = safeStorage(
-      timer.resetBehavior === "ON_SESSION_END"
-        ? "sessionStorage"
-        : "localStorage",
+      useLocalStorage ? "localStorage" : "sessionStorage",
     );
     var token = config.cartToken || "session";
     var key = "promo_pulse_cart_deadline_" + campaign.id + "_" + token;
     var stored = readStorage(storage, key);
     var startedAt = parseDate(stored && stored.startedAt);
     var endsAt = parseDate(stored && stored.endsAt);
+    var fingerprint = cartFingerprint(config);
 
-    if (startedAt && endsAt) {
+    // LATEST_ITEM restarts the countdown whenever the cart contents change.
+    var fingerprintChanged =
+      timerStart === "LATEST_ITEM" &&
+      stored &&
+      typeof stored.fingerprint === "string" &&
+      stored.fingerprint !== fingerprint;
+
+    if (startedAt && endsAt && !fingerprintChanged) {
       if (endsAt.getTime() > now.getTime()) {
         return buildTimerState(now, endsAt);
       }
@@ -1225,9 +1255,38 @@
     writeStorage(storage, key, {
       startedAt: now.toISOString(),
       endsAt: endsAt.toISOString(),
+      fingerprint: fingerprint,
     });
 
     return buildTimerState(now, endsAt);
+  }
+
+  function cartRescueTimerStart(campaign) {
+    return (campaign.cartRescue || {}).timerStart || "CART_VIEWED";
+  }
+
+  function cartFingerprint(config) {
+    var count =
+      config.cartItemCount === null || config.cartItemCount === undefined
+        ? ""
+        : String(config.cartItemCount);
+    var subtotal =
+      config.cartSubtotal === null || config.cartSubtotal === undefined
+        ? ""
+        : String(config.cartSubtotal);
+
+    return count + ":" + subtotal;
+  }
+
+  function shouldHideUntilTrigger(campaign, config) {
+    if (!isTimerEnabled(campaign)) return false;
+
+    var rescue = campaign.cartRescue || {};
+
+    if (rescue.timerStart !== "DISCOUNT_APPLIED") return false;
+    if (rescue.armBeforeStart === true) return false;
+
+    return !config.cartHasDiscount;
   }
 
   function buildTimerState(now, endsAt) {
@@ -1290,6 +1349,8 @@
         subtotal: detectWindowCartSubtotal(),
         currency: window.PromoPulseCartCurrency || "",
         token: "",
+        hasDiscount: null,
+        itemCount: null,
       });
     }
 
@@ -1313,6 +1374,9 @@
               : detectWindowCartSubtotal(),
           currency: cart.currency || "",
           token: cart.token || "",
+          hasDiscount: cartHasAppliedDiscount(cart),
+          itemCount:
+            typeof cart.item_count === "number" ? cart.item_count : null,
         };
       })
       .catch(function () {
@@ -1320,8 +1384,43 @@
           subtotal: detectWindowCartSubtotal(),
           currency: window.PromoPulseCartCurrency || "",
           token: "",
+          hasDiscount: null,
+          itemCount: null,
         };
       });
+  }
+
+  function cartHasAppliedDiscount(cart) {
+    if (!cart || typeof cart !== "object") return false;
+
+    var discountCodes = Array.isArray(cart.discount_codes)
+      ? cart.discount_codes
+      : [];
+    var cartLevel = Array.isArray(cart.cart_level_discount_applications)
+      ? cart.cart_level_discount_applications
+      : [];
+
+    return (
+      Number(cart.total_discount || 0) > 0 ||
+      discountCodes.some(function (entry) {
+        return entry && entry.applicable !== false && entry.code;
+      }) ||
+      cartLevel.length > 0
+    );
+  }
+
+  function readIntDataset(value) {
+    var parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function applyCartStateSignals(config, cartState) {
+    if (cartState.hasDiscount !== null && cartState.hasDiscount !== undefined) {
+      config.cartHasDiscount = cartState.hasDiscount;
+    }
+    if (cartState.itemCount !== null && cartState.itemCount !== undefined) {
+      config.cartItemCount = cartState.itemCount;
+    }
   }
 
   function updateCartState(cart) {

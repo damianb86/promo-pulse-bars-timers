@@ -264,6 +264,8 @@ describe("buildCampaignViewModel", () => {
       rescueReason: "CHECKOUT_REMINDER",
       showButton: true,
       showTimer: false,
+      timerStart: "CART_VIEWED",
+      armBeforeStart: false,
     });
     expect(reminder.timer).toBeNull();
     expect(reminder.lowStock).toBeNull();

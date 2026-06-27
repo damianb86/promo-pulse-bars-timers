@@ -224,6 +224,7 @@ import {
 import {
   defaultCartRescueSettingsValues,
   isSupportedCartRescueReason,
+  isSupportedCartRescueTimerStart,
 } from "../types/cart-rescue";
 import {
   defaultDeliveryCutoffSettingsValues,
@@ -2656,12 +2657,19 @@ function toCampaignCartRescueFormValues(
     rescueReason?: string | null;
     showButton?: boolean | null;
     showTimer?: boolean | null;
+    timerStart?: string | null;
+    armBeforeStart?: boolean | null;
   } | null,
 ): Pick<
   CampaignFormValues,
-  "cartRescueReason" | "cartRescueShowButton" | "cartRescueShowTimer"
+  | "cartRescueReason"
+  | "cartRescueShowButton"
+  | "cartRescueShowTimer"
+  | "cartRescueTimerStart"
+  | "cartRescueArmBeforeStart"
 > {
   const reason = settings?.rescueReason ?? "";
+  const timerStart = settings?.timerStart ?? "";
 
   return {
     cartRescueReason: isSupportedCartRescueReason(reason)
@@ -2671,6 +2679,12 @@ function toCampaignCartRescueFormValues(
       settings?.showButton ?? defaultCartRescueSettingsValues.showButton,
     cartRescueShowTimer:
       settings?.showTimer ?? defaultCartRescueSettingsValues.showTimer,
+    cartRescueTimerStart: isSupportedCartRescueTimerStart(timerStart)
+      ? timerStart
+      : defaultCartRescueSettingsValues.timerStart,
+    cartRescueArmBeforeStart:
+      settings?.armBeforeStart ??
+      defaultCartRescueSettingsValues.armBeforeStart,
   };
 }
 

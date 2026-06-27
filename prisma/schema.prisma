@@ -301,10 +301,12 @@ model TimerSettings {
 }
 
 model CartRescueSettings {
-  campaignId   String           @id
-  rescueReason CartRescueReason @default(CART_RESERVED)
-  showTimer    Boolean          @default(true)
-  showButton   Boolean          @default(true)
+  campaignId     String               @id
+  rescueReason   CartRescueReason     @default(CART_RESERVED)
+  showTimer      Boolean              @default(true)
+  showButton     Boolean              @default(true)
+  timerStart     CartRescueTimerStart @default(CART_VIEWED)
+  armBeforeStart Boolean              @default(false)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
@@ -872,6 +874,13 @@ enum CartRescueReason {
   OFFER_EXPIRES
   SHIPPING_CUTOFF
   LOW_STOCK_RISK
+}
+
+enum CartRescueTimerStart {
+  CART_VIEWED
+  FIRST_ITEM
+  LATEST_ITEM
+  DISCOUNT_APPLIED
 }
 
 enum PlacementType {

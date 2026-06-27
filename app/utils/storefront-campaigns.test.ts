@@ -270,6 +270,8 @@ describe("storefront campaign serialization", () => {
       rescueReason: "CHECKOUT_REMINDER",
       showButton: true,
       showTimer: false,
+      timerStart: "CART_VIEWED",
+      armBeforeStart: false,
     });
     expect(serialized?.discount).toBeNull();
     expect(serialized?.lowStock).toBeNull();

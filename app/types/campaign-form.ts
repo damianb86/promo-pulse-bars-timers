@@ -27,6 +27,7 @@ import { defaultLowStockSettingsValues } from "./low-stock";
 import {
   defaultCartRescueSettingsValues,
   type CartRescueReasonValue,
+  type CartRescueTimerStartValue,
 } from "./cart-rescue";
 
 export const productSelectionOptions = [
@@ -117,6 +118,8 @@ export type CampaignFormValues = {
   cartRescueReason: CartRescueReasonValue;
   cartRescueShowTimer: boolean;
   cartRescueShowButton: boolean;
+  cartRescueTimerStart: CartRescueTimerStartValue;
+  cartRescueArmBeforeStart: boolean;
   cartTimerDurationMinutes: string;
   cartTimerResetBehavior: CampaignTimerResetBehaviorValue;
   deliveryCutoffHour: string;
@@ -190,6 +193,8 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   cartRescueReason: defaultCartRescueSettingsValues.rescueReason,
   cartRescueShowTimer: defaultCartRescueSettingsValues.showTimer,
   cartRescueShowButton: defaultCartRescueSettingsValues.showButton,
+  cartRescueTimerStart: defaultCartRescueSettingsValues.timerStart,
+  cartRescueArmBeforeStart: defaultCartRescueSettingsValues.armBeforeStart,
   cartTimerDurationMinutes: "120",
   cartTimerResetBehavior: "ON_SESSION_END",
   deliveryCutoffHour: defaultDeliveryCutoffSettingsValues.cutoffHour,
@@ -260,6 +265,8 @@ export function buildCampaignCartRescueSettingsValues(
     rescueReason: values.cartRescueReason,
     showTimer: values.cartRescueShowTimer,
     showButton: values.cartRescueShowButton,
+    timerStart: values.cartRescueTimerStart,
+    armBeforeStart: values.cartRescueArmBeforeStart,
   };
 }
 

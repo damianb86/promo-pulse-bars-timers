@@ -500,6 +500,8 @@ describe("advanced campaign settings form parsing", () => {
       rescueReason: "CHECKOUT_REMINDER",
       showButton: true,
       showTimer: false,
+      timerStart: "CART_VIEWED",
+      armBeforeStart: false,
     });
     expect(buildCampaignTimerSettingsValues(parsed.values)).toMatchObject({
       mode: "FIXED_DATE",
@@ -525,6 +527,8 @@ describe("advanced campaign settings form parsing", () => {
       rescueReason: "CART_RESERVED",
       showButton: true,
       showTimer: true,
+      timerStart: "CART_VIEWED",
+      armBeforeStart: false,
     });
   });
 

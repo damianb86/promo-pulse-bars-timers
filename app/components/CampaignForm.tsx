@@ -60,7 +60,9 @@ import { freeShippingProgressStyleOptions } from "../types/free-shipping";
 import {
   cartRescueReasonCopyDefaults,
   cartRescueReasonOptions,
+  cartRescueTimerStartOptions,
   type CartRescueReasonValue,
+  type CartRescueTimerStartValue,
 } from "../types/cart-rescue";
 import {
   campaignTranslationFields,
@@ -367,6 +369,8 @@ const campaignTypeSetupPresets: Record<CampaignTypeValue, CampaignSetupPreset> =
         cartRescueReason: "CART_RESERVED",
         cartRescueShowButton: true,
         cartRescueShowTimer: true,
+        cartRescueTimerStart: "CART_VIEWED",
+        cartRescueArmBeforeStart: false,
         cartTimerDurationMinutes: "120",
         cartTimerResetBehavior: "ON_SESSION_END",
         ctaText: cartRescueReasonCopyDefaults.CART_RESERVED.ctaText,
@@ -2458,6 +2462,69 @@ export function CampaignForm({
                               ))}
                             </select>
                           </FormField>
+
+                          <input
+                            name="cartRescueTimerStart"
+                            type="hidden"
+                            value={formValues.cartRescueTimerStart}
+                          />
+
+                          <FormField
+                            label="Countdown starts"
+                            error={errors.cartRescueTimerStart}
+                          >
+                            <select
+                              aria-label="Cart rescue countdown start trigger"
+                              value={formValues.cartRescueTimerStart}
+                              onChange={(event) =>
+                                setFormValues((currentValues) => ({
+                                  ...currentValues,
+                                  cartRescueTimerStart: event.currentTarget
+                                    .value as CartRescueTimerStartValue,
+                                }))
+                              }
+                            >
+                              {cartRescueTimerStartOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <small className="counterpulse-field-hint">
+                              {
+                                cartRescueTimerStartOptions.find(
+                                  (option) =>
+                                    option.value ===
+                                    formValues.cartRescueTimerStart,
+                                )?.description
+                              }
+                            </small>
+                          </FormField>
+
+                          {formValues.cartRescueTimerStart ===
+                            "DISCOUNT_APPLIED" && (
+                            <div className="counterpulse-toggle">
+                              <label className="counterpulse-toggle-label">
+                                <input
+                                  checked={formValues.cartRescueArmBeforeStart}
+                                  name="cartRescueArmBeforeStart"
+                                  type="checkbox"
+                                  onChange={updateCheckboxField(
+                                    "cartRescueArmBeforeStart",
+                                  )}
+                                />
+                                <input
+                                  name="cartRescueArmBeforeStart"
+                                  type="hidden"
+                                  value="false"
+                                />
+                                <span>
+                                  Show the offer before the discount is applied
+                                  (timer stays hidden until then)
+                                </span>
+                              </label>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -5035,6 +5102,8 @@ const campaignErrorFieldLabels: Partial<
   cartRescueReason: "Cart rescue reason",
   cartRescueShowButton: "Cart rescue button",
   cartRescueShowTimer: "Cart rescue timer",
+  cartRescueTimerStart: "Cart rescue countdown start",
+  cartRescueArmBeforeStart: "Cart rescue arm before start",
   cartTimerDurationMinutes: "Cart timer minutes",
   collectionIds: "Collections",
   countries: "Countries",

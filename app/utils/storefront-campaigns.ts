@@ -34,6 +34,7 @@ import {
 import {
   defaultCartRescueSettingsValues,
   isSupportedCartRescueReason,
+  isSupportedCartRescueTimerStart,
 } from "../types/cart-rescue";
 import {
   getCampaignText,
@@ -433,6 +434,10 @@ function serializeCartRescue(settings: CartRescueSettings | null) {
       : defaultCartRescueSettingsValues.rescueReason,
     showTimer: settings.showTimer,
     showButton: settings.showButton,
+    timerStart: isSupportedCartRescueTimerStart(settings.timerStart)
+      ? settings.timerStart
+      : defaultCartRescueSettingsValues.timerStart,
+    armBeforeStart: settings.armBeforeStart === true,
   };
 }
 

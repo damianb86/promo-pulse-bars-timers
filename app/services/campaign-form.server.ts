@@ -29,6 +29,7 @@ import { badgePositionOptions, badgeShapeOptions } from "../types/badge";
 import {
   defaultCartRescueSettingsValues,
   supportedCartRescueReasons,
+  supportedCartRescueTimerStarts,
 } from "../types/cart-rescue";
 import { afterCutoffBehaviorOptions } from "../types/delivery-cutoff";
 import { freeShippingProgressStyleOptions } from "../types/free-shipping";
@@ -79,6 +80,7 @@ const freeShippingProgressStyles = new Set<string>(
   freeShippingProgressStyleOptions.map((option) => option.value),
 );
 const cartRescueReasons = supportedCartRescueReasons;
+const cartRescueTimerStarts = supportedCartRescueTimerStarts;
 const deliveryAfterCutoffBehaviors = new Set<string>(
   afterCutoffBehaviorOptions.map((option) => option.value),
 );
@@ -234,6 +236,17 @@ export function parseCampaignFormData(
       formData,
       "cartRescueShowButton",
       defaultCartRescueSettingsValues.showButton,
+    ),
+    cartRescueTimerStart: readOption(
+      formData,
+      "cartRescueTimerStart",
+      cartRescueTimerStarts,
+      defaultCartRescueSettingsValues.timerStart,
+    ) as CampaignFormValues["cartRescueTimerStart"],
+    cartRescueArmBeforeStart: readBooleanWithDefault(
+      formData,
+      "cartRescueArmBeforeStart",
+      defaultCartRescueSettingsValues.armBeforeStart,
     ),
     cartTimerDurationMinutes:
       readString(formData, "cartTimerDurationMinutes") ||

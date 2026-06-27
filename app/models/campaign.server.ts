@@ -1,5 +1,6 @@
 import {
   CartRescueReason,
+  CartRescueTimerStart,
   CampaignStatus,
   PlacementType,
   Prisma,
@@ -115,6 +116,8 @@ type CartRescueSettingsInput = {
   rescueReason: CartRescueReason;
   showTimer: boolean;
   showButton: boolean;
+  timerStart: CartRescueTimerStart;
+  armBeforeStart: boolean;
 };
 
 type BadgeSettingsInput = BadgeSettingsValues;
@@ -342,6 +345,8 @@ export async function updateCampaignBasicsForShop(
         rescueReason: CartRescueReason.CART_RESERVED,
         showTimer: true,
         showButton: true,
+        timerStart: CartRescueTimerStart.CART_VIEWED,
+        armBeforeStart: false,
       };
 
       await tx.cartRescueSettings.upsert({
@@ -351,11 +356,15 @@ export async function updateCampaignBasicsForShop(
           rescueReason: settings.rescueReason,
           showTimer: settings.showTimer,
           showButton: settings.showButton,
+          timerStart: settings.timerStart,
+          armBeforeStart: settings.armBeforeStart,
         },
         update: {
           rescueReason: settings.rescueReason,
           showTimer: settings.showTimer,
           showButton: settings.showButton,
+          timerStart: settings.timerStart,
+          armBeforeStart: settings.armBeforeStart,
         },
       });
     }
@@ -1119,6 +1128,8 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 rescueReason: campaign.cartRescueSettings.rescueReason,
                 showTimer: campaign.cartRescueSettings.showTimer,
                 showButton: campaign.cartRescueSettings.showButton,
+                timerStart: campaign.cartRescueSettings.timerStart,
+                armBeforeStart: campaign.cartRescueSettings.armBeforeStart,
               },
             },
           }

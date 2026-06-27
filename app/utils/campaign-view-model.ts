@@ -4,7 +4,11 @@ import {
 } from "../types/campaign-design";
 import type { BadgePositionValue, BadgeShapeValue } from "../types/badge";
 import { toBadgePosition, toBadgeShape } from "../types/badge";
-import type { CartRescueReasonValue } from "../types/cart-rescue";
+import {
+  isSupportedCartRescueTimerStart,
+  type CartRescueReasonValue,
+  type CartRescueTimerStartValue,
+} from "../types/cart-rescue";
 import type {
   AfterCutoffBehavior,
   DeliveryPromiseSettings,
@@ -44,6 +48,8 @@ export type CampaignViewModelInput = {
     rescueReason?: string | null;
     showButton?: boolean | null;
     showTimer?: boolean | null;
+    timerStart?: string | null;
+    armBeforeStart?: boolean | null;
   } | null;
   deliveryCutoffSettings?: {
     cutoffHour: number;
@@ -116,6 +122,8 @@ export type CartRescueViewModel = {
   rescueReason: CartRescueReasonValue;
   showTimer: boolean;
   showButton: boolean;
+  timerStart: CartRescueTimerStartValue;
+  armBeforeStart: boolean;
 };
 
 export type FreeShippingViewModel = {
@@ -298,6 +306,10 @@ function buildCartRescueViewModel(
     rescueReason: toCartRescueReason(campaign.cartRescueSettings?.rescueReason),
     showButton: campaign.cartRescueSettings?.showButton !== false,
     showTimer: campaign.cartRescueSettings?.showTimer !== false,
+    timerStart: toCartRescueTimerStart(
+      campaign.cartRescueSettings?.timerStart,
+    ),
+    armBeforeStart: campaign.cartRescueSettings?.armBeforeStart === true,
   };
 }
 
@@ -437,6 +449,16 @@ function toCartRescueReason(
   }
 
   return "CART_RESERVED";
+}
+
+function toCartRescueTimerStart(
+  value: string | null | undefined,
+): CartRescueTimerStartValue {
+  if (value && isSupportedCartRescueTimerStart(value)) {
+    return value;
+  }
+
+  return "CART_VIEWED";
 }
 
 function toIsoDate(value: Date | string | null | undefined) {

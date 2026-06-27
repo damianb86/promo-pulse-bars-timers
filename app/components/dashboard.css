@@ -877,21 +877,36 @@ s-page::part(page) {
 
 .counterpulse-experiment-history-card__preview {
   min-width: 0;
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
 }
 
 .counterpulse-experiment-history-card__preview .counterpulse-variant-preview {
   min-height: 0;
-  max-height: 118px;
-  padding: 6px;
-  overflow: hidden;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
 
 .counterpulse-experiment-history-card__preview
   .counterpulse-variant-preview__surface.counterpulse-preview-promo {
-  width: 112%;
-  max-width: 112%;
-  transform-origin: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  /* Zoom the whole campaign out and keep it centered so the maximum amount of
+     content fits inside the small completed-experiment thumbnail. */
+  transform: scale(0.72);
+  transform-origin: center center;
 }
 
 .counterpulse-experiment-history-card__preview

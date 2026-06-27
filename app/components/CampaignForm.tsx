@@ -2957,6 +2957,33 @@ export function CampaignForm({
                   value={formValues.placementType}
                 />
                 <FieldError message={errors.placementType} />
+                {(() => {
+                  const incompatible = getIncompatiblePlacementWarning(
+                    formValues.placementTypes,
+                  );
+
+                  if (!incompatible) return null;
+
+                  return (
+                    <AppAlert
+                      tone="warning"
+                      title="These placements work better as separate campaigns"
+                    >
+                      <p>
+                        Badge placements (
+                        {incompatible.badgeLabels.join(", ")}) render a small
+                        badge over product media, while{" "}
+                        {incompatible.nonBadgeLabels.join(", ")} render a
+                        banner or card. A single design can't be tuned well for
+                        both shapes.
+                      </p>
+                      <p>
+                        Create one campaign for the badge placements and another
+                        for the rest so each design fits its surface correctly.
+                      </p>
+                    </AppAlert>
+                  );
+                })()}
               </section>
 
               {formValues.placementTypes.includes("CUSTOM_SELECTOR") && (
@@ -4889,6 +4916,34 @@ function placementInitial(label: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+// Badge placements render a small badge over product media, while every other
+// surface renders a banner/card. A single design can't be tuned well for both,
+// so we warn the merchant to split them into separate campaigns.
+const badgePlacementTypes: PlacementTypeValue[] = [
+  "PRODUCT_PAGE_BADGE",
+  "COLLECTION_CARD",
+];
+
+function getIncompatiblePlacementWarning(placements: PlacementTypeValue[]) {
+  const badge = placements.filter((placement) =>
+    badgePlacementTypes.includes(placement),
+  );
+  const nonBadge = placements.filter(
+    (placement) => !badgePlacementTypes.includes(placement),
+  );
+
+  if (badge.length === 0 || nonBadge.length === 0) return null;
+
+  const labelFor = (placement: PlacementTypeValue) =>
+    placementTypeOptions.find((option) => option.value === placement)?.label ??
+    placement;
+
+  return {
+    badgeLabels: badge.map(labelFor),
+    nonBadgeLabels: nonBadge.map(labelFor),
+  };
 }
 
 function formatPlacementSelectionLabel(placements: PlacementTypeValue[]) {

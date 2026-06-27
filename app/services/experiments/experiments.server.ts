@@ -705,6 +705,49 @@ export async function autoDeclareWinningVariant({
   return { declared: true, results, winner };
 }
 
+// Manual "declare winner now": ignores the auto-winner thresholds and declares
+// the best-performing variant with whatever data exists, then ends the
+// experiment. Falls back to most impressions, then to the first (control)
+// variant so the experiment always completes with a winner.
+export async function forceDeclareWinningVariant({
+  experimentId,
+  shopId,
+  now = new Date(),
+}: {
+  experimentId: string;
+  shopId: string;
+  now?: Date;
+}) {
+  const results = await calculateExperimentResults({
+    shopId,
+    experimentId,
+    now,
+  });
+
+  const ranked = [...results.variants].sort((a, b) => {
+    if (b.primaryMetricValue !== a.primaryMetricValue) {
+      return b.primaryMetricValue - a.primaryMetricValue;
+    }
+    return b.impressions - a.impressions;
+  });
+  const winner = ranked[0];
+
+  if (!winner) {
+    // No variants with results — just end the experiment.
+    const experiment = await stopExperiment({ experimentId, shopId, now });
+    return { declared: false, experiment, winner: null };
+  }
+
+  const experiment = await declareWinningVariant({
+    shopId,
+    experimentId,
+    variantId: winner.variantId,
+    now,
+  });
+
+  return { declared: true, experiment, winner };
+}
+
 export async function applyWinningVariantToCampaign({
   experimentId,
   shopId,

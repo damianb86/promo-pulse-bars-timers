@@ -123,6 +123,7 @@ import {
   applyWinningVariantToCampaign,
   archiveExperimentVariant,
   autoDeclareWinningVariant,
+  forceDeclareWinningVariant,
   calculateExperimentResults,
   createExperiment,
   declareWinningVariant,
@@ -1267,6 +1268,7 @@ export const action = async ({
     intent === "declareExperimentWinner" ||
     intent === "archiveExperimentVariant" ||
     intent === "detectExperimentWinner" ||
+    intent === "forceDeclareExperimentWinner" ||
     intent === "applyExperimentWinner" ||
     intent === "duplicateExperiment"
   ) {
@@ -1376,6 +1378,19 @@ export const action = async ({
           return {
             experimentErrors: {
               form: "No winner met the configured sample, runtime, and confidence rules.",
+            },
+          };
+        }
+      } else if (intent === "forceDeclareExperimentWinner") {
+        const result = await forceDeclareWinningVariant({
+          shopId: shop.id,
+          experimentId,
+        });
+
+        if (!result.declared) {
+          return {
+            experimentErrors: {
+              form: "This experiment has no variants to declare a winner from.",
             },
           };
         }

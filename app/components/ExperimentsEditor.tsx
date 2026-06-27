@@ -3290,11 +3290,12 @@ function ExperimentLifecycleActions({
             <button
               className="counterpulse-button-secondary counterpulse-experiment-control-button"
               name="_action"
+              title="Declare the best-performing variant with the data collected so far and end the experiment."
               type="submit"
-              value="detectExperimentWinner"
+              value="forceDeclareExperimentWinner"
             >
               <span aria-hidden="true">♕</span>
-              Auto declare winner
+              Declare winner now
             </button>
             <button
               className="counterpulse-button counterpulse-experiment-control-button"

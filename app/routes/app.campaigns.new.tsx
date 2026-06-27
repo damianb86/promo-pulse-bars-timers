@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { type Prisma, type Shop } from "@prisma/client";
 
 import { AiGenerateIcon } from "../components/AiGenerateIcon";
-import { AiCampaignBuilder } from "../components/AiCampaignBuilder";
+import {
+  AiCampaignBuilder,
+  SuggestionMiniPreview,
+} from "../components/AiCampaignBuilder";
 import { CampaignForm } from "../components/CampaignForm";
 import {
   createCampaign,
@@ -228,11 +231,45 @@ export const action = async ({
     }
 
     try {
+      const suggestion = await generateCampaignSuggestion(aiValues, {
+        referenceImage: referenceImage ?? undefined,
+      });
+
+      // Generate + upload the visual assets now (PRO + write_files validated
+      // inside) so they appear in the drawer; the rewritten HTML/CSS + the
+      // uploaded asset records round-trip on the suggestion and are persisted on
+      // save without re-uploading.
+      const assetResult = await materializeCampaignAssets({
+        admin,
+        shop,
+        suggestion,
+        referenceImage: referenceImage ?? null,
+      });
+
+      const enrichedSuggestion = {
+        ...suggestion,
+        structureHtml: stripAssetPlaceholders(assetResult.html),
+        structureCss: stripAssetPlaceholders(assetResult.css),
+        generatedAssets: assetResult.assets.map((asset) => ({
+          key: asset.key,
+          assetType: asset.assetType,
+          source: asset.source,
+          shopifyFileId: asset.shopifyFileId,
+          shopifyUrl: asset.shopifyUrl,
+          modelUsed: asset.modelUsed,
+          promptUsed: asset.promptUsed,
+        })),
+        safety: {
+          ...suggestion.safety,
+          warnings: assetResult.error
+            ? [...suggestion.safety.warnings, assetResult.error]
+            : suggestion.safety.warnings,
+        },
+      };
+
       return {
         aiInput: aiValues,
-        aiSuggestion: await generateCampaignSuggestion(aiValues, {
-          referenceImage: referenceImage ?? undefined,
-        }),
+        aiSuggestion: enrichedSuggestion,
       };
     } catch (error) {
       console.error("Failed to generate AI campaign suggestion", error);
@@ -505,18 +542,14 @@ export const action = async ({
         : {}),
     });
 
-    let assetError: string | null = null;
     if (appliedAiSuggestion) {
-      const applied = await applyAiSuggestionToCampaign({
-        admin,
+      await applyAiSuggestionToCampaign({
         campaignId: campaign.id,
         formValues: parsed.values,
         locales: settings.enabledLocales,
-        shop,
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
       });
-      assetError = applied.assetError;
     }
 
     if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
@@ -530,13 +563,7 @@ export const action = async ({
       });
     }
 
-    return redirect(
-      assetError
-        ? `/app/campaigns/${campaign.id}?assetError=${encodeURIComponent(
-            assetError,
-          )}`
-        : `/app/campaigns/${campaign.id}`,
-    );
+    return redirect(`/app/campaigns/${campaign.id}`);
   } catch (error) {
     console.error("Failed to create campaign", error);
 
@@ -623,10 +650,26 @@ export default function CreateCampaignPage() {
             type="button"
             onClick={() => setIsAiDrawerOpen(false)}
           />
-          <aside
-            aria-label="AI Campaign Assistant"
-            className="counterpulse-ai-drawer"
+          <div
+            className={
+              actionData?.aiSuggestion
+                ? "counterpulse-ai-drawer-cluster has-preview"
+                : "counterpulse-ai-drawer-cluster"
+            }
           >
+            {actionData?.aiSuggestion && (
+              <section
+                aria-label="AI suggestion preview"
+                className="counterpulse-ai-drawer-preview-wing"
+                data-testid="ai-drawer-preview"
+              >
+                <SuggestionMiniPreview suggestion={actionData.aiSuggestion} />
+              </section>
+            )}
+            <aside
+              aria-label="AI Campaign Assistant"
+              className="counterpulse-ai-drawer"
+            >
             <div className="counterpulse-ai-drawer__header">
               <div>
                 <p className="counterpulse-kicker">AI campaign assistant</p>
@@ -652,7 +695,8 @@ export default function CreateCampaignPage() {
               values={actionData?.aiInput ?? aiInput}
               locales={enabledLocales}
             />
-          </aside>
+            </aside>
+          </div>
         </div>
       )}
     </s-page>
@@ -660,47 +704,37 @@ export default function CreateCampaignPage() {
 }
 
 async function applyAiSuggestionToCampaign({
-  admin,
   campaignId,
   formValues,
   locales,
-  shop,
   shopId,
   suggestion,
 }: {
-  admin: Awaited<ReturnType<typeof authenticateAdmin>>["admin"];
   campaignId: string;
   formValues: CampaignFormValues;
   locales: readonly string[];
-  shop: Pick<Shop, "plan">;
   shopId: string;
   suggestion: CampaignSuggestion;
-}): Promise<{ assetError: string | null }> {
-  // Generate + upload AI visual assets (PRO + write_files only; validated inside).
-  // Any failure aborts assets entirely and is surfaced; the campaign still saves.
-  const assetResult = await materializeCampaignAssets({
-    admin,
-    shop,
-    suggestion,
-    referenceImage: null,
-  });
-
+}) {
+  // Assets were already generated + uploaded to Shopify during generation; the
+  // suggestion carries the rewritten HTML/CSS (Shopify URLs) and the uploaded
+  // records, so just persist them here (no re-upload).
   await updateCampaignDesignForShop(
     campaignId,
     shopId,
     suggestion.design,
     suggestion.design,
     {
-      editedHtml: stripAssetPlaceholders(assetResult.html) || null,
-      editedCss: stripAssetPlaceholders(assetResult.css) || null,
+      editedHtml: stripAssetPlaceholders(suggestion.structureHtml) || null,
+      editedCss: stripAssetPlaceholders(suggestion.structureCss) || null,
     },
   );
 
   await saveCampaignAssets(
     campaignId,
     shopId,
-    assetResult.requested,
-    assetResult.assets.map((asset) => ({
+    suggestion.input.generateVisualAssets === true,
+    suggestion.generatedAssets.map((asset) => ({
       shopifyFileId: asset.shopifyFileId,
       shopifyUrl: asset.shopifyUrl,
       assetType: asset.assetType,
@@ -721,8 +755,6 @@ async function applyAiSuggestionToCampaign({
     shopId,
     suggestion,
   });
-
-  return { assetError: assetResult.error };
 }
 
 async function applyAiGeneratedSettingsToCampaign({

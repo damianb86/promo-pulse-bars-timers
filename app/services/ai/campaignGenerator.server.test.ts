@@ -82,6 +82,29 @@ describe("AI campaign generator", () => {
     expect(applied!.structureCss).not.toContain("</style>");
   });
 
+  it("fills a mock end date for a timer campaign when none is provided", async () => {
+    const provider: CampaignAiProvider = {
+      source: "provider",
+      async generateCampaignSuggestion() {
+        return {
+          campaign: { type: "COUNTDOWN_BAR" },
+          timer: { mode: "FIXED_DATE", endsAt: "" },
+        };
+      },
+    };
+    const suggestion = await generateCampaignSuggestion(
+      buildDefaultCampaignAiInput({ productContext: "shoes" }),
+      { provider },
+    );
+
+    expect(suggestion.campaign.type).toBe("COUNTDOWN_BAR");
+    expect(suggestion.timer.mode).toBe("FIXED_DATE");
+    expect(suggestion.timer.endsAt).not.toBe("");
+    expect(new Date(suggestion.timer.endsAt).getTime()).toBeGreaterThan(
+      Date.now(),
+    );
+  });
+
   it("exposes structureHtml/structureCss in the provider JSON schema", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("structureHtml");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("data-cp-slot");

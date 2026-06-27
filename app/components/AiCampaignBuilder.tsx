@@ -1669,8 +1669,6 @@ export function AiCampaignBuilder({
                   AI suggestion preview
                 </h3>
 
-                <SuggestionMiniPreview suggestion={suggestion} />
-
                 {suggestion.safety.warnings.length > 0 && (
                   <AppAlert tone="warning" title="Review generated copy">
                     {suggestion.safety.warnings.map((warning) => (
@@ -1726,6 +1724,25 @@ export function AiCampaignBuilder({
                     }
                   />
                 </div>
+
+                {suggestion.generatedAssets.length > 0 && (
+                  <s-box paddingBlockStart="base">
+                    <p className="counterpulse-kicker">
+                      Generated assets ({suggestion.generatedAssets.length})
+                    </p>
+                    <div className="counterpulse-ai-asset-gallery">
+                      {suggestion.generatedAssets.map((asset) => (
+                        <figure
+                          key={asset.shopifyFileId}
+                          className="counterpulse-ai-asset-card"
+                        >
+                          <img alt={asset.assetType} src={asset.shopifyUrl} />
+                          <figcaption>{formatEnum(asset.assetType)}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </s-box>
+                )}
 
                 {suggestion.variants.length > 0 && (
                   <s-box paddingBlockStart="base">
@@ -1823,7 +1840,7 @@ function resolveSuggestionPreviewSurface(placement: string | undefined): {
 // Renders a live promo preview of an AI suggestion using the same surface as the
 // campaign editor and experiment variant previews, so the merchant sees what the
 // campaign will look like before applying it.
-function SuggestionMiniPreview({
+export function SuggestionMiniPreview({
   suggestion,
 }: {
   suggestion: CampaignSuggestion;

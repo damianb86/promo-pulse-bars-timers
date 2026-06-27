@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v8";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v9";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -306,6 +306,12 @@ How to analyze the image:
   (PLAIN), one container (GROUPED), or separate digit tiles (BOXES); colon
   HH:MM:SS vs labeled units; the digit and label colors and the surface behind
   them. If there is no countdown, ignore all timer settings.
+- IMPORTANT: if ANY kind of timer/countdown is visible in the image, you MUST
+  configure a working timer in the "timer" object even when the image (or the
+  merchant) gives no real deadline. Use a FIXED_DATE mode and set "endsAt" to a
+  plausible near-future datetime-local value (e.g. ~24h ahead, format
+  "YYYY-MM-DDTHH:mm"), or for a session timer use EVERGREEN_SESSION with a
+  durationMinutes. Never leave a timer campaign without an end date or duration.
 - Detect buttons and icons: only set showButton true / showIcon true and pick an
   icon when the image actually shows one. Use the visible button label as ctaText.
 - Transcribe visible text into headline / subheadline / ctaText / expiredText,

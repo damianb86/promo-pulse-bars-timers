@@ -30,6 +30,7 @@ function buildSuggestion(
     assets: [
       { key: "hero", type: "background", source: "generated", prompt: "a bg" },
     ],
+    generatedAssets: [],
     variants: [],
     safety: { warnings: [], blockedClaims: [], requiresReview: true },
     ...overrides,

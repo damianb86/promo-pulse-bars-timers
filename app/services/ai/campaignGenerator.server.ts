@@ -50,6 +50,7 @@ import {
   type CampaignAiAssetSpec,
   type CampaignAiAssetSource,
   type CampaignAiAssetType,
+  type CampaignAiGeneratedAsset,
   type CampaignAiFreeShippingSettings,
   type CampaignAiInput,
   type CampaignAiLowStockSettings,
@@ -659,6 +660,10 @@ export function parseAppliedCampaignSuggestion(
       Boolean(parsed.referenceImageUsed),
     );
 
+    // Assets already generated + uploaded during generation round-trip here so
+    // saving persists them without re-uploading.
+    completed.generatedAssets = sanitizeGeneratedAssets(parsed.generatedAssets);
+
     if (parsed.promptVersion !== AI_CAMPAIGN_PROMPT_VERSION) {
       completed.safety.warnings.push(
         "Suggestion prompt version changed; review before saving.",
@@ -844,7 +849,10 @@ function completeCampaignSuggestion(
     referenceImageUsed: allowVisualOverrides,
     input,
     campaign,
-    timer: sanitizeTimerSettings(output.timer, fallback.timer),
+    timer: ensureTimerHasMockData(
+      campaign.type,
+      sanitizeTimerSettings(output.timer, fallback.timer),
+    ),
     targeting: sanitizeTargetingSettings(output.targeting, fallback.targeting),
     discount: sanitizeDiscountSettings(output.discount, fallback.discount),
     freeShipping: sanitizeFreeShippingSettings(
@@ -871,6 +879,7 @@ function completeCampaignSuggestion(
     structureCss:
       typeof output.structureCss === "string" ? output.structureCss : "",
     assets: sanitizeAiAssetSpecs(output.assets, input.generateVisualAssets),
+    generatedAssets: [],
     variants: [],
     safety: {
       warnings: [...(output.safety?.warnings ?? [])],
@@ -903,6 +912,7 @@ function buildMockCampaignSuggestion(
     structureHtml: "",
     structureCss: "",
     assets: [],
+    generatedAssets: [],
     variants: [],
     safety: {
       warnings: [],
@@ -1367,6 +1377,35 @@ function sanitizeAiAssetSpecs(
   return specs;
 }
 
+// Validates already-uploaded asset records coming back from the reviewed
+// suggestion JSON (only safe http(s) Shopify URLs are kept).
+function sanitizeGeneratedAssets(value: unknown): CampaignAiGeneratedAsset[] {
+  if (!Array.isArray(value)) return [];
+  const assets: CampaignAiGeneratedAsset[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    const shopifyUrl = String(record.shopifyUrl ?? "").trim();
+    const shopifyFileId = String(record.shopifyFileId ?? "").trim();
+    if (!/^https?:\/\//i.test(shopifyUrl) || !shopifyFileId) continue;
+    const source = record.source as CampaignAiAssetSource;
+    if (!ASSET_SOURCES.has(source)) continue;
+    assets.push({
+      key: String(record.key ?? "").slice(0, 40),
+      assetType: String(record.assetType ?? "image").slice(0, 40),
+      source,
+      shopifyFileId,
+      shopifyUrl,
+      modelUsed:
+        typeof record.modelUsed === "string" ? record.modelUsed : null,
+      promptUsed:
+        typeof record.promptUsed === "string" ? record.promptUsed : null,
+    });
+    if (assets.length >= 8) break;
+  }
+  return assets;
+}
+
 function sanitizeCampaignSuggestion(
   suggestion: CampaignSuggestion,
 ): CampaignSuggestion {
@@ -1468,6 +1507,43 @@ function sanitizeCampaignCopy(
       blockedClaims,
     }),
   };
+}
+
+// Campaign types that render a countdown timer.
+const TIMER_CAMPAIGN_TYPES = new Set<CampaignTypeValue>([
+  "COUNTDOWN_BAR",
+  "PRODUCT_TIMER",
+  "CART_TIMER",
+]);
+
+// When the image contains any kind of timer (the model picked a timer campaign
+// type), guarantee the timer actually counts down: if the merchant provided no
+// real deadline/duration, fill mock data (a 24h FIXED_DATE end date, or a default
+// duration for evergreen/recurring modes) so the timer always works.
+function ensureTimerHasMockData(
+  type: CampaignTypeValue,
+  timer: CampaignAiTimerSettings,
+): CampaignAiTimerSettings {
+  if (!TIMER_CAMPAIGN_TYPES.has(type)) return timer;
+
+  const hasFutureEndsAt =
+    isDateTimeLocalString(timer.endsAt) &&
+    new Date(timer.endsAt).getTime() > Date.now();
+  const hasDuration = Number(timer.durationMinutes) > 0;
+
+  if (timer.mode === "FIXED_DATE") {
+    if (hasFutureEndsAt) return timer;
+    return {
+      ...timer,
+      endsAt: toDateTimeLocalString(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+    };
+  }
+
+  // Evergreen / recurring modes rely on a duration instead of an end date.
+  if (!hasDuration) {
+    return { ...timer, durationMinutes: "60" };
+  }
+  return timer;
 }
 
 function sanitizeTimerSettings(

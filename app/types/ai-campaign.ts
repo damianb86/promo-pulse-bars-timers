@@ -284,6 +284,20 @@ export type CampaignSuggestion = {
   // Visual assets the AI proposes (only when generateVisualAssets was on). The
   // HTML/CSS reference them via `{{asset:key}}` placeholders.
   assets: CampaignAiAssetSpec[];
+  // Assets already generated + uploaded to Shopify Files during generation. The
+  // structureHtml/CSS above already reference these Shopify URLs. Shown in the
+  // drawer and persisted on save (no re-upload).
+  generatedAssets: CampaignAiGeneratedAsset[];
   variants: CampaignAiVariant[];
   safety: CampaignAiSafety;
+};
+
+export type CampaignAiGeneratedAsset = {
+  key: string;
+  assetType: string;
+  source: CampaignAiAssetSource;
+  shopifyFileId: string;
+  shopifyUrl: string;
+  modelUsed: string | null;
+  promptUsed: string | null;
 };

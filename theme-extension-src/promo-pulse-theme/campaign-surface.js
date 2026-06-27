@@ -31,6 +31,94 @@
     return node;
   }
 
+  // Mirrors sanitizeBasicHtml() in app/utils/basic-html.ts. Allows only a small
+  // set of inline formatting tags, re-emitted from scratch with at most a
+  // sanitized class attribute, so message fields can use basic HTML safely.
+  var BASIC_HTML_TAGS = {
+    b: 1,
+    strong: 1,
+    i: 1,
+    em: 1,
+    u: 1,
+    s: 1,
+    br: 1,
+    span: 1,
+    small: 1,
+    mark: 1,
+    sup: 1,
+    sub: 1,
+  };
+
+  function escapeHtmlText(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function safeClassAttr(rawAttrs) {
+    var match = /(?:^|\s)class\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(
+      rawAttrs,
+    );
+    if (!match) return "";
+    var rawValue = match[2] || match[3] || match[4] || "";
+    var cleaned = rawValue
+      .split(/\s+/)
+      .map(function (token) {
+        return token.replace(/[^a-zA-Z0-9_-]/g, "");
+      })
+      .filter(Boolean)
+      .join(" ");
+    return cleaned ? ' class="' + cleaned + '"' : "";
+  }
+
+  function sanitizeBasicHtml(input) {
+    if (typeof input !== "string" || input.length === 0) return "";
+    var out = "";
+    var index = 0;
+    while (index < input.length) {
+      var lt = input.indexOf("<", index);
+      if (lt === -1) {
+        out += escapeHtmlText(input.slice(index));
+        break;
+      }
+      out += escapeHtmlText(input.slice(index, lt));
+      var next = input.charAt(lt + 1);
+      if (next !== "/" && !/[a-zA-Z]/.test(next)) {
+        out += "&lt;";
+        index = lt + 1;
+        continue;
+      }
+      var gt = input.indexOf(">", lt);
+      if (gt === -1) {
+        out += escapeHtmlText(input.slice(lt));
+        break;
+      }
+      var rawTag = input.slice(lt + 1, gt);
+      var parsed = /^(\/?)([a-zA-Z][a-zA-Z0-9]*)([\s\S]*?)\/?\s*$/.exec(rawTag);
+      if (parsed) {
+        var isClosing = parsed[1] === "/";
+        var name = parsed[2].toLowerCase();
+        if (BASIC_HTML_TAGS[name]) {
+          if (name === "br") {
+            if (!isClosing) out += "<br>";
+          } else if (isClosing) {
+            out += "</" + name + ">";
+          } else {
+            out += "<" + name + safeClassAttr(parsed[3]) + ">";
+          }
+        }
+      }
+      index = gt + 1;
+    }
+    return out;
+  }
+
+  // Sets text that may contain basic HTML, sanitized, on a node.
+  function setRichText(node, value) {
+    node.innerHTML = sanitizeBasicHtml(value);
+  }
+
   function lower(value) {
     return String(value || "").toLowerCase();
   }
@@ -634,6 +722,93 @@
       circle("16.8", "7.2", "1.3", { fill: "currentColor" });
       return svg;
     }
+    if (icon === "STAR") {
+      path(
+        "M12 3.5l2.6 5.3 5.9.8-4.3 4.1 1 5.8L12 16.8 6.8 19.5l1-5.8L3.5 9.6l5.9-.8L12 3.5Z",
+        { fill: "currentColor" },
+      );
+      return svg;
+    }
+    if (icon === "BOLT") {
+      path("M13 2 4 13.5h6L11 22l9-11.5h-6L13 2Z", { fill: "currentColor" });
+      return svg;
+    }
+    if (icon === "HEART") {
+      path(
+        "M12 20.3 4.7 13c-2-2-2-5.2 0-7.2a4.9 4.9 0 0 1 7 0l.3.3.3-.3a4.9 4.9 0 0 1 7 0c2 2 2 5.2 0 7.2L12 20.3Z",
+        { fill: "currentColor" },
+      );
+      return svg;
+    }
+    if (icon === "CART") {
+      path("M3 4h2l2.2 11h9.4l2-7H6.5", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "stroke-width": "2",
+      });
+      circle("9", "19", "1.6", { fill: "currentColor" });
+      circle("17", "19", "1.6", { fill: "currentColor" });
+      return svg;
+    }
+    if (icon === "PERCENT") {
+      path("M6 18 18 6", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linecap": "round",
+        "stroke-width": "2.2",
+      });
+      circle("7.5", "7.5", "2.3", { fill: "currentColor" });
+      circle("16.5", "16.5", "2.3", { fill: "currentColor" });
+      return svg;
+    }
+    if (icon === "BELL") {
+      path("M6.5 17V11a5.5 5.5 0 0 1 11 0v6l1.5 2h-14l1.5-2Z", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linejoin": "round",
+        "stroke-width": "2",
+      });
+      path("M10 20a2 2 0 0 0 4 0", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linecap": "round",
+        "stroke-width": "2",
+      });
+      return svg;
+    }
+    if (icon === "ROCKET") {
+      path("M12 3c3.4 1.6 5 4.7 5 8.5L14 15h-4l-3-3.5C7 7.7 8.6 4.6 12 3Z", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linejoin": "round",
+        "stroke-width": "2",
+      });
+      circle("12", "9.5", "1.6", { fill: "currentColor" });
+      path("M10 15l-2 4 4-2 4 2-2-4", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linejoin": "round",
+        "stroke-width": "2",
+      });
+      return svg;
+    }
+    if (icon === "CHECK") {
+      circle("12", "12", "8.5", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-width": "2",
+      });
+      path("m8.2 12.2 2.6 2.6 5-5.2", {
+        fill: "none",
+        stroke: "currentColor",
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "stroke-width": "2.2",
+      });
+      return svg;
+    }
     return null;
   }
 
@@ -873,7 +1048,7 @@
     if (icon) message.appendChild(icon);
     var copy = el("div", "counterpulse-preview-message-copy");
     var strong = document.createElement("strong");
-    strong.textContent = interpolateMessage(spec.headline || "", spec);
+    setRichText(strong, interpolateMessage(spec.headline || "", spec));
     copy.appendChild(strong);
     if (isInline && spec.hasTimer) {
       var inlineTimer = buildTimer(spec, design, true);
@@ -881,7 +1056,7 @@
     }
     if (!isInline && spec.body) {
       var body = document.createElement("span");
-      body.textContent = interpolateMessage(spec.body, spec);
+      setRichText(body, interpolateMessage(spec.body, spec));
       copy.appendChild(body);
     }
     message.appendChild(copy);
@@ -925,6 +1100,14 @@
     // Progress
     var progress = buildProgress(spec.progress, design);
     if (progress) section.appendChild(progress);
+
+    // Merchant custom CSS (already plan-gated + sanitized on save). Injected as a
+    // <style> within the surface; a defensive strip prevents </style> breakout.
+    if (typeof design.customCss === "string" && design.customCss.trim()) {
+      var styleNode = document.createElement("style");
+      styleNode.textContent = design.customCss.replace(/<\/?\s*style/gi, "");
+      section.appendChild(styleNode);
+    }
 
     return section;
   }

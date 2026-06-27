@@ -2452,6 +2452,14 @@ function sanitizePartialDesign(
     design.icon === "TRUCK" ||
     design.icon === "GIFT" ||
     design.icon === "TAG" ||
+    design.icon === "STAR" ||
+    design.icon === "BOLT" ||
+    design.icon === "HEART" ||
+    design.icon === "CART" ||
+    design.icon === "PERCENT" ||
+    design.icon === "BELL" ||
+    design.icon === "ROCKET" ||
+    design.icon === "CHECK" ||
     design.icon === "CUSTOM" ||
     design.icon === "NONE"
       ? { icon: design.icon }

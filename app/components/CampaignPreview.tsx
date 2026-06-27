@@ -8,6 +8,7 @@ import {
 
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 import type { CampaignDesignValues } from "../types/campaign-design";
+import { sanitizeBasicHtml } from "../utils/basic-html";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import {
   calculateFreeShippingProgress,
@@ -573,9 +574,7 @@ function PromoSurface({
 
   if (variant === "badge") {
     const badgeText = interpolate(
-      viewModel.badge?.badgeText ||
-        viewModel.badgeText ||
-        viewModel.headline,
+      viewModel.badge?.badgeText || viewModel.badgeText || viewModel.headline,
     );
     return (
       <div
@@ -656,7 +655,11 @@ function PromoSurface({
       <div className="counterpulse-preview-message">
         <PreviewIcon design={design} />
         <div className="counterpulse-preview-message-copy">
-          <strong>{headlineText}</strong>
+          <strong
+            dangerouslySetInnerHTML={{
+              __html: sanitizeBasicHtml(headlineText),
+            }}
+          />
           {isInline && hasTimer ? (
             <TimerDisplay
               compact
@@ -666,7 +669,10 @@ function PromoSurface({
             />
           ) : null}
           {!isInline && bodyText ? (
-            <span suppressHydrationWarning>{bodyText}</span>
+            <span
+              suppressHydrationWarning
+              dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(bodyText) }}
+            />
           ) : null}
         </div>
       </div>
@@ -736,6 +742,14 @@ function PromoSurface({
           </span>
         </div>
       )}
+
+      {design.customCss.trim() ? (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: design.customCss.replace(/<\/?\s*style/gi, ""),
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -1041,6 +1055,135 @@ function PreviewIconSvg({ icon }: { icon: CampaignDesignValues["icon"] }) {
           strokeWidth="2"
         />
         <circle cx="16.8" cy="7.2" r="1.3" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (icon === "STAR") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M12 3.5l2.6 5.3 5.9.8-4.3 4.1 1 5.8L12 16.8 6.8 19.5l1-5.8L3.5 9.6l5.9-.8L12 3.5Z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "BOLT") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M13 2 4 13.5h6L11 22l9-11.5h-6L13 2Z" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (icon === "HEART") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M12 20.3 4.7 13c-2-2-2-5.2 0-7.2a4.9 4.9 0 0 1 7 0l.3.3.3-.3a4.9 4.9 0 0 1 7 0c2 2 2 5.2 0 7.2L12 20.3Z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "CART") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M3 4h2l2.2 11h9.4l2-7H6.5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <circle cx="9" cy="19" r="1.6" fill="currentColor" />
+        <circle cx="17" cy="19" r="1.6" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (icon === "PERCENT") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M6 18 18 6"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2.2"
+        />
+        <circle cx="7.5" cy="7.5" r="2.3" fill="currentColor" />
+        <circle cx="16.5" cy="16.5" r="2.3" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (icon === "BELL") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M6.5 17V11a5.5 5.5 0 0 1 11 0v6l1.5 2h-14l1.5-2Z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <path
+          d="M10 20a2 2 0 0 0 4 0"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "ROCKET") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M12 3c3.4 1.6 5 4.7 5 8.5L14 15h-4l-3-3.5C7 7.7 8.6 4.6 12 3Z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <circle cx="12" cy="9.5" r="1.6" fill="currentColor" />
+        <path
+          d="M10 15l-2 4 4-2 4 2-2-4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "CHECK") {
+    return (
+      <svg viewBox="0 0 24 24" focusable="false">
+        <circle
+          cx="12"
+          cy="12"
+          r="8.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="m8.2 12.2 2.6 2.6 5-5.2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.2"
+        />
       </svg>
     );
   }

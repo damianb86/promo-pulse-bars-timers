@@ -68,16 +68,12 @@
   max-width: 100%;
 }
 
-
-
 .counterpulse-experiment-history-card__preview
   .counterpulse-preview-message-copy
   > span:not(.counterpulse-preview-timer) {
   font-size: 11px;
   line-height: 15px;
 }
-
-
 
 .counterpulse-experiment-history-card__preview
   .counterpulse-preview-message
@@ -86,13 +82,9 @@
   line-height: 1.08;
 }
 
-
-
 .counterpulse-preview-shell--mobile .counterpulse-preview-promo {
   width: min(100%, 100%);
 }
-
-
 
 .counterpulse-preview-shell--mobile
   .counterpulse-preview-promo--layout-balanced,
@@ -104,8 +96,6 @@
   justify-items: center;
   text-align: center;
 }
-
-
 
 .counterpulse-preview-shell--mobile
   .counterpulse-preview-promo--layout-balanced
@@ -145,32 +135,22 @@
   justify-self: auto;
 }
 
-
-
 .counterpulse-preview-shell--mobile .counterpulse-preview-promo--layout-inline {
   flex-direction: column;
   align-items: center;
 }
 
-
-
 .counterpulse-preview-shell--mobile .counterpulse-preview-message {
   justify-content: center;
 }
-
-
 
 .counterpulse-preview-shell--mobile .counterpulse-preview-message-copy {
   justify-items: center;
 }
 
-
-
 .counterpulse-preview-shell--mobile .counterpulse-preview-actions {
   justify-content: center;
 }
-
-
 
 .counterpulse-preview-promo {
   position: relative;
@@ -194,35 +174,25 @@
   box-shadow: 0 14px 28px rgba(32, 34, 35, 0.08);
 }
 
-
-
 .counterpulse-preview-promo--enter-fade {
   animation: counterpulse-preview-fade-in var(--cp-motion-duration, 220ms)
     ease-out both;
 }
-
-
 
 .counterpulse-preview-promo--enter-slide {
   animation: counterpulse-preview-slide-in var(--cp-motion-duration, 220ms)
     ease-out both;
 }
 
-
-
 .counterpulse-preview-promo--enter-pop {
   animation: counterpulse-preview-pop-in var(--cp-motion-duration, 220ms)
     ease-out both;
 }
 
-
-
 .counterpulse-preview-promo--bar {
   width: calc(100% - 96px);
   margin: 0 auto 0;
 }
-
-
 
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width {
   width: 100%;
@@ -231,15 +201,11 @@
   margin-left: 0;
 }
 
-
-
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--position-overlay {
   position: absolute;
   z-index: 5;
   margin: 0;
 }
-
-
 
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--position-overlay:not(
     .counterpulse-preview-promo--full-width
@@ -249,26 +215,18 @@
   transform: translateX(-50%);
 }
 
-
-
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--position-overlay.counterpulse-preview-promo--full-width {
   right: 0;
   left: 0;
 }
 
-
-
 .counterpulse-preview-promo--placement-top-bar.counterpulse-preview-promo--position-overlay {
   top: 0;
 }
 
-
-
 .counterpulse-preview-promo--placement-bottom-bar.counterpulse-preview-promo--position-overlay {
   bottom: 0;
 }
-
-
 
 .counterpulse-preview-promo--position-overlay:not(
   .counterpulse-preview-promo--bar
@@ -283,8 +241,6 @@
   margin: 0 auto;
 }
 
-
-
 .counterpulse-preview-promo--position-overlay.counterpulse-preview-promo--full-width:not(
     .counterpulse-preview-promo--bar
   ) {
@@ -295,34 +251,24 @@
   max-width: 100%;
 }
 
-
-
 .counterpulse-preview-promo--full-width {
   width: 100%;
   max-width: 100%;
 }
-
-
 
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width {
   width: 100%;
   max-width: 100%;
 }
 
-
-
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width
   > :not(.counterpulse-preview-close) {
   max-width: min(100%, var(--cp-content-max-width));
 }
 
-
-
 .counterpulse-preview-promo--layout-standard {
   text-align: center;
 }
-
-
 
 .counterpulse-preview-promo--layout-balanced {
   width: min(100%, 620px);
@@ -332,29 +278,21 @@
   text-align: left;
 }
 
-
-
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-message {
   grid-column: 1;
   justify-content: flex-start;
 }
-
-
 
 .counterpulse-preview-promo--layout-balanced
   .counterpulse-preview-message-copy {
   justify-items: start;
 }
 
-
-
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer {
   grid-column: 2;
   grid-row: 1;
   justify-self: end;
 }
-
-
 
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions {
   grid-column: 2;
@@ -363,15 +301,11 @@
   justify-content: flex-end;
 }
 
-
-
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-progress {
   grid-column: 1 / -1;
   justify-self: stretch;
   width: 100%;
 }
-
-
 
 .counterpulse-preview-promo--layout-inline {
   width: min(100%, 460px);
@@ -384,8 +318,6 @@
   text-align: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-stacked_wide {
   width: min(100%, var(--cp-content-max-width, 1040px));
   grid-template-columns: minmax(0, 1fr);
@@ -394,36 +326,26 @@
   text-align: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-stacked_wide
   > :not(.counterpulse-preview-close) {
   width: min(100%, 760px);
 }
-
-
 
 .counterpulse-preview-promo--layout-stacked_wide .counterpulse-preview-message,
 .counterpulse-preview-promo--layout-stacked_wide .counterpulse-preview-actions {
   justify-content: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-stacked_wide
   .counterpulse-preview-message-copy {
   justify-items: center;
 }
-
-
 
 .counterpulse-preview-promo--layout-stacked_wide
   .counterpulse-preview-progress {
   width: min(100%, 680px);
   justify-self: center;
 }
-
-
 
 .counterpulse-preview-promo--layout-compact_stack {
   width: min(100%, 420px);
@@ -433,8 +355,6 @@
   text-align: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-compact_stack
   .counterpulse-preview-message {
   flex-wrap: wrap;
@@ -442,30 +362,22 @@
   gap: 6px;
 }
 
-
-
 .counterpulse-preview-promo--layout-compact_stack
   .counterpulse-preview-message-copy {
   justify-items: center;
   gap: 3px;
 }
 
-
-
 .counterpulse-preview-promo--layout-compact_stack
   .counterpulse-preview-actions {
   justify-content: center;
 }
-
-
 
 .counterpulse-preview-promo--layout-compact_stack
   .counterpulse-preview-progress {
   width: min(100%, 320px);
   justify-self: center;
 }
-
-
 
 .counterpulse-preview-promo--layout-cta_right,
 .counterpulse-preview-promo--layout-cta_left {
@@ -475,20 +387,14 @@
   text-align: left;
 }
 
-
-
 .counterpulse-preview-promo--layout-cta_left {
   grid-template-columns: auto minmax(0, 1fr);
 }
-
-
 
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer {
   grid-column: 1;
 }
-
-
 
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-actions {
   grid-column: 2;
@@ -496,15 +402,11 @@
   align-self: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
   grid-column: 2;
 }
-
-
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions {
   grid-column: 1;
@@ -512,34 +414,122 @@
   align-self: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-cta_top {
   width: min(100%, 460px);
   text-align: center;
 }
 
-
-
 .counterpulse-preview-promo--layout-cta_top .counterpulse-preview-actions {
   order: -1;
 }
 
+/* Timer hero — the countdown leads as a large centered hero, message beneath,
+   full-width action last. Makes the timer the focal point of the campaign. */
+.counterpulse-preview-promo--layout-hero_timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: min(100%, var(--cp-content-max-width, 720px));
+}
+.counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-timer {
+  order: -1;
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-message {
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-hero_timer
+  .counterpulse-preview-message-copy {
+  justify-items: center;
+  text-align: center;
+}
+.counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-actions {
+  justify-content: center;
+}
+.counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-progress {
+  width: min(100%, 520px);
+}
 
+/* Side rail — the timer becomes a full-height rail on the left; the message
+   sits top-right with the action beneath it. */
+.counterpulse-preview-promo--layout-side_rail {
+  width: min(100%, var(--cp-content-max-width, 640px));
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  text-align: left;
+  gap: max(12px, var(--cp-gap));
+}
+.counterpulse-preview-promo--layout-side_rail .counterpulse-preview-timer {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding-right: max(12px, var(--cp-gap));
+  border-right: 1px solid rgba(128, 128, 128, 0.28);
+}
+.counterpulse-preview-promo--layout-side_rail .counterpulse-preview-message {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-start;
+}
+.counterpulse-preview-promo--layout-side_rail
+  .counterpulse-preview-message-copy {
+  justify-items: start;
+  text-align: left;
+}
+.counterpulse-preview-promo--layout-side_rail .counterpulse-preview-actions {
+  grid-column: 2;
+  grid-row: 2;
+  justify-content: flex-start;
+}
+.counterpulse-preview-promo--layout-side_rail .counterpulse-preview-progress {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  width: 100%;
+}
+
+/* Spread row — three justified zones: message pinned far left, timer dead
+   center, action pushed to the far right edge. */
+.counterpulse-preview-promo--layout-spread {
+  width: min(100%, var(--cp-content-max-width, 1100px));
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  text-align: left;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-message {
+  grid-column: 1;
+  justify-content: flex-start;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-message-copy {
+  justify-items: start;
+  text-align: left;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-timer {
+  grid-column: 2;
+  justify-self: center;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-actions {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  justify-content: flex-end;
+  align-self: center;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-progress {
+  grid-column: 1 / -1;
+  width: 100%;
+}
 
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width {
   width: 100%;
   max-width: 100%;
 }
 
-
-
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width
   > :not(.counterpulse-preview-close) {
   max-width: min(100%, var(--cp-content-max-width));
 }
-
-
 
 .counterpulse-preview-message {
   display: flex;
@@ -549,8 +539,6 @@
   justify-content: var(--cp-justify);
 }
 
-
-
 .counterpulse-preview-promo--layout-inline .counterpulse-preview-message {
   display: flex;
   flex-wrap: wrap;
@@ -559,16 +547,12 @@
   gap: 4px;
 }
 
-
-
 .counterpulse-preview-message-copy {
   min-width: 0;
   display: grid;
   gap: 4px;
   justify-items: inherit;
 }
-
-
 
 .counterpulse-preview-promo--layout-inline .counterpulse-preview-message-copy {
   display: flex;
@@ -578,8 +562,6 @@
   gap: max(4px, var(--cp-gap));
 }
 
-
-
 .counterpulse-preview-message strong {
   color: var(--cp-title-color);
   font-size: var(--cp-title-size);
@@ -587,15 +569,11 @@
   line-height: 1.08;
 }
 
-
-
 .counterpulse-preview-message-copy > span:not(.counterpulse-preview-timer) {
   color: var(--cp-subheading-color);
   font-size: var(--cp-subheading-size);
   line-height: 1.3;
 }
-
-
 
 .counterpulse-preview-timer {
   display: flex;
@@ -607,19 +585,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-
-
 .counterpulse-preview-timer--stacked {
   flex-direction: column;
 }
 
-
-
 .counterpulse-preview-timer--compact {
   font-size: max(13px, calc(var(--cp-timer-size) * 0.68));
 }
-
-
 
 .counterpulse-preview-timer--inline-plain {
   color: var(--cp-timer-color);
@@ -628,22 +600,16 @@
   line-height: 1;
 }
 
-
-
 .counterpulse-preview-timer--colon {
   font-weight: 850;
   line-height: 1;
   letter-spacing: 0;
 }
 
-
-
 .counterpulse-preview-timer--tick-fade {
   animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
     ease-out both;
 }
-
-
 
 .counterpulse-preview-timer--tick-flip {
   transform-origin: 50% 60%;
@@ -651,14 +617,10 @@
     ease-out both;
 }
 
-
-
 .counterpulse-preview-timer--tick-pulse {
   animation: counterpulse-preview-timer-pulse var(--cp-motion-duration, 220ms)
     ease-out both;
 }
-
-
 
 .counterpulse-preview-timer--grouped {
   padding: 8px 12px;
@@ -667,13 +629,9 @@
   background: var(--cp-timer-surface);
 }
 
-
-
 .counterpulse-preview-timer--boxes {
   gap: 8px;
 }
-
-
 
 .counterpulse-preview-timer--colon.counterpulse-preview-timer--boxes {
   padding: 8px 12px;
@@ -682,16 +640,12 @@
   background: var(--cp-timer-surface);
 }
 
-
-
 .counterpulse-preview-timer-unit {
   min-width: 42px;
   display: grid;
   justify-items: center;
   gap: 3px;
 }
-
-
 
 .counterpulse-preview-timer--boxes .counterpulse-preview-timer-unit {
   min-width: 56px;
@@ -701,8 +655,6 @@
   background: var(--cp-timer-surface);
 }
 
-
-
 .counterpulse-preview-timer-unit strong {
   color: var(--cp-timer-color);
   font-size: 1em;
@@ -710,22 +662,16 @@
   line-height: 0.95;
 }
 
-
-
 .counterpulse-preview-timer--tick-fade .counterpulse-preview-timer-unit strong {
   animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
     ease-out both;
 }
-
-
 
 .counterpulse-preview-timer--tick-flip .counterpulse-preview-timer-unit strong {
   transform-origin: 50% 60%;
   animation: counterpulse-preview-timer-flip var(--cp-motion-duration, 220ms)
     ease-out both;
 }
-
-
 
 .counterpulse-preview-timer--tick-pulse
   .counterpulse-preview-timer-unit
@@ -734,16 +680,12 @@
     ease-out both;
 }
 
-
-
 .counterpulse-preview-timer-unit small {
   color: var(--cp-legend-color);
   font-size: var(--cp-legend-size);
   font-weight: 500;
   line-height: 1;
 }
-
-
 
 .counterpulse-preview-icon {
   width: var(--cp-icon-size, 20px);
@@ -754,22 +696,16 @@
   color: var(--cp-accent);
 }
 
-
-
 .counterpulse-preview-icon svg,
 .counterpulse-preview-icon img {
   display: block;
   object-fit: contain;
 }
 
-
-
 .counterpulse-preview-icon svg {
   width: 100%;
   height: 100%;
 }
-
-
 
 .counterpulse-preview-icon img {
   width: auto;
@@ -777,8 +713,6 @@
   max-width: 100%;
   max-height: 100%;
 }
-
-
 
 @keyframes counterpulse-preview-fade-in {
   from {
@@ -788,8 +722,6 @@
     opacity: 1;
   }
 }
-
-
 
 @keyframes counterpulse-preview-slide-in {
   from {
@@ -802,8 +734,6 @@
   }
 }
 
-
-
 @keyframes counterpulse-preview-pop-in {
   0% {
     opacity: 0;
@@ -815,8 +745,6 @@
   }
 }
 
-
-
 @keyframes counterpulse-preview-timer-fade {
   from {
     opacity: 0.42;
@@ -825,8 +753,6 @@
     opacity: 1;
   }
 }
-
-
 
 @keyframes counterpulse-preview-timer-flip {
   from {
@@ -838,8 +764,6 @@
     rotate: x 0deg;
   }
 }
-
-
 
 @keyframes counterpulse-preview-timer-pulse {
   0% {
@@ -854,15 +778,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .counterpulse-preview-promo,
   .counterpulse-preview-timer,
   .counterpulse-preview-timer-unit strong {
     animation: none !important;
   }
 }
-
-
 
 .counterpulse-preview-actions {
   display: flex;
@@ -871,8 +792,6 @@
   gap: 8px;
   align-items: center;
 }
-
-
 
 .counterpulse-preview-offer {
   flex: 0 1 auto;
@@ -884,20 +803,14 @@
   gap: var(--cp-offer-gap, 6px);
 }
 
-
-
 .counterpulse-preview-offer--stacked {
   flex-direction: column;
   align-items: stretch;
 }
 
-
-
 .counterpulse-preview-offer--compact {
   gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.6));
 }
-
-
 
 .counterpulse-preview-code-wrap {
   min-width: 0;
@@ -907,14 +820,10 @@
   gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.65));
 }
 
-
-
 .counterpulse-preview-offer--stacked .counterpulse-preview-code-wrap {
   flex-direction: column;
   align-items: stretch;
 }
-
-
 
 .counterpulse-preview-offer-label {
   min-width: 0;
@@ -924,8 +833,6 @@
   line-height: 1;
   opacity: 0.86;
 }
-
-
 
 .counterpulse-preview-cta {
   flex: 0 0 auto;
@@ -937,13 +844,9 @@
   font-weight: 700;
 }
 
-
-
 .counterpulse-preview-cta--offer {
   white-space: nowrap;
 }
-
-
 
 .counterpulse-preview-code-action {
   flex: 0 0 auto;
@@ -957,8 +860,6 @@
   line-height: 1.2;
   white-space: nowrap;
 }
-
-
 
 .counterpulse-preview-code {
   flex: 0 0 auto;
@@ -977,19 +878,13 @@
   letter-spacing: 0;
 }
 
-
-
 .counterpulse-preview-progress {
   width: min(100%, 260px);
 }
 
-
-
 .counterpulse-preview-progress--compact {
   width: min(100%, 170px);
 }
-
-
 
 .counterpulse-preview-progress > span {
   width: 100%;
@@ -1000,8 +895,6 @@
   background: color-mix(in srgb, var(--cp-text) 26%, transparent);
 }
 
-
-
 .counterpulse-preview-progress > span > span {
   height: 100%;
   border-radius: inherit;
@@ -1010,13 +903,9 @@
   transition: width 180ms ease;
 }
 
-
-
 .counterpulse-preview-progress--compact > span {
   height: 5px;
 }
-
-
 
 .counterpulse-preview-progress--circular {
   width: 42px;
@@ -1030,28 +919,20 @@
   );
 }
 
-
-
 .counterpulse-preview-progress--circular > span {
   width: 30px;
   height: 30px;
   background: var(--cp-bg);
 }
 
-
-
 .counterpulse-preview-progress--circular > span > span {
   display: none;
 }
-
-
 
 .counterpulse-preview-progress--unlocked > span > span,
 .counterpulse-preview-progress--unlocked.counterpulse-preview-progress--circular {
   animation: counterpulse-progress-unlocked 620ms ease-out both;
 }
-
-
 
 .counterpulse-preview-close {
   position: absolute;
@@ -1069,8 +950,6 @@
   opacity: 0.68;
   cursor: pointer;
 }
-
-
 
 .counterpulse-preview-badge {
   position: absolute;
@@ -1093,33 +972,23 @@
   z-index: 3;
 }
 
-
-
 .counterpulse-preview-badge .counterpulse-preview-timer {
   gap: 5px;
   font-size: min(18px, var(--cp-timer-size));
 }
 
-
-
 .counterpulse-preview-badge .counterpulse-preview-timer-unit {
   min-width: 28px;
 }
-
-
 
 .counterpulse-preview-badge .counterpulse-preview-timer-unit small {
   font-size: min(10px, var(--cp-legend-size));
 }
 
-
-
 .counterpulse-preview-badge--top-left {
   right: auto;
   left: 12px;
 }
-
-
 
 .counterpulse-preview-badge--bottom-left {
   top: auto;
@@ -1128,39 +997,27 @@
   left: 12px;
 }
 
-
-
 .counterpulse-preview-badge--bottom-right {
   top: auto;
   bottom: 12px;
 }
 
-
-
 .counterpulse-preview-badge--pill {
   border-radius: 999px;
 }
 
-
-
 .counterpulse-preview-badge--rounded {
   border-radius: 8px;
 }
-
-
 
 .counterpulse-preview-badge--square {
   border-radius: 0;
 }
 
 @media (max-width: 600px) {
-
-
   .counterpulse-preview-promo {
     width: min(100%, 100%);
   }
-
-
 
   .counterpulse-preview-promo--layout-balanced {
     grid-template-columns: 1fr;
@@ -1168,16 +1025,12 @@
     text-align: center;
   }
 
-
-
   .counterpulse-preview-promo--layout-cta_right,
   .counterpulse-preview-promo--layout-cta_left {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
   }
-
-
 
   .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
   .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer,
@@ -1195,13 +1048,9 @@
     justify-self: auto;
   }
 
-
-
   .counterpulse-preview-message-copy {
     justify-items: center;
   }
-
-
 
   .counterpulse-preview-timer {
     max-width: 100%;
@@ -1349,7 +1198,8 @@
   text-align: center;
   width: 100%;
 }
-.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-message {
+.counterpulse-preview-promo--layout-mobile_banner
+  .counterpulse-preview-message {
   justify-content: center;
 }
 .counterpulse-preview-promo--layout-mobile_banner

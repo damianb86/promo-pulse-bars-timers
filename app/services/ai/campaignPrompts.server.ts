@@ -148,6 +148,37 @@ Design guidance:
   listed below are chosen by the merchant on the separate mobile design surface;
   never put a MOBILE_* value in design.layout.
 
+Rich text in messages:
+- The headline, subheadline, expiredText, and other visible message strings may
+  contain a small set of basic inline HTML tags, and you SHOULD use them when it
+  helps emphasize a key word or phrase (for example wrapping a price, a discount,
+  or a deadline). Allowed tags: <b>, <strong>, <i>, <em>, <u>, <s>, <mark>,
+  <small>, <sup>, <sub>, <span>, and <br>. A <span> may carry a class attribute
+  (class="...") to hook into custom CSS. No other tags or attributes are allowed
+  and will be stripped, so never use <script>, <style>, <img>, <a>, inline
+  styles, or event handlers inside message text.
+- Keep HTML light and meaningful; most text should stay plain. Always close the
+  tags you open.
+
+Custom CSS:
+- You may also set design.customCss to a short block of plain CSS to fine-tune
+  things the structured settings cannot express. It is applied to the rendered
+  campaign. Do not include <style> tags, @import, or JavaScript.
+- The campaign renders with these stable class names you can target from
+  customCss (and reference with <span class="..."> in the text):
+  - .counterpulse-preview-promo — the campaign container
+  - .counterpulse-preview-message / .counterpulse-preview-message-copy — the
+    message block; the headline is its <strong>, the body is its <span>
+  - .counterpulse-preview-icon — the icon
+  - .counterpulse-preview-timer — the countdown
+  - .counterpulse-preview-actions / .counterpulse-preview-cta — the action area
+    and the CTA button
+  - .counterpulse-preview-progress — the free-shipping progress bar
+  - .counterpulse-preview-badge — the product badge (badge campaigns)
+  - .counterpulse-preview-close — the close button
+- Prefer the structured design settings first; use customCss only for accents
+  that the settings cannot achieve, and keep it short.
+
 ${describeDesignLayoutsForAi()}
 `.trim();
 

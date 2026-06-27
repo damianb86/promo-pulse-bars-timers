@@ -8,11 +8,14 @@ import {
   generateTranslations,
   parseAppliedCampaignSuggestion,
   parseCampaignAiFormData,
+  parseCampaignAiReferenceImage,
   shouldAskCampaignAiFollowUpQuestions,
   type CampaignAiProvider,
 } from "./campaignGenerator.server";
 import {
+  AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT,
   AI_CAMPAIGN_SYSTEM_PROMPT,
+  buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
 } from "./campaignPrompts.server";
 
@@ -274,5 +277,179 @@ describe("AI campaign generator", () => {
     expect(visibleCopy).not.toContain("low stock");
     expect(suggestion.safety.blockedClaims.length).toBeGreaterThan(0);
     expect(suggestion.safety.requiresReview).toBe(true);
+  });
+});
+
+describe("AI campaign reference image", () => {
+  // 1x1 transparent PNG.
+  const pngBase64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMEAQEY1Jl5AAAAAElFTkSuQmCC";
+
+  function formDataWithImage(dataUrl: string) {
+    const formData = new FormData();
+    formData.set("referenceImageDataUrl", dataUrl);
+    return formData;
+  }
+
+  it("accepts a valid base64 PNG data URL", () => {
+    const result = parseCampaignAiReferenceImage(
+      formDataWithImage(`data:image/png;base64,${pngBase64}`),
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.image?.mimeType).toBe("image/png");
+    expect(result.image?.dataUrl).toContain("data:image/png;base64,");
+  });
+
+  it("returns no image and no error when nothing was uploaded", () => {
+    const result = parseCampaignAiReferenceImage(new FormData());
+
+    expect(result.image).toBeNull();
+    expect(result.error).toBeUndefined();
+  });
+
+  it("rejects unsupported mime types", () => {
+    const result = parseCampaignAiReferenceImage(
+      formDataWithImage(`data:image/gif;base64,${pngBase64}`),
+    );
+
+    expect(result.image).toBeNull();
+    expect(result.error).toContain("Unsupported image type");
+  });
+
+  it("rejects malformed data URLs", () => {
+    const result = parseCampaignAiReferenceImage(
+      formDataWithImage("not-a-data-url"),
+    );
+
+    expect(result.image).toBeNull();
+    expect(result.error).toBeTruthy();
+  });
+
+  it("rejects images over the size limit", () => {
+    const hugeBase64 = "A".repeat(8 * 1024 * 1024);
+    const result = parseCampaignAiReferenceImage(
+      formDataWithImage(`data:image/png;base64,${hugeBase64}`),
+    );
+
+    expect(result.image).toBeNull();
+    expect(result.error).toContain("too large");
+  });
+
+  it("makes product context optional when requireProductContext is false", () => {
+    const formData = new FormData();
+    formData.set("objective", "FLASH_SALE");
+    formData.set("ctaUrl", "/collections/all");
+
+    const required = parseCampaignAiFormData(formData);
+    const optional = parseCampaignAiFormData(formData, {
+      requireProductContext: false,
+    });
+
+    expect(required.errors.productContext).toBeTruthy();
+    expect(optional.errors.productContext).toBeUndefined();
+  });
+
+  it("passes the reference image to the provider and keeps its visual overrides", async () => {
+    let receivedContext: { referenceImage?: { mimeType: string } } | undefined;
+    const imageProvider: CampaignAiProvider = {
+      source: "provider",
+      async generateCampaignSuggestion(_input, context) {
+        receivedContext = context;
+        return {
+          design: {
+            backgroundType: "SOLID",
+            backgroundColor: "#FF00AA",
+            titleColor: "#102030",
+          },
+        };
+      },
+    };
+
+    const suggestion = await generateCampaignSuggestion(
+      buildDefaultCampaignAiInput({ productContext: "sneakers" }),
+      {
+        provider: imageProvider,
+        referenceImage: {
+          dataUrl: "data:image/png;base64,abc",
+          mimeType: "image/png",
+        },
+      },
+    );
+
+    expect(receivedContext?.referenceImage?.mimeType).toBe("image/png");
+    expect(suggestion.referenceImageUsed).toBe(true);
+    expect(suggestion.design.backgroundColor).toBe("#FF00AA");
+    expect(suggestion.design.titleColor).toBe("#102030");
+  });
+
+  it("strips visual overrides for the text-only flow", async () => {
+    const colorfulProvider: CampaignAiProvider = {
+      source: "provider",
+      async generateCampaignSuggestion() {
+        return {
+          design: {
+            backgroundType: "SOLID",
+            backgroundColor: "#FF00AA",
+          },
+        };
+      },
+    };
+
+    const suggestion = await generateCampaignSuggestion(
+      buildDefaultCampaignAiInput({ productContext: "sneakers" }),
+      { provider: colorfulProvider },
+    );
+
+    expect(suggestion.referenceImageUsed).toBe(false);
+    expect(suggestion.design.backgroundColor).not.toBe("#FF00AA");
+  });
+
+  it("builds an image system prompt that allows visual overrides and lists settings", () => {
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REFERENCE IMAGE MODE");
+    // Reuses the base prompt + the design settings catalog.
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "Promo Pulse AI Campaign Builder",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "Design settings catalog",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("backgroundColor");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("OVERRIDE");
+    // Still never asks for experiment variants.
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain('"variants"');
+  });
+
+  it("builds an image user prompt that includes the merchant payload", () => {
+    const prompt = buildCampaignAiImageUserPrompt(
+      buildDefaultCampaignAiInput({
+        productContext: "linen shirts",
+        locale: "it",
+        locales: ["en", "it"],
+      }),
+    );
+
+    expect(prompt).toContain("reference image is attached");
+    expect(prompt).toContain("linen shirts");
+    expect(prompt).toContain('"targetLocales": [');
+    expect(prompt).toContain('"it"');
+  });
+
+  it("round-trips image-derived colors through the applied suggestion", () => {
+    const reviewed = JSON.stringify({
+      promptVersion: "x",
+      source: "provider",
+      referenceImageUsed: true,
+      input: buildDefaultCampaignAiInput({ productContext: "sneakers" }),
+      design: {
+        backgroundType: "SOLID",
+        backgroundColor: "#FF00AA",
+      },
+    });
+
+    const applied = parseAppliedCampaignSuggestion(reviewed);
+
+    expect(applied?.referenceImageUsed).toBe(true);
+    expect(applied?.design.backgroundColor).toBe("#FF00AA");
   });
 });

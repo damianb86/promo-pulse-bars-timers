@@ -1,5 +1,8 @@
 import type { CampaignAiInput } from "../../types/ai-campaign";
-import { describeDesignLayoutsForAi } from "../../types/campaign-design";
+import {
+  describeDesignLayoutsForAi,
+  describeDesignSettingsForAi,
+} from "../../types/campaign-design";
 
 export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v6";
 
@@ -174,5 +177,97 @@ export function buildCampaignAiUserPrompt(input: CampaignAiInput) {
     JSON.stringify(payload, null, 2),
     "",
     "Generate the safest complete Promo Pulse campaign draft for this merchant input.",
+  ].join("\n");
+}
+
+// System prompt used when the merchant uploads a reference image. It reuses the
+// full base prompt (same JSON shape, same safety rules) and adds image-analysis
+// guidance plus the design-settings catalog. Unlike the text-only flow, the
+// model is explicitly allowed and encouraged to return concrete visual overrides
+// (colors, gradients, spacing) so the generated campaign matches the image.
+export const AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT = `
+${AI_CAMPAIGN_SYSTEM_PROMPT}
+
+=== REFERENCE IMAGE MODE ===
+The merchant attached a reference image of an existing promotional element
+(an announcement/promo bar, countdown timer, banner, badge, or cart message).
+Your task is to reproduce that image as closely as possible using ONLY the
+Promo Pulse settings described above and in the catalog below.
+
+How to analyze the image:
+- Identify what kind of element it is: top/bottom announcement bar, product or
+  cart countdown timer, free-shipping progress bar, low-stock message, product
+  badge, or a special banner. Map it to the closest campaign goal, type, and
+  placementType.
+- Read the layout: is it full-width or a contained card? Is the content one
+  inline row or a vertical stack? Where do the message, timer, and button sit?
+  Pick the design.layout and fullWidth that reproduce that arrangement.
+- Extract the colors precisely as 6-digit hex: background (solid or gradient),
+  headline color, subheading color, timer digit color, button fill, button text,
+  borders. If you see a gradient, set backgroundType GRADIENT with start/end
+  colors and an angle.
+- Estimate spacing: padding (slim vs tall bar), gap between elements, corner
+  rounding (sharp full-width bar vs rounded pill/card), border thickness.
+- Estimate typography: relative title vs body vs timer sizes, and whether the
+  font looks default/system, serif, rounded, condensed, etc.
+- Detect the timer style: bare digits (PLAIN), one container (GROUPED), or
+  separate digit tiles (BOXES); colon HH:MM:SS vs labeled units; the digit and
+  label colors and the surface behind them.
+- Detect buttons and icons: only set showButton true / showIcon true and pick an
+  icon when the image actually shows one. Use the visible button label as ctaText.
+- Transcribe visible text into headline / subheadline / ctaText / expiredText,
+  cleaned up and shortened to fit the placement.
+
+Critical rules for image mode:
+- OVERRIDE the earlier "do not provide custom color/gradient/background overrides"
+  rule: in image mode you SHOULD populate the design.* visual fields (colors,
+  gradient, padding, radius, sizes, alignment, layout, timer style) to match the
+  image. Use the chosen templateKey only as a starting point.
+- Use ONLY the fields in the catalog below. Never invent new design fields or new
+  enum values. If something in the image cannot be reproduced exactly, choose the
+  closest supported value.
+- Prioritize making the final campaign LOOK like the image. Visual similarity is
+  the goal.
+- Still keep all safety rules: status DRAFT, never invent stock counts or discount
+  values that are not actually written in the image. If a discount %, amount,
+  threshold, or code is clearly visible as text in the image, you may reflect it.
+- The merchant's text description (if any) refines or overrides the image; honor it
+  when the two conflict.
+
+${describeDesignSettingsForAi()}
+`.trim();
+
+export function buildCampaignAiImageUserPrompt(input: CampaignAiInput) {
+  const payload = {
+    objective: input.objective,
+    campaignShape: input.campaignShape,
+    campaignNameHint: input.campaignNameHint || "",
+    goalAnswers: input.goalAnswers,
+    productContext: input.productContext || "",
+    eventName: input.eventName || "",
+    countryCode: input.countryCode || "US",
+    locale: input.locale || "en",
+    targetLocales: input.locales.length
+      ? input.locales
+      : [input.locale || "en"],
+    brandTone: input.brandTone || "premium",
+    knownOffer: input.knownOffer || "",
+    quickStarts: input.quickStarts,
+    merchantNotes: input.merchantNotes || "",
+    followUpAnswers: input.followUpAnswers,
+    ctaUrl: input.ctaUrl || "/collections/all",
+  };
+
+  return [
+    "A reference image is attached. Analyze it visually and reproduce it as a",
+    "Promo Pulse campaign draft, matching layout, colors, spacing, typography,",
+    "timer, button, and text as closely as the supported settings allow.",
+    "",
+    "Optional merchant input JSON (fields may be empty when the merchant only",
+    "uploaded an image — in that case infer everything from the image):",
+    JSON.stringify(payload, null, 2),
+    "",
+    "Return the complete Promo Pulse campaign draft JSON, including populated",
+    "design.* visual fields that match the image.",
   ].join("\n");
 }

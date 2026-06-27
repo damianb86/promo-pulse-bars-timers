@@ -27,6 +27,7 @@ import {
   hasCampaignAiFormErrors,
   parseAppliedCampaignSuggestion,
   parseCampaignAiFormData,
+  parseCampaignAiReferenceImage,
   shouldAskCampaignAiFollowUpQuestions,
 } from "../services/ai/campaignGenerator.server";
 import {
@@ -167,7 +168,13 @@ export const action = async ({
 
   if (intent === "generateAiCampaignSuggestion") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
-    const parsedAi = parseCampaignAiFormData(formData);
+    const { image: referenceImage, error: referenceImageError } =
+      parseCampaignAiReferenceImage(formData);
+    // With a reference image the textual product context is optional — the image
+    // carries the context the AI needs.
+    const parsedAi = parseCampaignAiFormData(formData, {
+      requireProductContext: !referenceImage,
+    });
     const aiValues = buildDefaultCampaignAiInput({
       ...parsedAi.values,
       locales: settings.enabledLocales,
@@ -182,6 +189,15 @@ export const action = async ({
       };
     }
 
+    if (referenceImageError) {
+      return {
+        aiInput: aiValues,
+        aiErrors: {
+          form: referenceImageError,
+        },
+      };
+    }
+
     if (hasCampaignAiFormErrors(parsedAi.errors)) {
       return {
         aiInput: aiValues,
@@ -189,7 +205,10 @@ export const action = async ({
       };
     }
 
+    // Follow-up questions refine missing textual context. When an image is
+    // attached we skip them and generate directly from the image.
     if (
+      !referenceImage &&
       shouldAskCampaignAiFollowUpQuestions(
         aiValues,
         formData.get("aiFollowUpStatus"),
@@ -204,7 +223,9 @@ export const action = async ({
     try {
       return {
         aiInput: aiValues,
-        aiSuggestion: await generateCampaignSuggestion(aiValues),
+        aiSuggestion: await generateCampaignSuggestion(aiValues, {
+          referenceImage: referenceImage ?? undefined,
+        }),
       };
     } catch (error) {
       console.error("Failed to generate AI campaign suggestion", error);

@@ -3949,6 +3949,110 @@ s-page::part(page) {
   line-height: 20px;
 }
 
+.counterpulse-ai-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.counterpulse-ai-dropzone {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+  width: 100%;
+  padding: 24px 16px;
+  border: 2px dashed #c4cdd5;
+  border-radius: 10px;
+  background: #fafbff;
+  color: #6d7175;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.counterpulse-ai-dropzone:hover,
+.counterpulse-ai-dropzone:focus-visible,
+.counterpulse-ai-dropzone--active {
+  border-color: #6d28d9;
+  background: #f5f3ff;
+  color: #4c4861;
+  outline: none;
+}
+
+.counterpulse-ai-dropzone strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.counterpulse-ai-dropzone__icon {
+  width: 32px;
+  height: 32px;
+  color: #6d28d9;
+}
+
+.counterpulse-ai-dropzone__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.counterpulse-ai-image-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.counterpulse-ai-image-preview__image {
+  width: 140px;
+  max-width: 100%;
+  height: auto;
+  max-height: 96px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #e3e7ed;
+  background: #f6f6f7;
+}
+
+.counterpulse-ai-image-preview__meta {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
+.counterpulse-ai-image-preview__meta strong {
+  color: #202223;
+  font-size: 13px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.counterpulse-ai-image-preview__meta small {
+  color: #6d7175;
+  font-size: 12px;
+}
+
+.counterpulse-ai-image-preview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .counterpulse-ai-option-grid,
 .counterpulse-ai-shape-grid {
   display: grid;
@@ -12644,7 +12748,8 @@ s-page::part(page) {
   text-align: center;
   width: 100%;
 }
-.counterpulse-preview-promo--layout-mobile_banner .counterpulse-preview-message {
+.counterpulse-preview-promo--layout-mobile_banner
+  .counterpulse-preview-message {
   justify-content: center;
 }
 .counterpulse-preview-promo--layout-mobile_banner

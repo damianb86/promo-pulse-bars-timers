@@ -1173,13 +1173,58 @@
   }
 
   // Replace the slot placeholder with a built node, or remove it when null.
+  // Author attributes (class/id/style/data-*) on a slot placeholder are copied
+  // onto the built dynamic node so merchants can style/position it. The internal
+  // markers (data-cp-slot and the data-cp-* config attrs) are not carried over.
+  var SLOT_CONFIG_ATTRS = {
+    "data-cp-slot": 1,
+    "data-cp-icon": 1,
+    "data-cp-icon-size": 1,
+    "data-cp-compact": 1,
+  };
+  function transferSlotAttrs(slotEl, builtNode) {
+    if (!slotEl || !builtNode || builtNode.nodeType !== 1) return;
+    var attrs = slotEl.attributes;
+    for (var i = 0; i < attrs.length; i += 1) {
+      var name = attrs[i].name;
+      if (SLOT_CONFIG_ATTRS[name]) continue;
+      if (name === "class") {
+        builtNode.className = (
+          builtNode.className +
+          " " +
+          attrs[i].value
+        ).trim();
+      } else {
+        builtNode.setAttribute(name, attrs[i].value);
+      }
+    }
+  }
+
   function fillReplaceSlot(slotEl, builtNode) {
     if (!slotEl || !slotEl.parentNode) return;
     if (builtNode) {
+      transferSlotAttrs(slotEl, builtNode);
       slotEl.parentNode.replaceChild(builtNode, slotEl);
     } else {
       slotEl.parentNode.removeChild(slotEl);
     }
+  }
+
+  // Per-instance icon/timer overrides from data-cp-* attributes on the slot.
+  function iconDesignFor(slotEl, design) {
+    var icon = slotEl.getAttribute("data-cp-icon");
+    var size = slotEl.getAttribute("data-cp-icon-size");
+    if (!icon && !size) return design;
+    var override = Object.assign({}, design);
+    if (icon) override.icon = icon;
+    if (size) override.iconSize = Number(size) || design.iconSize;
+    return override;
+  }
+  function slotCompact(slotEl, fallback) {
+    var value = slotEl.getAttribute("data-cp-compact");
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return fallback;
   }
 
   function fixRootClasses(root, variant, placement) {
@@ -1281,18 +1326,22 @@
           break;
         }
         case "icon":
-          fillReplaceSlot(slotEl, buildIcon(design));
+          fillReplaceSlot(slotEl, buildIcon(iconDesignFor(slotEl, design)));
           break;
         case "timer":
           fillReplaceSlot(
             slotEl,
-            spec.hasTimer ? buildTimer(spec, design, false) : null,
+            spec.hasTimer
+              ? buildTimer(spec, design, slotCompact(slotEl, false))
+              : null,
           );
           break;
         case "timer-inline":
           fillReplaceSlot(
             slotEl,
-            spec.hasTimer ? buildTimer(spec, design, true) : null,
+            spec.hasTimer
+              ? buildTimer(spec, design, slotCompact(slotEl, true))
+              : null,
           );
           break;
         case "offer":

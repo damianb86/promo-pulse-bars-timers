@@ -943,18 +943,24 @@ function StructurePromoSurface({
     slot: string,
     key: string,
   ): ReactNode => {
+    // Author attributes (class/id/style/data-*) on the slot are preserved so
+    // merchants can style/position the element. data-cp-* config attrs are read
+    // below and not rendered as raw attributes.
+    const attrProps = slotAttrProps(node, key);
+    const iconDesign = iconDesignForSlot(node, design);
+    const forceCompact = node.attrs?.["data-cp-compact"];
     switch (slot) {
       case "headline":
         return (
           <strong
-            key={key}
+            {...attrProps}
             dangerouslySetInnerHTML={{ __html: headlineHtml }}
           />
         );
       case "body":
         return bodyHtml ? (
           <span
-            key={key}
+            {...attrProps}
             suppressHydrationWarning
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
@@ -963,15 +969,21 @@ function StructurePromoSurface({
         if (!hasCta) return null;
         return createElement(
           node.tag === "a" ? "a" : node.tag === TEXT_TAG ? "span" : node.tag,
-          { key, className: "counterpulse-preview-cta" },
+          {
+            ...attrProps,
+            className: ["counterpulse-preview-cta", node.attrs?.class]
+              .filter(Boolean)
+              .join(" "),
+          },
           ctaText,
         );
       case "icon":
-        return <PreviewIcon key={key} design={design} />;
+        return <PreviewIcon key={key} design={iconDesign} />;
       case "timer":
         return hasTimer ? (
           <TimerDisplay
             key={key}
+            compact={forceCompact === "true"}
             design={design}
             deliveryTime={deliveryPreview?.timeRemaining}
             timerState={timerState}
@@ -981,7 +993,7 @@ function StructurePromoSurface({
         return hasTimer ? (
           <TimerDisplay
             key={key}
-            compact
+            compact={forceCompact !== "false"}
             design={design}
             deliveryTime={deliveryPreview?.timeRemaining}
             timerState={timerState}
@@ -1100,6 +1112,14 @@ function parseStyleString(value: string): Record<string, string> {
   }, {});
 }
 
+// Internal slot markers that must not be rendered as raw HTML attributes.
+const SLOT_INTERNAL_ATTRS = new Set([
+  "data-cp-slot",
+  "data-cp-icon",
+  "data-cp-icon-size",
+  "data-cp-compact",
+]);
+
 // Converts a faithful node's HTML attributes into React props so arbitrary
 // merchant HTML (ids, data-*, src, alt, style, ...) renders as written.
 function structureNodeProps(
@@ -1118,6 +1138,38 @@ function structureNodeProps(
     props[REACT_ATTR_NAMES[name] ?? name] = value;
   }
   return props;
+}
+
+// Author attributes for a slot element: same as structureNodeProps but without
+// the internal data-cp-* markers (they configure rendering, not the DOM).
+function slotAttrProps(
+  node: StructureNode,
+  key: string,
+): Record<string, unknown> {
+  const filtered: StructureNode = {
+    tag: node.tag,
+    attrs: Object.fromEntries(
+      Object.entries(node.attrs ?? {}).filter(
+        ([name]) => !SLOT_INTERNAL_ATTRS.has(name),
+      ),
+    ),
+  };
+  return structureNodeProps(filtered, key);
+}
+
+// Per-instance icon override from data-cp-icon / data-cp-icon-size on the slot.
+function iconDesignForSlot(
+  node: StructureNode,
+  design: CampaignDesignValues,
+): CampaignDesignValues {
+  const icon = node.attrs?.["data-cp-icon"];
+  const size = node.attrs?.["data-cp-icon-size"];
+  if (!icon && !size) return design;
+  return {
+    ...design,
+    icon: (icon as CampaignDesignValues["icon"]) ?? design.icon,
+    iconSize: size ? Number(size) || design.iconSize : design.iconSize,
+  };
 }
 
 function OfferPreview({

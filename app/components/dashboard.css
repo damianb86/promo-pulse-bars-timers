@@ -3056,6 +3056,81 @@ s-page::part(page) {
   overflow: visible;
 }
 
+.counterpulse-design-card__missing {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  background: #fffbeb;
+}
+
+.counterpulse-design-card__missing p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #92400e;
+}
+
+.counterpulse-design-card__missing button {
+  justify-self: start;
+}
+
+.counterpulse-design-card--disabled .counterpulse-design-card__body {
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+.counterpulse-info-icon-button {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 8px;
+  padding: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #2c6ecb;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.counterpulse-info-icon-button:hover {
+  background: #f1f5fb;
+}
+
+.counterpulse-structure-help {
+  display: grid;
+  gap: 12px;
+  max-height: min(64vh, 680px);
+  overflow-y: auto;
+}
+
+.counterpulse-structure-help__row {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f9fafb;
+}
+
+.counterpulse-structure-help__row code {
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: #0f172a;
+}
+
+.counterpulse-structure-help__row p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #374151;
+}
+
 .counterpulse-structure-html-textarea {
   box-sizing: border-box;
   width: 100%;

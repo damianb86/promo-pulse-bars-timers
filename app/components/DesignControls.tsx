@@ -68,11 +68,15 @@ type DesignControlsProps = {
   device?: "desktop" | "mobile";
   progressStyle?: FreeShippingProgressStyleValue;
   structureEdited?: boolean;
+  // Slots present in the hand-edited HTML. null = not overridden (don't disable
+  // any card). When a Set, cards whose element is absent are disabled.
+  presentSlots?: ReadonlySet<string> | null;
   onChange: (values: CampaignDesignValues) => void;
   onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
   onEditStructureHtml?: () => void;
   onEditStructureCss?: () => void;
   onResetStructure?: () => void;
+  onAddSlot?: (slot: string) => void;
 };
 
 export function DesignControls({
@@ -84,12 +88,27 @@ export function DesignControls({
   device = "desktop",
   progressStyle,
   structureEdited = false,
+  presentSlots = null,
   onChange,
   onProgressStyleChange,
   onEditStructureHtml,
   onEditStructureCss,
   onResetStructure,
+  onAddSlot,
 }: DesignControlsProps) {
+  // Returns the disabled-panel descriptor when a structural slot is missing from
+  // the hand-edited HTML; null otherwise (so the card stays enabled).
+  const missingElement = (
+    slot: string,
+    label: string,
+    present = presentSlots ? presentSlots.has(slot) : true,
+  ) =>
+    presentSlots && !present && onAddSlot
+      ? { label, onAdd: () => onAddSlot(slot) }
+      : null;
+  const timerPresent = presentSlots
+    ? presentSlots.has("timer") || presentSlots.has("timer-inline")
+    : true;
   const [customIconError, setCustomIconError] = useState<string | null>(null);
   const [backgroundImageError, setBackgroundImageError] = useState<
     string | null
@@ -431,7 +450,10 @@ export function DesignControls({
         </div>
       </DesignPanel>
 
-      <DesignPanel title="Timer Style">
+      <DesignPanel
+        title="Timer Style"
+        missingElement={missingElement("timer", "timer", timerPresent)}
+      >
         {hasTimer ? (
           <>
             <DesignGroup label="Timer labels">
@@ -700,7 +722,10 @@ export function DesignControls({
       </DesignPanel>
 
       {progressStyle && onProgressStyleChange ? (
-        <DesignPanel title="Progress">
+        <DesignPanel
+          title="Progress"
+          missingElement={missingElement("progress", "progress bar")}
+        >
           <div className="counterpulse-form-grid counterpulse-form-grid--wide">
             <ToggleField
               checked={values.showProgressBar}
@@ -845,6 +870,7 @@ export function DesignControls({
         <OfferDesignPanel
           errors={errors}
           values={values}
+          missingElement={missingElement("offer", "discount code")}
           onColorChange={updateColor}
           onNumberChange={updateNumber}
           onValueChange={updateValue}
@@ -1140,12 +1166,14 @@ export function DesignControls({
 function OfferDesignPanel({
   values,
   errors,
+  missingElement,
   onValueChange,
   onNumberChange,
   onColorChange,
 }: {
   values: CampaignDesignValues;
   errors: CampaignDesignErrors;
+  missingElement?: { label: string; onAdd: () => void } | null;
   onValueChange: <Key extends keyof CampaignDesignValues>(
     key: Key,
     value: CampaignDesignValues[Key],
@@ -1154,7 +1182,7 @@ function OfferDesignPanel({
   onColorChange: (key: ColorDesignKey, value: string) => void;
 }) {
   return (
-    <DesignPanel title="Offer code">
+    <DesignPanel title="Offer code" missingElement={missingElement}>
       <div className="counterpulse-toggle-grid">
         <ToggleField
           checked={values.showDiscountCode}
@@ -2496,16 +2524,42 @@ function CardControlIcon({ kind }: { kind: CardControlIconKind }) {
 function DesignPanel({
   title,
   children,
+  missingElement,
 }: {
   title: string;
   children: ReactNode;
+  // When the panel configures a structural element that is NOT present in the
+  // hand-edited HTML, the panel is disabled and offers to add it back.
+  missingElement?: { label: string; onAdd: () => void } | null;
 }) {
   return (
-    <section className="counterpulse-design-card">
+    <section
+      className={
+        missingElement
+          ? "counterpulse-design-card counterpulse-design-card--disabled"
+          : "counterpulse-design-card"
+      }
+    >
       <h3>
         <DesignSectionIcon title={title} />
         <span>{title}</span>
       </h3>
+      {missingElement && (
+        <div className="counterpulse-design-card__missing" role="note">
+          <p>
+            The <strong>{missingElement.label}</strong> element isn’t in your
+            campaign HTML, so these settings have no effect. Add it to the HTML
+            (then style/position it there) to use these controls.
+          </p>
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={missingElement.onAdd}
+          >
+            Add {missingElement.label} to HTML
+          </button>
+        </div>
+      )}
       <div className="counterpulse-design-card__body">{children}</div>
     </section>
   );

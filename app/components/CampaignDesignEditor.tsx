@@ -21,6 +21,7 @@ import {
   buildCampaignStructureTree,
   buildStructureCss,
   deriveCampaignStructureSpec,
+  getNodeSlot,
   htmlToTree,
   treeToHtml,
   type StructureNode,
@@ -136,6 +137,7 @@ export function CampaignDesignEditor({
   // separate overrides so the mobile HTML can differ when "Separate desktop and
   // mobile" is on.
   const [htmlModalOpen, setHtmlModalOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [cssModalOpen, setCssModalOpen] = useState(false);
   const desktopSurface = useStructureSurface(
     viewModel,
@@ -288,8 +290,11 @@ export function CampaignDesignEditor({
         value={activeSurface.displayedHtml}
         onChange={activeSurface.changeHtml}
         onClose={() => setHtmlModalOpen(false)}
+        onInfo={() => setHelpOpen(true)}
         onReset={activeSurface.reset}
       />
+
+      <StructureHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <StructureCodeModal
         description="These are the styles applied to the campaign. The __CP_SCOPE__ placeholder is replaced with this campaign's unique scope at render time — keep it on the variable block. Edit to customize the styles; reset to regenerate them from the design settings."
@@ -367,7 +372,9 @@ export function CampaignDesignEditor({
             progressStyle={progressStyle}
             structureEdited={activeSurface.edited}
             values={activeDesign}
+            presentSlots={activeSurface.presentSlots}
             onChange={updateActiveDesign}
+            onAddSlot={activeSurface.addSlot}
             onEditStructureCss={() => setCssModalOpen(true)}
             onEditStructureHtml={() => setHtmlModalOpen(true)}
             onProgressStyleChange={onProgressStyleChange}
@@ -409,6 +416,7 @@ function StructureCodeModal({
   onChange,
   onReset,
   onClose,
+  onInfo,
 }: {
   open: boolean;
   title: string;
@@ -418,6 +426,7 @@ function StructureCodeModal({
   onChange: (value: string) => void;
   onReset: () => void;
   onClose: () => void;
+  onInfo?: () => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -449,7 +458,19 @@ function StructureCodeModal({
       >
         <div className="counterpulse-modal__header">
           <div>
-            <h2>{title}</h2>
+            <h2>
+              {title}
+              {onInfo && (
+                <button
+                  aria-label="Element reference"
+                  className="counterpulse-info-icon-button"
+                  type="button"
+                  onClick={onInfo}
+                >
+                  <InfoCircleIcon />
+                </button>
+              )}
+            </h2>
             <p className="counterpulse-design-note">{description}</p>
           </div>
         </div>
@@ -480,15 +501,171 @@ function StructureCodeModal({
   );
 }
 
+function InfoCircleIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18">
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <circle cx="12" cy="8" r="1.3" fill="currentColor" />
+      <path
+        d="M12 11v6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// Reference shown by the info icon in the HTML modal: the slot elements, how each
+// renders, and the HTML attributes it supports.
+const STRUCTURE_ELEMENT_DOCS: Array<{
+  example: string;
+  renders: string;
+  attributes: string;
+}> = [
+  {
+    example: '<strong data-cp-slot="headline"></strong>',
+    renders:
+      "The campaign headline. Filled with the localized headline text (basic inline HTML like <b>/<span> allowed in the message settings).",
+    attributes:
+      "class, id, style, data-* — kept for styling/positioning. Leave the element empty; the text comes from settings.",
+  },
+  {
+    example: '<span data-cp-slot="body"></span>',
+    renders:
+      "The supporting line (subheadline / free-shipping / low-stock / delivery message). Hidden automatically when there is no body text.",
+    attributes: "class, id, style, data-*.",
+  },
+  {
+    example: '<span data-cp-slot="cta"></span>  (or <a data-cp-slot="cta">)',
+    renders:
+      "The call-to-action button. Use <a> to render a link (the storefront sets href automatically); <span> for a plain button. Hidden when the CTA is turned off.",
+    attributes: "class, id, style, data-*. Tag <a> vs <span> controls link vs button.",
+  },
+  {
+    example: '<span data-cp-slot="icon"></span>',
+    renders:
+      "The campaign icon. By default uses the icon chosen in Design settings.",
+    attributes:
+      'class, id, style, data-*. data-cp-icon="FIRE|CLOCK|TRUCK|GIFT|TAG|STAR|BOLT|HEART|CART|PERCENT|BELL|ROCKET|CHECK" overrides the icon for this instance; data-cp-icon-size="24" sets its size in px.',
+  },
+  {
+    example: '<div data-cp-slot="timer"></div>',
+    renders:
+      "The live countdown. Renders with the timer style/format from Design settings and updates every second on the storefront.",
+    attributes:
+      'class, id, style, data-*. data-cp-compact="true" forces the compact one-line timer; "false" forces the full timer. Use data-cp-slot="timer-inline" inside the copy block for an inline compact timer.',
+  },
+  {
+    example: '<span data-cp-slot="offer"></span>',
+    renders:
+      "The discount code area (code, copy button, apply button) per the Discount + Design settings. Hidden when there is no offer.",
+    attributes: "class, id, style, data-*.",
+  },
+  {
+    example: '<span data-cp-slot="close"></span>',
+    renders:
+      "The dismiss (X) button. Shown only when 'Show close button' is on in Design settings.",
+    attributes: "class, id, style, data-*.",
+  },
+  {
+    example: '<div data-cp-slot="progress"></div>',
+    renders:
+      "The free-shipping progress bar. Shown only for free-shipping campaigns with the progress bar enabled.",
+    attributes: "class, id, style, data-*.",
+  },
+];
+
+function StructureHelpModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="counterpulse-modal-backdrop">
+      <button
+        aria-label="Close"
+        className="counterpulse-modal-backdrop__dismiss"
+        tabIndex={-1}
+        type="button"
+        onClick={onClose}
+      />
+      <div
+        aria-label="Campaign HTML element reference"
+        aria-modal="true"
+        className="counterpulse-modal counterpulse-modal--html"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <div>
+            <h2>Element reference</h2>
+            <p className="counterpulse-design-note">
+              The HTML carries only the structure. Dynamic parts are empty{" "}
+              <code>data-cp-slot</code> placeholders that the app fills at render
+              time from your Design settings. Any other safe HTML (divs,
+              headings, images, lists, classes, ids, data attributes) is rendered
+              exactly as written. Below: each slot, how it renders, and the
+              attributes it supports.
+            </p>
+          </div>
+        </div>
+        <div className="counterpulse-modal__body">
+          <div className="counterpulse-structure-help">
+            {STRUCTURE_ELEMENT_DOCS.map((doc) => (
+              <div key={doc.example} className="counterpulse-structure-help__row">
+                <code>{doc.example}</code>
+                <p>
+                  <strong>Renders:</strong> {doc.renders}
+                </p>
+                <p>
+                  <strong>Attributes:</strong> {doc.attributes}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="counterpulse-modal__actions">
+          <button className="counterpulse-button" type="button" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type StructureSurface = {
   edited: boolean;
   dirty: boolean;
   displayedHtml: string;
   displayedCss: string;
   tree: StructureNode | null;
+  presentSlots: ReadonlySet<string> | null;
   reset: () => void;
   changeHtml: (value: string) => void;
   changeCss: (value: string) => void;
+  addSlot: (slot: string) => void;
 };
 
 // Manages one structural-HTML override surface (desktop or mobile): the live
@@ -562,17 +739,62 @@ function useStructureSurface(
     [edited, displayedHtml],
   );
 
+  // Slots present in the current HTML. null when not overridden (the structure is
+  // auto-generated from settings, so every applicable element is available).
+  const presentSlots = useMemo<ReadonlySet<string> | null>(() => {
+    if (!edited) return null;
+    const slots = new Set<string>();
+    const walk = (n: StructureNode | null) => {
+      if (!n) return;
+      const slot = getNodeSlot(n);
+      if (slot) slots.add(slot);
+      n.children?.forEach(walk);
+    };
+    walk(tree);
+    return slots;
+  }, [edited, tree]);
+
+  // Inserts a missing slot element into the edited HTML so its settings card
+  // works again. Appends it to the surface root.
+  const addSlot = (slot: string) => {
+    const current = htmlToTree(displayedHtml);
+    if (!current) return;
+    const root = current.children ? current : { ...current, children: [] };
+    root.children = [
+      ...(root.children ?? []),
+      { tag: SLOT_ELEMENT_TAG[slot] ?? "div", attrs: { "data-cp-slot": slot } },
+    ];
+    setHtml(treeToHtml(root));
+    setEdited(true);
+    setDirty(true);
+  };
+
   return {
     edited,
     dirty,
     displayedHtml,
     displayedCss,
     tree,
+    presentSlots,
     reset,
     changeHtml,
     changeCss,
+    addSlot,
   };
 }
+
+// Default element tag used when auto-adding a missing slot to the HTML.
+const SLOT_ELEMENT_TAG: Record<string, string> = {
+  headline: "strong",
+  body: "span",
+  cta: "span",
+  icon: "span",
+  timer: "div",
+  "timer-inline": "div",
+  offer: "span",
+  close: "span",
+  progress: "div",
+};
 
 function toSeparateMobileDesign(
   design: CampaignDesignValues,

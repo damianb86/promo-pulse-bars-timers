@@ -76,7 +76,7 @@ import {
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
-import type { StructureNode } from "../utils/campaign-structure";
+import { htmlToTree, type StructureNode } from "../utils/campaign-structure";
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
@@ -661,6 +661,30 @@ export function CampaignForm({
   const effectiveMobileDesign = onMobileDesignChange
     ? mobileDesign
     : localMobileDesignValues;
+  // After an AI suggestion is applied (before the campaign is saved) the
+  // structural HTML/CSS lives only in the suggestion JSON, so derive the preview
+  // structure from it; otherwise fall back to the saved structure props.
+  const aiStructure = useMemo(() => {
+    if (!aiSuggestionJson) return null;
+    try {
+      const parsed = JSON.parse(aiSuggestionJson) as {
+        structureHtml?: string;
+        structureCss?: string;
+      };
+      if (typeof parsed.structureHtml !== "string" || !parsed.structureHtml) {
+        return null;
+      }
+      return {
+        tree: htmlToTree(parsed.structureHtml),
+        css:
+          typeof parsed.structureCss === "string" ? parsed.structureCss : "",
+      };
+    } catch {
+      return null;
+    }
+  }, [aiSuggestionJson]);
+  const previewStructureTree = aiStructure?.tree ?? structureTree;
+  const previewStructureCss = aiStructure ? aiStructure.css : structureCss;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
@@ -3858,8 +3882,8 @@ export function CampaignForm({
                 device={previewDevice}
                 mobileDesign={effectiveMobileDesign}
                 placement={campaignPreviewPlacement}
-                structureTree={structureTree}
-                structureCss={structureCss}
+                structureTree={previewStructureTree}
+                structureCss={previewStructureCss}
                 viewModel={previewViewModel}
                 onDeviceChange={setPreviewDevice}
                 onPlacementChange={selectCampaignPreviewPlacement}

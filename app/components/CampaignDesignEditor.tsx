@@ -385,8 +385,12 @@ export function CampaignDesignEditor({
           mobileStructureTree={
             design.separateMobileDesign ? mobileSurface.tree : null
           }
+          mobileStructureCss={
+            design.separateMobileDesign ? mobileSurface.displayedCss : ""
+          }
           placement={placement}
           structureTree={desktopSurface.tree}
+          structureCss={desktopSurface.displayedCss}
           viewModel={previewViewModel}
           onDeviceChange={setDevice}
           onPlacementChange={selectPreviewPlacement}

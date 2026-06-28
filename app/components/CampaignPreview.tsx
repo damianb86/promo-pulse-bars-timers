@@ -1,6 +1,7 @@
 import {
   createElement,
   useEffect,
+  useId,
   useMemo,
   useState,
   type CSSProperties,
@@ -50,6 +51,9 @@ type CampaignPreviewProps = {
   // tree (slots hydrated with the live preview pieces) instead of the built-in
   // settings layout. Mirrors the storefront's structure-driven rendering.
   structureTree?: StructureNode | null;
+  // The per-campaign CSS (scoped `--cp-*` vars + layout + custom CSS) that goes
+  // with structureTree. Applied scoped so the preview matches the storefront.
+  structureCss?: string;
 };
 
 const placementLabels: Record<PreviewPlacement, string> = {
@@ -111,6 +115,7 @@ export function CampaignPromoSurface({
   className,
   dataTestId,
   structureTree = null,
+  structureCss = "",
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -119,6 +124,7 @@ export function CampaignPromoSurface({
   className?: string;
   dataTestId?: string;
   structureTree?: StructureNode | null;
+  structureCss?: string;
 }) {
   const now = usePreviewClock();
   const evergreenStorage = useMemo(
@@ -143,6 +149,7 @@ export function CampaignPromoSurface({
       now={now}
       placement={placement}
       structureTree={structureTree}
+      structureCss={structureCss}
       style={buildPreviewStyle(design)}
       timerState={timerState}
       variant={variant}
@@ -157,6 +164,7 @@ export function CampaignPreview({
   device,
   placement,
   structureTree = null,
+  structureCss = "",
 }: CampaignPreviewProps) {
   const now = usePreviewClock();
   const evergreenStorage = useMemo(
@@ -182,6 +190,7 @@ export function CampaignPreview({
       now={now}
       placement={placement}
       structureTree={structureTree}
+      structureCss={structureCss}
       style={previewStyle}
       timerState={timerState}
       variant={variant}
@@ -546,6 +555,7 @@ function PromoSurface({
   className,
   dataTestId,
   structureTree = null,
+  structureCss = "",
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -557,6 +567,7 @@ function PromoSurface({
   className?: string;
   dataTestId?: string;
   structureTree?: StructureNode | null;
+  structureCss?: string;
 }) {
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
@@ -667,6 +678,7 @@ function PromoSurface({
         headlineHtml={sanitizeBasicHtml(headlineText)}
         bodyHtml={bodyText ? sanitizeBasicHtml(bodyText) : ""}
         placement={placement}
+        structureCss={structureCss}
         style={style}
         timerState={timerState}
         tree={structureTree}
@@ -897,6 +909,7 @@ function StructurePromoSurface({
   hasCta,
   className,
   dataTestId,
+  structureCss,
 }: {
   tree: StructureNode;
   viewModel: CampaignViewModel;
@@ -915,7 +928,16 @@ function StructurePromoSurface({
   hasCta: boolean;
   className?: string;
   dataTestId?: string;
+  structureCss: string;
 }) {
+  // Unique per-instance scope so the campaign CSS (which targets __CP_SCOPE__)
+  // only styles this surface — the same scoping the storefront applies.
+  const scopeId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const scopedCss = structureCss
+    ? structureCss
+        .replace(/__CP_SCOPE__/g, `[data-cp-uid="${scopeId}"]`)
+        .replace(/<\/?\s*style/gi, "")
+    : "";
   const renderSlot = (
     node: StructureNode,
     slot: string,
@@ -1003,7 +1025,15 @@ function StructurePromoSurface({
     .filter(Boolean)
     .join(" ");
 
-  return createElement(
+  // Prefer the campaign's own CSS (vars + layout + custom CSS). Fall back to the
+  // merchant custom CSS only when there is no structure CSS.
+  const injectedCss =
+    scopedCss ||
+    (design.customCss.trim()
+      ? design.customCss.replace(/<\/?\s*style/gi, "")
+      : "");
+
+  const surface = createElement(
     tree.tag,
     {
       ...structureNodeProps(tree, undefined),
@@ -1012,16 +1042,27 @@ function StructurePromoSurface({
       "data-testid": dataTestId,
       suppressHydrationWarning: true,
     },
+    (tree.children ?? []).map((child, index) =>
+      renderNode(child, String(index)),
+    ),
+  );
+
+  // Wrap in a scope element that carries the unique id. The campaign CSS targets
+  // __CP_SCOPE__ as an ANCESTOR (e.g. `__CP_SCOPE__ .cp-promo {}`), so the id
+  // must live on a wrapper, not on the surface root itself. `display: contents`
+  // keeps the wrapper invisible to layout.
+  return createElement(
+    "div",
+    {
+      "data-cp-uid": scopeId,
+      style: { display: "contents" } as CSSProperties,
+    },
     [
-      ...(tree.children ?? []).map((child, index) =>
-        renderNode(child, String(index)),
-      ),
-      design.customCss.trim() ? (
+      surface,
+      injectedCss ? (
         <style
-          key="custom-css"
-          dangerouslySetInnerHTML={{
-            __html: design.customCss.replace(/<\/?\s*style/gi, ""),
-          }}
+          key="structure-css"
+          dangerouslySetInnerHTML={{ __html: injectedCss }}
         />
       ) : null,
     ],

@@ -66,6 +66,9 @@ const SVG_ATTRS = new Set([
 
 const URL_ATTRS = new Set(["href", "src"]);
 const SAFE_URL = /^(https?:\/\/|\/|#|mailto:|tel:)/i;
+// Internal asset placeholder kept through sanitization; the pipeline replaces it
+// with the uploaded Shopify URL before render.
+const ASSET_PLACEHOLDER = /^\{\{asset:[a-zA-Z0-9_-]+\}\}$/;
 
 function isAttrAllowed(tag: string, name: string): boolean {
   if (GLOBAL_ATTRS.has(name)) return true;
@@ -104,7 +107,7 @@ function sanitizeAttrs(
 
     if (URL_ATTRS.has(lower)) {
       const url = attrs[name].trim();
-      if (!SAFE_URL.test(url)) continue;
+      if (!SAFE_URL.test(url) && !ASSET_PLACEHOLDER.test(url)) continue;
       result[lower] = url;
       continue;
     }
@@ -123,6 +126,13 @@ function sanitizeNode(node: StructureNode): StructureNode | null {
   const result: StructureNode = { tag: node.tag };
   const attrs = sanitizeAttrs(node.tag, node.attrs);
   if (attrs) result.attrs = attrs;
+
+  // Drop <img> with no src so an AI-emitted empty <img> (whose asset was never
+  // produced/referenced) never renders broken. A valid {{asset:...}} placeholder
+  // counts as a src and is kept (the pipeline resolves it later).
+  if (node.tag === "img" && !(attrs?.src ?? "")) {
+    return null;
+  }
 
   if (node.children && node.children.length) {
     const children = node.children

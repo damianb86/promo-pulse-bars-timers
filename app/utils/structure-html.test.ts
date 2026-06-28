@@ -48,6 +48,17 @@ describe("sanitizeStructureHtml", () => {
     expect(tree!.children?.[0].attrs?.href).toBeUndefined();
   });
 
+  it("keeps an asset placeholder src and drops an <img> with no src", () => {
+    const html = sanitizeStructureHtml(
+      '<section><img src="{{asset:hero}}" alt="bg">' +
+        "<img class=\"broken\" alt></section>",
+    );
+    expect(html).toContain('src="{{asset:hero}}"');
+    // The src-less image is removed entirely.
+    expect(html).not.toContain("broken");
+    expect((html.match(/<img/g) ?? []).length).toBe(1);
+  });
+
   it("preserves arbitrary safe tags, ids, data-attrs and images", () => {
     const html = sanitizeStructureHtml(
       '<div class="promo" id="hero" data-x="1">' +

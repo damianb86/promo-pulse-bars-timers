@@ -1226,21 +1226,28 @@
     if (spec.className) root.className += " " + spec.className;
     if (spec.dataTestId) root.setAttribute("data-testid", spec.dataTestId);
 
-    // Scope + inject the per-campaign CSS (vars + sanitized custom CSS).
+    hydrateStructureSlots(root, spec, design);
+
+    // Wrap the surface in a scope element carrying the unique id. The campaign
+    // CSS targets __CP_SCOPE__ as an ANCESTOR (e.g. "__CP_SCOPE__ .cp-promo {}"),
+    // so the id must live on a wrapper, not on the surface root itself.
+    var scopeId = uniqueScopeId();
+    var wrapper = document.createElement("div");
+    wrapper.setAttribute("data-cp-uid", scopeId);
+    wrapper.style.display = "contents";
+    wrapper.appendChild(root);
+
     var css = typeof structure.css === "string" ? structure.css : "";
     if (css) {
-      var scopeId = uniqueScopeId();
-      root.setAttribute("data-cp-uid", scopeId);
       var scoped = css
         .replace(/__CP_SCOPE__/g, '[data-cp-uid="' + scopeId + '"]')
         .replace(/<\/?\s*style/gi, "");
       var styleNode = document.createElement("style");
       styleNode.textContent = scoped;
-      root.appendChild(styleNode);
+      wrapper.appendChild(styleNode);
     }
 
-    hydrateStructureSlots(root, spec, design);
-    return root;
+    return wrapper;
   }
 
   function hydrateStructureSlots(root, spec, design) {

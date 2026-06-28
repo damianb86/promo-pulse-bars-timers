@@ -76,6 +76,7 @@ import {
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import type { StructureNode } from "../utils/campaign-structure";
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
@@ -85,6 +86,10 @@ type CampaignFormProps = {
   design?: CampaignDesignValues;
   designHiddenInputs?: ReactNode;
   mobileDesign?: CampaignDesignValues;
+  // Saved structural HTML/CSS override so this preview renders the exact same
+  // generated HTML the storefront uses (matches the Design tab preview).
+  structureTree?: StructureNode | null;
+  structureCss?: string;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
@@ -553,6 +558,8 @@ export function CampaignForm({
   design = defaultCampaignDesignValues,
   designHiddenInputs,
   mobileDesign = design,
+  structureTree = null,
+  structureCss = "",
   values,
   errors = {},
   formId,
@@ -3851,6 +3858,8 @@ export function CampaignForm({
                 device={previewDevice}
                 mobileDesign={effectiveMobileDesign}
                 placement={campaignPreviewPlacement}
+                structureTree={structureTree}
+                structureCss={structureCss}
                 viewModel={previewViewModel}
                 onDeviceChange={setPreviewDevice}
                 onPlacementChange={selectCampaignPreviewPlacement}

@@ -263,6 +263,7 @@ import {
 } from "../utils/campaign-view-model";
 import {
   decodePackedStructure,
+  htmlToTree,
   treeToHtml,
   unpackTree,
 } from "../utils/campaign-structure";
@@ -1804,6 +1805,13 @@ export default function EditCampaignPage() {
     experimentAutoWinnerSaveBarState.dirty ||
     behaviorTargetingSaveBarState.dirty ||
     structureDirty;
+  // Saved structural HTML override → tree, so the Campaign tab preview renders the
+  // exact same generated HTML as the Design tab and the storefront.
+  const savedStructureTree = useMemo(
+    () =>
+      structureEdited && structureHtml ? htmlToTree(structureHtml) : null,
+    [structureEdited, structureHtml],
+  );
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
     draftCampaignValues.goal === "FREE_SHIPPING";
@@ -2053,6 +2061,8 @@ export default function EditCampaignPage() {
                   confirmOnSubmit={false}
                   design={draftDesignValues}
                   mobileDesign={draftMobileDesignValues}
+                  structureTree={savedStructureTree}
+                  structureCss={structureCss}
                   designHiddenInputs={
                     <CampaignDesignDraftHiddenInputs
                       mobileValues={draftMobileDesignValues}
@@ -2215,6 +2225,8 @@ export default function EditCampaignPage() {
                     confirmOnSubmit={false}
                     design={draftDesignValues}
                     mobileDesign={draftMobileDesignValues}
+                    structureTree={savedStructureTree}
+                    structureCss={structureCss}
                     designHiddenInputs={
                       <CampaignDesignDraftHiddenInputs
                         mobileValues={draftMobileDesignValues}

@@ -155,7 +155,8 @@ async function createFile(
           {
             originalSource: resourceUrl,
             contentType: "IMAGE",
-            alt: input.alt ?? "",
+            // Shopify caps alt at 512 characters.
+            alt: (input.alt ?? "").slice(0, 512),
           },
         ],
       },

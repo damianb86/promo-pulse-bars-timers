@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v9";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v10";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -231,6 +231,21 @@ Structural CSS (structureCss) — style the structure and add effects:
 - When you return structureHtml you SHOULD return structureCss too, otherwise the
   custom structure will render unstyled. If structureHtml is "", leave
   structureCss "" as well.
+- __CP_SCOPE__ is an ANCESTOR wrapper of your markup, so descendant selectors like
+  "__CP_SCOPE__ .cp-promo" correctly match your root element. Put shared variables
+  on "__CP_SCOPE__ {}" and style elements with "__CP_SCOPE__ .your-class {}".
+
+Responsiveness (REQUIRED for every layout, predefined or custom):
+- The campaign MUST look correct at ANY width, not only via smaller-screen tweaks.
+  Build fluid layouts that WRAP instead of overflowing.
+- Use fluid techniques: percentage/fr widths, clamp() for font sizes and spacing,
+  flexbox with flex-wrap: wrap, and CSS grid with grid-template-columns:
+  repeat(auto-fit, minmax(<min>, 1fr)). Avoid fixed pixel widths on containers and
+  avoid absolute positioning that can overflow on narrow widths.
+- Add @media (max-width: 768px) (and tighter if needed) rules that collapse
+  multi-column layouts to a single column and shrink/center content. A two-column
+  hero MUST stack vertically on narrow screens.
+- Images must be responsive: max-width: 100%; height: auto.
 
 ${describeDesignLayoutsForAi()}
 `.trim();
@@ -345,11 +360,16 @@ Visual assets (only when input.generateVisualAssets is true):
     "svg": "<svg>...</svg> (only when source is svg)" }
   - Use source "svg" for simple flat icons/badges/shapes (return clean <svg>); use
     "generated" with a detailed prompt for photographic/complex backgrounds/textures.
-  - Reference each asset from structureHtml/structureCss with the placeholder
-    {{asset:key}} (e.g. <img src="{{asset:hero-bg}}"> or
-    background-image: url("{{asset:hero-bg}}")). The app replaces the placeholder
-    with the uploaded Shopify file URL. NEVER invent real URLs.
-  - Keep the asset count minimal (only what's needed). Max 8.
+  - MANDATORY: every asset you list in "assets" MUST be referenced EXACTLY by its
+    {{asset:key}} placeholder somewhere in structureHtml or structureCss, or it is
+    wasted. Prefer a CSS background (e.g. background-image:
+    url("{{asset:hero-bg}}")) over an <img>. Only use <img> for true content
+    images, and then the src MUST be the placeholder: <img src="{{asset:product}}"
+    alt="...">. NEVER output an <img> without a real src placeholder, and never
+    leave an asset unreferenced. The app replaces the placeholder with the uploaded
+    Shopify file URL — never invent real URLs.
+  - Do NOT create an asset you will not reference; if you don't reference it, don't
+    list it. Keep the asset count minimal (only what's needed). Max 8.
 
 ${describeDesignSettingsForAi()}
 `.trim();

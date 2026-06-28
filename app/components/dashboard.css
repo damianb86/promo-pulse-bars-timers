@@ -4293,7 +4293,7 @@ s-page::part(page) {
   display: grid;
   gap: 6px;
   margin-bottom: 12px;
-  max-height: 120px;
+  max-height: 150px;
 }
 
 .counterpulse-ai-option-grid,

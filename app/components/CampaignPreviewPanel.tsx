@@ -39,6 +39,8 @@ type CampaignPreviewPanelProps = {
   viewModel: CampaignViewModel;
   structureTree?: StructureNode | null;
   mobileStructureTree?: StructureNode | null;
+  structureCss?: string;
+  mobileStructureCss?: string;
   onDeviceChange: (device: PreviewDevice) => void;
   onPlacementChange: (placement: PreviewPlacement) => void;
 };
@@ -55,6 +57,8 @@ export function CampaignPreviewPanel({
   viewModel,
   structureTree = null,
   mobileStructureTree = null,
+  structureCss = "",
+  mobileStructureCss = "",
   onDeviceChange,
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
@@ -74,10 +78,15 @@ export function CampaignPreviewPanel({
     device === "mobile"
       ? resolveMobileCampaignDesign(design, mobileDesign)
       : design;
+  const useMobileStructure =
+    device === "mobile" && mobileStructureTree != null;
   const resolvedStructureTree =
     device === "mobile"
       ? (mobileStructureTree ?? structureTree)
       : structureTree;
+  const resolvedStructureCss = useMobileStructure
+    ? mobileStructureCss
+    : structureCss;
 
   return (
     <div
@@ -110,6 +119,7 @@ export function CampaignPreviewPanel({
         device={device}
         placement={selectedPlacement}
         structureTree={resolvedStructureTree}
+        structureCss={resolvedStructureCss}
         viewModel={viewModel}
       />
       {meta}

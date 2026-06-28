@@ -1977,6 +1977,15 @@ export default function EditCampaignPage() {
     !publication.hasPublishedVersion ||
     publication.hasUnpublishedChanges;
   const errorAttentionSectionKey = getActionErrorSectionKey(actionData);
+  // Lets a control (e.g. the timer progress note in Design) jump to the Campaign
+  // section where the schedule lives. Reset shortly after so it can re-fire.
+  const [requestedSectionKey, setRequestedSectionKey] = useState<string | null>(
+    null,
+  );
+  const goToSection = (key: string) => {
+    setRequestedSectionKey(key);
+    window.setTimeout(() => setRequestedSectionKey(null), 200);
+  };
 
   return (
     <>
@@ -2019,7 +2028,7 @@ export default function EditCampaignPage() {
           </AppAlert>
         )}
         <CampaignEditorLayout
-          attentionSectionKey={errorAttentionSectionKey}
+          attentionSectionKey={requestedSectionKey ?? errorAttentionSectionKey}
           actionBar={{
             campaignSectionKey: "campaign",
             campaignTypeLabel,
@@ -2326,6 +2335,7 @@ export default function EditCampaignPage() {
                   mobileStructureCss={mobileStructureCss}
                   resetSignal={discardVersion}
                   onStructureDirtyChange={setStructureDirty}
+                  onGoToSchedule={() => goToSection("campaign")}
                 />
               ),
             },

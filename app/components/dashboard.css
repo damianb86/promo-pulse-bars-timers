@@ -3073,6 +3073,17 @@ s-page::part(page) {
   color: #92400e;
 }
 
+.counterpulse-inline-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2c6ecb;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .counterpulse-design-card__missing-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4051,8 +4062,21 @@ s-page::part(page) {
 }
 
 .counterpulse-ai-drawer-cluster.has-preview {
-  width: min(1180px, calc(100vw - 28px));
-  grid-template-columns: minmax(360px, 520px) minmax(440px, 560px);
+  width: min(1180px, 100vw);
+  max-width: 100vw;
+  grid-template-columns: minmax(320px, 480px) minmax(420px, 520px);
+}
+
+/* On narrower windows the side-by-side preview can't fit — drop the wing and
+   show just the drawer so nothing overflows the viewport. */
+@media (max-width: 1040px) {
+  .counterpulse-ai-drawer-cluster.has-preview {
+    width: min(520px, 100vw);
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .counterpulse-ai-drawer-preview-wing {
+    display: none;
+  }
 }
 
 .counterpulse-ai-drawer-cluster .counterpulse-ai-drawer {
@@ -4078,13 +4102,16 @@ s-page::part(page) {
 }
 
 .counterpulse-ai-drawer-preview-wing .counterpulse-variant-preview {
-  max-height: min(420px, calc(100vh - 220px));
+  max-height: min(70vh, calc(100vh - 180px));
   min-height: 0;
   align-items: start;
   overflow: auto;
-  transform: scale(.5);
-  transform-origin: left top;
-  width: 1000px;
+  width: 100%;
+}
+
+/* Keep the previewed surface inside the wing so nothing overflows the drawer. */
+.counterpulse-ai-drawer-preview-wing .counterpulse-variant-preview__surface {
+  max-width: 100%;
 }
 
 .counterpulse-ai-drawer__header {

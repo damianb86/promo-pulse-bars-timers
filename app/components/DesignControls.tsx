@@ -33,10 +33,7 @@ import {
   applyCampaignDesignTemplate,
   applyCampaignLayoutDefaults,
 } from "../utils/campaign-design";
-import {
-  freeShippingProgressStyleOptions,
-  type FreeShippingProgressStyleValue,
-} from "../types/free-shipping";
+import { type FreeShippingProgressStyleValue } from "../types/free-shipping";
 
 type TimerTypeOption = {
   timerStyle: CampaignDesignValues["timerStyle"];
@@ -80,6 +77,8 @@ type DesignControlsProps = {
   onEditStructureCss?: () => void;
   onResetStructure?: () => void;
   onAddSlot?: (slot: string) => void;
+  // Switches the editor to the Campaign → Schedule tab (timer progress target).
+  onGoToSchedule?: () => void;
 };
 
 export function DesignControls({
@@ -98,6 +97,7 @@ export function DesignControls({
   onEditStructureCss,
   onResetStructure,
   onAddSlot,
+  onGoToSchedule,
 }: DesignControlsProps) {
   // Builds the missing-element list for a panel: for each [slot,label,present],
   // includes an entry (with an Add button) when the slot is absent from the
@@ -845,30 +845,21 @@ export function DesignControls({
               name="progressShowLabel"
               onChange={(checked) => updateValue("progressShowLabel", checked)}
             />
-            {progressStyle && onProgressStyleChange && (
-              <DesignGroup label="Free-shipping progress text">
-                <select
-                  aria-label="Free shipping progress style"
-                  value={progressStyle}
-                  onChange={(event) =>
-                    onProgressStyleChange(
-                      event.currentTarget
-                        .value as FreeShippingProgressStyleValue,
-                    )
-                  }
-                >
-                  {freeShippingProgressStyleOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </DesignGroup>
-            )}
             {values.progressTarget === "TIMER" && (
               <p className="counterpulse-design-note">
-                The timer target needs a fixed start and end date on the campaign
-                so the elapsed percentage can be calculated.
+                The timer target uses the campaign’s start and end dates to
+                calculate the elapsed percentage.{" "}
+                {onGoToSchedule ? (
+                  <button
+                    className="counterpulse-inline-link"
+                    type="button"
+                    onClick={onGoToSchedule}
+                  >
+                    Set the start &amp; end date in Campaign schedule
+                  </button>
+                ) : (
+                  "Set a fixed start and end date in the Campaign schedule."
+                )}
               </p>
             )}
           </div>

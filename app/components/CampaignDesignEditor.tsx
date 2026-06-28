@@ -50,6 +50,8 @@ type CampaignDesignEditorProps = {
   // Reports whether the structural HTML/CSS overrides differ from saved, to drive
   // the contextual save bar.
   onStructureDirtyChange?: (dirty: boolean) => void;
+  // Switches the editor to the Campaign → Schedule section (timer progress).
+  onGoToSchedule?: () => void;
 };
 
 export function CampaignDesignEditor({
@@ -72,6 +74,7 @@ export function CampaignDesignEditor({
   mobileStructureCss: initialMobileStructureCss = "",
   resetSignal = 0,
   onStructureDirtyChange,
+  onGoToSchedule,
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
     () =>
@@ -375,6 +378,7 @@ export function CampaignDesignEditor({
             presentSlots={activeSurface.presentSlots}
             onChange={updateActiveDesign}
             onAddSlot={activeSurface.addSlot}
+            onGoToSchedule={onGoToSchedule}
             onEditStructureCss={() => setCssModalOpen(true)}
             onEditStructureHtml={() => setHtmlModalOpen(true)}
             onProgressStyleChange={onProgressStyleChange}

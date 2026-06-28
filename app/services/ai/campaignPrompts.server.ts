@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v11";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v12";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -202,7 +202,19 @@ Structural HTML (structureHtml) — reshape the layout when needed:
     message copy for inline/one-line layouts)
   - data-cp-slot="offer" — the discount code / copy / apply controls
   - data-cp-slot="close" — the dismiss button
-  - data-cp-slot="progress" — the free-shipping progress bar
+  - data-cp-slot="timer-inline" — a compact one-line timer (variant of timer)
+  - data-cp-slot="progress" — a progress bar. Its look is fully configured by the
+    Progress design settings (target, style bar/steps/circle, colors, height,
+    radius, effect, label) — do NOT style the fill yourself. Add it (an empty
+    <div data-cp-slot="progress"></div>) when the campaign benefits from a
+    progress indicator: a free-shipping goal (target FREE_SHIPPING) or to show
+    countdown progress (target TIMER, which needs a fixed start + end date). You
+    can also configure it via the design.progress* fields (progressTarget,
+    progressBarStyle, progressSteps, progressHeight, progressRadius,
+    progressTrackColor, progressFillColor, progressTextColor, progressEffect,
+    progressShowLabel) — see the design catalog.
+  Dynamic slots also accept data-* config on the placeholder: icon supports
+  data-cp-icon / data-cp-icon-size; timer supports data-cp-compact="true|false".
 - Use short, clean class names with the cp- prefix. The standard wrappers are:
   cp-promo (root <section>), cp-message and cp-message-copy (message block),
   cp-actions (action area). You may add your own cp-* classes on extra wrappers
@@ -255,6 +267,13 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 - Respect the placement's natural size: TOP_BAR / BOTTOM_BAR are SLIM, single-row
   banners — keep them compact (small type, one row that wraps), never a tall hero.
   PRODUCT_PAGE / CART blocks may be taller. Match the placement you are given.
+- The timer slot renders fixed-width digit boxes. Place it in a normal flow
+  container that can wrap (flex with flex-wrap: wrap, or its own grid row) and give
+  it room — NEVER overlap it with text or place it (or the text) with position:
+  absolute. On narrow widths the timer must drop below the copy, not on top of it.
+- Give every flex/grid child min-width: 0 so long text and the timer can shrink
+  instead of forcing horizontal overflow. The whole campaign must never scroll
+  horizontally.
 
 ${describeDesignLayoutsForAi()}
 `.trim();

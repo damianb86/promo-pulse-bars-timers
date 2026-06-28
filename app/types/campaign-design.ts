@@ -1062,6 +1062,10 @@ export function describeDesignSettingsForAi() {
     `- showIcon (boolean) and icon: ${enumValues(designIconOptions)}. Only set an icon you can actually see in the image.`,
     "- showCloseButton (boolean) + closeButtonColor (hex): the dismiss control.",
     "- showProgressBar (boolean): for free-shipping progress style bars.",
+    "- progressTarget (FREE_SHIPPING|TIMER): what the progress bar tracks. TIMER needs a fixed start+end date.",
+    "- progressBarStyle (BAR|STEPS|CIRCLE), progressSteps (number, for STEPS).",
+    "- progressHeight (px), progressRadius (px), progressEffect (NONE|FILL|SHIMMER), progressShowLabel (boolean).",
+    "- progressTrackColor, progressFillColor, progressTextColor (6-digit hex).",
     "",
     `Built-in design presets (templateKey) you can start from, then override the visual fields above to match the image: ${templateExamples}.`,
   ].join("\n");

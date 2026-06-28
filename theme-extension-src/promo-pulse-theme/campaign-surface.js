@@ -945,20 +945,89 @@
     return span;
   }
 
-  function buildProgress(progress, design) {
-    if (!progress || design.showProgressBar === false) return null;
-    var classes = [
-      "counterpulse-preview-progress",
-      "counterpulse-preview-progress--" + lower(progress.style || "BAR"),
-      progress.unlocked ? "counterpulse-preview-progress--unlocked" : "",
-    ];
-    var wrap = el("div", classes.filter(Boolean).join(" "));
-    wrap.style.setProperty("--cp-progress", num(progress.percentage, 0) + "%");
-    var track = document.createElement("span");
-    var fill = document.createElement("span");
-    fill.style.width = num(progress.percentage, 0) + "%";
-    track.appendChild(fill);
-    wrap.appendChild(track);
+  // Resolves the progress percentage for the configured target. FREE_SHIPPING
+  // uses the cart-vs-threshold progress; TIMER uses elapsed time (needs totalMs,
+  // i.e. a fixed start+end or an evergreen duration). Returns null when there is
+  // no data for the target.
+  function progressPercentFor(spec, design) {
+    if ((design.progressTarget || "FREE_SHIPPING") === "TIMER") {
+      var timer = spec.timer;
+      if (!timer || !(timer.totalMs > 0)) return null;
+      var elapsed = timer.totalMs - num(timer.remainingMs, 0);
+      return Math.min(100, Math.max(0, (elapsed / timer.totalMs) * 100));
+    }
+    return spec.progress ? num(spec.progress.percentage, 0) : null;
+  }
+
+  function applyProgressVars(wrap, design, pct) {
+    wrap.style.setProperty("--cp-progress", pct + "%");
+    wrap.style.setProperty("--cp-progress-track", design.progressTrackColor);
+    wrap.style.setProperty("--cp-progress-fill", design.progressFillColor);
+    wrap.style.setProperty("--cp-progress-text", design.progressTextColor);
+    wrap.style.setProperty(
+      "--cp-progress-height",
+      num(design.progressHeight, 8) + "px",
+    );
+    wrap.style.setProperty(
+      "--cp-progress-radius",
+      num(design.progressRadius, 999) + "px",
+    );
+  }
+
+  // Design-driven progress: style (bar/steps/circle), colors, height, radius,
+  // effect and optional label, with the percentage resolved from the target.
+  function buildProgress(spec, design) {
+    if (design.showProgressBar === false) return null;
+    var pct = progressPercentFor(spec, design);
+    if (pct == null) return null;
+    pct = Math.round(pct);
+
+    var style = lower(design.progressBarStyle || "BAR");
+    var effect = lower(design.progressEffect || "NONE");
+    var unlocked = spec.progress && spec.progress.unlocked;
+    var wrap = el(
+      "div",
+      [
+        "counterpulse-preview-progress",
+        "counterpulse-preview-progress--" + style,
+        "counterpulse-preview-progress--effect-" + effect,
+        unlocked ? "counterpulse-preview-progress--unlocked" : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    applyProgressVars(wrap, design, pct);
+
+    if (style === "steps") {
+      var steps = clampNumber(design.progressSteps, 2, 12, 4);
+      var filled = Math.round((pct / 100) * steps);
+      var track = el("span", "counterpulse-preview-progress-steps");
+      for (var i = 0; i < steps; i += 1) {
+        var step = document.createElement("span");
+        if (i < filled) step.className = "is-filled";
+        track.appendChild(step);
+      }
+      wrap.appendChild(track);
+    } else if (style === "circle") {
+      var circle = el("span", "counterpulse-preview-progress-circle");
+      circle.style.setProperty("--cp-progress-deg", (pct / 100) * 360 + "deg");
+      var inner = document.createElement("span");
+      if (design.progressShowLabel) inner.textContent = pct + "%";
+      circle.appendChild(inner);
+      wrap.appendChild(circle);
+    } else {
+      var barTrack = document.createElement("span");
+      var fill = document.createElement("span");
+      fill.style.width = pct + "%";
+      barTrack.appendChild(fill);
+      wrap.appendChild(barTrack);
+    }
+
+    if (design.progressShowLabel && style !== "circle") {
+      var label = el("small", "counterpulse-preview-progress-label");
+      label.textContent = pct + "%";
+      wrap.appendChild(label);
+    }
     return wrap;
   }
 
@@ -1105,7 +1174,7 @@
     if (close) section.appendChild(close);
 
     // Progress
-    var progress = buildProgress(spec.progress, design);
+    var progress = buildProgress(spec, design);
     if (progress) section.appendChild(progress);
 
     // Merchant custom CSS (already plan-gated + sanitized on save). Injected as a
@@ -1355,7 +1424,7 @@
           fillReplaceSlot(slotEl, buildClose(design, spec.onClose));
           break;
         case "progress":
-          fillReplaceSlot(slotEl, buildProgress(spec.progress, design));
+          fillReplaceSlot(slotEl, buildProgress(spec, design));
           break;
         default:
           break;
@@ -1424,10 +1493,20 @@
     }
 
     var expired = endsAt ? endsAt.getTime() <= now : false;
+    // Total span (for the TIMER progress target): evergreen uses the duration;
+    // fixed/recurring use startsAt → endsAt.
+    var totalMs = 0;
+    if (mode === "EVERGREEN_SESSION" && timer.durationMinutes) {
+      totalMs = Math.round(Number(timer.durationMinutes)) * 60000;
+    } else {
+      var startsAt = parseDate(campaign.startsAt);
+      if (startsAt && endsAt) totalMs = Math.max(0, endsAt.getTime() - startsAt.getTime());
+    }
     return {
       isActive: Boolean(endsAt && !expired),
       isExpired: expired,
       remainingMs: endsAt ? Math.max(0, endsAt.getTime() - now) : 0,
+      totalMs: totalMs,
     };
   }
 

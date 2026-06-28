@@ -776,28 +776,21 @@ function PromoSurface({
         </span>
       )}
 
-      {freeShippingPreview && design.showProgressBar !== false && (
-        <div
-          className={[
-            "counterpulse-preview-progress",
-            `counterpulse-preview-progress--${freeShippingPreview.progressStyle.toLowerCase()}`,
-            freeShippingPreview.unlocked
-              ? "counterpulse-preview-progress--unlocked"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          style={
-            {
-              "--cp-progress": `${freeShippingPreview.percentage}%`,
-            } as CSSProperties
-          }
-        >
-          <span>
-            <span style={{ width: `${freeShippingPreview.percentage}%` }} />
-          </span>
-        </div>
-      )}
+      {(() => {
+        const pct = resolveProgressPercent(
+          design,
+          freeShippingPreview,
+          timerState,
+          viewModel,
+        );
+        return pct == null ? null : (
+          <PreviewProgress
+            design={design}
+            percentage={pct}
+            unlocked={freeShippingPreview?.unlocked}
+          />
+        );
+      })()}
 
       {design.customCss.trim() ? (
         <style
@@ -865,25 +858,100 @@ function PreviewCloseButton({ design }: { design: CampaignDesignValues }) {
   );
 }
 
+// Resolves the progress percentage for the configured target (mirrors
+// progressPercentFor in campaign-surface.js). FREE_SHIPPING uses the cart
+// progress; TIMER uses elapsed time (duration for evergreen, start→end for
+// fixed). In the preview a sample 60% is shown for a timer target when the total
+// span can't be derived, so the styled bar is still visible while editing.
+function resolveProgressPercent(
+  design: CampaignDesignValues,
+  freeShippingPreview: ReturnType<typeof buildFreeShippingPreview>,
+  timerState: TimerState | null,
+  viewModel: CampaignViewModel,
+): number | null {
+  if (design.showProgressBar === false) return null;
+  if (design.progressTarget === "TIMER") {
+    const durationMinutes = viewModel.timer?.durationMinutes;
+    const totalMs =
+      viewModel.timer?.mode === "EVERGREEN_SESSION" && durationMinutes
+        ? durationMinutes * 60000
+        : 0;
+    if (totalMs > 0 && timerState) {
+      const elapsed = totalMs - timerState.remainingMs;
+      return Math.min(100, Math.max(0, (elapsed / totalMs) * 100));
+    }
+    return 60;
+  }
+  return freeShippingPreview ? freeShippingPreview.percentage : null;
+}
+
 function PreviewProgress({
-  preview,
+  design,
+  percentage,
+  unlocked,
 }: {
-  preview: NonNullable<ReturnType<typeof buildFreeShippingPreview>>;
+  design: CampaignDesignValues;
+  percentage: number;
+  unlocked?: boolean;
 }) {
+  const pct = Math.round(percentage);
+  const style = (design.progressBarStyle || "BAR").toLowerCase();
+  const effect = (design.progressEffect || "NONE").toLowerCase();
+  const vars = {
+    "--cp-progress": `${pct}%`,
+    "--cp-progress-track": design.progressTrackColor,
+    "--cp-progress-fill": design.progressFillColor,
+    "--cp-progress-text": design.progressTextColor,
+    "--cp-progress-height": `${design.progressHeight}px`,
+    "--cp-progress-radius": `${design.progressRadius}px`,
+  } as CSSProperties;
+  const className = [
+    "counterpulse-preview-progress",
+    `counterpulse-preview-progress--${style}`,
+    `counterpulse-preview-progress--effect-${effect}`,
+    unlocked ? "counterpulse-preview-progress--unlocked" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (style === "steps") {
+    const steps = clampNumber(design.progressSteps, 2, 12, 4);
+    const filled = Math.round((pct / 100) * steps);
+    return (
+      <div className={className} style={vars}>
+        <span className="counterpulse-preview-progress-steps">
+          {Array.from({ length: steps }).map((_, index) => (
+            <span key={index} className={index < filled ? "is-filled" : ""} />
+          ))}
+        </span>
+        {design.progressShowLabel && (
+          <small className="counterpulse-preview-progress-label">{pct}%</small>
+        )}
+      </div>
+    );
+  }
+
+  if (style === "circle") {
+    return (
+      <div className={className} style={vars}>
+        <span
+          className="counterpulse-preview-progress-circle"
+          style={{ "--cp-progress-deg": `${(pct / 100) * 360}deg` } as CSSProperties}
+        >
+          <span>{design.progressShowLabel ? `${pct}%` : ""}</span>
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={[
-        "counterpulse-preview-progress",
-        `counterpulse-preview-progress--${preview.progressStyle.toLowerCase()}`,
-        preview.unlocked ? "counterpulse-preview-progress--unlocked" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      style={{ "--cp-progress": `${preview.percentage}%` } as CSSProperties}
-    >
+    <div className={className} style={vars}>
       <span>
-        <span style={{ width: `${preview.percentage}%` }} />
+        <span style={{ width: `${pct}%` }} />
       </span>
+      {design.progressShowLabel && (
+        <small className="counterpulse-preview-progress-label">{pct}%</small>
+      )}
     </div>
   );
 }
@@ -1007,10 +1075,22 @@ function StructurePromoSurface({
         return design.showCloseButton ? (
           <PreviewCloseButton key={key} design={design} />
         ) : null;
-      case "progress":
-        return freeShippingPreview && design.showProgressBar !== false ? (
-          <PreviewProgress key={key} preview={freeShippingPreview} />
-        ) : null;
+      case "progress": {
+        const pct = resolveProgressPercent(
+          design,
+          freeShippingPreview,
+          timerState,
+          viewModel,
+        );
+        return pct == null ? null : (
+          <PreviewProgress
+            key={key}
+            design={design}
+            percentage={pct}
+            unlocked={freeShippingPreview?.unlocked}
+          />
+        );
+      }
       default:
         return null;
     }

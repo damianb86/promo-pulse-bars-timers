@@ -29,6 +29,9 @@ export type DesignFontFamilyValue =
   | "HUMANIST"
   | "CONDENSED"
   | "CASUAL";
+export type DesignProgressTargetValue = "FREE_SHIPPING" | "TIMER";
+export type DesignProgressBarStyleValue = "BAR" | "STEPS" | "CIRCLE";
+export type DesignProgressEffectValue = "NONE" | "FILL" | "SHIMMER";
 export type DesignTimerStyleValue = "PLAIN" | "GROUPED" | "BOXES";
 export type DesignTimerFormatValue = "UNITS" | "COLON";
 export type DesignTimerNumberLayoutValue = "INLINE" | "STACKED";
@@ -133,6 +136,18 @@ export type CampaignDesignValues = {
   dismissBehavior: DesignDismissBehaviorValue;
   showButton: boolean;
   showProgressBar: boolean;
+  // Stored as plain strings (DB columns); constrained to the option values by the
+  // UI + parser. Keep as string to avoid Prisma-enum friction.
+  progressTarget: string;
+  progressBarStyle: string;
+  progressSteps: number;
+  progressHeight: number;
+  progressRadius: number;
+  progressTrackColor: string;
+  progressFillColor: string;
+  progressTextColor: string;
+  progressEffect: string;
+  progressShowLabel: boolean;
   showIcon: boolean;
   icon: CampaignDesignIconValue;
   iconSize: number;
@@ -259,6 +274,16 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   dismissBehavior: "SHOW_AGAIN",
   showButton: true,
   showProgressBar: true,
+  progressTarget: "FREE_SHIPPING",
+  progressBarStyle: "BAR",
+  progressSteps: 4,
+  progressHeight: 8,
+  progressRadius: 999,
+  progressTrackColor: "#E5E7EB",
+  progressFillColor: "#22C55E",
+  progressTextColor: "#111827",
+  progressEffect: "NONE",
+  progressShowLabel: false,
   showIcon: false,
   icon: "NONE",
   iconSize: 20,
@@ -864,6 +889,42 @@ export const designDismissBehaviorOptions: Array<{
     description:
       "Closing hides this campaign on this browser until the campaign is republished or local storage is cleared.",
   },
+];
+
+export const designProgressTargetOptions: Array<{
+  value: DesignProgressTargetValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "FREE_SHIPPING",
+    label: "Free shipping goal",
+    description: "Fills as the cart approaches the free-shipping threshold.",
+  },
+  {
+    value: "TIMER",
+    label: "Countdown timer",
+    description:
+      "Fills as time elapses. Requires a fixed start and end date so the percentage can be calculated.",
+  },
+];
+
+export const designProgressBarStyleOptions: Array<{
+  value: DesignProgressBarStyleValue;
+  label: string;
+}> = [
+  { value: "BAR", label: "Bar" },
+  { value: "STEPS", label: "Steps" },
+  { value: "CIRCLE", label: "Circle" },
+];
+
+export const designProgressEffectOptions: Array<{
+  value: DesignProgressEffectValue;
+  label: string;
+}> = [
+  { value: "NONE", label: "None" },
+  { value: "FILL", label: "Animated fill" },
+  { value: "SHIMMER", label: "Shimmer" },
 ];
 
 export const designAlignmentOptions: Array<{

@@ -369,6 +369,16 @@ function createDesign(
     structureCss: null,
     structureVersion: 1,
     structureEdited: false,
+    progressTarget: "FREE_SHIPPING",
+    progressBarStyle: "BAR",
+    progressSteps: 4,
+    progressHeight: 8,
+    progressRadius: 999,
+    progressTrackColor: "#E5E7EB",
+    progressFillColor: "#22C55E",
+    progressTextColor: "#111827",
+    progressEffect: "NONE",
+    progressShowLabel: false,
     ...overrides,
   };
 }

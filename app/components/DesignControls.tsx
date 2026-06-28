@@ -4,6 +4,9 @@ import { FieldInfoButton } from "./Notifications";
 import {
   campaignDesignTemplates,
   designAlignmentOptions,
+  designProgressTargetOptions,
+  designProgressBarStyleOptions,
+  designProgressEffectOptions,
   designBackgroundTypeOptions,
   designBannerAnimationOptions,
   designFontFamilyOptions,
@@ -96,19 +99,30 @@ export function DesignControls({
   onResetStructure,
   onAddSlot,
 }: DesignControlsProps) {
-  // Returns the disabled-panel descriptor when a structural slot is missing from
-  // the hand-edited HTML; null otherwise (so the card stays enabled).
-  const missingElement = (
-    slot: string,
-    label: string,
-    present = presentSlots ? presentSlots.has(slot) : true,
-  ) =>
-    presentSlots && !present && onAddSlot
-      ? { label, onAdd: () => onAddSlot(slot) }
-      : null;
+  // Builds the missing-element list for a panel: for each [slot,label,present],
+  // includes an entry (with an Add button) when the slot is absent from the
+  // hand-edited HTML. Empty when there is no override (presentSlots null).
+  const missingElements = (
+    entries: Array<[slot: string, label: string, present?: boolean]>,
+  ): MissingElement[] => {
+    if (!presentSlots || !onAddSlot) return [];
+    return entries
+      .filter(([slot, , present]) =>
+        present === undefined ? !presentSlots.has(slot) : !present,
+      )
+      .map(([slot, label]) => ({
+        label,
+        onAdd: () => onAddSlot(slot),
+      }));
+  };
   const timerPresent = presentSlots
     ? presentSlots.has("timer") || presentSlots.has("timer-inline")
     : true;
+  // The Progress panel shows for free-shipping campaigns (existing) and whenever
+  // the HTML has a progress slot (e.g. a timer-target progress bar).
+  const showProgressPanel =
+    Boolean(progressStyle && onProgressStyleChange) ||
+    (presentSlots ? presentSlots.has("progress") : false);
   const [customIconError, setCustomIconError] = useState<string | null>(null);
   const [backgroundImageError, setBackgroundImageError] = useState<
     string | null
@@ -452,7 +466,7 @@ export function DesignControls({
 
       <DesignPanel
         title="Timer Style"
-        missingElement={missingElement("timer", "timer", timerPresent)}
+        missingElements={missingElements([["timer", "timer", timerPresent]])}
       >
         {hasTimer ? (
           <>
@@ -721,10 +735,10 @@ export function DesignControls({
         )}
       </DesignPanel>
 
-      {progressStyle && onProgressStyleChange ? (
+      {showProgressPanel ? (
         <DesignPanel
           title="Progress"
-          missingElement={missingElement("progress", "progress bar")}
+          missingElements={missingElements([["progress", "progress bar"]])}
         >
           <div className="counterpulse-form-grid counterpulse-form-grid--wide">
             <ToggleField
@@ -733,34 +747,143 @@ export function DesignControls({
               name="showProgressBar"
               onChange={(checked) => updateValue("showProgressBar", checked)}
             />
-            <DesignGroup label="Progress style">
+            <DesignGroup label="Tracks">
               <select
-                aria-label="Progress style"
-                value={progressStyle}
+                aria-label="Progress target"
+                name="progressTarget"
+                value={values.progressTarget}
                 onChange={(event) =>
-                  onProgressStyleChange(
-                    event.currentTarget.value as FreeShippingProgressStyleValue,
-                  )
+                  updateValue("progressTarget", event.currentTarget.value)
                 }
               >
-                {freeShippingProgressStyleOptions.map((option) => (
+                {designProgressTargetOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
               </select>
             </DesignGroup>
+            <DesignGroup label="Style">
+              <select
+                aria-label="Progress bar style"
+                name="progressBarStyle"
+                value={values.progressBarStyle}
+                onChange={(event) =>
+                  updateValue("progressBarStyle", event.currentTarget.value)
+                }
+              >
+                {designProgressBarStyleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </DesignGroup>
+            {values.progressBarStyle === "STEPS" && (
+              <NumberField
+                label="Steps"
+                max={12}
+                min={2}
+                name="progressSteps"
+                value={values.progressSteps}
+                onChange={(value) => updateNumber("progressSteps", value)}
+              />
+            )}
+            <NumberField
+              label="Height"
+              max={48}
+              min={2}
+              name="progressHeight"
+              value={values.progressHeight}
+              onChange={(value) => updateNumber("progressHeight", value)}
+            />
+            <NumberField
+              label="Corner radius"
+              max={999}
+              min={0}
+              name="progressRadius"
+              value={values.progressRadius}
+              onChange={(value) => updateNumber("progressRadius", value)}
+            />
+            <ColorField
+              label="Track color"
+              name="progressTrackColor"
+              value={values.progressTrackColor}
+              onChange={(value) => updateColor("progressTrackColor", value)}
+            />
+            <ColorField
+              label="Fill color"
+              name="progressFillColor"
+              value={values.progressFillColor}
+              onChange={(value) => updateColor("progressFillColor", value)}
+            />
+            <ColorField
+              label="Label color"
+              name="progressTextColor"
+              value={values.progressTextColor}
+              onChange={(value) => updateColor("progressTextColor", value)}
+            />
+            <DesignGroup label="Effect">
+              <select
+                aria-label="Progress effect"
+                name="progressEffect"
+                value={values.progressEffect}
+                onChange={(event) =>
+                  updateValue("progressEffect", event.currentTarget.value)
+                }
+              >
+                {designProgressEffectOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </DesignGroup>
+            <ToggleField
+              checked={values.progressShowLabel}
+              label="Show percentage label"
+              name="progressShowLabel"
+              onChange={(checked) => updateValue("progressShowLabel", checked)}
+            />
+            {progressStyle && onProgressStyleChange && (
+              <DesignGroup label="Free-shipping progress text">
+                <select
+                  aria-label="Free shipping progress style"
+                  value={progressStyle}
+                  onChange={(event) =>
+                    onProgressStyleChange(
+                      event.currentTarget
+                        .value as FreeShippingProgressStyleValue,
+                    )
+                  }
+                >
+                  {freeShippingProgressStyleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </DesignGroup>
+            )}
+            {values.progressTarget === "TIMER" && (
+              <p className="counterpulse-design-note">
+                The timer target needs a fixed start and end date on the campaign
+                so the elapsed percentage can be calculated.
+              </p>
+            )}
           </div>
         </DesignPanel>
       ) : (
-        <input
-          name="showProgressBar"
-          type="hidden"
-          value={String(values.showProgressBar)}
-        />
+        <ProgressHiddenInputs values={values} />
       )}
 
-      <DesignPanel title="Elements">
+      <DesignPanel
+        title="Elements"
+        missingElements={missingElements([
+          ["icon", "icon"],
+          ["close", "close button"],
+        ])}
+      >
         <div className="counterpulse-form-grid counterpulse-form-grid--wide">
           <DesignField label="Icon" error={errors.icon}>
             <select
@@ -870,8 +993,9 @@ export function DesignControls({
         <OfferDesignPanel
           errors={errors}
           values={values}
-          missingElement={missingElement("offer", "discount code")}
+          missingElements={missingElements([["offer", "discount code"]])}
           onColorChange={updateColor}
+
           onNumberChange={updateNumber}
           onValueChange={updateValue}
         />
@@ -1166,14 +1290,14 @@ export function DesignControls({
 function OfferDesignPanel({
   values,
   errors,
-  missingElement,
+  missingElements,
   onValueChange,
   onNumberChange,
   onColorChange,
 }: {
   values: CampaignDesignValues;
   errors: CampaignDesignErrors;
-  missingElement?: { label: string; onAdd: () => void } | null;
+  missingElements?: MissingElement[] | null;
   onValueChange: <Key extends keyof CampaignDesignValues>(
     key: Key,
     value: CampaignDesignValues[Key],
@@ -1182,7 +1306,7 @@ function OfferDesignPanel({
   onColorChange: (key: ColorDesignKey, value: string) => void;
 }) {
   return (
-    <DesignPanel title="Offer code" missingElement={missingElement}>
+    <DesignPanel title="Offer code" missingElements={missingElements}>
       <div className="counterpulse-toggle-grid">
         <ToggleField
           checked={values.showDiscountCode}
@@ -2521,21 +2645,70 @@ function CardControlIcon({ kind }: { kind: CardControlIconKind }) {
   );
 }
 
+// Submits the progress design fields as hidden inputs when the Progress panel is
+// not shown, so saving never resets them to defaults.
+function ProgressHiddenInputs({ values }: { values: CampaignDesignValues }) {
+  return (
+    <>
+      <input
+        name="showProgressBar"
+        type="hidden"
+        value={String(values.showProgressBar)}
+      />
+      <input name="progressTarget" type="hidden" value={values.progressTarget} />
+      <input
+        name="progressBarStyle"
+        type="hidden"
+        value={values.progressBarStyle}
+      />
+      <input name="progressSteps" type="hidden" value={values.progressSteps} />
+      <input name="progressHeight" type="hidden" value={values.progressHeight} />
+      <input name="progressRadius" type="hidden" value={values.progressRadius} />
+      <input
+        name="progressTrackColor"
+        type="hidden"
+        value={values.progressTrackColor}
+      />
+      <input
+        name="progressFillColor"
+        type="hidden"
+        value={values.progressFillColor}
+      />
+      <input
+        name="progressTextColor"
+        type="hidden"
+        value={values.progressTextColor}
+      />
+      <input name="progressEffect" type="hidden" value={values.progressEffect} />
+      <input
+        name="progressShowLabel"
+        type="hidden"
+        value={String(values.progressShowLabel)}
+      />
+    </>
+  );
+}
+
+type MissingElement = { label: string; onAdd: () => void };
+
 function DesignPanel({
   title,
   children,
-  missingElement,
+  missingElements,
 }: {
   title: string;
   children: ReactNode;
-  // When the panel configures a structural element that is NOT present in the
-  // hand-edited HTML, the panel is disabled and offers to add it back.
-  missingElement?: { label: string; onAdd: () => void } | null;
+  // Structural elements this panel configures that are NOT present in the
+  // hand-edited HTML. When non-empty the panel is disabled and offers to add
+  // each missing element back.
+  missingElements?: MissingElement[] | null;
 }) {
+  const missing = missingElements ?? [];
+  const isDisabled = missing.length > 0;
   return (
     <section
       className={
-        missingElement
+        isDisabled
           ? "counterpulse-design-card counterpulse-design-card--disabled"
           : "counterpulse-design-card"
       }
@@ -2544,20 +2717,30 @@ function DesignPanel({
         <DesignSectionIcon title={title} />
         <span>{title}</span>
       </h3>
-      {missingElement && (
+      {isDisabled && (
         <div className="counterpulse-design-card__missing" role="note">
           <p>
-            The <strong>{missingElement.label}</strong> element isn’t in your
-            campaign HTML, so these settings have no effect. Add it to the HTML
-            (then style/position it there) to use these controls.
+            {missing.length > 1 ? "These elements aren’t" : "The "}
+            {missing.length === 1 && <strong>{missing[0].label}</strong>}
+            {missing.length === 1
+              ? " element isn’t"
+              : ` (${missing.map((m) => m.label).join(", ")})`}{" "}
+            in your campaign HTML, so these settings have no effect. Add{" "}
+            {missing.length > 1 ? "them" : "it"} to the HTML to use these
+            controls.
           </p>
-          <button
-            className="counterpulse-button-secondary"
-            type="button"
-            onClick={missingElement.onAdd}
-          >
-            Add {missingElement.label} to HTML
-          </button>
+          <div className="counterpulse-design-card__missing-actions">
+            {missing.map((element) => (
+              <button
+                key={element.label}
+                className="counterpulse-button-secondary"
+                type="button"
+                onClick={element.onAdd}
+              >
+                Add {element.label} to HTML
+              </button>
+            ))}
+          </div>
         </div>
       )}
       <div className="counterpulse-design-card__body">{children}</div>

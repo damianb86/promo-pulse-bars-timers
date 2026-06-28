@@ -1380,3 +1380,85 @@
   line-height: 0.95;
   padding: 0 1px;
 }
+
+/* Configurable progress bar (design-driven): bar / steps / circle, colors, size,
+   radius, effects and optional label. Variables come from the campaign design. */
+.counterpulse-preview-progress {
+  color: var(--cp-progress-text, currentColor);
+}
+.counterpulse-preview-progress--bar > span:first-child {
+  display: block;
+  height: var(--cp-progress-height, 8px);
+  background: var(--cp-progress-track, #e5e7eb);
+  border-radius: var(--cp-progress-radius, 999px);
+  overflow: hidden;
+}
+.counterpulse-preview-progress--bar > span:first-child > span {
+  display: block;
+  height: 100%;
+  width: var(--cp-progress, 0%);
+  background: var(--cp-progress-fill, #22c55e);
+  border-radius: inherit;
+}
+.counterpulse-preview-progress--effect-fill > span:first-child > span {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.counterpulse-preview-progress--effect-shimmer > span:first-child > span {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: cp-progress-shimmer 1.6s linear infinite;
+}
+@keyframes cp-progress-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.counterpulse-preview-progress-steps {
+  display: flex;
+  gap: 6px;
+}
+.counterpulse-preview-progress-steps > span {
+  flex: 1;
+  height: var(--cp-progress-height, 8px);
+  background: var(--cp-progress-track, #e5e7eb);
+  border-radius: var(--cp-progress-radius, 999px);
+}
+.counterpulse-preview-progress-steps > span.is-filled {
+  background: var(--cp-progress-fill, #22c55e);
+}
+.counterpulse-preview-progress-circle {
+  --cp-circle-size: 64px;
+  width: var(--cp-circle-size);
+  height: var(--cp-circle-size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    var(--cp-progress-fill, #22c55e) var(--cp-progress-deg, 0deg),
+    var(--cp-progress-track, #e5e7eb) 0
+  );
+}
+.counterpulse-preview-progress-circle > span {
+  width: calc(var(--cp-circle-size) - 12px);
+  height: calc(var(--cp-circle-size) - 12px);
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cp-progress-text, #111827);
+}
+.counterpulse-preview-progress-label {
+  color: var(--cp-progress-text, #111827);
+  font-weight: 700;
+  font-size: 12px;
+}

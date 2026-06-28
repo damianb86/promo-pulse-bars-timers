@@ -136,6 +136,34 @@ describe("campaign form parsing and validation", () => {
     expect(parsed.values.iconSize).toBe(36);
   });
 
+  it("parses the configurable progress-bar fields and target", () => {
+    const parsed = parseCampaignDesignFormData(
+      formData({
+        templateKey: "clean-minimal",
+        progressTarget: "TIMER",
+        progressBarStyle: "STEPS",
+        progressSteps: "6",
+        progressHeight: "14",
+        progressRadius: "10",
+        progressTrackColor: "#111111",
+        progressFillColor: "#22C55E",
+        progressTextColor: "#000000",
+        progressEffect: "SHIMMER",
+        progressShowLabel: "true",
+      }),
+      ShopPlan.PRO,
+    );
+
+    expect(parsed.values.progressTarget).toBe("TIMER");
+    expect(parsed.values.progressBarStyle).toBe("STEPS");
+    expect(parsed.values.progressSteps).toBe(6);
+    expect(parsed.values.progressHeight).toBe(14);
+    expect(parsed.values.progressRadius).toBe(10);
+    expect(parsed.values.progressFillColor).toBe("#22C55E");
+    expect(parsed.values.progressEffect).toBe("SHIMMER");
+    expect(parsed.values.progressShowLabel).toBe(true);
+  });
+
   it("parses modern design controls, media, timer labels, and motion settings", () => {
     const parsed = parseCampaignDesignFormData(
       formData({

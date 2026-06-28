@@ -243,6 +243,37 @@ export function parseCampaignDesignFormData(
     dismissBehavior: readDismissBehavior(formData),
     showButton: readBoolean(formData, "showButton"),
     showProgressBar: readBoolean(formData, "showProgressBar"),
+    progressTarget:
+      readString(formData, "progressTarget") === "TIMER"
+        ? "TIMER"
+        : "FREE_SHIPPING",
+    progressBarStyle: readProgressBarStyle(formData),
+    progressSteps: readInteger(
+      formData,
+      "progressSteps",
+      defaultCampaignDesignValues.progressSteps,
+    ),
+    progressHeight: readInteger(
+      formData,
+      "progressHeight",
+      defaultCampaignDesignValues.progressHeight,
+    ),
+    progressRadius: readInteger(
+      formData,
+      "progressRadius",
+      defaultCampaignDesignValues.progressRadius,
+    ),
+    progressTrackColor:
+      readString(formData, "progressTrackColor") ||
+      defaultCampaignDesignValues.progressTrackColor,
+    progressFillColor:
+      readString(formData, "progressFillColor") ||
+      defaultCampaignDesignValues.progressFillColor,
+    progressTextColor:
+      readString(formData, "progressTextColor") ||
+      defaultCampaignDesignValues.progressTextColor,
+    progressEffect: readProgressEffect(formData),
+    progressShowLabel: readBoolean(formData, "progressShowLabel"),
     showIcon: readBoolean(formData, "showIcon"),
     icon: readIcon(formData),
     iconSize: readInteger(
@@ -526,6 +557,26 @@ function readTimerFormat(formData: FormData): DesignTimerFormatValue {
   }
 
   return defaultCampaignDesignValues.timerFormat;
+}
+
+function readProgressBarStyle(
+  formData: FormData,
+): CampaignDesignValues["progressBarStyle"] {
+  const value = readString(formData, "progressBarStyle");
+  if (["BAR", "STEPS", "CIRCLE"].includes(value)) {
+    return value as CampaignDesignValues["progressBarStyle"];
+  }
+  return defaultCampaignDesignValues.progressBarStyle;
+}
+
+function readProgressEffect(
+  formData: FormData,
+): CampaignDesignValues["progressEffect"] {
+  const value = readString(formData, "progressEffect");
+  if (["NONE", "FILL", "SHIMMER"].includes(value)) {
+    return value as CampaignDesignValues["progressEffect"];
+  }
+  return defaultCampaignDesignValues.progressEffect;
 }
 
 function readTimerStyle(formData: FormData): DesignTimerStyleValue {

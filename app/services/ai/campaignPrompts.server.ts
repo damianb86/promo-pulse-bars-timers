@@ -4,7 +4,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v10";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v11";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -246,6 +246,15 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
   multi-column layouts to a single column and shrink/center content. A two-column
   hero MUST stack vertically on narrow screens.
 - Images must be responsive: max-width: 100%; height: auto.
+- AVOID ABSOLUTE/FIXED DIMENSIONS whenever possible. The content must define the
+  height — do NOT set fixed height/min-height on the surface, the root, or text
+  containers (it clips the copy). Use padding (clamp()) for vertical rhythm
+  instead of min-height. Reserve min-height ONLY for purely decorative image
+  panels, and even then keep it small. Never put overflow: hidden on a container
+  that holds text. Prefer max-width over width, and % / fr / auto over fixed px.
+- Respect the placement's natural size: TOP_BAR / BOTTOM_BAR are SLIM, single-row
+  banners — keep them compact (small type, one row that wraps), never a tall hero.
+  PRODUCT_PAGE / CART blocks may be taller. Match the placement you are given.
 
 ${describeDesignLayoutsForAi()}
 `.trim();

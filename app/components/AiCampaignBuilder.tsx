@@ -27,6 +27,7 @@ import type { CampaignFormValues } from "../types/campaign-form";
 import { campaignGoalOptions } from "../types/campaign-options";
 import { getStorefrontLocaleOptions } from "../types/localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import { htmlToTree } from "../utils/campaign-structure";
 import { AiGenerateIcon } from "./AiGenerateIcon";
 import { CampaignPromoSurface } from "./CampaignPreview";
 import { PlanUpgradeCallout } from "./PlanUpgradeCallout";
@@ -1929,6 +1930,14 @@ export function SuggestionMiniPreview({
     viewModel.placements[0],
   );
 
+  // Render from the generated structural HTML/CSS (with the uploaded asset URLs
+  // already baked in) so the drawer preview matches the Design/Campaign previews
+  // and the storefront.
+  const structureTree = useMemo(
+    () => (suggestion.structureHtml ? htmlToTree(suggestion.structureHtml) : null),
+    [suggestion.structureHtml],
+  );
+
   return (
     <div className="counterpulse-ai-suggestion-preview__surface-wrap">
       <span className="counterpulse-kicker">Preview</span>
@@ -1938,6 +1947,8 @@ export function SuggestionMiniPreview({
           dataTestId="ai-suggestion-preview-surface"
           design={suggestion.design}
           placement={placement}
+          structureTree={structureTree}
+          structureCss={suggestion.structureCss}
           variant={variant}
           viewModel={viewModel}
         />

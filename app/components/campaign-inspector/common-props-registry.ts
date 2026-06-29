@@ -48,7 +48,22 @@ export const COMMON_PROP_DESCRIPTORS: CommonPropDescriptor[] = [
   { key: "paddingLeft", label: "Padding left", cssProp: "padding-left", kind: "css", group: "Spacing" },
 
   // Border -------------------------------------------------------------------
+  { key: "border", label: "Border", cssProp: "border", kind: "css", group: "Border" },
+  { key: "borderWidth", label: "Border width", cssProp: "border-width", kind: "css", group: "Border" },
+  {
+    key: "borderStyle",
+    label: "Border style",
+    cssProp: "border-style",
+    kind: "select",
+    group: "Border",
+    options: ["", "none", "solid", "dashed", "dotted", "double", "groove"],
+  },
+  { key: "borderColor", label: "Border color", cssProp: "border-color", kind: "color", group: "Border" },
   { key: "borderRadius", label: "Border radius", cssProp: "border-radius", kind: "css", group: "Border" },
+  { key: "borderTopLeftRadius", label: "Radius top-left", cssProp: "border-top-left-radius", kind: "css", group: "Border" },
+  { key: "borderTopRightRadius", label: "Radius top-right", cssProp: "border-top-right-radius", kind: "css", group: "Border" },
+  { key: "borderBottomRightRadius", label: "Radius bottom-right", cssProp: "border-bottom-right-radius", kind: "css", group: "Border" },
+  { key: "borderBottomLeftRadius", label: "Radius bottom-left", cssProp: "border-bottom-left-radius", kind: "css", group: "Border" },
 
   // Layout -------------------------------------------------------------------
   {

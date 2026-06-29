@@ -20,9 +20,20 @@ export function CommonPropsForm({
   onApply: (declarations: Record<string, string>) => void;
 }) {
   const current = useMemo(() => parseStyle(style), [style]);
-  const groups = useMemo(() => commonPropGroups(isText), [isText]);
   const [open, setOpen] = useState(false);
   const setCount = Object.keys(current).length;
+
+  // Flex item props only make sense when the element is a flex container, so the
+  // Flex group is hidden unless display is flex / inline-flex.
+  const isFlex =
+    current.display === "flex" || current.display === "inline-flex";
+  const groups = useMemo(
+    () =>
+      commonPropGroups(isText).filter(
+        (group) => group.group !== "Flex" || isFlex,
+      ),
+    [isText, isFlex],
+  );
 
   const renderControl = (descriptor: CommonPropDescriptor) => {
     const value = current[descriptor.cssProp] ?? "";

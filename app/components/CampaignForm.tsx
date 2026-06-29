@@ -77,7 +77,10 @@ import {
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import { htmlToTree, type StructureNode } from "../utils/campaign-structure";
-import { CampaignDesignEditor } from "./CampaignDesignEditor";
+import {
+  CampaignDesignEditor,
+  type StructureFormPayload,
+} from "./CampaignDesignEditor";
 import type {
   CampaignDesignErrors,
   CampaignDesignMediaOptions,
@@ -625,6 +628,10 @@ export function CampaignForm({
     "campaign",
   );
   const campaignSectionActive = !showDesignEditor || topSection === "campaign";
+  // Structure overrides lifted from the built-in design editor so they persist
+  // with the form regardless of the active section.
+  const [designStructureForm, setDesignStructureForm] =
+    useState<StructureFormPayload | null>(null);
   const hiddenBuilderTabSet = useMemo(
     () => new Set(hiddenBuilderTabs),
     [hiddenBuilderTabs],
@@ -1737,6 +1744,44 @@ export function CampaignForm({
                 value={String(value)}
               />
             ))}
+            {/* Structure overrides lifted from the design editor, at form level so
+                they submit from any section. */}
+            {designStructureForm && (
+              <>
+                <input
+                  name="structureEdited"
+                  type="hidden"
+                  value={designStructureForm.structureEdited ? "true" : "false"}
+                />
+                <input
+                  name="structureHtml"
+                  type="hidden"
+                  value={designStructureForm.structureHtml}
+                />
+                <input
+                  name="structureCss"
+                  type="hidden"
+                  value={designStructureForm.structureCss}
+                />
+                <input
+                  name="mobileStructureEdited"
+                  type="hidden"
+                  value={
+                    designStructureForm.mobileStructureEdited ? "true" : "false"
+                  }
+                />
+                <input
+                  name="mobileStructureHtml"
+                  type="hidden"
+                  value={designStructureForm.mobileStructureHtml}
+                />
+                <input
+                  name="mobileStructureCss"
+                  type="hidden"
+                  value={designStructureForm.mobileStructureCss}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -4022,6 +4067,7 @@ export function CampaignForm({
                 if (onMobileDesignChange) onMobileDesignChange(next);
                 else setLocalMobileDesignValues(next);
               }}
+              onStructureChange={setDesignStructureForm}
             />
           </div>
         )}

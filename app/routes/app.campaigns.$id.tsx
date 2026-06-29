@@ -26,7 +26,10 @@ import {
   BehaviorTargetingEditor,
   type BehaviorTargetingErrors,
 } from "../components/BehaviorTargetingEditor";
-import { CampaignDesignEditor } from "../components/CampaignDesignEditor";
+import {
+  CampaignDesignEditor,
+  type StructureFormPayload,
+} from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
 import { CampaignForm } from "../components/CampaignForm";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
@@ -1780,6 +1783,10 @@ export default function EditCampaignPage() {
   // tracked design values), so they report dirtiness explicitly to drive the
   // contextual save bar.
   const [structureDirty, setStructureDirty] = useState(false);
+  // Current structure overrides lifted from the design editor so they ride along
+  // with the campaign form save (saveDraft parses structure* from the form).
+  const [structureForm, setStructureForm] =
+    useState<StructureFormPayload | null>(null);
   const [discardVersion, setDiscardVersion] = useState(0);
   const persistedDraftKey = useMemo(
     () =>
@@ -2005,7 +2012,7 @@ export default function EditCampaignPage() {
             );
           }
 
-          if (hasCampaignDraftUnsavedChanges) {
+          if (hasCampaignDraftUnsavedChanges || structureDirty) {
             if (requestCampaignDraftSubmitFromActiveForm("saveDraft")) {
               return;
             }
@@ -2073,14 +2080,19 @@ export default function EditCampaignPage() {
                   structureTree={savedStructureTree}
                   structureCss={structureCss}
                   designHiddenInputs={
-                    <CampaignDesignDraftHiddenInputs
-                      mobileValues={draftMobileDesignValues}
-                      values={draftDesignValues}
-                    />
+                    <>
+                      <CampaignDesignDraftHiddenInputs
+                        mobileValues={draftMobileDesignValues}
+                        values={draftDesignValues}
+                      />
+                      <StructureFormHiddenInputs structure={structureForm} />
+                    </>
                   }
                   formId="campaign-basics-form"
                   hiddenBuilderTabs={["targeting"]}
-                  hasSaveBarChanges={hasCampaignDraftUnsavedChanges}
+                  hasSaveBarChanges={
+                    hasCampaignDraftUnsavedChanges || structureDirty
+                  }
                   idPrefix="campaign-basics"
                   key={`${JSON.stringify(activeCampaignValues)}:${discardVersion}`}
                   lockedTargetingFeatures={{
@@ -2335,6 +2347,7 @@ export default function EditCampaignPage() {
                   mobileStructureCss={mobileStructureCss}
                   resetSignal={discardVersion}
                   onStructureDirtyChange={setStructureDirty}
+                  onStructureChange={setStructureForm}
                   onGoToSchedule={() => goToSection("campaign")}
                 />
               ),
@@ -2571,6 +2584,42 @@ function CampaignDesignDraftHiddenInputs({
           value={typeof value === "boolean" ? String(value) : String(value)}
         />
       ))}
+    </>
+  );
+}
+
+// Structure overrides (lifted from the design editor) as hidden inputs so they
+// submit with the campaign form. parseCampaignStructureForm reads these names.
+function StructureFormHiddenInputs({
+  structure,
+}: {
+  structure: StructureFormPayload | null;
+}) {
+  if (!structure) return null;
+  return (
+    <>
+      <input
+        name="structureEdited"
+        type="hidden"
+        value={structure.structureEdited ? "true" : "false"}
+      />
+      <input name="structureHtml" type="hidden" value={structure.structureHtml} />
+      <input name="structureCss" type="hidden" value={structure.structureCss} />
+      <input
+        name="mobileStructureEdited"
+        type="hidden"
+        value={structure.mobileStructureEdited ? "true" : "false"}
+      />
+      <input
+        name="mobileStructureHtml"
+        type="hidden"
+        value={structure.mobileStructureHtml}
+      />
+      <input
+        name="mobileStructureCss"
+        type="hidden"
+        value={structure.mobileStructureCss}
+      />
     </>
   );
 }

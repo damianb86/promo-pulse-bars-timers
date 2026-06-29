@@ -56,8 +56,20 @@ type CampaignDesignEditorProps = {
   // Reports whether the structural HTML/CSS overrides differ from saved, to drive
   // the contextual save bar.
   onStructureDirtyChange?: (dirty: boolean) => void;
+  // Reports the current structural HTML/CSS overrides so the host can include
+  // them in the saved form (the edit page lifts them into the campaign form).
+  onStructureChange?: (payload: StructureFormPayload) => void;
   // Switches the editor to the Campaign → Schedule section (timer progress).
   onGoToSchedule?: () => void;
+};
+
+export type StructureFormPayload = {
+  structureEdited: boolean;
+  structureHtml: string;
+  structureCss: string;
+  mobileStructureEdited: boolean;
+  mobileStructureHtml: string;
+  mobileStructureCss: string;
 };
 
 export function CampaignDesignEditor({
@@ -80,6 +92,7 @@ export function CampaignDesignEditor({
   mobileStructureCss: initialMobileStructureCss = "",
   resetSignal = 0,
   onStructureDirtyChange,
+  onStructureChange,
   onGoToSchedule,
 }: CampaignDesignEditorProps) {
   const actualPlacements = useMemo(
@@ -188,6 +201,31 @@ export function CampaignDesignEditor({
     mobileSurface.dirty,
     design.separateMobileDesign,
     onStructureDirtyChange,
+  ]);
+
+  // Report the current structure overrides so the host can persist them with the
+  // campaign form (matches the structure* hidden inputs rendered below).
+  const separate = design.separateMobileDesign;
+  useEffect(() => {
+    onStructureChange?.({
+      structureEdited: desktopSurface.edited,
+      structureHtml: desktopSurface.edited ? desktopSurface.displayedHtml : "",
+      structureCss: desktopSurface.edited ? desktopSurface.displayedCss : "",
+      mobileStructureEdited: separate && mobileSurface.edited,
+      mobileStructureHtml:
+        separate && mobileSurface.edited ? mobileSurface.displayedHtml : "",
+      mobileStructureCss:
+        separate && mobileSurface.edited ? mobileSurface.displayedCss : "",
+    });
+  }, [
+    desktopSurface.edited,
+    desktopSurface.displayedHtml,
+    desktopSurface.displayedCss,
+    mobileSurface.edited,
+    mobileSurface.displayedHtml,
+    mobileSurface.displayedCss,
+    separate,
+    onStructureChange,
   ]);
   const previewViewModel = useMemo(
     () => ({

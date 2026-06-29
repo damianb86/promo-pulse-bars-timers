@@ -1,22 +1,26 @@
 import { getNodeSlot, type StructureNode } from "../../utils/campaign-structure";
 
 // Resolves a structural AST node to a component descriptor for the inspector.
-// App components (identified by their data-cp-slot) expose `panelTitle` so the
-// modal can reuse the matching DesignControls panel. Generic HTML nodes only get
-// a friendly label (and only the common properties in the modal).
+// App components (identified by data-cp-slot) expose `panelTitle` so the modal
+// reuses the matching DesignControls panel (their real, non-CSS settings). Text
+// nodes get `isText` so the modal shows the per-node Typography group. Generic
+// HTML nodes only get a friendly label + the common (CSS) properties.
 export type InspectorComponent = {
-  // Friendly title shown in the modal (Timer, Button, Container, ...).
   label: string;
   // DesignControls panel title to reuse for an app component, if any.
   panelTitle?: string;
-  // True for app-owned components (have a settings panel), false for generic HTML.
   isAppComponent: boolean;
+  // Text element → the per-node Typography group is shown.
+  isText: boolean;
+  // Structural container (section/div) → eligible for the Card panel when it is
+  // the root surface (decided with the node path in the modal).
+  isContainer: boolean;
 };
 
 // data-cp-slot -> app component descriptor.
 const SLOT_COMPONENTS: Record<
   string,
-  { label: string; panelTitle?: string }
+  { label: string; panelTitle?: string; isText?: boolean }
 > = {
   timer: { label: "Timer", panelTitle: "Timer Style" },
   "timer-inline": { label: "Timer", panelTitle: "Timer Style" },
@@ -25,35 +29,44 @@ const SLOT_COMPONENTS: Record<
   icon: { label: "Icon", panelTitle: "Elements" },
   close: { label: "Close button", panelTitle: "Elements" },
   cta: { label: "Button", panelTitle: "Elements" },
-  headline: { label: "Headline", panelTitle: "Typography" },
-  body: { label: "Text", panelTitle: "Typography" },
-  "badge-text": { label: "Badge", panelTitle: "Typography" },
+  headline: { label: "Headline", isText: true },
+  body: { label: "Text", isText: true },
+  "badge-text": { label: "Badge", isText: true },
 };
 
-// Tag -> generic label (no settings panel).
-const TAG_LABELS: Record<string, string> = {
-  section: "Section",
-  div: "Container",
-  span: "Text",
-  p: "Text",
-  strong: "Text",
-  small: "Text",
-  h1: "Heading",
-  h2: "Heading",
-  h3: "Heading",
-  h4: "Heading",
-  h5: "Heading",
-  h6: "Heading",
-  img: "Image",
-  picture: "Image",
-  a: "Link",
-  button: "Button",
-  ul: "List",
-  ol: "List",
-  li: "List item",
-  table: "Table",
-  figure: "Figure",
-  svg: "Icon",
+// Tag -> { label, isText, isContainer }.
+const TAG_INFO: Record<
+  string,
+  { label: string; isText?: boolean; isContainer?: boolean }
+> = {
+  section: { label: "Section", isContainer: true },
+  div: { label: "Container", isContainer: true },
+  article: { label: "Container", isContainer: true },
+  aside: { label: "Container", isContainer: true },
+  header: { label: "Container", isContainer: true },
+  footer: { label: "Container", isContainer: true },
+  span: { label: "Text", isText: true },
+  p: { label: "Text", isText: true },
+  strong: { label: "Text", isText: true },
+  em: { label: "Text", isText: true },
+  small: { label: "Text", isText: true },
+  label: { label: "Text", isText: true },
+  h1: { label: "Heading", isText: true },
+  h2: { label: "Heading", isText: true },
+  h3: { label: "Heading", isText: true },
+  h4: { label: "Heading", isText: true },
+  h5: { label: "Heading", isText: true },
+  h6: { label: "Heading", isText: true },
+  img: { label: "Image" },
+  picture: { label: "Image" },
+  a: { label: "Link", isText: true },
+  button: { label: "Button" },
+  ul: { label: "List", isContainer: true },
+  ol: { label: "List", isContainer: true },
+  li: { label: "List item" },
+  table: { label: "Table" },
+  figure: { label: "Figure", isContainer: true },
+  svg: { label: "Icon" },
 };
 
 export function resolveInspectorComponent(
@@ -66,10 +79,15 @@ export function resolveInspectorComponent(
       label: entry.label,
       panelTitle: entry.panelTitle,
       isAppComponent: true,
+      isText: Boolean(entry.isText),
+      isContainer: false,
     };
   }
+  const info = TAG_INFO[node.tag] ?? { label: "HTML Block" };
   return {
-    label: TAG_LABELS[node.tag] ?? "HTML Block",
+    label: info.label,
     isAppComponent: false,
+    isText: Boolean(info.isText),
+    isContainer: Boolean(info.isContainer),
   };
 }

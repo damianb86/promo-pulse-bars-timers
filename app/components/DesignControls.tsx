@@ -1818,6 +1818,11 @@ function CardDesignPanel({
   onColorChange: (key: ColorDesignKey, value: string) => void;
   onAlignmentChange: (value: CampaignDesignValues["alignment"]) => void;
 }) {
+  // The card editor isn't a DesignPanel, so honor the panel filter directly so
+  // it only shows when "Card" is requested (e.g. the inspector's root container).
+  const panelFilter = useContext(DesignPanelFilterContext);
+  if (panelFilter && !panelFilter.has("Card")) return null;
+
   return (
     <section className="counterpulse-design-card counterpulse-card-editor">
       <h3>

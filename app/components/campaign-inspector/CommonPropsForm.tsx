@@ -2,65 +2,103 @@ import { useMemo } from "react";
 
 import { parseStyle } from "../../utils/campaign-structure";
 import {
-  COMMON_PROP_DESCRIPTORS,
-  parseLengthValue,
-  toLengthCss,
+  commonPropGroups,
+  type CommonPropDescriptor,
 } from "./common-props-registry";
 
-// Edits the shared properties (Min/Max Width/Height, future spacing/layout/…)
-// of any inspected node. Reads the node's current inline `style` and emits CSS
-// declarations to merge back via the AST (`updateNodeStyle`). Generic over the
-// descriptor registry so new common props need no changes here.
+// Per-node CSS editor (the shared "common properties"). Reads the node's inline
+// `style` and emits CSS declarations to merge back via the AST
+// (`updateNodeStyle`). Each group renders as a design card so it matches the
+// other modal panels. Values are free-form, so any valid CSS value works.
 export function CommonPropsForm({
   style,
+  isText,
   onApply,
 }: {
   // Current inline style string of the node.
   style: string | undefined;
-  // Apply a CSS declaration map ({ "min-width": "120px", ... }; "" removes it).
+  // Whether the node is a text element (adds the Typography group).
+  isText: boolean;
+  // Apply a CSS declaration map ({ "min-width": "120px" }; "" removes it).
   onApply: (declarations: Record<string, string>) => void;
 }) {
   const current = useMemo(() => parseStyle(style), [style]);
+  const groups = useMemo(() => commonPropGroups(isText), [isText]);
 
-  // Group descriptors so future props render under headings.
-  const groups = useMemo(() => {
-    const byGroup = new Map<string, typeof COMMON_PROP_DESCRIPTORS>();
-    for (const descriptor of COMMON_PROP_DESCRIPTORS) {
-      const list = byGroup.get(descriptor.group) ?? [];
-      list.push(descriptor);
-      byGroup.set(descriptor.group, list);
+  const renderField = (descriptor: CommonPropDescriptor) => {
+    const value = current[descriptor.cssProp] ?? "";
+    const apply = (next: string) =>
+      onApply({ [descriptor.cssProp]: next });
+
+    if (descriptor.kind === "select") {
+      return (
+        <label key={descriptor.key} className="counterpulse-form-field">
+          <span>{descriptor.label}</span>
+          <select
+            value={value}
+            onChange={(event) => apply(event.target.value)}
+          >
+            {(descriptor.options ?? []).map((option) => (
+              <option key={option} value={option}>
+                {option === "" ? "Not set" : option}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
     }
-    return Array.from(byGroup.entries());
-  }, []);
+
+    if (descriptor.kind === "color") {
+      return (
+        <label key={descriptor.key} className="counterpulse-form-field">
+          <span>{descriptor.label}</span>
+          <div className="counterpulse-inspector-color">
+            <input
+              aria-label={`${descriptor.label} swatch`}
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
+              onChange={(event) => apply(event.target.value)}
+            />
+            <input
+              placeholder="inherit"
+              type="text"
+              value={value}
+              onChange={(event) => apply(event.target.value)}
+            />
+          </div>
+        </label>
+      );
+    }
+
+    // Free-form CSS value (length, number, keyword, …).
+    return (
+      <label key={descriptor.key} className="counterpulse-form-field">
+        <span>{descriptor.label}</span>
+        <input
+          placeholder="auto"
+          type="text"
+          value={value}
+          onChange={(event) => apply(event.target.value)}
+        />
+      </label>
+    );
+  };
 
   return (
-    <div className="counterpulse-inspector-common">
-      {groups.map(([group, descriptors]) => (
-        <div key={group} className="counterpulse-inspector-common__group">
-          <p className="counterpulse-kicker">{group}</p>
+    <>
+      {groups.map((group) => (
+        <section
+          key={group.group}
+          className="counterpulse-design-card counterpulse-inspector-card"
+        >
+          <h3>
+            <span>{group.group}</span>
+          </h3>
           <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-            {descriptors.map((descriptor) => (
-              <label
-                key={descriptor.key}
-                className="counterpulse-form-field"
-              >
-                <span>{descriptor.label}</span>
-                <input
-                  inputMode="numeric"
-                  placeholder="auto"
-                  type="text"
-                  value={parseLengthValue(current[descriptor.cssProp])}
-                  onChange={(event) =>
-                    onApply({
-                      [descriptor.cssProp]: toLengthCss(event.target.value),
-                    })
-                  }
-                />
-              </label>
-            ))}
+            {group.descriptors.map(renderField)}
           </div>
-        </div>
+        </section>
       ))}
-    </div>
+    </>
   );
 }

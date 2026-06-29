@@ -449,6 +449,7 @@ export function CampaignDesignEditor({
       {inspectedComponent && (
         <ComponentInspectorModal
           component={inspectedComponent}
+          isRoot={inspectedPath === ""}
           nodeStyle={inspectedNode?.attrs?.style}
           renderPanel={(panelTitle) => (
             <DesignControls

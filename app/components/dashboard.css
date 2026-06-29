@@ -3196,6 +3196,45 @@ s-page::part(page) {
   gap: 8px;
 }
 
+/* Inspector modal: stack every panel (common props + component panels) with the
+   same card styling and spacing. */
+.counterpulse-inspector-panels {
+  display: grid;
+  gap: 14px;
+}
+
+.counterpulse-inspector-panels .counterpulse-design-controls {
+  display: contents;
+}
+
+.counterpulse-inspector-card > h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.counterpulse-inspector-color {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.counterpulse-inspector-color input[type="color"] {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.counterpulse-inspector-color input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
 .counterpulse-inline-link {
   display: inline;
   padding: 0;

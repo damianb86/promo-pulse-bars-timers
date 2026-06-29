@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { type Prisma, type Shop } from "@prisma/client";
 
@@ -638,6 +638,26 @@ export default function CreateCampaignPage() {
     actionData?.aiSuggestion,
   ]);
 
+  // History of every generated/regenerated version so the merchant can navigate
+  // back/forward; regenerating uses whichever version is currently selected.
+  const [versions, setVersions] = useState<CampaignSuggestion[]>([]);
+  const [versionIndex, setVersionIndex] = useState(0);
+  const lastAppendedSuggestion = useRef<CampaignSuggestion | null>(null);
+
+  useEffect(() => {
+    const incoming = actionData?.aiSuggestion;
+    if (!incoming || incoming === lastAppendedSuggestion.current) return;
+    lastAppendedSuggestion.current = incoming;
+    setVersions((prev) => {
+      const next = [...prev, incoming];
+      setVersionIndex(next.length - 1);
+      return next;
+    });
+  }, [actionData?.aiSuggestion]);
+
+  const selectedSuggestion =
+    versions[versionIndex] ?? actionData?.aiSuggestion ?? null;
+
   return (
     <s-page inlineSize="large" heading="Create campaign">
       <div className="counterpulse-create-workspace">
@@ -678,18 +698,18 @@ export default function CreateCampaignPage() {
             />
           <div
             className={
-              actionData?.aiSuggestion
+              selectedSuggestion
                 ? "counterpulse-ai-drawer-cluster has-preview"
                 : "counterpulse-ai-drawer-cluster"
             }
           >
-            {actionData?.aiSuggestion && (
+            {selectedSuggestion && (
               <section
                 aria-label="AI suggestion preview"
                 className="counterpulse-ai-drawer-preview-wing"
                 data-testid="ai-drawer-preview"
               >
-                <SuggestionMiniPreview suggestion={actionData.aiSuggestion} />
+                <SuggestionMiniPreview suggestion={selectedSuggestion} />
               </section>
             )}
             <aside
@@ -716,10 +736,20 @@ export default function CreateCampaignPage() {
               lockedReason={aiLockedReason}
               assetsLockedReason={assetsLockedReason}
               onApplied={() => setIsAiDrawerOpen(false)}
-              suggestion={actionData?.aiSuggestion}
+              suggestion={selectedSuggestion}
               templateSourceName={templateSourceName}
               values={actionData?.aiInput ?? aiInput}
               locales={enabledLocales}
+              versionCount={versions.length}
+              versionIndex={versionIndex}
+              onPrevVersion={() =>
+                setVersionIndex((index) => Math.max(0, index - 1))
+              }
+              onNextVersion={() =>
+                setVersionIndex((index) =>
+                  Math.min(versions.length - 1, index + 1),
+                )
+              }
             />
             </aside>
             </div>

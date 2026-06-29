@@ -44,6 +44,11 @@ type AiCampaignBuilderProps = {
   suggestion?: CampaignSuggestion | null;
   templateSourceName?: string;
   values: CampaignAiInput;
+  // Version history navigation (back/forward through generated drafts).
+  versionCount?: number;
+  versionIndex?: number;
+  onPrevVersion?: () => void;
+  onNextVersion?: () => void;
 };
 
 type ReferenceImageState = {
@@ -597,6 +602,10 @@ export function AiCampaignBuilder({
   suggestion,
   templateSourceName,
   values,
+  versionCount = 0,
+  versionIndex = 0,
+  onPrevVersion,
+  onNextVersion,
 }: AiCampaignBuilderProps) {
   const navigation = useNavigation();
   const localeOptions = useMemo(
@@ -1823,6 +1832,33 @@ export function AiCampaignBuilder({
                   >
                     {isGenerating ? "Regenerating..." : "Regenerate"}
                   </button>
+                  {versionCount > 1 && (
+                    <div className="counterpulse-version-nav">
+                      <button
+                        aria-label="Previous version"
+                        className="counterpulse-button-secondary"
+                        disabled={isGenerating || versionIndex <= 0}
+                        type="button"
+                        onClick={onPrevVersion}
+                      >
+                        ← Previous version
+                      </button>
+                      <span className="counterpulse-version-nav__label">
+                        Version {versionIndex + 1} of {versionCount}
+                      </span>
+                      <button
+                        aria-label="Next version"
+                        className="counterpulse-button-secondary"
+                        disabled={
+                          isGenerating || versionIndex >= versionCount - 1
+                        }
+                        type="button"
+                        onClick={onNextVersion}
+                      >
+                        Next version →
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {refineModalOpen && (
@@ -2047,7 +2083,7 @@ function RegenerateCloseModal({
       <div
         aria-label="Regenerate campaign"
         aria-modal="true"
-        className="counterpulse-modal"
+        className="counterpulse-modal counterpulse-modal--choice"
         role="dialog"
       >
         <div className="counterpulse-modal__header">

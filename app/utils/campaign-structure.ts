@@ -716,6 +716,24 @@ export function setNodeStyleAtPath(
   return clone;
 }
 
+// Sets (or removes, when value is "") an attribute on the node at `path`.
+// Returns a deep-cloned tree. Used by the inspector to edit e.g. an image src.
+export function setNodeAttrAtPath(
+  tree: StructureNode,
+  path: string,
+  name: string,
+  value: string,
+): StructureNode {
+  const clone = cloneNode(tree);
+  const node = getNodeAtPath(clone, path);
+  if (!node || node.tag === TEXT_TAG) return clone;
+  const attrs = { ...(node.attrs ?? {}) };
+  if (value === "") delete attrs[name];
+  else attrs[name] = value;
+  node.attrs = Object.keys(attrs).length ? attrs : undefined;
+  return clone;
+}
+
 function cloneNode(node: StructureNode): StructureNode {
   const next: StructureNode = { tag: node.tag };
   if (node.text != null) next.text = node.text;

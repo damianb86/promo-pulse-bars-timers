@@ -2866,7 +2866,7 @@ function DesignSectionIcon({ title }: { title: string }) {
   );
 }
 
-async function pickAndResolveShopifyFile(usage: "background" | "icon") {
+export async function pickAndResolveShopifyFile(usage: "background" | "icon") {
   const fileId = await pickShopifyFile(usage);
 
   if (!fileId) return null;

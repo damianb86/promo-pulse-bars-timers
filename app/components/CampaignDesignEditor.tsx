@@ -27,6 +27,7 @@ import {
   getNodeAtPath,
   getNodeSlot,
   htmlToTree,
+  setNodeAttrAtPath,
   setNodeStyleAtPath,
   treeToHtml,
   type StructureNode,
@@ -451,15 +452,24 @@ export function CampaignDesignEditor({
           component={inspectedComponent}
           isRoot={inspectedPath === ""}
           nodeStyle={inspectedNode?.attrs?.style}
+          isImage={inspectedNode?.tag === "img"}
+          imageSrc={inspectedNode?.attrs?.src ?? ""}
+          imageAlt={inspectedNode?.attrs?.alt ?? ""}
           renderPanel={(panelTitle) => (
             <DesignControls
               {...designControlsProps}
+              presentSlots={null}
               panelFilter={new Set([panelTitle])}
             />
           )}
           onApplyCommon={(declarations) => {
             if (inspectedPath != null) {
               activeSurface.updateNodeStyle(inspectedPath, declarations);
+            }
+          }}
+          onChangeAttr={(name, value) => {
+            if (inspectedPath != null) {
+              activeSurface.updateNodeAttr(inspectedPath, name, value);
             }
           }}
           onClose={() => setInspectedPath(null)}
@@ -730,6 +740,7 @@ type StructureSurface = {
   changeCss: (value: string) => void;
   addSlot: (slot: string) => void;
   updateNodeStyle: (path: string, declarations: Record<string, string>) => void;
+  updateNodeAttr: (path: string, name: string, value: string) => void;
 };
 
 // Manages one structural-HTML override surface (desktop or mobile): the live
@@ -840,6 +851,18 @@ function useStructureSurface(
     setDirty(true);
   };
 
+  // Sets an attribute on a node (by AST path) — e.g. the inspector editing an
+  // image src. Turns a generated structure into an override.
+  const updateNodeAttr = (path: string, name: string, value: string) => {
+    const current = htmlToTree(displayedHtml);
+    if (!current) return;
+    const next = setNodeAttrAtPath(current, path, name, value);
+    setHtml(treeToHtml(next));
+    setCss((value2) => (edited ? value2 : generatedCss));
+    setEdited(true);
+    setDirty(true);
+  };
+
   // Inserts a missing slot element into the edited HTML so its settings card
   // works again. Appends it to the surface root.
   const addSlot = (slot: string) => {
@@ -868,6 +891,7 @@ function useStructureSurface(
     changeCss,
     addSlot,
     updateNodeStyle,
+    updateNodeAttr,
   };
 }
 

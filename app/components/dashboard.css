@@ -3214,25 +3214,145 @@ s-page::part(page) {
   color: #1f2937;
 }
 
-.counterpulse-inspector-color {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+/* Collapsible "Layout & style" panel (collapsed by default, slides down). */
+.counterpulse-inspector-collapsible {
+  padding: 0;
+  overflow: hidden;
 }
 
-.counterpulse-inspector-color input[type="color"] {
-  width: 34px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+.counterpulse-inspector-collapsible__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
   background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.counterpulse-inspector-collapsible__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.counterpulse-inspector-collapsible__title svg {
+  width: 16px;
+  height: 16px;
+  color: #5c6ac4;
+}
+
+.counterpulse-inspector-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.counterpulse-inspector-chevron svg {
+  width: 18px;
+  height: 18px;
+  color: #6b7280;
+  transition: transform 200ms ease;
+}
+
+.counterpulse-inspector-chevron.is-open svg {
+  transform: rotate(180deg);
+}
+
+.counterpulse-inspector-collapsible__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms ease;
+}
+
+.counterpulse-inspector-collapsible__body[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.counterpulse-inspector-collapsible__inner {
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.counterpulse-inspector-collapsible__body[data-open="true"]
+  .counterpulse-inspector-collapsible__inner {
+  padding-bottom: 16px;
+}
+
+.counterpulse-inspector-group__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.counterpulse-inspector-group__title svg {
+  width: 14px;
+  height: 14px;
+  color: #6b7280;
+}
+
+/* Up to ~6 related fields per row when there's room. */
+.counterpulse-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+/* Field input styling for inspector fields that aren't inside
+   .counterpulse-design-controls (plain inputs/selects + image fields). */
+.counterpulse-inspector-card .counterpulse-design-control-field > input,
+.counterpulse-inspector-card .counterpulse-design-control-field > select {
+  min-height: 36px;
+  border: 1px solid #d8dee6;
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.counterpulse-inspector-clear {
+  border: 0;
+  background: none;
+  color: #9ca3af;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.counterpulse-inspector-color input[type="text"] {
-  flex: 1;
-  min-width: 0;
+.counterpulse-inspector-clear:disabled {
+  cursor: default;
+  color: transparent;
+}
+
+.counterpulse-inspector-image-preview {
+  max-width: 100%;
+  max-height: 120px;
+  margin-bottom: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  object-fit: contain;
+  background:
+    repeating-conic-gradient(#f3f4f6 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
 }
 
 .counterpulse-inline-link {

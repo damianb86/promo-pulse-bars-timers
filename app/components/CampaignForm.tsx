@@ -77,6 +77,11 @@ import {
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import { htmlToTree, type StructureNode } from "../utils/campaign-structure";
+import { CampaignDesignEditor } from "./CampaignDesignEditor";
+import type {
+  CampaignDesignErrors,
+  CampaignDesignMediaOptions,
+} from "../types/campaign-design";
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 
@@ -85,6 +90,16 @@ type CampaignFormProps = {
   confirmOnSubmit?: boolean;
   design?: CampaignDesignValues;
   designHiddenInputs?: ReactNode;
+  // Full design editor rendered in a "Design" builder tab. When provided, the tab
+  // appears; otherwise it's hidden (e.g. the edit page has its own Design tab).
+  designSlot?: ReactNode;
+  // Renders the built-in design editor in a "Design" tab bound to this form's
+  // design state (used on the create page so design is editable before saving).
+  showDesignEditor?: boolean;
+  isProPlan?: boolean;
+  designMediaOptions?: CampaignDesignMediaOptions;
+  designErrors?: CampaignDesignErrors;
+  lockedCustomCssReason?: string;
   mobileDesign?: CampaignDesignValues;
   // Saved structural HTML/CSS override so this preview renders the exact same
   // generated HTML the storefront uses (matches the Design tab preview).
@@ -153,6 +168,7 @@ type ShopifyResourcePickerResult = Array<{
 type BuilderTabKey =
   | "setup"
   | "message"
+  | "design"
   | "placement"
   | "targeting"
   | "schedule"
@@ -180,6 +196,14 @@ const builderTabs: Array<{
     pill: "Copy",
     description:
       "Write the customer-facing message and CTA that will appear in the live preview.",
+  },
+  {
+    key: "design",
+    label: "Design",
+    title: "Design & preview",
+    pill: "Design",
+    description:
+      "Style the campaign: layout, colors, timer, progress bar, and the HTML/CSS structure.",
   },
   {
     key: "placement",
@@ -557,6 +581,12 @@ export function CampaignForm({
   confirmOnSubmit = true,
   design = defaultCampaignDesignValues,
   designHiddenInputs,
+  designSlot,
+  showDesignEditor = false,
+  isProPlan = false,
+  designMediaOptions,
+  designErrors,
+  lockedCustomCssReason,
   mobileDesign = design,
   structureTree = null,
   structureCss = "",
@@ -593,10 +623,15 @@ export function CampaignForm({
     [hiddenBuilderTabs],
   );
   const visibleBuilderTabs = useMemo(() => {
-    const tabs = builderTabs.filter((tab) => !hiddenBuilderTabSet.has(tab.key));
+    const tabs = builderTabs.filter(
+      (tab) =>
+        !hiddenBuilderTabSet.has(tab.key) &&
+        // The Design tab only appears when design editing is enabled here.
+        (tab.key !== "design" || Boolean(designSlot) || showDesignEditor),
+    );
 
     return tabs.length > 0 ? tabs : builderTabs;
-  }, [hiddenBuilderTabSet]);
+  }, [hiddenBuilderTabSet, designSlot, showDesignEditor]);
   const visibleBuilderTabSet = useMemo(
     () => new Set(visibleBuilderTabs.map((tab) => tab.key)),
     [visibleBuilderTabs],
@@ -1679,6 +1714,23 @@ export function CampaignForm({
           value={aiSuggestionJson}
         />
         {designHiddenInputs}
+        {showDesignEditor && !designHiddenInputs && (
+          <>
+            <input
+              name="mobileDesignJson"
+              type="hidden"
+              value={JSON.stringify(effectiveMobileDesign)}
+            />
+            {Object.entries(effectiveDesign).map(([key, value]) => (
+              <input
+                key={key}
+                name={key}
+                type="hidden"
+                value={String(value)}
+              />
+            ))}
+          </>
+        )}
 
         {errorSummaryMessages.length > 0 && (
           <AppAlert tone="critical" title="Campaign could not be saved">
@@ -3001,6 +3053,33 @@ export function CampaignForm({
                 <div className="counterpulse-message-addon">{messageAddon}</div>
               )}
             </BuilderPanel>
+
+            {(designSlot || showDesignEditor) && (
+              <BuilderPanel
+                activeTab={activeTab}
+                panelId={builderPanelId("design")}
+                shouldRender={visibleBuilderTabSet.has("design")}
+                tabId={builderTabId("design")}
+                tabKey="design"
+              >
+                {designSlot ?? (
+                  <CampaignDesignEditor
+                    design={effectiveDesign}
+                    designMediaOptions={designMediaOptions}
+                    errors={designErrors}
+                    isProPlan={isProPlan}
+                    lockedCustomCssReason={lockedCustomCssReason}
+                    mobileDesign={effectiveMobileDesign}
+                    viewModel={previewViewModel}
+                    onChange={updateDesignValues}
+                    onMobileChange={(next) => {
+                      if (onMobileDesignChange) onMobileDesignChange(next);
+                      else setLocalMobileDesignValues(next);
+                    }}
+                  />
+                )}
+              </BuilderPanel>
+            )}
 
             <BuilderPanel
               activeTab={activeTab}

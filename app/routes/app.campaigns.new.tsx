@@ -45,6 +45,10 @@ import {
 } from "../services/campaign-form.server";
 import { buildCampaignPersistenceError } from "../services/campaign-save-errors.server";
 import {
+  parseCampaignStructureForm,
+  parseResponsiveCampaignDesignFormData,
+} from "../services/campaign-design-form.server";
+import {
   materializeCampaignAssets,
   stripAssetPlaceholders,
 } from "../services/assets/campaignAssetPipeline.server";
@@ -105,6 +109,8 @@ type LoaderData = {
   aiInput: CampaignAiInput;
   aiLockedReason?: string;
   assetsLockedReason?: string;
+  isProPlan: boolean;
+  lockedCustomCssReason: string;
   defaults: CampaignFormValues;
   enabledLocales: string[];
   targetingOptions: CampaignTargetingOptions;
@@ -143,6 +149,8 @@ export const loader = async ({
         }),
     aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
     assetsLockedReason: getLockedFeatureReason(shop, "ai_visual_assets"),
+    isProPlan: canUseFeature(shop, "custom_css").allowed,
+    lockedCustomCssReason: getLockedFeatureReason(shop, "custom_css"),
     defaults: template
       ? buildCampaignFormDefaultsFromTemplate(template)
       : {
@@ -571,6 +579,20 @@ export const action = async ({
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
       });
+    } else {
+      // Manual design edited in the new "Design" tab — persist it (AI campaigns
+      // persist their own design above).
+      const parsedDesign = parseResponsiveCampaignDesignFormData(
+        formData,
+        shop.plan,
+      );
+      await updateCampaignDesignForShop(
+        campaign.id,
+        shop.id,
+        parsedDesign.values,
+        parsedDesign.mobileValues,
+        parseCampaignStructureForm(formData),
+      );
     }
 
     if (usesFreeShippingSettings && parsed.values.freeShippingAutoDiscount) {
@@ -604,6 +626,8 @@ export default function CreateCampaignPage() {
     aiInput,
     aiLockedReason,
     assetsLockedReason,
+    isProPlan,
+    lockedCustomCssReason,
     defaults,
     enabledLocales,
     lockedTargetingFeatures,
@@ -670,6 +694,9 @@ export default function CreateCampaignPage() {
             targetingOptions={targetingOptions}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
+            showDesignEditor
+            isProPlan={isProPlan}
+            lockedCustomCssReason={lockedCustomCssReason}
             topbarActions={
               <button
                 className="counterpulse-ai-action-button counterpulse-ai-launch-button"

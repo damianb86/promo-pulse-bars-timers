@@ -77,6 +77,7 @@ import {
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import { htmlToTree, type StructureNode } from "../utils/campaign-structure";
+import { EditorTabIcon } from "./CampaignEditorLayout";
 import {
   CampaignDesignEditor,
   type StructureFormPayload,
@@ -87,10 +88,15 @@ import type {
 } from "../types/campaign-design";
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
+import type { CampaignSuggestion } from "../types/ai-campaign";
 
 type CampaignFormProps = {
   campaignId?: string;
   confirmOnSubmit?: boolean;
+  // An AI suggestion that was applied before submitting. Passed back by the
+  // create route on a save error so the form re-seeds its design + structure +
+  // suggestion JSON instead of losing the whole AI-generated draft on remount.
+  appliedAiSuggestion?: CampaignSuggestion | null;
   design?: CampaignDesignValues;
   designHiddenInputs?: ReactNode;
   // Full design editor rendered in a "Design" builder tab. When provided, the tab
@@ -582,6 +588,7 @@ const campaignTypeChoiceOptions: CampaignTypeChoice[] = [
 export function CampaignForm({
   campaignId,
   confirmOnSubmit = true,
+  appliedAiSuggestion = null,
   design = defaultCampaignDesignValues,
   designHiddenInputs,
   designSlot,
@@ -680,13 +687,19 @@ export function CampaignForm({
   const messageTranslationsSignature = messageTranslations
     ? getTranslationValuesSignature(messageTranslations, messageLocaleOptions)
     : "";
-  const [localDesignValues, setLocalDesignValues] = useState(() => design);
+  // When a previously applied AI suggestion is passed back (after a save error),
+  // seed the design + suggestion JSON from it so the draft survives the remount.
+  const [localDesignValues, setLocalDesignValues] = useState(
+    () => appliedAiSuggestion?.design ?? design,
+  );
   const [localMobileDesignValues, setLocalMobileDesignValues] = useState(
-    () => mobileDesign,
+    () => appliedAiSuggestion?.design ?? mobileDesign,
   );
   const [submitAction, setSubmitAction] = useState("saveDraft");
   const submitActionInputRef = useRef<HTMLInputElement | null>(null);
-  const [aiSuggestionJson, setAiSuggestionJson] = useState("");
+  const [aiSuggestionJson, setAiSuggestionJson] = useState(() =>
+    appliedAiSuggestion ? JSON.stringify(appliedAiSuggestion) : "",
+  );
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
   );
@@ -725,6 +738,7 @@ export function CampaignForm({
         return null;
       }
       return {
+        html: parsed.structureHtml,
         tree: htmlToTree(parsed.structureHtml),
         css:
           typeof parsed.structureCss === "string" ? parsed.structureCss : "",
@@ -1832,27 +1846,31 @@ export function CampaignForm({
 
         {showDesignEditor && (
           <div
-            className="counterpulse-builder-tabs counterpulse-builder-tabs--sections"
+            className="counterpulse-editor-tabs"
             aria-label="Campaign sections"
             role="tablist"
           >
             <button
               aria-selected={topSection === "campaign"}
+              aria-label="Campaign"
               className={topSection === "campaign" ? "is-active" : undefined}
               role="tab"
               type="button"
               onClick={() => setTopSection("campaign")}
             >
-              Campaign
+              <EditorTabIcon sectionKey="campaign" />
+              <span>Campaign</span>
             </button>
             <button
               aria-selected={topSection === "design"}
+              aria-label="Design"
               className={topSection === "design" ? "is-active" : undefined}
               role="tab"
               type="button"
               onClick={() => setTopSection("design")}
             >
-              Design
+              <EditorTabIcon sectionKey="design" />
+              <span>Design</span>
             </button>
           </div>
         )}
@@ -4067,6 +4085,12 @@ export function CampaignForm({
                 if (onMobileDesignChange) onMobileDesignChange(next);
                 else setLocalMobileDesignValues(next);
               }}
+              // Seed the Design editor with the AI-applied structural HTML/CSS
+              // (or the saved structure) so its preview matches the Campaign-tab
+              // preview instead of rebuilding from settings.
+              structureEdited={Boolean(aiStructure)}
+              structureHtml={aiStructure?.html ?? ""}
+              structureCss={aiStructure?.css ?? ""}
               onStructureChange={setDesignStructureForm}
             />
           </div>

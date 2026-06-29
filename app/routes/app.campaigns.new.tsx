@@ -49,7 +49,9 @@ import {
   parseResponsiveCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
 import {
+  dematerializeAssetUrls,
   materializeCampaignAssets,
+  refineFeedbackMentionsAssets,
   stripAssetPlaceholders,
 } from "../services/assets/campaignAssetPipeline.server";
 import { withImageDimensions } from "../services/assets/imageProcessing.server";
@@ -257,13 +259,22 @@ export const action = async ({
     const refineComment = (formData.get("refineComment")?.toString() ?? "")
       .trim()
       .slice(0, 1000);
+    // Show the model {{asset:key}} placeholders instead of the baked Shopify
+    // URLs so it can keep referencing the same assets by key (enabling reuse).
+    const previousAssets = previousSuggestion?.generatedAssets ?? [];
     const refinement =
       previousSuggestion && refineCloseness
         ? {
             closeness: refineCloseness,
             comment: refineComment || undefined,
-            structureHtml: previousSuggestion.structureHtml,
-            structureCss: previousSuggestion.structureCss,
+            structureHtml: dematerializeAssetUrls(
+              previousSuggestion.structureHtml,
+              previousAssets,
+            ),
+            structureCss: dematerializeAssetUrls(
+              previousSuggestion.structureCss,
+              previousAssets,
+            ),
             headline: previousSuggestion.campaign.headline ?? undefined,
             subheadline: previousSuggestion.campaign.subheadline ?? undefined,
           }
@@ -279,11 +290,19 @@ export const action = async ({
       // inside) so they appear in the drawer; the rewritten HTML/CSS + the
       // uploaded asset records round-trip on the suggestion and are persisted on
       // save without re-uploading.
+      // On "Regenerate", keep the previously generated images unless the
+      // merchant's feedback actually asks to change the visuals. New assets (keys
+      // with no prior match) are still generated as needed.
+      const regenerateAssets =
+        !refinement || refineFeedbackMentionsAssets(refinement.comment);
+
       const assetResult = await materializeCampaignAssets({
         admin,
         shop,
         suggestion,
         referenceImage: referenceImage ?? null,
+        existingAssets: previousSuggestion?.generatedAssets ?? [],
+        regenerateAssets,
       });
 
       const enrichedSuggestion = {
@@ -370,16 +389,21 @@ export const action = async ({
 
   const parsed = parseCampaignFormData(formData);
 
+  // Parse the applied AI suggestion up front so it can be echoed back on EVERY
+  // error path — otherwise a failed save would drop the merchant's whole
+  // AI-generated draft (copy, design, structure, assets).
+  const appliedAiSuggestion = parseAppliedCampaignSuggestion(
+    formData.get("aiSuggestionJson"),
+  );
+
   if (hasCampaignFormErrors(parsed.errors)) {
     return {
       errors: parsed.errors,
       values: parsed.values,
+      aiSuggestion: appliedAiSuggestion,
     };
   }
 
-  const appliedAiSuggestion = parseAppliedCampaignSuggestion(
-    formData.get("aiSuggestionJson"),
-  );
   const targeting = buildCampaignTargetingValues(parsed.values);
   const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
   const cartRescueSettings = buildCampaignCartRescueSettingsValues(
@@ -413,6 +437,7 @@ export const action = async ({
     if (!createGate.allowed) {
       return {
         values: parsed.values,
+        aiSuggestion: appliedAiSuggestion,
         errors: {
           form: createGate.reason,
         },
@@ -425,6 +450,7 @@ export const action = async ({
       if (!aiGate.allowed) {
         return {
           values: parsed.values,
+          aiSuggestion: appliedAiSuggestion,
           errors: {
             form: aiGate.reason,
           },
@@ -441,6 +467,7 @@ export const action = async ({
     if (planErrors.length > 0) {
       return {
         values: parsed.values,
+        aiSuggestion: appliedAiSuggestion,
         errors: {
           form: planErrors.join(" "),
         },
@@ -453,6 +480,7 @@ export const action = async ({
       if (!discountGate.allowed) {
         return {
           values: parsed.values,
+          aiSuggestion: appliedAiSuggestion,
           errors: {
             form: discountGate.reason,
           },
@@ -623,6 +651,7 @@ export const action = async ({
 
     return {
       values: parsed.values,
+      aiSuggestion: appliedAiSuggestion,
       errors: buildCampaignPersistenceError(error, {
         action: "create",
         values: parsed.values,
@@ -705,6 +734,12 @@ export default function CreateCampaignPage() {
             targetingOptions={targetingOptions}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
+            // On a save error, re-seed the form with the AI draft that was
+            // applied so it isn't lost on remount. Only when an error is present
+            // (a freshly generated suggestion lives in the drawer until applied).
+            appliedAiSuggestion={
+              actionData?.errors ? (actionData?.aiSuggestion ?? null) : null
+            }
             showDesignEditor
             isProPlan={isProPlan}
             lockedCustomCssReason={lockedCustomCssReason}

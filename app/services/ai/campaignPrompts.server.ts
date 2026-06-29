@@ -25,6 +25,10 @@ function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
     "a close rating means keep the structure and make targeted tweaks; a far",
     "rating means rethink the layout more boldly. Keep what worked, fix what did",
     "not, and return a complete improved draft (HTML/CSS/settings).",
+    "If the previous draft contains {{asset:key}} placeholders, KEEP referencing",
+    "those same keys (and list them again in assets) unless the merchant's feedback",
+    "explicitly asks to change the images/visuals — the app reuses the already",
+    "generated images for unchanged keys, so do not rename or drop them needlessly.",
     refinement.comment
       ? `Merchant feedback (prioritize this — it says what is wrong / what to change): ${refinement.comment}`
       : "",

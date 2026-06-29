@@ -177,7 +177,7 @@ export function CampaignEditorLayout({
   );
 }
 
-function EditorTabIcon({ sectionKey }: { sectionKey: string }) {
+export function EditorTabIcon({ sectionKey }: { sectionKey: string }) {
   const icon = getEditorTabIconPath(sectionKey);
 
   return (

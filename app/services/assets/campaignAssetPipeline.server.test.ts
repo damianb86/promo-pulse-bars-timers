@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CampaignSuggestion } from "../../types/ai-campaign";
 import {
+  dematerializeAssetUrls,
   materializeCampaignAssets,
+  refineFeedbackMentionsAssets,
   stripAssetPlaceholders,
 } from "./campaignAssetPipeline.server";
 
@@ -197,5 +199,99 @@ describe("materializeCampaignAssets", () => {
     expect(result.assets).toHaveLength(0);
     // Placeholders remain in the returned html; the caller strips them.
     expect(stripAssetPlaceholders(result.html)).not.toContain("{{asset:");
+  });
+
+  it("reuses existing assets by key without generating when regenerate is off", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const generateSpy = vi.fn(mockProvider.generateAsset);
+
+    const result = await materializeCampaignAssets({
+      admin: mockAdmin({ scopes: ["write_files"] }),
+      shop: { plan: "PRO" },
+      suggestion: buildSuggestion(),
+      referenceImage: null,
+      regenerateAssets: false,
+      existingAssets: [
+        {
+          key: "hero",
+          assetType: "background",
+          source: "generated",
+          shopifyFileId: "gid://file/old",
+          shopifyUrl: "https://cdn.shopify.com/old-hero.png",
+          modelUsed: "prev-model",
+          promptUsed: "prev",
+        },
+      ],
+      provider: { generateAsset: generateSpy },
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.assets).toHaveLength(1);
+    expect(result.assets[0].shopifyUrl).toBe(
+      "https://cdn.shopify.com/old-hero.png",
+    );
+    expect(result.html).toContain("https://cdn.shopify.com/old-hero.png");
+    // No image generated and no upload performed.
+    expect(generateSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("generates a new asset whose key has no existing match even when regenerate is off", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 200 }),
+    );
+    const generateSpy = vi.fn(mockProvider.generateAsset);
+
+    const result = await materializeCampaignAssets({
+      admin: mockAdmin({ scopes: ["write_files"] }),
+      shop: { plan: "PRO" },
+      suggestion: buildSuggestion(),
+      referenceImage: null,
+      regenerateAssets: false,
+      existingAssets: [], // no prior "hero"
+      provider: { generateAsset: generateSpy },
+    });
+
+    expect(result.error).toBeNull();
+    expect(generateSpy).toHaveBeenCalledTimes(1);
+    expect(result.assets[0].shopifyUrl).toBe("https://cdn.shopify.com/hero.png");
+  });
+});
+
+describe("dematerializeAssetUrls", () => {
+  it("turns baked Shopify URLs back into placeholders", () => {
+    const html = '<img src="https://cdn.shopify.com/hero.png">';
+    const out = dematerializeAssetUrls(html, [
+      {
+        key: "hero",
+        assetType: "background",
+        source: "generated",
+        shopifyFileId: "id",
+        shopifyUrl: "https://cdn.shopify.com/hero.png",
+        modelUsed: null,
+        promptUsed: null,
+      },
+    ]);
+    expect(out).toBe('<img src="{{asset:hero}}">');
+  });
+});
+
+describe("refineFeedbackMentionsAssets", () => {
+  it("returns false for empty or non-visual feedback", () => {
+    expect(refineFeedbackMentionsAssets(undefined)).toBe(false);
+    expect(refineFeedbackMentionsAssets("make the headline shorter")).toBe(
+      false,
+    );
+    expect(refineFeedbackMentionsAssets("cambia el texto del botón")).toBe(
+      false,
+    );
+  });
+
+  it("returns true when feedback mentions the visuals (EN/ES)", () => {
+    expect(refineFeedbackMentionsAssets("the background looks wrong")).toBe(
+      true,
+    );
+    expect(refineFeedbackMentionsAssets("usa otra imagen de fondo")).toBe(true);
+    expect(refineFeedbackMentionsAssets("cambia el ícono")).toBe(true);
   });
 });

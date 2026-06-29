@@ -630,17 +630,20 @@ export function AiCampaignBuilder({
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [refineModalOpen, setRefineModalOpen] = useState(false);
   const [refineCloseness, setRefineCloseness] = useState("");
+  const [refineComment, setRefineComment] = useState("");
 
-  // Each new suggestion clears the refine flag so the next plain Generate is a
+  // Each new suggestion clears the refine fields so the next plain Generate is a
   // fresh draft (only Regenerate re-enables refinement).
   useEffect(() => {
     setRefineCloseness("");
+    setRefineComment("");
   }, [suggestion]);
 
-  // Regenerate with a closeness rating: set it, then submit the generate form so
-  // the hidden refine fields travel with the request.
-  const regenerateWith = (closeness: string) => {
+  // Regenerate with a closeness rating + optional comment: set them, then submit
+  // the generate form so the hidden refine fields travel with the request.
+  const regenerateWith = (closeness: string, comment: string) => {
     setRefineCloseness(closeness);
+    setRefineComment(comment);
     setRefineModalOpen(false);
     window.requestAnimationFrame(() => {
       const form = document.getElementById(
@@ -963,6 +966,11 @@ export function AiCampaignBuilder({
               name="refineCloseness"
               type="hidden"
               value={refineCloseness}
+            />
+            <input
+              name="refineComment"
+              type="hidden"
+              value={refineCloseness ? refineComment : ""}
             />
             <input
               name="refineFromSuggestion"
@@ -1864,7 +1872,7 @@ export function AiCampaignBuilder({
                 {refineModalOpen && (
                   <RegenerateCloseModal
                     onClose={() => setRefineModalOpen(false)}
-                    onSelect={regenerateWith}
+                    onSubmit={regenerateWith}
                   />
                 )}
 
@@ -2057,12 +2065,15 @@ const REGENERATE_CLOSENESS_OPTIONS = [
 ];
 
 function RegenerateCloseModal({
-  onSelect,
+  onSubmit,
   onClose,
 }: {
-  onSelect: (closeness: string) => void;
+  onSubmit: (closeness: string, comment: string) => void;
   onClose: () => void;
 }) {
+  const [closeness, setCloseness] = useState("");
+  const [comment, setComment] = useState("");
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -2100,15 +2111,29 @@ function RegenerateCloseModal({
             {REGENERATE_CLOSENESS_OPTIONS.map((option) => (
               <button
                 key={option.label}
-                className="counterpulse-regenerate-option"
+                aria-pressed={closeness === option.label}
+                className={
+                  closeness === option.label
+                    ? "counterpulse-regenerate-option is-selected"
+                    : "counterpulse-regenerate-option"
+                }
                 type="button"
-                onClick={() => onSelect(option.label)}
+                onClick={() => setCloseness(option.label)}
               >
                 <strong>{option.label}</strong>
                 <small>{option.hint}</small>
               </button>
             ))}
           </div>
+          <label className="counterpulse-form-field">
+            <span>What should change? (optional)</span>
+            <textarea
+              placeholder="e.g. the timer overlaps the text on mobile; use a lighter background; make the button bigger…"
+              rows={3}
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
+          </label>
         </div>
         <div className="counterpulse-modal__actions">
           <button
@@ -2117,6 +2142,14 @@ function RegenerateCloseModal({
             onClick={onClose}
           >
             Cancel
+          </button>
+          <button
+            className="counterpulse-button"
+            disabled={!closeness}
+            type="button"
+            onClick={() => onSubmit(closeness, comment.trim())}
+          >
+            Regenerate
           </button>
         </div>
       </div>

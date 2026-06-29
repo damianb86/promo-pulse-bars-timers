@@ -3116,9 +3116,30 @@ s-page::part(page) {
   background: #f5f8ff;
 }
 
+.counterpulse-regenerate-option.is-selected {
+  border-color: #2c6ecb;
+  background: #eef4ff;
+  box-shadow: 0 0 0 1px #2c6ecb;
+}
+
 .counterpulse-regenerate-option small {
   color: #6b7280;
   font-size: 12px;
+}
+
+/* Top-level section tabs on the create page (Campaign vs Design), shown above
+   the builder tabs like the edit page. */
+.counterpulse-builder-tabs--sections {
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+
+.counterpulse-builder-tabs--sections button.is-active {
+  color: #2c6ecb;
+}
+
+.counterpulse-design-section {
+  margin-top: 4px;
 }
 
 /* Visual inspector (Design tab preview). */

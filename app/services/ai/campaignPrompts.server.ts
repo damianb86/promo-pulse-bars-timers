@@ -4,6 +4,8 @@ import type { CampaignAiInput } from "../../types/ai-campaign";
 // it was, so the model IMPROVES it instead of starting over.
 export type CampaignAiRefinement = {
   closeness: string;
+  // Free-text merchant feedback on what looks wrong / what to change.
+  comment?: string;
   structureHtml: string;
   structureCss: string;
   headline?: string;
@@ -20,6 +22,9 @@ function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
     "a close rating means keep the structure and make targeted tweaks; a far",
     "rating means rethink the layout more boldly. Keep what worked, fix what did",
     "not, and return a complete improved draft (HTML/CSS/settings).",
+    refinement.comment
+      ? `Merchant feedback (prioritize this — it says what is wrong / what to change): ${refinement.comment}`
+      : "",
     refinement.headline ? `Previous headline: ${refinement.headline}` : "",
     refinement.subheadline
       ? `Previous subheadline: ${refinement.subheadline}`
@@ -37,7 +42,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v12";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v13";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -307,6 +312,14 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 - Give every flex/grid child min-width: 0 so long text and the timer can shrink
   instead of forcing horizontal overflow. The whole campaign must never scroll
   horizontally.
+- TARGET WIDTH per placement — design for roughly this content width, but it MUST
+  still look right narrower and wider (fluid + wrap):
+  - TOP_BAR / BOTTOM_BAR: ~1000px (wide, slim banner)
+  - PRODUCT_PAGE / CART_PAGE: ~500px (block in a column)
+  - CART_DRAWER: ~450px (narrow drawer)
+  - PRODUCT_BADGE: ~100px (tiny badge)
+  Pick the width that matches the placement you choose; never hard-code it as a
+  fixed width (use it only to size type/spacing/columns sensibly).
 
 ${describeDesignLayoutsForAi()}
 `.trim();

@@ -247,10 +247,14 @@ export const action = async ({
     const refineCloseness = (
       formData.get("refineCloseness")?.toString() ?? ""
     ).trim();
+    const refineComment = (formData.get("refineComment")?.toString() ?? "")
+      .trim()
+      .slice(0, 1000);
     const refinement =
       previousSuggestion && refineCloseness
         ? {
             closeness: refineCloseness,
+            comment: refineComment || undefined,
             structureHtml: previousSuggestion.structureHtml,
             structureCss: previousSuggestion.structureCss,
             headline: previousSuggestion.campaign.headline ?? undefined,

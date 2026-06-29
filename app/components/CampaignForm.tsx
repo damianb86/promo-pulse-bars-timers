@@ -618,6 +618,13 @@ export function CampaignForm({
 }: CampaignFormProps) {
   const navigation = useNavigation();
   const formRef = useRef<HTMLFormElement | null>(null);
+  // Top-level section (only when the built-in design editor is enabled): the
+  // campaign builder vs the Design editor, shown as separate top tabs like the
+  // edit page.
+  const [topSection, setTopSection] = useState<"campaign" | "design">(
+    "campaign",
+  );
+  const campaignSectionActive = !showDesignEditor || topSection === "campaign";
   const hiddenBuilderTabSet = useMemo(
     () => new Set(hiddenBuilderTabs),
     [hiddenBuilderTabs],
@@ -626,12 +633,13 @@ export function CampaignForm({
     const tabs = builderTabs.filter(
       (tab) =>
         !hiddenBuilderTabSet.has(tab.key) &&
-        // The Design tab only appears when design editing is enabled here.
-        (tab.key !== "design" || Boolean(designSlot) || showDesignEditor),
+        // Design is shown as a top-level section (showDesignEditor), not a
+        // builder tab. A raw designSlot still renders it as a builder tab.
+        (tab.key !== "design" || Boolean(designSlot)),
     );
 
     return tabs.length > 0 ? tabs : builderTabs;
-  }, [hiddenBuilderTabSet, designSlot, showDesignEditor]);
+  }, [hiddenBuilderTabSet, designSlot]);
   const visibleBuilderTabSet = useMemo(
     () => new Set(visibleBuilderTabs.map((tab) => tab.key)),
     [visibleBuilderTabs],
@@ -1777,6 +1785,35 @@ export function CampaignForm({
           </div>
         )}
 
+        {showDesignEditor && (
+          <div
+            className="counterpulse-builder-tabs counterpulse-builder-tabs--sections"
+            aria-label="Campaign sections"
+            role="tablist"
+          >
+            <button
+              aria-selected={topSection === "campaign"}
+              className={topSection === "campaign" ? "is-active" : undefined}
+              role="tab"
+              type="button"
+              onClick={() => setTopSection("campaign")}
+            >
+              Campaign
+            </button>
+            <button
+              aria-selected={topSection === "design"}
+              className={topSection === "design" ? "is-active" : undefined}
+              role="tab"
+              type="button"
+              onClick={() => setTopSection("design")}
+            >
+              Design
+            </button>
+          </div>
+        )}
+
+        {campaignSectionActive && (
+          <>
         {shouldShowBuilderTabs && (
           <div
             className="counterpulse-builder-tabs"
@@ -3054,7 +3091,7 @@ export function CampaignForm({
               )}
             </BuilderPanel>
 
-            {(designSlot || showDesignEditor) && (
+            {designSlot && (
               <BuilderPanel
                 activeTab={activeTab}
                 panelId={builderPanelId("design")}
@@ -3062,22 +3099,7 @@ export function CampaignForm({
                 tabId={builderTabId("design")}
                 tabKey="design"
               >
-                {designSlot ?? (
-                  <CampaignDesignEditor
-                    design={effectiveDesign}
-                    designMediaOptions={designMediaOptions}
-                    errors={designErrors}
-                    isProPlan={isProPlan}
-                    lockedCustomCssReason={lockedCustomCssReason}
-                    mobileDesign={effectiveMobileDesign}
-                    viewModel={previewViewModel}
-                    onChange={updateDesignValues}
-                    onMobileChange={(next) => {
-                      if (onMobileDesignChange) onMobileDesignChange(next);
-                      else setLocalMobileDesignValues(next);
-                    }}
-                  />
-                )}
+                {designSlot}
               </BuilderPanel>
             )}
 
@@ -3982,6 +4004,27 @@ export function CampaignForm({
             </aside>
           )}
         </div>
+          </>
+        )}
+
+        {showDesignEditor && topSection === "design" && (
+          <div className="counterpulse-design-section">
+            <CampaignDesignEditor
+              design={effectiveDesign}
+              designMediaOptions={designMediaOptions}
+              errors={designErrors}
+              isProPlan={isProPlan}
+              lockedCustomCssReason={lockedCustomCssReason}
+              mobileDesign={effectiveMobileDesign}
+              viewModel={previewViewModel}
+              onChange={updateDesignValues}
+              onMobileChange={(next) => {
+                if (onMobileDesignChange) onMobileDesignChange(next);
+                else setLocalMobileDesignValues(next);
+              }}
+            />
+          </div>
+        )}
       </Form>
       {confirmOnSubmit ? confirmSubmit.modal : null}
     </>

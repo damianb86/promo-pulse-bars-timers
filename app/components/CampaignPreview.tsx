@@ -1149,12 +1149,15 @@ function StructurePromoSurface({
       ? design.customCss.replace(/<\/?\s*style/gi, "")
       : "");
 
+  const rootProps = structureNodeProps(tree, undefined, inspect ? "" : undefined);
   const surface = createElement(
     tree.tag,
     {
-      ...structureNodeProps(tree, undefined, inspect ? "" : undefined),
+      ...rootProps,
       className: rootClassName,
-      style,
+      // Merge the preview vars with the root node's own inline style so inspector
+      // edits on the root container are not overridden by buildPreviewStyle.
+      style: { ...style, ...((rootProps.style as CSSProperties) ?? {}) },
       "data-testid": dataTestId,
       suppressHydrationWarning: true,
     },

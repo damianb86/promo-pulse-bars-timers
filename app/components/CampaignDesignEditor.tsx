@@ -843,39 +843,75 @@ function useStructureSurface(
   const [edited, setEdited] = useState(init.edited);
   const [html, setHtml] = useState(init.html || generatedHtml);
   const [css, setCss] = useState(init.css || generatedCss);
-  const [dirty, setDirty] = useState(false);
 
-  // Reset to the saved value when the parent discards.
-  const initialResetSignal = useRef(resetSignal);
+  // Re-seed the local state from the saved baseline when the parent discards
+  // (resetSignal bumps) OR when a new saved value arrives from the server after a
+  // save (loader revalidation changes init). The latter is what clears the
+  // "Unsaved changes" bar once a save lands — the surface adopts the saved
+  // (sanitized) HTML, so the derived `dirty` below recomputes to false.
+  const initSignature = `${init.edited ? "1" : "0"}|${init.html}|${init.css}`;
+  const lastSeed = useRef({ resetSignal, initSignature });
   useEffect(() => {
-    if (resetSignal === initialResetSignal.current) return;
-    initialResetSignal.current = resetSignal;
+    if (
+      resetSignal === lastSeed.current.resetSignal &&
+      initSignature === lastSeed.current.initSignature
+    ) {
+      return;
+    }
+    lastSeed.current = { resetSignal, initSignature };
     setEdited(init.edited);
     setHtml(init.html || generatedHtml);
     setCss(init.css || generatedCss);
-    setDirty(false);
-  }, [resetSignal, init.edited, init.html, init.css, generatedHtml, generatedCss]);
+    // generatedHtml/generatedCss intentionally omitted from deps: they change as
+    // the merchant tweaks visual settings and must NOT wipe an in-progress edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal, initSignature]);
 
   const displayedHtml = edited ? html : generatedHtml;
   const displayedCss = edited ? css : generatedCss;
+
+  // Dirty is DERIVED from comparing the current override payload to the saved
+  // baseline (init). This way it clears automatically once a save revalidates the
+  // loader and the saved baseline matches the current value — no stale "Unsaved
+  // changes" bar. HTML is normalized through the AST so formatting differences
+  // (compact storage vs. pretty editor output) never count as a change.
+  const normalizeHtml = (value: string) => {
+    try {
+      const parsed = htmlToTree(value);
+      return parsed ? treeToHtml(parsed) : value;
+    } catch {
+      return value;
+    }
+  };
+  const savedPayload = {
+    edited: init.edited,
+    html: init.edited ? normalizeHtml(init.html) : "",
+    css: init.edited ? init.css : "",
+  };
+  const currentPayload = {
+    edited,
+    html: edited ? normalizeHtml(displayedHtml) : "",
+    css: edited ? displayedCss : "",
+  };
+  const dirty =
+    savedPayload.edited !== currentPayload.edited ||
+    savedPayload.html !== currentPayload.html ||
+    savedPayload.css !== currentPayload.css;
 
   const reset = () => {
     setEdited(false);
     setHtml(generatedHtml);
     setCss(generatedCss);
-    setDirty(true);
   };
   const changeHtml = (value: string) => {
     setHtml(value);
     setCss((current) => (edited ? current : generatedCss));
     setEdited(true);
-    setDirty(true);
   };
   const changeCss = (value: string) => {
     setCss(value);
     setHtml((current) => (edited ? current : generatedHtml));
     setEdited(true);
-    setDirty(true);
   };
 
   const tree = useMemo(
@@ -917,7 +953,6 @@ function useStructureSurface(
     setHtml(treeToHtml(next));
     setCss((value) => (edited ? value : generatedCss));
     setEdited(true);
-    setDirty(true);
   };
 
   // Sets an attribute on a node (by AST path) — e.g. the inspector editing an
@@ -929,7 +964,6 @@ function useStructureSurface(
     setHtml(treeToHtml(next));
     setCss((value2) => (edited ? value2 : generatedCss));
     setEdited(true);
-    setDirty(true);
   };
 
   // Inserts a missing slot element into the edited HTML so its settings card
@@ -944,7 +978,6 @@ function useStructureSurface(
     ];
     setHtml(treeToHtml(root));
     setEdited(true);
-    setDirty(true);
   };
 
   return {

@@ -766,8 +766,29 @@ export function CampaignForm({
       return null;
     }
   }, [aiSuggestionJson]);
-  const previewStructureTree = aiStructure?.tree ?? structureTree;
-  const previewStructureCss = aiStructure ? aiStructure.css : structureCss;
+  // Live structural edits made in the Design tab (lifted here via
+  // onStructureChange). The Campaign-tab preview must reflect them too so BOTH
+  // previews always render the exact same thing.
+  const liveDesignStructure = useMemo(() => {
+    if (
+      designStructureForm?.structureEdited &&
+      designStructureForm.structureHtml
+    ) {
+      return {
+        html: designStructureForm.structureHtml,
+        tree: htmlToTree(designStructureForm.structureHtml),
+        css: designStructureForm.structureCss,
+      };
+    }
+    return null;
+  }, [designStructureForm]);
+  const previewStructureTree =
+    liveDesignStructure?.tree ?? aiStructure?.tree ?? structureTree;
+  const previewStructureCss = liveDesignStructure
+    ? liveDesignStructure.css
+    : aiStructure
+      ? aiStructure.css
+      : structureCss;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
@@ -4114,12 +4135,16 @@ export function CampaignForm({
                 if (onMobileDesignChange) onMobileDesignChange(next);
                 else setLocalMobileDesignValues(next);
               }}
-              // Seed the Design editor with the AI-applied structural HTML/CSS
-              // (or the saved structure) so its preview matches the Campaign-tab
-              // preview instead of rebuilding from settings.
-              structureEdited={Boolean(aiStructure)}
-              structureHtml={aiStructure?.html ?? ""}
-              structureCss={aiStructure?.css ?? ""}
+              // Seed the Design editor with the live structural edit (so they
+              // survive switching tabs) falling back to the AI-applied structure,
+              // so its preview always matches the Campaign-tab preview.
+              structureEdited={
+                liveDesignStructure ? true : Boolean(aiStructure)
+              }
+              structureHtml={
+                liveDesignStructure?.html ?? aiStructure?.html ?? ""
+              }
+              structureCss={liveDesignStructure?.css ?? aiStructure?.css ?? ""}
               customMessages={customMessages}
               onStructureChange={setDesignStructureForm}
             />

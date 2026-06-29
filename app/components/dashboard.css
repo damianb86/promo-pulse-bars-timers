@@ -3338,6 +3338,13 @@ s-page::part(page) {
   gap: 12px;
 }
 
+/* Keep the "Add message" button compact on one line, not stretched/wrapped. */
+.counterpulse-custom-messages__head > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
 .counterpulse-custom-messages__empty {
   margin-top: 10px;
 }

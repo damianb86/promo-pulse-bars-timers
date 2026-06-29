@@ -34,6 +34,10 @@ import type { CampaignDesignValues } from "../types/campaign-design";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
 import { CAMPAIGN_STRUCTURE_VERSION } from "../utils/campaign-structure";
 import {
+  parseCustomMessages,
+  serializeCustomMessages,
+} from "../utils/custom-messages";
+import {
   generateStructureFromHtml,
   generateStructureFromSettings,
 } from "../utils/campaign-structure.server";
@@ -766,6 +770,9 @@ export type CampaignStructureSaveOptions = {
   // is on and the mobile HTML was edited).
   editedMobileHtml?: string | null;
   editedMobileCss?: string | null;
+  // Custom reusable message snippets (JSON array of {id, text}) placed in the
+  // custom HTML via data-cp-slot="custom-<id>". Shared across desktop + mobile.
+  messages?: string | null;
 };
 
 // Regenerates the campaign's structural HTML + CSS so the saved HTML stays the
@@ -808,6 +815,16 @@ function buildCampaignStructureWriteData(
     structureCss: desktop.css,
     structureVersion: CAMPAIGN_STRUCTURE_VERSION,
     structureEdited: Boolean(editedHtml),
+    // Only overwrite the stored custom messages when the form actually provided
+    // them (undefined = "leave as-is" so a save from a surface without the editor
+    // can never wipe them).
+    ...(options.messages !== undefined
+      ? {
+          structureMessages: serializeCustomMessages(
+            parseCustomMessages(options.messages),
+          ),
+        }
+      : {}),
   };
 
   // Mobile override: only keep it when the merchant edited a separate mobile

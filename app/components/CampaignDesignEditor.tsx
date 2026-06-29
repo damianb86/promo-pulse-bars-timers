@@ -32,6 +32,7 @@ import {
   treeToHtml,
   type StructureNode,
 } from "../utils/campaign-structure";
+import type { CustomMessage } from "../utils/custom-messages";
 
 type CampaignDesignEditorProps = {
   design: CampaignDesignValues;
@@ -40,6 +41,8 @@ type CampaignDesignEditorProps = {
   isProPlan: boolean;
   lockedCustomCssReason?: string;
   mobileDesign: CampaignDesignValues;
+  // Custom-message snippets so the preview can fill data-cp-slot="custom-<id>".
+  customMessages?: CustomMessage[];
   progressStyle?: FreeShippingProgressStyleValue;
   onChange: (design: CampaignDesignValues) => void;
   onMobileChange: (design: CampaignDesignValues) => void;
@@ -79,6 +82,7 @@ export function CampaignDesignEditor({
   isProPlan,
   lockedCustomCssReason,
   mobileDesign,
+  customMessages = [],
   progressStyle,
   onChange,
   onMobileChange,
@@ -464,6 +468,7 @@ export function CampaignDesignEditor({
             placement={placement}
             structureTree={desktopSurface.displayedTree}
             structureCss={desktopSurface.displayedCss}
+            customMessages={customMessages}
             inspect={inspectEnabled}
             viewModel={previewViewModel}
             onDeviceChange={setDevice}
@@ -704,6 +709,12 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
       "A compact countdown rendered inside a product badge (badge campaigns with a timer). Shown only when the badge campaign has a timer.",
     attributes: "class, id, style, data-*.",
   },
+  {
+    example: '<span data-cp-slot="custom-<id>"></span>',
+    renders:
+      "A custom reusable message you defined in the Message tab. Place it anywhere; it is filled with that message's text, with dynamic variables ({{time_left}}, {{amount}}, {{quantity}}, ...) interpolated. The Message tab generates the exact <id> and a copyable slot tag for each message.",
+    attributes: "class, id, style, data-*.",
+  },
 ];
 
 function StructureHelpModal({
@@ -747,8 +758,13 @@ function StructureHelpModal({
               <code>data-cp-slot</code> placeholders that the app fills at render
               time from your Design settings. Any other safe HTML (divs,
               headings, images, lists, classes, ids, data attributes) is rendered
-              exactly as written. Below: each slot, how it renders, and the
-              attributes it supports.
+              exactly as written. The message texts (headline, body, CTA, badge)
+              render through their slots below; the supporting <code>body</code>
+              slot automatically shows the message that matches the campaign and
+              its state (subheadline, free-shipping, low-stock, or delivery). To
+              place an extra text anywhere, create it in the Message tab and use
+              its <code>custom-&lt;id&gt;</code> slot. Below: each slot, how it
+              renders, and the attributes it supports.
             </p>
           </div>
         </div>

@@ -3318,6 +3318,97 @@ s-page::part(page) {
   align-items: start;
 }
 
+/* Custom reusable messages editor (Message tab). */
+.counterpulse-custom-messages {
+  margin-top: 16px;
+  border-top: 1px solid #e3e6ea;
+  padding-top: 16px;
+}
+
+.counterpulse-custom-messages__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.counterpulse-custom-messages__empty {
+  margin-top: 10px;
+}
+
+.counterpulse-custom-messages__list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.counterpulse-custom-messages__item {
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfbfc;
+}
+
+.counterpulse-custom-messages__item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.counterpulse-custom-messages__id {
+  font-size: 12px;
+  font-weight: 700;
+  background: #eef0f3;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.counterpulse-custom-messages__remove {
+  border: 0;
+  background: none;
+  color: #d72c0d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.counterpulse-custom-messages__text {
+  width: 100%;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.counterpulse-custom-messages__slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.counterpulse-custom-messages__slot code {
+  font-size: 12px;
+  background: #f1f2f4;
+  border-radius: 6px;
+  padding: 4px 8px;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.counterpulse-custom-messages__copy {
+  flex: 0 0 auto;
+}
+
 /* Custom CSS Key:Value chips + add row inside the inspector panel. */
 .counterpulse-inspector-chips {
   display: flex;
@@ -10183,6 +10274,7 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-placement-slot {
+  position: relative;
   min-width: 0;
   display: grid;
   justify-items: stretch;

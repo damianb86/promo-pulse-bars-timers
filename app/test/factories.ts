@@ -367,6 +367,7 @@ function createDesign(
     mobileDesign: null,
     structureCompact: null,
     structureCss: null,
+    structureMessages: null,
     structureVersion: 1,
     structureEdited: false,
     progressTarget: "FREE_SHIPPING",

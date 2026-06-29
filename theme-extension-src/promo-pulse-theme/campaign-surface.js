@@ -1364,7 +1364,24 @@
     return wrapper;
   }
 
+  // Index custom message snippets shipped with the structure so the
+  // data-cp-slot="custom-<id>" slots can be filled (and interpolated) by id.
+  function customMessageMap(design) {
+    var map = {};
+    var messages =
+      design && design.structure && design.structure.messages
+        ? design.structure.messages
+        : [];
+    if (!Array.isArray(messages)) return map;
+    for (var i = 0; i < messages.length; i += 1) {
+      var entry = messages[i];
+      if (entry && entry.id) map[entry.id] = entry.text || "";
+    }
+    return map;
+  }
+
   function hydrateStructureSlots(root, spec, design) {
+    var messageMap = customMessageMap(design);
     var slots = root.querySelectorAll("[data-cp-slot]");
     // Snapshot into an array because replace slots mutate the tree.
     var list = [];
@@ -1426,8 +1443,17 @@
         case "progress":
           fillReplaceSlot(slotEl, buildProgress(spec, design));
           break;
-        default:
+        default: {
+          // Custom reusable message: data-cp-slot="custom-<id>". Fill with the
+          // merchant's snippet, interpolating the campaign's dynamic variables.
+          if (slot && slot.indexOf("custom-") === 0) {
+            var id = slot.slice("custom-".length);
+            if (Object.prototype.hasOwnProperty.call(messageMap, id)) {
+              setRichText(slotEl, interpolateMessage(messageMap[id], spec));
+            }
+          }
           break;
+        }
       }
     });
   }

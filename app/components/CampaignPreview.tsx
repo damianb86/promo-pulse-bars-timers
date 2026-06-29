@@ -16,6 +16,10 @@ import {
   TEXT_TAG,
   type StructureNode,
 } from "../utils/campaign-structure";
+import {
+  customMessageIdFromSlot,
+  type CustomMessage,
+} from "../utils/custom-messages";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import {
   calculateFreeShippingProgress,
@@ -54,6 +58,9 @@ type CampaignPreviewProps = {
   // The per-campaign CSS (scoped `--cp-*` vars + layout + custom CSS) that goes
   // with structureTree. Applied scoped so the preview matches the storefront.
   structureCss?: string;
+  // Custom reusable message snippets the merchant placed in the structure via
+  // data-cp-slot="custom-<id>". Filled (and interpolated) into those slots.
+  customMessages?: CustomMessage[];
   // When true, each structure node is tagged with `data-cp-node="<path>"` so the
   // visual inspector can resolve hovered/clicked elements back to the AST.
   inspect?: boolean;
@@ -168,6 +175,7 @@ export function CampaignPreview({
   placement,
   structureTree = null,
   structureCss = "",
+  customMessages = [],
   inspect = false,
 }: CampaignPreviewProps) {
   const now = usePreviewClock();
@@ -195,6 +203,7 @@ export function CampaignPreview({
       placement={placement}
       structureTree={structureTree}
       structureCss={structureCss}
+      customMessages={customMessages}
       inspect={inspect}
       style={previewStyle}
       timerState={timerState}
@@ -561,6 +570,7 @@ function PromoSurface({
   dataTestId,
   structureTree = null,
   structureCss = "",
+  customMessages = [],
   inspect = false,
 }: {
   viewModel: CampaignViewModel;
@@ -574,6 +584,7 @@ function PromoSurface({
   dataTestId?: string;
   structureTree?: StructureNode | null;
   structureCss?: string;
+  customMessages?: CustomMessage[];
   inspect?: boolean;
 }) {
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
@@ -684,6 +695,12 @@ function PromoSurface({
         hasTimer={hasTimer}
         headlineHtml={sanitizeBasicHtml(headlineText)}
         bodyHtml={bodyText ? sanitizeBasicHtml(bodyText) : ""}
+        customMessagesHtml={Object.fromEntries(
+          customMessages.map((message) => [
+            message.id,
+            sanitizeBasicHtml(interpolate(message.text)),
+          ]),
+        )}
         placement={placement}
         structureCss={structureCss}
         inspect={inspect}
@@ -979,6 +996,7 @@ function StructurePromoSurface({
   freeShippingPreview,
   headlineHtml,
   bodyHtml,
+  customMessagesHtml = {},
   ctaText,
   hasTimer,
   hasOffer,
@@ -999,6 +1017,9 @@ function StructurePromoSurface({
   freeShippingPreview: ReturnType<typeof buildFreeShippingPreview>;
   headlineHtml: string;
   bodyHtml: string;
+  // Interpolated + sanitized custom-message HTML keyed by message id, filled into
+  // data-cp-slot="custom-<id>" slots.
+  customMessagesHtml?: Record<string, string>;
   ctaText: string;
   hasTimer: boolean;
   hasOffer: boolean;
@@ -1101,8 +1122,22 @@ function StructurePromoSurface({
           />
         );
       }
-      default:
+      default: {
+        // Custom reusable message: data-cp-slot="custom-<id>".
+        const messageId = customMessageIdFromSlot(slot);
+        if (messageId && customMessagesHtml[messageId] != null) {
+          return (
+            <span
+              {...attrProps}
+              suppressHydrationWarning
+              dangerouslySetInnerHTML={{
+                __html: customMessagesHtml[messageId],
+              }}
+            />
+          );
+        }
         return null;
+      }
     }
   };
 

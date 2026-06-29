@@ -89,6 +89,12 @@ import type {
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import type { CampaignSuggestion } from "../types/ai-campaign";
+import { CustomMessagesEditor } from "./CustomMessagesEditor";
+import {
+  parseCustomMessages,
+  serializeCustomMessages,
+  type CustomMessage,
+} from "../utils/custom-messages";
 
 type CampaignFormProps = {
   campaignId?: string;
@@ -114,6 +120,9 @@ type CampaignFormProps = {
   // generated HTML the storefront uses (matches the Design tab preview).
   structureTree?: StructureNode | null;
   structureCss?: string;
+  // Saved custom-message snippets (JSON array of {id, text}) placed in the custom
+  // HTML via data-cp-slot="custom-<id>". Edited in the Message tab.
+  structureMessages?: string;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
@@ -600,6 +609,7 @@ export function CampaignForm({
   mobileDesign = design,
   structureTree = null,
   structureCss = "",
+  structureMessages: initialStructureMessages = "",
   values,
   errors = {},
   formId,
@@ -699,6 +709,10 @@ export function CampaignForm({
   const submitActionInputRef = useRef<HTMLInputElement | null>(null);
   const [aiSuggestionJson, setAiSuggestionJson] = useState(() =>
     appliedAiSuggestion ? JSON.stringify(appliedAiSuggestion) : "",
+  );
+  // Custom reusable message snippets (Message tab), placed in the custom HTML.
+  const [customMessages, setCustomMessages] = useState<CustomMessage[]>(() =>
+    parseCustomMessages(initialStructureMessages),
   );
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
@@ -3152,6 +3166,15 @@ export function CampaignForm({
               {messageAddon && (
                 <div className="counterpulse-message-addon">{messageAddon}</div>
               )}
+              <CustomMessagesEditor
+                value={customMessages}
+                onChange={setCustomMessages}
+              />
+              <input
+                type="hidden"
+                name="structureMessages"
+                value={serializeCustomMessages(customMessages)}
+              />
             </BuilderPanel>
 
             {designSlot && (
@@ -4048,6 +4071,7 @@ export function CampaignForm({
                 placement={campaignPreviewPlacement}
                 structureTree={previewStructureTree}
                 structureCss={previewStructureCss}
+                customMessages={customMessages}
                 viewModel={previewViewModel}
                 onDeviceChange={setPreviewDevice}
                 onPlacementChange={selectCampaignPreviewPlacement}
@@ -4091,6 +4115,7 @@ export function CampaignForm({
               structureEdited={Boolean(aiStructure)}
               structureHtml={aiStructure?.html ?? ""}
               structureCss={aiStructure?.css ?? ""}
+              customMessages={customMessages}
               onStructureChange={setDesignStructureForm}
             />
           </div>

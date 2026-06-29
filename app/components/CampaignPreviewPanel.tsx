@@ -5,6 +5,7 @@ import { DevicePreviewToggle, type PreviewDevice } from "./DevicePreviewToggle";
 import type { CampaignDesignValues } from "../types/campaign-design";
 import type { CampaignViewModel } from "../utils/campaign-view-model";
 import type { StructureNode } from "../utils/campaign-structure";
+import type { CustomMessage } from "../utils/custom-messages";
 import { resolveMobileCampaignDesign } from "../utils/responsive-design";
 
 export type PreviewPlacement =
@@ -41,6 +42,7 @@ type CampaignPreviewPanelProps = {
   mobileStructureTree?: StructureNode | null;
   structureCss?: string;
   mobileStructureCss?: string;
+  customMessages?: CustomMessage[];
   inspect?: boolean;
   onDeviceChange: (device: PreviewDevice) => void;
   onPlacementChange: (placement: PreviewPlacement) => void;
@@ -60,6 +62,7 @@ export function CampaignPreviewPanel({
   mobileStructureTree = null,
   structureCss = "",
   mobileStructureCss = "",
+  customMessages = [],
   inspect = false,
   onDeviceChange,
   onPlacementChange,
@@ -122,6 +125,7 @@ export function CampaignPreviewPanel({
         placement={selectedPlacement}
         structureTree={resolvedStructureTree}
         structureCss={resolvedStructureCss}
+        customMessages={customMessages}
         inspect={inspect}
         viewModel={viewModel}
       />

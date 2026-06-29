@@ -27,6 +27,7 @@ import {
   type CampaignDesignValues,
 } from "../types/campaign-design";
 import { decodePackedStructure } from "./campaign-structure";
+import { parseCustomMessages } from "./custom-messages";
 import { resolveMobileCampaignDesign } from "./responsive-design";
 import {
   campaignTranslationFields,
@@ -426,6 +427,7 @@ function serializeStructure(
   const structureDesign = design as CampaignDesign & {
     structureCompact?: string | null;
     structureCss?: string | null;
+    structureMessages?: string | null;
     structureVersion?: number | null;
   };
 
@@ -435,6 +437,10 @@ function serializeStructure(
   return {
     packed,
     css: structureDesign.structureCss ?? "",
+    // Custom reusable message snippets the merchant placed via
+    // data-cp-slot="custom-<id>" — shipped alongside the structure so the
+    // storefront can fill those slots (and interpolate the dynamic variables).
+    messages: parseCustomMessages(structureDesign.structureMessages),
     version: structureDesign.structureVersion ?? 1,
   };
 }
@@ -451,6 +457,7 @@ function serializeDesktopDesign(design: CampaignDesign | null) {
     customCss?: string | null;
     structureCompact?: unknown;
     structureCss?: unknown;
+    structureMessages?: unknown;
     structureVersion?: unknown;
     structureEdited?: unknown;
   };
@@ -460,6 +467,7 @@ function serializeDesktopDesign(design: CampaignDesign | null) {
   // copy into the payload.
   delete desktopDesign.structureCompact;
   delete desktopDesign.structureCss;
+  delete desktopDesign.structureMessages;
   delete desktopDesign.structureVersion;
   delete desktopDesign.structureEdited;
 

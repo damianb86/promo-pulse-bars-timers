@@ -270,6 +270,7 @@ import {
   treeToHtml,
   unpackTree,
 } from "../utils/campaign-structure";
+import { parseCustomMessages } from "../utils/custom-messages";
 import {
   isSeparateMobileDesignEnabled,
   resolveMobileCampaignDesign,
@@ -284,6 +285,7 @@ type LoaderData = {
   structureEdited: boolean;
   structureHtml: string;
   structureCss: string;
+  structureMessages: string;
   mobileStructureEdited: boolean;
   mobileStructureHtml: string;
   mobileStructureCss: string;
@@ -544,6 +546,7 @@ export const loader = async ({
     mobileStructureEdited,
     mobileStructureHtml,
     mobileStructureCss,
+    structureMessages: campaign.design?.structureMessages ?? "",
     assetError: new URL(request.url).searchParams.get("assetError") || null,
     designMediaOptions: await loadDesignMediaOptions(admin),
     designViewModel: buildCampaignViewModel({
@@ -1727,6 +1730,7 @@ export default function EditCampaignPage() {
     structureEdited,
     structureHtml,
     structureCss,
+    structureMessages,
     mobileStructureEdited,
     mobileStructureHtml,
     mobileStructureCss,
@@ -1818,6 +1822,10 @@ export default function EditCampaignPage() {
     () =>
       structureEdited && structureHtml ? htmlToTree(structureHtml) : null,
     [structureEdited, structureHtml],
+  );
+  const savedCustomMessages = useMemo(
+    () => parseCustomMessages(structureMessages),
+    [structureMessages],
   );
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
@@ -2079,6 +2087,7 @@ export default function EditCampaignPage() {
                   mobileDesign={draftMobileDesignValues}
                   structureTree={savedStructureTree}
                   structureCss={structureCss}
+                  structureMessages={structureMessages}
                   designHiddenInputs={
                     <>
                       <CampaignDesignDraftHiddenInputs
@@ -2328,6 +2337,7 @@ export default function EditCampaignPage() {
                   errors={actionData?.designErrors}
                   design={draftDesignValues}
                   mobileDesign={draftMobileDesignValues}
+                  customMessages={savedCustomMessages}
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
                   progressStyle={

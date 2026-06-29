@@ -324,6 +324,7 @@ model CampaignDesign {
   mobileDesign             Json?
   structureCompact         String?
   structureCss             String?
+  structureMessages        String?
   structureVersion         Int                      @default(1)
   structureEdited          Boolean                  @default(false)
 

@@ -32,6 +32,10 @@ import {
   sanitizeStructureCss,
   sanitizeStructureHtml,
 } from "../utils/structure-html";
+import {
+  parseCustomMessages,
+  serializeCustomMessages,
+} from "../utils/custom-messages";
 import { canUseFeature } from "./planLimits.server";
 
 export type ParsedCampaignDesignForm = {
@@ -397,6 +401,11 @@ export type ParsedCampaignStructureForm = {
   // mobile HTML was edited). null means the mobile surface reuses desktop.
   editedMobileHtml: string | null;
   editedMobileCss: string | null;
+  // Custom reusable message snippets (JSON array of {id, text}), shared across
+  // desktop + mobile, placed in the custom HTML via data-cp-slot="custom-<id>".
+  // undefined when the form did not include the field (leave the stored value
+  // unchanged instead of wiping it).
+  messages: string | undefined;
 };
 
 // Reads the optional structural-HTML + CSS override coming from the design
@@ -423,6 +432,11 @@ export function parseCampaignStructureForm(
       ? sanitizeStructureCss(readFormString(formData, "mobileStructureCss")) ||
         null
       : null,
+    messages: formData.has("structureMessages")
+      ? serializeCustomMessages(
+          parseCustomMessages(readFormString(formData, "structureMessages")),
+        )
+      : undefined,
   };
 }
 

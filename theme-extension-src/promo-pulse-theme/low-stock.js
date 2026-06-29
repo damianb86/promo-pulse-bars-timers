@@ -252,7 +252,6 @@
       typeof inventory === "number"
     ) {
       lowStockVariables.quantity = String(Math.floor(inventory));
-      lowStockVariables.count = lowStockVariables.quantity;
     }
 
     card = window.CountPulseSurface.build({

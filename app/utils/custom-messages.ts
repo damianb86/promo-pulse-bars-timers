@@ -1,5 +1,5 @@
 // Custom reusable message snippets. A merchant defines them in the Message tab
-// (each can use the campaign's dynamic variables, e.g. {{amount}}, {{time_left}})
+// (each can use the campaign's dynamic variables, e.g. {{remaining_amount}}, {{time_left}})
 // and places them anywhere in the custom structural HTML via a slot:
 //   <span data-cp-slot="custom-<id>"></span>
 // The renderer (React preview + storefront) fills the slot with the message,

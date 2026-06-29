@@ -48,8 +48,9 @@ import {
   describeDesignLayoutsForAi,
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
+import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v14";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v15";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -207,6 +208,14 @@ Rich text in messages:
   styles, or event handlers inside message text.
 - Keep HTML light and meaningful; most text should stay plain. Always close the
   tags you open.
+
+Dynamic message variables:
+${describeMessageVariablesForAi()}
+- You may use these {{tokens}} both inside the message fields (headline,
+  subheadline, ctaText, expiredText, the free-shipping / low-stock / delivery
+  texts) AND directly inside the structureHtml text. They resolve live on the
+  storefront. Use them to make copy specific (e.g. "Only {{remaining_amount}}
+  away — {{progress_percent}} there!").
 
 Custom CSS:
 - You may also set design.customCss to a short block of plain CSS to fine-tune

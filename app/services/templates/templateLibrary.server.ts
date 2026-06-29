@@ -627,7 +627,7 @@ function buildTemplateTextsFromCampaign(
       "Add items to unlock free shipping.",
     freeShippingProgressText:
       translation?.freeShippingProgressText ||
-      "You're {{amount}} away from free shipping.",
+      "You're {{remaining_amount}} away from free shipping.",
     freeShippingSuccessText:
       translation?.freeShippingSuccessText ||
       campaign?.freeShippingSettings?.successMessage ||

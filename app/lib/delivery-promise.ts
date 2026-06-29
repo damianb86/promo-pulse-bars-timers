@@ -168,27 +168,17 @@ function buildMessageVariables({
   const minDate = dateFormatter.format(minDeliveryDate);
   const maxDate = dateFormatter.format(maxDeliveryDate);
 
+  // Canonical snake_case tokens only — no camelCase or legacy aliases.
   return {
     cutoff_time: cutoffFormatter.format(cutoffDate),
-    cutoffTime: cutoffFormatter.format(cutoffDate),
     delivery_range: `${minDate}-${maxDate}`,
-    deliveryRange: `${minDate}-${maxDate}`,
     max_delivery_date: maxDate,
-    maxDeliveryDate: maxDate,
     max_delivery_weekday: weekdayFormatter.format(maxDeliveryDate),
-    maxDeliveryWeekday: weekdayFormatter.format(maxDeliveryDate),
     min_delivery_date: minDate,
-    minDeliveryDate: minDate,
     min_delivery_weekday: weekdayFormatter.format(minDeliveryDate),
-    minDeliveryWeekday: weekdayFormatter.format(minDeliveryDate),
     ships_date: dateFormatter.format(shipsDate),
-    shipsDate: dateFormatter.format(shipsDate),
     ships_weekday: weekdayFormatter.format(shipsDate),
-    shipsWeekday: weekdayFormatter.format(shipsDate),
-    time_remaining: formatDeliveryTimeRemaining(timeRemainingMs),
-    timeRemaining: formatDeliveryTimeRemaining(timeRemainingMs),
     time_left: formatDeliveryTimeRemaining(timeRemainingMs),
-    timeLeft: formatDeliveryTimeRemaining(timeRemainingMs),
   };
 }
 

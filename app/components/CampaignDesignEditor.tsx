@@ -712,7 +712,7 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
   {
     example: '<span data-cp-slot="custom-<id>"></span>',
     renders:
-      "A custom reusable message you defined in the Message tab. Place it anywhere; it is filled with that message's text, with dynamic variables ({{time_left}}, {{amount}}, {{quantity}}, ...) interpolated. The Message tab generates the exact <id> and a copyable slot tag for each message.",
+      "A custom reusable message you defined in the Message tab. Place it anywhere; it is filled with that message's text, with dynamic variables ({{time_left}}, {{remaining_amount}}, {{quantity}}, ...) interpolated. The Message tab generates the exact <id> and a copyable slot tag for each message.",
     attributes: "class, id, style, data-*.",
   },
 ];
@@ -763,8 +763,11 @@ function StructureHelpModal({
               slot automatically shows the message that matches the campaign and
               its state (subheadline, free-shipping, low-stock, or delivery). To
               place an extra text anywhere, create it in the Message tab and use
-              its <code>custom-&lt;id&gt;</code> slot. Below: each slot, how it
-              renders, and the attributes it supports.
+              its <code>custom-&lt;id&gt;</code> slot. You can also type dynamic
+              variables like <code>{`{{remaining_amount}}`}</code> or{" "}
+              <code>{`{{time_left}}`}</code> directly into any text in the HTML —
+              see the Message tab for the full list — and they are replaced live.
+              Below: each slot, how it renders, and the attributes it supports.
             </p>
           </div>
         </div>

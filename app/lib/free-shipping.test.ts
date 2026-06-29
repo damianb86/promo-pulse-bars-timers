@@ -50,12 +50,16 @@ describe("free shipping currency text", () => {
   it("interpolates supported amount placeholders", () => {
     expect(
       interpolateFreeShippingText(
-        "You're {{amount}} away from free shipping",
+        "You're {{remaining_amount}} away from free shipping",
         "$45.00",
       ),
     ).toBe("You're $45.00 away from free shipping");
     expect(
       interpolateFreeShippingText("Add {{remaining_amount}} more", "$45.00"),
     ).toBe("Add $45.00 more");
+    // Aliases are gone — old tokens are left untouched.
+    expect(
+      interpolateFreeShippingText("You're {{amount}} away", "$45.00"),
+    ).toBe("You're {{amount}} away");
   });
 });

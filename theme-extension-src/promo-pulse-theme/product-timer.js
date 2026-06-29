@@ -699,7 +699,7 @@
         texts.freeShippingEmptyText ||
         settings.emptyCartMessage ||
         texts.freeShippingProgressText ||
-        "You're {{amount}} away from free shipping";
+        "You're {{remaining_amount}} away from free shipping";
     } else if (progress.unlocked) {
       return (
         texts.freeShippingSuccessText ||
@@ -709,7 +709,7 @@
     } else {
       template =
         texts.freeShippingProgressText ||
-        "You're {{amount}} away from free shipping";
+        "You're {{remaining_amount}} away from free shipping";
     }
 
     return template

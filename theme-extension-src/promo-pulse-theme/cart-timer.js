@@ -1472,7 +1472,7 @@
     var threshold = Number(settings.thresholdAmount || 0);
     var remaining = Math.max(0, threshold - subtotal);
     var amount = money(remaining, config && config.currency);
-    var progressText = "You're {{amount}} away from free shipping";
+    var progressText = "You're {{remaining_amount}} away from free shipping";
     var template;
 
     if (subtotal <= 0) {

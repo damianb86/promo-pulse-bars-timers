@@ -68,7 +68,7 @@ const genericCopy: Record<string, CampaignTranslationValues> = {
     expiredText: "This offer has ended.",
     freeShippingEmptyText:
       "Your cart is empty. Add items to unlock free shipping.",
-    freeShippingProgressText: "You're {{amount}} away from free shipping",
+    freeShippingProgressText: "You're {{remaining_amount}} away from free shipping",
     freeShippingSuccessText: "You've unlocked free shipping!",
     deliveryBeforeCutoffText: "Order in {{time_left}} to ship today.",
     deliveryAfterCutoffText: "Orders placed now ship {{ships_weekday}}.",
@@ -190,7 +190,7 @@ const defaultCampaignCopy: Record<
       ctaText: "Continue shopping",
       freeShippingEmptyText:
         "Your cart is empty. Add items to unlock free shipping.",
-      freeShippingProgressText: "You're {{amount}} away from free shipping",
+      freeShippingProgressText: "You're {{remaining_amount}} away from free shipping",
       freeShippingSuccessText: "You've unlocked free shipping!",
       badgeText: "Free shipping",
     },

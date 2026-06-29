@@ -402,10 +402,9 @@
         ? "bar"
         : "block";
 
-    var amount = money(
-      progress.amountRemaining,
-      (campaign.freeShipping || {}).currencyCode,
-    );
+    var currency = (campaign.freeShipping || {}).currencyCode;
+    var amount = money(progress.amountRemaining, currency);
+    var pct = Math.round(progress.percentage);
     var bar = window.CountPulseSurface.build({
       variant: variant,
       placement: campaign.placement,
@@ -414,9 +413,14 @@
       timezone: campaign.timezone,
       locale: config.locale,
       variables: {
-        amount: amount,
-        remaining: amount,
         remaining_amount: amount,
+        cart_subtotal: money(progress.cartSubtotal, currency),
+        threshold_amount: money(
+          Number((campaign.freeShipping || {}).thresholdAmount || 0),
+          currency,
+        ),
+        progress_percent: pct + "%",
+        remaining_percent: Math.max(0, 100 - pct) + "%",
       },
       headline: texts.headline || "Free shipping",
       body: buildMessage(campaign, progress),
@@ -459,7 +463,7 @@
         settings.emptyCartMessage ||
         interpolate(
           texts.freeShippingProgressText ||
-            "You're {{amount}} away from free shipping",
+            "You're {{remaining_amount}} away from free shipping",
           amount,
         )
       );
@@ -475,7 +479,7 @@
 
     return interpolate(
       texts.freeShippingProgressText ||
-        "You're {{amount}} away from free shipping",
+        "You're {{remaining_amount}} away from free shipping",
       amount,
     );
   }
@@ -1317,10 +1321,8 @@
   }
 
   function interpolate(template, amount) {
-    return template
-      .replace(/\{\{\s*amount\s*\}\}/g, amount)
-      .replace(/\{\{\s*remaining\s*\}\}/g, amount)
-      .replace(/\{\{\s*remaining_amount\s*\}\}/g, amount);
+    // Canonical token only (no aliases).
+    return template.replace(/\{\{\s*remaining_amount\s*\}\}/g, amount);
   }
 
   function money(amount, currency) {

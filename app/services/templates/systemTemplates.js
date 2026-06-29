@@ -827,7 +827,7 @@ function buildBaseTexts(definition) {
       ctaUrl: settings.ctaUrl || "/collections/all",
       expiredText: "This free shipping offer has ended.",
       freeShippingEmptyText: "Add items to unlock free shipping.",
-      freeShippingProgressText: "You're {{amount}} away from free shipping.",
+      freeShippingProgressText: "You're {{remaining_amount}} away from free shipping.",
       freeShippingSuccessText: "You've unlocked free shipping.",
       badgeText: settings.badgeText,
     };

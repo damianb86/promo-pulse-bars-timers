@@ -2180,7 +2180,7 @@ async function createFreeShippingCampaign(
           {
             ...englishTranslation("Free shipping"),
             freeShippingProgressText:
-              "You're {{amount}} away from free shipping",
+              "You're {{remaining_amount}} away from free shipping",
             freeShippingSuccessText: "You've unlocked free shipping!",
           },
         ],

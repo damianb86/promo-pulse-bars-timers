@@ -89,6 +89,11 @@ import type {
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import type { CampaignSuggestion } from "../types/ai-campaign";
+import {
+  MESSAGE_VARIABLES,
+  messageVariableScopeLabel,
+  variableScopesForType,
+} from "../utils/message-variables";
 import { CustomMessagesEditor } from "./CustomMessagesEditor";
 import {
   parseCustomMessages,
@@ -4770,222 +4775,44 @@ function CampaignInfoContent({
   );
 }
 
-type MessageVariableGroup = {
-  title: string;
-  description: string;
-  variables: Array<{ token: string; description: string; example: string }>;
-};
-
-const globalMessageVariables: MessageVariableGroup = {
-  title: "Global (any campaign type)",
-  description:
-    "These work in every campaign type. Drop them into any message field.",
-  variables: [
-    {
-      token: "{{time_left}}",
-      description:
-        "Live countdown remaining, shown whenever the campaign has an active timer or cutoff.",
-      example: "02h 15m",
-    },
-    {
-      token: "{{time_remaining}}",
-      description: "Alias of {{time_left}}.",
-      example: "02h 15m",
-    },
-    {
-      token: "{{year}}",
-      description: "The current calendar year.",
-      example: "2026",
-    },
-  ],
-};
-
-const timerMessageVariables: MessageVariableGroup = {
-  title: "Timer",
-  description:
-    "The campaign's scheduled end, formatted in the campaign timezone and the storefront locale.",
-  variables: [
-    {
-      token: "{{end_date}}",
-      description: "Date the timer ends.",
-      example: "Apr 15",
-    },
-    {
-      token: "{{end_time}}",
-      description: "Time the timer ends.",
-      example: "11:59 PM",
-    },
-  ],
-};
-
-const badgeMessageVariables: MessageVariableGroup = {
-  title: "Product badge",
-  description:
-    "Use the timer end so a badge can read like \"Ends {{end_date}}\". Keep badge copy short.",
-  variables: [
-    {
-      token: "{{end_date}}",
-      description: "Date the badge's offer ends.",
-      example: "Apr 15",
-    },
-    {
-      token: "{{end_time}}",
-      description: "Time the badge's offer ends.",
-      example: "11:59 PM",
-    },
-  ],
-};
-
-const freeShippingMessageVariables: MessageVariableGroup = {
-  title: "Free shipping",
-  description:
-    "Replaced with the amount still needed to unlock free shipping, formatted in the cart currency.",
-  variables: [
-    {
-      token: "{{amount}}",
-      description: "Amount remaining to reach the free shipping threshold.",
-      example: "$24.00",
-    },
-    {
-      token: "{{remaining}}",
-      description: "Alias of {{amount}}.",
-      example: "$24.00",
-    },
-    {
-      token: "{{remaining_amount}}",
-      description: "Alias of {{amount}}.",
-      example: "$24.00",
-    },
-  ],
-};
-
-const lowStockMessageVariables: MessageVariableGroup = {
-  title: "Low stock",
-  description:
-    "Replaced with the remaining inventory when Shopify exposes a quantity at or below your threshold.",
-  variables: [
-    {
-      token: "{{quantity}}",
-      description: "Remaining units in stock.",
-      example: "7",
-    },
-    {
-      token: "{{count}}",
-      description: "Alias of {{quantity}}.",
-      example: "7",
-    },
-  ],
-};
-
-const deliveryCutoffMessageVariables: MessageVariableGroup = {
-  title: "Delivery cutoff",
-  description:
-    "Computed from the cutoff, processing, and delivery settings in the campaign's timezone. Dates and weekdays follow the storefront locale.",
-  variables: [
-    {
-      token: "{{cutoff_time}}",
-      description: "Time of the daily cutoff.",
-      example: "2:00 PM",
-    },
-    {
-      token: "{{delivery_range}}",
-      description: "Estimated delivery window (min to max date).",
-      example: "Apr 12 – Apr 15",
-    },
-    {
-      token: "{{ships_date}}",
-      description: "Date the order is expected to ship.",
-      example: "Apr 10",
-    },
-    {
-      token: "{{ships_weekday}}",
-      description: "Weekday the order is expected to ship.",
-      example: "Wednesday",
-    },
-    {
-      token: "{{min_delivery_date}}",
-      description: "Earliest estimated delivery date.",
-      example: "Apr 12",
-    },
-    {
-      token: "{{min_delivery_weekday}}",
-      description: "Earliest estimated delivery weekday.",
-      example: "Friday",
-    },
-    {
-      token: "{{max_delivery_date}}",
-      description: "Latest estimated delivery date.",
-      example: "Apr 15",
-    },
-    {
-      token: "{{max_delivery_weekday}}",
-      description: "Latest estimated delivery weekday.",
-      example: "Monday",
-    },
-  ],
-};
-
-function messageVariableGroupsForType(
-  type: CampaignFormValues["type"],
-): MessageVariableGroup[] {
-  // Every type gets the global variables, plus the ones specific to its data.
-  const specific: MessageVariableGroup[] = [];
-
-  if (type === "FREE_SHIPPING_GOAL") {
-    specific.push(freeShippingMessageVariables);
-  } else if (type === "LOW_STOCK") {
-    specific.push(lowStockMessageVariables);
-  } else if (type === "DELIVERY_CUTOFF") {
-    specific.push(deliveryCutoffMessageVariables);
-  } else if (type === "PRODUCT_BADGE") {
-    specific.push(badgeMessageVariables);
-  } else {
-    // COUNTDOWN_BAR, PRODUCT_TIMER, CART_TIMER — countdown-driven types.
-    specific.push(timerMessageVariables);
-  }
-
-  return [globalMessageVariables, ...specific];
-}
-
 function MessageVariablesInfo({ type }: { type: CampaignFormValues["type"] }) {
-  const groups = messageVariableGroupsForType(type);
+  const scopes = variableScopesForType(type);
+  const variablesByScope = scopes
+    .map((scope) => ({
+      scope,
+      label: messageVariableScopeLabel(scope),
+      variables: MESSAGE_VARIABLES.filter(
+        (variable) => variable.scope === scope,
+      ),
+    }))
+    .filter((group) => group.variables.length > 0);
 
   return (
     <div className="counterpulse-info-copy">
       <p>
         Wrap a variable in double curly braces to insert live data into your
-        headline, subheadline, CTA, or any other message. Unknown variables are
-        left untouched.
+        headline, subheadline, CTA, any message — or directly into the custom
+        HTML structure. Unknown variables are left untouched.
       </p>
 
-      {groups.length === 0 ? (
-        <p className="counterpulse-message-variables__empty">
-          This campaign type renders its copy exactly as written and does not
-          support dynamic variables.
-        </p>
-      ) : (
-        groups.map((group) => (
-          <div className="counterpulse-message-variables" key={group.title}>
-            <strong className="counterpulse-message-variables__title">
-              {group.title}
-            </strong>
-            <p className="counterpulse-message-variables__desc">
-              {group.description}
-            </p>
-            <ul className="counterpulse-message-variables__list">
-              {group.variables.map((variable) => (
-                <li key={variable.token}>
-                  <code>{variable.token}</code>
-                  <span>{variable.description}</span>
-                  <em>
-                    renders as <b>{variable.example}</b>
-                  </em>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
-      )}
+      {variablesByScope.map((group) => (
+        <div className="counterpulse-message-variables" key={group.scope}>
+          <strong className="counterpulse-message-variables__title">
+            {group.label}
+          </strong>
+          <ul className="counterpulse-message-variables__list">
+            {group.variables.map((variable) => (
+              <li key={variable.token}>
+                <code>{`{{${variable.token}}}`}</code>
+                <span>{variable.description}</span>
+                <em>
+                  renders as <b>{variable.example}</b>
+                </em>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

@@ -197,7 +197,7 @@ function buildFreeShippingViewModel(
   const progressText =
     readText(campaign.texts.freeShippingProgressText) ||
     readText(campaign.freeShipping?.emptyCartMessage) ||
-    "You're {{amount}} away from free shipping.";
+    "You're {{remaining_amount}} away from free shipping.";
   const title =
     remainingAmount <= 0
       ? successText

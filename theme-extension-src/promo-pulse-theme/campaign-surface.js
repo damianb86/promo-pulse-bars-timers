@@ -197,13 +197,39 @@
   function interpolateMessage(text, spec) {
     if (!text || text.indexOf("{{") === -1) return text || "";
 
+    var now = new Date();
     var replacements = {
       time_left: friendlyTimeLeft(spec),
-      time_remaining: friendlyTimeLeft(spec),
-      year: String(new Date().getFullYear()),
+      year: String(now.getFullYear()),
+      month: now.toLocaleDateString(spec.locale || undefined, { month: "long" }),
+      day: String(now.getDate()),
+      weekday: now.toLocaleDateString(spec.locale || undefined, {
+        weekday: "long",
+      }),
+      date: now.toLocaleDateString(spec.locale || undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+      time: now.toLocaleTimeString(spec.locale || undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
       end_date: formatEndsAt(spec, false),
       end_time: formatEndsAt(spec, true),
     };
+
+    // Individual countdown components when a timer is active.
+    if (spec.timer && spec.timer.remainingMs != null) {
+      var totalSeconds = Math.max(0, Math.floor(spec.timer.remainingMs / 1000));
+      var pad = function (value) {
+        return String(value).padStart(2, "0");
+      };
+      replacements.days_left = String(Math.floor(totalSeconds / 86400));
+      replacements.hours_left = pad(Math.floor((totalSeconds % 86400) / 3600));
+      replacements.minutes_left = pad(Math.floor((totalSeconds % 3600) / 60));
+      replacements.seconds_left = pad(totalSeconds % 60);
+    }
 
     // Campaign-type-specific values (amount, quantity, delivery_*, ...) so any
     // field — headline, body, CTA, badge — can use them, not just the body.
@@ -1341,6 +1367,9 @@
     if (spec.dataTestId) root.setAttribute("data-testid", spec.dataTestId);
 
     hydrateStructureSlots(root, spec, design);
+    // Interpolate {{variables}} the merchant typed directly into the structure's
+    // own static text (not just the dynamic slots).
+    interpolateStructureTextNodes(root, spec);
 
     // Wrap the surface in a scope element carrying the unique id. The campaign
     // CSS targets __CP_SCOPE__ as an ANCESTOR (e.g. "__CP_SCOPE__ .cp-promo {}"),
@@ -1362,6 +1391,25 @@
     }
 
     return wrapper;
+  }
+
+  // Walks the structure's text nodes and interpolates {{variables}} typed
+  // directly into the custom HTML. Idempotent: already-filled slot text has no
+  // remaining tokens, so re-running is harmless.
+  function interpolateStructureTextNodes(rootEl, spec) {
+    if (!rootEl || typeof document.createTreeWalker !== "function") return;
+    var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
+    var pending = [];
+    var current = walker.nextNode();
+    while (current) {
+      if (current.nodeValue && current.nodeValue.indexOf("{{") !== -1) {
+        pending.push(current);
+      }
+      current = walker.nextNode();
+    }
+    pending.forEach(function (textNode) {
+      textNode.nodeValue = interpolateMessage(textNode.nodeValue, spec);
+    });
   }
 
   // Index custom message snippets shipped with the structure so the

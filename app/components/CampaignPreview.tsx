@@ -22,8 +22,8 @@ import {
 } from "../utils/custom-messages";
 import type { PreviewDevice } from "./DevicePreviewToggle";
 import {
+  buildFreeShippingVariables,
   calculateFreeShippingProgress,
-  formatCurrencyAmount,
   interpolateFreeShippingText,
 } from "../lib/free-shipping";
 import { buildLowStockMessage } from "../lib/low-stock";
@@ -594,15 +594,19 @@ function PromoSurface({
   const lowStockPreview = buildLowStockPreview(viewModel);
   // Dynamic variables work in every field, so interpolate the headline/body/CTA
   // (and badge text) for the preview the same way the storefront surface does.
+  const previewNow = now ?? new Date();
   const previewVariables: Record<string, string> = {
-    year: String(new Date().getFullYear()),
+    ...buildGlobalDateVariables(previewNow),
     // A representative stock value so {{quantity}} renders in the preview for
     // any field (the storefront uses the real product inventory).
     quantity: "5",
-    count: "5",
   };
   if (timerState?.isActive) {
     previewVariables.time_left = formatPreviewTimeLeft(timerState.remainingMs);
+    Object.assign(
+      previewVariables,
+      buildCountdownPartVariables(timerState.remainingMs),
+    );
   } else if (deliveryPreview) {
     previewVariables.time_left = deliveryPreview.timeRemaining;
   }
@@ -612,9 +616,6 @@ function PromoSurface({
     lowStockPreview?.variables ?? {},
     deliveryPreview?.variables ?? {},
   );
-  if (!previewVariables.time_remaining && previewVariables.time_left) {
-    previewVariables.time_remaining = previewVariables.time_left;
-  }
   const interpolate = (text: string) =>
     interpolatePreviewMessage(text, previewVariables);
 
@@ -701,6 +702,7 @@ function PromoSurface({
             sanitizeBasicHtml(interpolate(message.text)),
           ]),
         )}
+        messageVariables={previewVariables}
         placement={placement}
         structureCss={structureCss}
         inspect={inspect}
@@ -997,6 +999,7 @@ function StructurePromoSurface({
   headlineHtml,
   bodyHtml,
   customMessagesHtml = {},
+  messageVariables = {},
   ctaText,
   hasTimer,
   hasOffer,
@@ -1020,6 +1023,9 @@ function StructurePromoSurface({
   // Interpolated + sanitized custom-message HTML keyed by message id, filled into
   // data-cp-slot="custom-<id>" slots.
   customMessagesHtml?: Record<string, string>;
+  // Dynamic variable values so {{tokens}} in the structure's own text nodes are
+  // interpolated (merchants can place variables directly in the custom HTML).
+  messageVariables?: Record<string, string>;
   ctaText: string;
   hasTimer: boolean;
   hasOffer: boolean;
@@ -1142,7 +1148,11 @@ function StructurePromoSurface({
   };
 
   const renderNode = (node: StructureNode, key: string): ReactNode => {
-    if (node.tag === TEXT_TAG) return node.text ?? "";
+    if (node.tag === TEXT_TAG) {
+      // Interpolate {{variables}} the merchant typed directly into the custom
+      // HTML text so they resolve like message fields do.
+      return interpolatePreviewMessage(node.text ?? "", messageVariables);
+    }
     const slot = getNodeSlot(node);
     if (slot) {
       const rendered = renderSlot(node, slot, key);
@@ -1854,6 +1864,40 @@ function buildLowStockPreview(viewModel: CampaignViewModel) {
   };
 }
 
+// Current date/time tokens available in every campaign type. Mirrors
+// buildGlobalDateVariables in campaign-surface.js.
+function buildGlobalDateVariables(now: Date): Record<string, string> {
+  return {
+    year: String(now.getFullYear()),
+    month: now.toLocaleDateString("en-US", { month: "long" }),
+    day: String(now.getDate()),
+    weekday: now.toLocaleDateString("en-US", { weekday: "long" }),
+    date: now.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }),
+    time: now.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  };
+}
+
+// Individual countdown components (zero-padded). Mirrors the storefront builder.
+function buildCountdownPartVariables(
+  remainingMs: number,
+): Record<string, string> {
+  const total = Math.max(0, Math.floor(remainingMs / 1000));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return {
+    days_left: String(Math.floor(total / 86400)),
+    hours_left: pad(Math.floor((total % 86400) / 3600)),
+    minutes_left: pad(Math.floor((total % 3600) / 60)),
+    seconds_left: pad(total % 60),
+  };
+}
+
 function formatPreviewTimeLeft(remainingMs: number) {
   const total = Math.max(0, Math.floor(remainingMs / 1000));
   const days = Math.floor(total / 86400);
@@ -1900,7 +1944,7 @@ function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
 
   const template = promise.beforeCutoff
     ? viewModel.deliveryBeforeCutoffText ||
-      "Order within {{time_remaining}} to get it by {{max_delivery_weekday}}"
+      "Order within {{time_left}} to get it by {{max_delivery_weekday}}"
     : promise.afterCutoffBehavior === "SHOW_AFTER_CUTOFF_MESSAGE"
       ? viewModel.deliveryAfterCutoffText || "Orders placed now ship tomorrow"
       : "Order today and get it between {{delivery_range}}";
@@ -1908,7 +1952,7 @@ function buildDeliveryPreview(viewModel: CampaignViewModel, now: Date | null) {
   return {
     beforeCutoff: promise.beforeCutoff,
     message: formatDeliveryPromiseMessage(template, promise.messageVariables),
-    timeRemaining: promise.messageVariables.time_remaining,
+    timeRemaining: promise.messageVariables.time_left,
     variables: promise.messageVariables as Record<string, string>,
   };
 }
@@ -1926,11 +1970,12 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
     viewModel.freeShipping.thresholdAmount,
     cartSubtotal,
   );
-  const amount = formatCurrencyAmount(
-    progress.amountRemaining,
+  const variables = buildFreeShippingVariables(
+    progress,
     viewModel.freeShipping.currencyCode,
     "en-US",
   );
+  const amount = variables.remaining_amount;
 
   if (cartSubtotal <= 0) {
     return {
@@ -1939,13 +1984,13 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
         viewModel.freeShipping.emptyCartMessage ||
         interpolateFreeShippingText(
           viewModel.freeShippingProgressText ||
-            "You're {{amount}} away from free shipping",
+            "You're {{remaining_amount}} away from free shipping",
           amount,
         ),
       percentage: progress.percentage,
       progressStyle: viewModel.freeShipping.progressStyle,
       unlocked: progress.unlocked,
-      variables: { amount, remaining: amount, remaining_amount: amount },
+      variables,
     };
   }
 
@@ -1956,13 +2001,13 @@ function buildFreeShippingPreview(viewModel: CampaignViewModel) {
         "You've unlocked free shipping!"
       : interpolateFreeShippingText(
           viewModel.freeShippingProgressText ||
-            "You're {{amount}} away from free shipping",
+            "You're {{remaining_amount}} away from free shipping",
           amount,
         ),
     percentage: progress.percentage,
     progressStyle: viewModel.freeShipping.progressStyle,
     unlocked: progress.unlocked,
-    variables: { amount, remaining: amount, remaining_amount: amount },
+    variables,
   };
 }
 

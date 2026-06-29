@@ -90,7 +90,8 @@ describe("campaign default translations", () => {
       translations.find((translation) => translation.locale === "en"),
     ).toMatchObject({
       headline: "You are close to free shipping",
-      freeShippingProgressText: "You're {{amount}} away from free shipping",
+      freeShippingProgressText:
+        "You're {{remaining_amount}} away from free shipping",
       freeShippingSuccessText: "You've unlocked free shipping!",
     });
   });

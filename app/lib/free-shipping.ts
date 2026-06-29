@@ -53,10 +53,41 @@ export function interpolateFreeShippingText(
   template: string,
   formattedAmount: string,
 ) {
-  return template
-    .replace(/\{\{\s*amount\s*\}\}/g, formattedAmount)
-    .replace(/\{\{\s*remaining\s*\}\}/g, formattedAmount)
-    .replace(/\{\{\s*remaining_amount\s*\}\}/g, formattedAmount);
+  // Canonical token only (no aliases).
+  return template.replace(
+    /\{\{\s*remaining_amount\s*\}\}/g,
+    formattedAmount,
+  );
+}
+
+// Canonical free-shipping message variables (no aliases). Mirrors the storefront
+// builder in free-shipping.js so the preview and the live bar resolve the same
+// tokens.
+export function buildFreeShippingVariables(
+  progress: FreeShippingProgress,
+  currencyCode: string,
+  locale = "en",
+): Record<string, string> {
+  const pct = Math.round(progress.percentage);
+  return {
+    remaining_amount: formatCurrencyAmount(
+      progress.amountRemaining,
+      currencyCode,
+      locale,
+    ),
+    cart_subtotal: formatCurrencyAmount(
+      progress.cartSubtotal,
+      currencyCode,
+      locale,
+    ),
+    threshold_amount: formatCurrencyAmount(
+      progress.threshold,
+      currencyCode,
+      locale,
+    ),
+    progress_percent: `${pct}%`,
+    remaining_percent: `${Math.max(0, 100 - pct)}%`,
+  };
 }
 
 function normalizeMoneyAmount(value: number) {

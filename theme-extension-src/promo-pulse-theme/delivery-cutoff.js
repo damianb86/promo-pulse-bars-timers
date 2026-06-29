@@ -514,7 +514,6 @@
       ships_date: date.format(display(ship)),
       ships_weekday: weekday.format(display(ship)),
       time_left: leftText,
-      time_remaining: leftText,
     };
   }
 

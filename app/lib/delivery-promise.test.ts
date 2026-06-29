@@ -96,7 +96,7 @@ describe("calculateDeliveryPromise", () => {
     expect(spanish.messageVariables.max_delivery_weekday).toBe("viernes");
     expect(
       formatDeliveryPromiseMessage(
-        "Order within {{time_remaining}} to get it by {{max_delivery_weekday}}",
+        "Order within {{time_left}} to get it by {{max_delivery_weekday}}",
         english.messageVariables,
       ),
     ).toBe("Order within 03:00:00 to get it by Friday");

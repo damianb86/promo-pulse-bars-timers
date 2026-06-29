@@ -644,21 +644,27 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
   {
     example: '<strong data-cp-slot="headline"></strong>',
     renders:
-      "The campaign headline. Filled with the localized headline text (basic inline HTML like <b>/<span> allowed in the message settings).",
+      "The headline message. Filled with the localized headline text (basic inline HTML like <b>/<span> allowed in the message settings).",
     attributes:
       "class, id, style, data-* — kept for styling/positioning. Leave the element empty; the text comes from settings.",
   },
   {
     example: '<span data-cp-slot="body"></span>',
     renders:
-      "The supporting line (subheadline / free-shipping / low-stock / delivery message). Hidden automatically when there is no body text.",
+      "The supporting message line. Filled with the message that matches the campaign: the subheadline, or — depending on the type — the free-shipping empty-cart/success message, the low-stock message, or the delivery-cutoff message. Hidden automatically when there is no body text.",
     attributes: "class, id, style, data-*.",
   },
   {
     example: '<span data-cp-slot="cta"></span>  (or <a data-cp-slot="cta">)',
     renders:
-      "The call-to-action button. Use <a> to render a link (the storefront sets href automatically); <span> for a plain button. Hidden when the CTA is turned off.",
+      "The call-to-action button text. Use <a> to render a link (the storefront sets href automatically); <span> for a plain button. Hidden when the CTA is turned off.",
     attributes: "class, id, style, data-*. Tag <a> vs <span> controls link vs button.",
+  },
+  {
+    example: '<span data-cp-slot="badge-text"></span>',
+    renders:
+      "The badge message text (product-badge campaigns). Filled with the badge text from settings (falls back to the headline when no badge text is set).",
+    attributes: "class, id, style, data-*.",
   },
   {
     example: '<span data-cp-slot="icon"></span>',
@@ -670,7 +676,7 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
   {
     example: '<div data-cp-slot="timer"></div>',
     renders:
-      "The live countdown. Renders with the timer style/format from Design settings and updates every second on the storefront.",
+      "The live countdown. Renders with the timer style/format from Design settings and updates every second on the storefront. When the timer expires it shows the expired message (expiredText) from settings in its place.",
     attributes:
       'class, id, style, data-*. data-cp-compact="true" forces the compact one-line timer; "false" forces the full timer. Use data-cp-slot="timer-inline" inside the copy block for an inline compact timer.',
   },
@@ -690,6 +696,12 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
     example: '<div data-cp-slot="progress"></div>',
     renders:
       "The free-shipping progress bar. Shown only for free-shipping campaigns with the progress bar enabled.",
+    attributes: "class, id, style, data-*.",
+  },
+  {
+    example: '<div data-cp-slot="badge-timer"></div>',
+    renders:
+      "A compact countdown rendered inside a product badge (badge campaigns with a timer). Shown only when the badge campaign has a timer.",
     attributes: "class, id, style, data-*.",
   },
 ];

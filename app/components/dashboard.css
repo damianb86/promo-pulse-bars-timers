@@ -3318,6 +3318,111 @@ s-page::part(page) {
   align-items: start;
 }
 
+/* Custom CSS Key:Value chips + add row inside the inspector panel. */
+.counterpulse-inspector-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.counterpulse-inspector-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #d8dee6;
+  border-radius: 999px;
+  background: #f6f7f9;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.counterpulse-inspector-chip__edit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 11px;
+  color: #202223;
+  min-width: 0;
+}
+
+.counterpulse-inspector-chip__edit:hover {
+  background: #eef0f3;
+}
+
+.counterpulse-inspector-chip__prop {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.counterpulse-inspector-chip__sep {
+  color: #9ca3af;
+}
+
+.counterpulse-inspector-chip__value {
+  color: #5c6470;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.counterpulse-inspector-chip__remove {
+  border: 0;
+  border-left: 1px solid #e3e6ea;
+  background: none;
+  cursor: pointer;
+  padding: 0 8px;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.counterpulse-inspector-chip__remove:hover {
+  color: #d72c0d;
+  background: #fdf1ef;
+}
+
+.counterpulse-inspector-custom-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.counterpulse-inspector-custom-add__key,
+.counterpulse-inspector-custom-add__value {
+  min-height: 36px;
+  border: 1px solid #d8dee6;
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-size: 12px;
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+.counterpulse-inspector-custom-add__button {
+  min-height: 36px;
+  border: 1px solid #008060;
+  border-radius: 7px;
+  background: #008060;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.counterpulse-inspector-custom-add__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Field input styling for inspector fields that aren't inside
    .counterpulse-design-controls (plain inputs/selects + image fields). */
 .counterpulse-inspector-card .counterpulse-design-control-field > input,

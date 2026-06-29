@@ -3144,7 +3144,13 @@ s-page::part(page) {
 
 /* Visual inspector (Design tab preview). */
 .counterpulse-design-editor__preview-host {
-  position: relative;
+  /* Sticky on the grid item itself (not the inner panel) so it has the full
+     controls-column height to stick within and stays visible while scrolling,
+     matching the Campaign tab. Sticky is still a positioned ancestor, so the
+     absolutely-positioned inspector overlay keeps resolving against it. */
+  position: sticky;
+  top: 16px;
+  align-self: start;
 }
 
 .counterpulse-inspector-highlight {
@@ -8297,10 +8303,7 @@ s-page::part(page) {
   gap: 14px;
 }
 
-.counterpulse-design-editor__preview {
-  position: sticky;
-  top: 16px;
-}
+/* The sticky behavior now lives on the preview host (the grid item) above. */
 
 .counterpulse-message-addon {
   margin-top: 18px;

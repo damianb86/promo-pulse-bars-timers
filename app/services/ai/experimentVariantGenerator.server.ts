@@ -16,6 +16,7 @@ import {
   placementTypeOptions,
   type PlacementTypeValue,
 } from "../../types/campaign-options";
+import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
 export type ExperimentVariantAiStrategy =
   | "urgency"
@@ -418,6 +419,8 @@ function buildVariantPrompt(input: ExperimentVariantAiInput) {
         ]
       : []),
     "Allowed changes: message copy, CTA text, CTA URL, placement override, layout, preset/templateKey, images, colors, typography, timer style, behavior, motion, icon, and other design values.",
+    describeMessageVariablesForAi(),
+    "You MAY use those {{variables}} in the variant's copy (they resolve live on the storefront). Only the ones for this campaign type resolve.",
     "Forbidden changes: offers, discounts, coupon rules, targeting, markets, schedule, products, or audience rules. Inherit those from the base campaign.",
     "Keep all claims realistic. Do not invent reviews, stock counts, guarantees, discount amounts, or deadlines that are not in the provided campaign text.",
     "Use United States English for any English copy.",

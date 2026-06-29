@@ -322,14 +322,28 @@
 
   function updateExistingBar(bar, campaign) {
     var progress = calculateProgress(campaign);
-    var detail = bar.querySelector(
-      ".counterpulse-preview-message-copy > span",
-    );
+    // Custom structures put the message in a data-cp-slot="body"; the legacy
+    // layout uses the message-copy span. Update whichever exists.
+    var detail =
+      bar.querySelector('[data-cp-slot="body"]') ||
+      bar.querySelector(".counterpulse-preview-message-copy > span");
     var countdown = bar.querySelector("[data-cp-timer]");
     var timerState = calculateTimerState(campaign, new Date());
 
     if (detail) {
-      updateText(detail, buildMessage(campaign, progress));
+      // Re-resolve the free-shipping tokens, then the global ones (time/date),
+      // so every variable updates live when the cart changes.
+      var body = buildMessage(campaign, progress);
+      if (window.CountPulseSurface && window.CountPulseSurface.interpolate) {
+        body = window.CountPulseSurface.interpolate(body, {
+          locale: config.locale,
+          endsAt: campaign.endsAt,
+          timezone: campaign.timezone,
+          timer: { remainingMs: timerState.remainingMs },
+          variables: freeShippingVars(campaign, progress),
+        });
+      }
+      updateText(detail, body);
     }
 
     updateProgress(bar, campaign, progress, detail ? detail.textContent : "");
@@ -402,9 +416,6 @@
         ? "bar"
         : "block";
 
-    var currency = (campaign.freeShipping || {}).currencyCode;
-    var amount = money(progress.amountRemaining, currency);
-    var pct = Math.round(progress.percentage);
     var bar = window.CountPulseSurface.build({
       variant: variant,
       placement: campaign.placement,
@@ -412,16 +423,7 @@
       endsAt: campaign.endsAt,
       timezone: campaign.timezone,
       locale: config.locale,
-      variables: {
-        remaining_amount: amount,
-        cart_subtotal: money(progress.cartSubtotal, currency),
-        threshold_amount: money(
-          Number((campaign.freeShipping || {}).thresholdAmount || 0),
-          currency,
-        ),
-        progress_percent: pct + "%",
-        remaining_percent: Math.max(0, 100 - pct) + "%",
-      },
+      variables: freeShippingVars(campaign, progress),
       headline: texts.headline || "Free shipping",
       body: buildMessage(campaign, progress),
       timer: {
@@ -452,19 +454,49 @@
     return bar;
   }
 
+  // Canonical free-shipping message variables (mirrors buildFreeShippingVariables
+  // in app/lib/free-shipping.ts and the preview).
+  function freeShippingVars(campaign, progress) {
+    var currency = (campaign.freeShipping || {}).currencyCode;
+    var pct = Math.round(progress.percentage);
+    return {
+      remaining_amount: money(progress.amountRemaining, currency),
+      cart_subtotal: money(progress.cartSubtotal, currency),
+      threshold_amount: money(
+        Number((campaign.freeShipping || {}).thresholdAmount || 0),
+        currency,
+      ),
+      progress_percent: pct + "%",
+      remaining_percent: Math.max(0, 100 - pct) + "%",
+    };
+  }
+
+  // Replaces every free-shipping token in a template (not just remaining_amount),
+  // so the body resolves the same way on initial render and on cart updates.
+  function interpolateFreeShipping(template, vars) {
+    return String(template || "").replace(
+      /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+      function (match, key) {
+        return Object.prototype.hasOwnProperty.call(vars, key)
+          ? vars[key]
+          : match;
+      },
+    );
+  }
+
   function buildMessage(campaign, progress) {
     var texts = campaign.texts || {};
     var settings = campaign.freeShipping || {};
-    var amount = money(progress.amountRemaining, settings.currencyCode);
+    var vars = freeShippingVars(campaign, progress);
 
     if (progress.cartSubtotal <= 0) {
       return (
         texts.freeShippingEmptyText ||
         settings.emptyCartMessage ||
-        interpolate(
+        interpolateFreeShipping(
           texts.freeShippingProgressText ||
             "You're {{remaining_amount}} away from free shipping",
-          amount,
+          vars,
         )
       );
     }
@@ -477,10 +509,10 @@
       );
     }
 
-    return interpolate(
+    return interpolateFreeShipping(
       texts.freeShippingProgressText ||
         "You're {{remaining_amount}} away from free shipping",
-      amount,
+      vars,
     );
   }
 
@@ -1318,11 +1350,6 @@
       return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
 
     return "inherit";
-  }
-
-  function interpolate(template, amount) {
-    // Canonical token only (no aliases).
-    return template.replace(/\{\{\s*remaining_amount\s*\}\}/g, amount);
   }
 
   function money(amount, currency) {

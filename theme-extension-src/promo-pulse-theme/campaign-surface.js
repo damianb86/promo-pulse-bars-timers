@@ -1586,6 +1586,7 @@
 
   window.CountPulseSurface = {
     build: build,
+    interpolate: interpolateMessage,
     applyStyle: applyStyle,
     computeTimerState: computeTimerState,
     buildTimer: buildTimer,

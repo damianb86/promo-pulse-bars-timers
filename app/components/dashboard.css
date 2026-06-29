@@ -4216,8 +4216,8 @@ s-page::part(page) {
    `zoom` (unlike transform) reflows, so the layout box shrinks too and nothing
    overflows the drawer. */
 .counterpulse-ai-drawer-preview-wing .counterpulse-variant-preview {
-  width: 1000px;
-  zoom: 0.5;
+  width: 1200px;
+  zoom: 0.42;
   max-height: calc((100vh - 180px) / 0.5);
   min-height: 0;
   align-items: start;

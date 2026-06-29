@@ -50,10 +50,25 @@ export const campaignAiReferenceImageAccept =
 
 // A reference image the merchant uploaded so the AI can visually match an
 // existing bar/timer/banner. `dataUrl` is a base64 data URI usable directly as
-// an OpenAI Responses `input_image.image_url`.
+// an OpenAI Responses `input_image.image_url`. `width`/`height` are the decoded
+// pixel dimensions (when they could be read from the file header); they let the
+// model reason about the image's real aspect ratio vs. the campaign target width
+// and let the asset pipeline crop normalized regions to pixels.
 export type CampaignAiReferenceImage = {
   dataUrl: string;
   mimeType: CampaignAiReferenceImageMimeType;
+  width?: number;
+  height?: number;
+};
+
+// A normalized bounding box (each value 0..1, relative to the reference image)
+// marking where an asset appears in the uploaded image, so the pipeline can crop
+// that exact region and use it as a visual reference for regeneration.
+export type CampaignAiAssetRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 export function isCampaignAiReferenceImageMimeType(
@@ -127,6 +142,11 @@ export type CampaignAiAssetSpec = {
   prompt: string;
   // Inline SVG markup (only when source === "svg").
   svg?: string;
+  // When the asset is visible in the uploaded reference image, the normalized
+  // region where it appears. The pipeline crops this region and feeds it to the
+  // image model as a visual reference so the asset is recreated faithfully
+  // instead of being invented from the text prompt alone.
+  region?: CampaignAiAssetRegion;
 };
 
 export type CampaignAiFormErrors = Partial<

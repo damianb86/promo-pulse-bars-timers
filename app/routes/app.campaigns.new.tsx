@@ -52,6 +52,7 @@ import {
   materializeCampaignAssets,
   stripAssetPlaceholders,
 } from "../services/assets/campaignAssetPipeline.server";
+import { withImageDimensions } from "../services/assets/imageProcessing.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import {
   canCreateCampaign,
@@ -187,8 +188,14 @@ export const action = async ({
 
   if (intent === "generateAiCampaignSuggestion") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
-    const { image: referenceImage, error: referenceImageError } =
+    const { image: parsedReferenceImage, error: referenceImageError } =
       parseCampaignAiReferenceImage(formData);
+    // Fill in the real pixel dimensions so the AI can reason about the image's
+    // aspect ratio vs. the campaign target width, and so the asset pipeline can
+    // crop normalized regions to pixels.
+    const referenceImage = parsedReferenceImage
+      ? await withImageDimensions(parsedReferenceImage)
+      : null;
     // With a reference image the textual product context is optional — the image
     // carries the context the AI needs.
     const parsedAi = parseCampaignAiFormData(formData, {

@@ -483,6 +483,57 @@ describe("AI campaign reference image", () => {
     expect(prompt).toContain('"it"');
   });
 
+  it("includes image dimensions and the no-inflate rule when provided", () => {
+    const prompt = buildCampaignAiImageUserPrompt(
+      buildDefaultCampaignAiInput({ productContext: "linen shirts" }),
+      undefined,
+      { width: 1200, height: 200 },
+    );
+
+    expect(prompt).toContain("1200px");
+    expect(prompt).toContain("200px");
+    expect(prompt).toContain("aspect ratio");
+    expect(prompt).toContain("horizontal bar");
+    expect(prompt).toContain("WITHOUT inflating");
+  });
+
+  it("round-trips an asset region through the applied suggestion", () => {
+    const reviewed = JSON.stringify({
+      promptVersion: "x",
+      source: "provider",
+      input: buildDefaultCampaignAiInput({
+        productContext: "sneakers",
+        generateVisualAssets: true,
+      }),
+      structureHtml:
+        '<section class="cp-promo"><img src="{{asset:hero}}" alt="x"></section>',
+      assets: [
+        {
+          key: "hero",
+          type: "background",
+          source: "generated",
+          prompt: "isolate the hero graphic",
+          region: { x: 0.1, y: 0.2, width: 0.5, height: 0.6 },
+        },
+        {
+          key: "bad",
+          type: "icon",
+          source: "generated",
+          prompt: "no region",
+          region: { x: 0.1, y: 0.2, width: 0, height: 0.6 },
+        },
+      ],
+    });
+
+    const applied = parseAppliedCampaignSuggestion(reviewed);
+    const hero = applied?.assets.find((asset) => asset.key === "hero");
+    const bad = applied?.assets.find((asset) => asset.key === "bad");
+
+    expect(hero?.region).toEqual({ x: 0.1, y: 0.2, width: 0.5, height: 0.6 });
+    // A degenerate region (zero width) is dropped.
+    expect(bad?.region).toBeUndefined();
+  });
+
   it("round-trips image-derived colors through the applied suggestion", () => {
     const reviewed = JSON.stringify({
       promptVersion: "x",

@@ -4,6 +4,7 @@ import type {
 } from "../../types/ai-campaign";
 import { sanitizeStructureHtml } from "../../utils/structure-html";
 import { isE2ETestMode } from "../e2e-test.server";
+import { cropReferenceRegion } from "../assets/imageProcessing.server";
 
 // Produces the binary for a single AI asset spec. Image specs go through an
 // image model (OpenAI gpt-image-1); svg specs are materialized directly from the
@@ -64,58 +65,146 @@ export function createMockAssetProvider(): AssetGenerationProvider {
   };
 }
 
+function readGeneratedB64(
+  payload: { data?: Array<{ b64_json?: string }> },
+  key: string,
+): string {
+  const b64 = payload.data?.[0]?.b64_json;
+  if (!b64) {
+    throw new AssetGenerationError(
+      `Image model returned no image for asset "${key}".`,
+    );
+  }
+  return b64;
+}
+
 function createOpenAiAssetProvider(apiKey: string): AssetGenerationProvider {
   const imagesUrl =
     process.env.OPENAI_IMAGES_URL?.trim() ||
     "https://api.openai.com/v1/images/generations";
+  const editsUrl =
+    process.env.OPENAI_IMAGE_EDITS_URL?.trim() ||
+    "https://api.openai.com/v1/images/edits";
   const model = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
 
+  // Text-to-image: recreate the asset from the prompt alone (no visual ref).
+  async function generateFromPrompt(
+    spec: CampaignAiAssetSpec,
+  ): Promise<GeneratedAssetBinary> {
+    let response: Response;
+    try {
+      response = await fetch(imagesUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          prompt: spec.prompt || `Campaign ${spec.type} asset`,
+          size: "1024x1024",
+          n: 1,
+        }),
+      });
+    } catch (error) {
+      throw new AssetGenerationError(
+        `Image generation request failed: ${(error as Error).message}`,
+      );
+    }
+
+    if (!response.ok) {
+      throw new AssetGenerationError(
+        `Image model returned status ${response.status} for asset "${spec.key}".`,
+      );
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ b64_json?: string }>;
+    };
+    return {
+      bytes: Buffer.from(readGeneratedB64(payload, spec.key), "base64"),
+      mimeType: "image/png",
+      extension: "png",
+      modelUsed: model,
+    };
+  }
+
+  // Image-to-image: crop the exact region of the uploaded reference where the
+  // asset lives and have the model recreate it as a clean, isolated asset. This
+  // is far more faithful than generating from the text description alone.
+  async function generateFromReferenceCrop(
+    spec: CampaignAiAssetSpec,
+    crop: { bytes: Buffer; mimeType: string },
+  ): Promise<GeneratedAssetBinary> {
+    const form = new FormData();
+    form.set("model", model);
+    form.set(
+      "prompt",
+      spec.prompt ||
+        `Recreate this ${spec.type} as a clean, isolated, high-quality asset ` +
+          `with a transparent background, faithful to the reference.`,
+    );
+    form.set("size", "1024x1024");
+    form.set("n", "1");
+    form.set(
+      "image",
+      new Blob([new Uint8Array(crop.bytes)], { type: crop.mimeType }),
+      `cp-${spec.key}.png`,
+    );
+
+    let response: Response;
+    try {
+      response = await fetch(editsUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+      });
+    } catch (error) {
+      throw new AssetGenerationError(
+        `Image edit request failed: ${(error as Error).message}`,
+      );
+    }
+
+    if (!response.ok) {
+      throw new AssetGenerationError(
+        `Image model returned status ${response.status} for asset "${spec.key}".`,
+      );
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ b64_json?: string }>;
+    };
+    return {
+      bytes: Buffer.from(readGeneratedB64(payload, spec.key), "base64"),
+      mimeType: "image/png",
+      extension: "png",
+      modelUsed: model,
+    };
+  }
+
   return {
-    async generateAsset(spec, _referenceImage) {
+    async generateAsset(spec, referenceImage) {
       if (spec.source === "svg") return materializeSvg(spec);
 
-      let response: Response;
-      try {
-        response = await fetch(imagesUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            prompt: spec.prompt || `Campaign ${spec.type} asset`,
-            size: "1024x1024",
-            n: 1,
-          }),
-        });
-      } catch (error) {
-        throw new AssetGenerationError(
-          `Image generation request failed: ${(error as Error).message}`,
-        );
+      // When the asset is visible in the uploaded image, crop that region and use
+      // it as a visual reference. Fall back to text-to-image if the crop or the
+      // edit call cannot be produced.
+      if (spec.region && referenceImage) {
+        const crop = await cropReferenceRegion(referenceImage, spec.region);
+        if (crop) {
+          try {
+            return await generateFromReferenceCrop(spec, crop);
+          } catch (error) {
+            console.error(
+              `Reference-crop generation failed for asset "${spec.key}"; ` +
+                "falling back to text-to-image",
+              error,
+            );
+          }
+        }
       }
 
-      if (!response.ok) {
-        throw new AssetGenerationError(
-          `Image model returned status ${response.status} for asset "${spec.key}".`,
-        );
-      }
-
-      const payload = (await response.json()) as {
-        data?: Array<{ b64_json?: string; url?: string }>;
-      };
-      const b64 = payload.data?.[0]?.b64_json;
-      if (!b64) {
-        throw new AssetGenerationError(
-          `Image model returned no image for asset "${spec.key}".`,
-        );
-      }
-      return {
-        bytes: Buffer.from(b64, "base64"),
-        mimeType: "image/png",
-        extension: "png",
-        modelUsed: model,
-      };
+      return generateFromPrompt(spec);
     },
   };
 }

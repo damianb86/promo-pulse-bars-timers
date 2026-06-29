@@ -1,4 +1,7 @@
-import type { CampaignAiInput } from "../../types/ai-campaign";
+import type {
+  CampaignAiInput,
+  CampaignAiReferenceImage,
+} from "../../types/ai-campaign";
 
 // Passed when the merchant clicks "Regenerate": the previous result + how close
 // it was, so the model IMPROVES it instead of starting over.
@@ -42,7 +45,7 @@ import {
   describeDesignSettingsForAi,
 } from "../../types/campaign-design";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v13";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v14";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -410,6 +413,32 @@ How to analyze the image:
 - Transcribe visible text into headline / subheadline / ctaText / expiredText,
   cleaned up and shortened to fit the placement.
 
+Proportions & scale (match the real image, do not inflate):
+- You are told the uploaded image's real pixel width, height, and aspect ratio,
+  and the TARGET WIDTH the campaign renders at for the chosen placement (see the
+  per-placement target widths above). Use these to adapt the design faithfully.
+- The target render width is fixed by the placement — do NOT change it. Your job
+  is to fit the image's content into that width while preserving the image's
+  visual scale (font sizes, button sizes, timer sizes, icon sizes, and bar
+  height relative to its width).
+- HORIZONTAL BARS/BANNERS (image much wider than tall — aspect ratio roughly 3:1
+  or wider, or a TOP_BAR/BOTTOM_BAR placement): when the target width is WIDER
+  than the source image, DO NOT scale everything up. Specifically:
+    * do NOT enlarge fonts (keep headline/body font-size modest, like a real
+      slim bar — typically clamp() around 13-18px for body, not huge);
+    * do NOT enlarge buttons, timers, or icons;
+    * do NOT increase the bar height / vertical padding beyond what the image
+      shows — keep a similar visual height.
+  Instead, use the extra horizontal space to SPACE OUT, ALIGN, and REPOSITION the
+  elements horizontally (e.g. justify-content: space-between, larger horizontal
+  gaps, push the CTA to the right). The result must read as the same bar stretched
+  to the wider width, NOT a zoomed-in version.
+- Keep the rendered height proportional to the source image's aspect ratio at the
+  target width ONLY for tall/contained cards. For slim bars, prioritize a small,
+  consistent height over matching the raw aspect ratio.
+- Never produce oversized fonts, buttons, or timers. When in doubt, err on the
+  side of smaller, tighter typography and spacing that matches a real promo bar.
+
 Critical rules for image mode:
 - OVERRIDE the earlier "do not provide custom color/gradient/background overrides"
   rule: in image mode you SHOULD populate the design.* visual fields (colors,
@@ -435,9 +464,25 @@ Visual assets (only when input.generateVisualAssets is true):
   patterns, textures, decorative images). Each asset:
   { "key": "short-id", "type": "background|icon|badge|pattern|texture|decoration|image",
     "source": "generated|svg", "prompt": "image-model prompt describing the asset",
-    "svg": "<svg>...</svg> (only when source is svg)" }
+    "svg": "<svg>...</svg> (only when source is svg)",
+    "region": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 } }
   - Use source "svg" for simple flat icons/badges/shapes (return clean <svg>); use
     "generated" with a detailed prompt for photographic/complex backgrounds/textures.
+  - REGION (strongly preferred when the asset is visible in the uploaded image):
+    When an asset — a background, icon, illustration, decorative image, badge,
+    texture, logo, etc. — actually appears in the reference image, you MUST set
+    "region" to the normalized bounding box where it appears: x, y, width, height
+    each between 0 and 1, relative to the image (x/y = top-left corner, as
+    fractions of the image width/height). The pipeline crops exactly that region
+    and feeds it to the image model as a visual reference so the asset is recreated
+    faithfully and cleanly (isolated, transparent background) instead of being
+    invented from text. Make the box tight around the asset.
+  - Do NOT generate an asset purely from a text description when there is a clear
+    visual reference for it in the image — always provide the region in that case.
+    Only omit "region" for assets that are NOT present in the image (e.g. a brand
+    new decorative element you are adding). When you set region, still write a
+    "prompt" describing how to clean it up (e.g. "isolate this icon on a
+    transparent background, remove surrounding text").
   - MANDATORY: every asset you list in "assets" MUST be referenced EXACTLY by its
     {{asset:key}} placeholder somewhere in structureHtml or structureCss, or it is
     wasted. Prefer a CSS background (e.g. background-image:
@@ -452,9 +497,44 @@ Visual assets (only when input.generateVisualAssets is true):
 ${describeDesignSettingsForAi()}
 `.trim();
 
+function buildImageProportionLines(
+  referenceImage?: Pick<CampaignAiReferenceImage, "width" | "height">,
+): string[] {
+  if (!referenceImage?.width || !referenceImage?.height) {
+    return [
+      "",
+      "Reference image dimensions were not detected — infer the aspect ratio",
+      "visually and follow the proportions & scale rules (do not inflate fonts,",
+      "buttons, timers, or icons when adapting to the placement target width).",
+    ];
+  }
+  const { width, height } = referenceImage;
+  const ratio = width / height;
+  const orientation =
+    ratio >= 3
+      ? "a wide horizontal bar/banner"
+      : ratio >= 1.3
+        ? "landscape"
+        : ratio <= 0.77
+          ? "portrait"
+          : "roughly square";
+  return [
+    "",
+    "Reference image real dimensions:",
+    `  - width: ${width}px`,
+    `  - height: ${height}px`,
+    `  - aspect ratio (width / height): ${ratio.toFixed(2)} (${orientation})`,
+    "Adapt the design to the placement's target width WITHOUT inflating fonts,",
+    "buttons, timers, icons, or height. For a wide horizontal bar, redistribute",
+    "elements horizontally into the extra width instead of scaling everything up,",
+    "and keep a slim, consistent height.",
+  ];
+}
+
 export function buildCampaignAiImageUserPrompt(
   input: CampaignAiInput,
   refinement?: CampaignAiRefinement,
+  referenceImage?: Pick<CampaignAiReferenceImage, "width" | "height">,
 ) {
   const payload = {
     objective: input.objective,
@@ -485,6 +565,7 @@ export function buildCampaignAiImageUserPrompt(
     "Optional merchant input JSON (fields may be empty when the merchant only",
     "uploaded an image — in that case infer everything from the image):",
     JSON.stringify(payload, null, 2),
+    ...buildImageProportionLines(referenceImage),
     ...buildRefinementSection(refinement),
     "",
     "Return the complete Promo Pulse campaign draft JSON, including populated",

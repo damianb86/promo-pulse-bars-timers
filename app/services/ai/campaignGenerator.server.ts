@@ -783,7 +783,11 @@ async function requestOpenAiJson(
     ? [
         {
           type: "input_text",
-          text: buildCampaignAiImageUserPrompt(input, refinement),
+          text: buildCampaignAiImageUserPrompt(
+            input,
+            refinement,
+            referenceImage,
+          ),
         },
         { type: "input_image", image_url: referenceImage.dataUrl },
       ]
@@ -1356,6 +1360,29 @@ const ASSET_SOURCES = new Set<CampaignAiAssetSource>([
   "svg",
 ]);
 
+// Parses the optional normalized region {x,y,width,height} (each 0..1) marking
+// where the asset appears in the reference image. Returns undefined unless all
+// four values are present, finite, and describe a non-empty box inside [0,1].
+function sanitizeAssetRegion(
+  value: unknown,
+): CampaignAiAssetSpec["region"] | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const num = (raw: unknown) => {
+    const parsed = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : null;
+  };
+  const x = num(record.x);
+  const y = num(record.y);
+  const width = num(record.width);
+  const height = num(record.height);
+  if (x === null || y === null || width === null || height === null) {
+    return undefined;
+  }
+  if (width <= 0 || height <= 0) return undefined;
+  return { x, y, width, height };
+}
+
 // Validates the AI's asset specs. Returns [] entirely when the merchant did not
 // request visual assets, so the feature can never be triggered implicitly.
 function sanitizeAiAssetSpecs(
@@ -1389,6 +1416,7 @@ function sanitizeAiAssetSpecs(
         source === "svg" && typeof record.svg === "string"
           ? record.svg
           : undefined,
+      region: sanitizeAssetRegion(record.region),
     });
     if (specs.length >= 8) break; // hard cap on assets per campaign
   }

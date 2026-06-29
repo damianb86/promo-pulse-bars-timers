@@ -1,4 +1,37 @@
 import type { CampaignAiInput } from "../../types/ai-campaign";
+
+// Passed when the merchant clicks "Regenerate": the previous result + how close
+// it was, so the model IMPROVES it instead of starting over.
+export type CampaignAiRefinement = {
+  closeness: string;
+  structureHtml: string;
+  structureCss: string;
+  headline?: string;
+  subheadline?: string;
+};
+
+function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
+  if (!refinement) return [];
+  return [
+    "",
+    "=== REFINEMENT (improve the previous draft, do NOT start from scratch) ===",
+    `The merchant reviewed your previous draft and rated how close it was to what`,
+    `they want: "${refinement.closeness}". Use that to decide how much to change —`,
+    "a close rating means keep the structure and make targeted tweaks; a far",
+    "rating means rethink the layout more boldly. Keep what worked, fix what did",
+    "not, and return a complete improved draft (HTML/CSS/settings).",
+    refinement.headline ? `Previous headline: ${refinement.headline}` : "",
+    refinement.subheadline
+      ? `Previous subheadline: ${refinement.subheadline}`
+      : "",
+    refinement.structureHtml
+      ? `Previous structureHtml:\n${refinement.structureHtml}`
+      : "",
+    refinement.structureCss
+      ? `Previous structureCss:\n${refinement.structureCss}`
+      : "",
+  ].filter(Boolean);
+}
 import {
   describeDesignLayoutsForAi,
   describeDesignSettingsForAi,
@@ -278,7 +311,10 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 ${describeDesignLayoutsForAi()}
 `.trim();
 
-export function buildCampaignAiUserPrompt(input: CampaignAiInput) {
+export function buildCampaignAiUserPrompt(
+  input: CampaignAiInput,
+  refinement?: CampaignAiRefinement,
+) {
   const payload = {
     objective: input.objective,
     campaignShape: input.campaignShape,
@@ -303,6 +339,7 @@ export function buildCampaignAiUserPrompt(input: CampaignAiInput) {
   return [
     "Merchant input JSON:",
     JSON.stringify(payload, null, 2),
+    ...buildRefinementSection(refinement),
     "",
     "Generate the safest complete Promo Pulse campaign draft for this merchant input.",
   ].join("\n");
@@ -402,7 +439,10 @@ Visual assets (only when input.generateVisualAssets is true):
 ${describeDesignSettingsForAi()}
 `.trim();
 
-export function buildCampaignAiImageUserPrompt(input: CampaignAiInput) {
+export function buildCampaignAiImageUserPrompt(
+  input: CampaignAiInput,
+  refinement?: CampaignAiRefinement,
+) {
   const payload = {
     objective: input.objective,
     campaignShape: input.campaignShape,
@@ -432,6 +472,7 @@ export function buildCampaignAiImageUserPrompt(input: CampaignAiInput) {
     "Optional merchant input JSON (fields may be empty when the merchant only",
     "uploaded an image — in that case infer everything from the image):",
     JSON.stringify(payload, null, 2),
+    ...buildRefinementSection(refinement),
     "",
     "Return the complete Promo Pulse campaign draft JSON, including populated",
     "design.* visual fields that match the image.",

@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData } from "react-router";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { type Prisma, type Shop } from "@prisma/client";
 
 import { AiGenerateIcon } from "../components/AiGenerateIcon";
@@ -230,9 +231,29 @@ export const action = async ({
       };
     }
 
+    // "Regenerate" passes the previous draft + how close it was so the AI
+    // improves it instead of starting over.
+    const previousSuggestion = parseAppliedCampaignSuggestion(
+      formData.get("refineFromSuggestion"),
+    );
+    const refineCloseness = (
+      formData.get("refineCloseness")?.toString() ?? ""
+    ).trim();
+    const refinement =
+      previousSuggestion && refineCloseness
+        ? {
+            closeness: refineCloseness,
+            structureHtml: previousSuggestion.structureHtml,
+            structureCss: previousSuggestion.structureCss,
+            headline: previousSuggestion.campaign.headline ?? undefined,
+            subheadline: previousSuggestion.campaign.subheadline ?? undefined,
+          }
+        : undefined;
+
     try {
       const suggestion = await generateCampaignSuggestion(aiValues, {
         referenceImage: referenceImage ?? undefined,
+        refinement,
       });
 
       // Generate + upload the visual assets now (PRO + write_files validated
@@ -642,14 +663,19 @@ export default function CreateCampaignPage() {
           />
         </div>
       </div>
-      {isAiDrawerOpen && (
-        <div className="counterpulse-ai-drawer-shell">
-          <button
-            aria-label="Close AI campaign drawer"
-            className="counterpulse-ai-drawer-backdrop"
-            type="button"
-            onClick={() => setIsAiDrawerOpen(false)}
-          />
+      {isAiDrawerOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          // Portaled to <body> so the fixed shell is positioned against the
+          // viewport, not an ancestor that establishes a containing block
+          // (transform/filter/contain) — which was offsetting the drawer.
+          <div className="counterpulse-ai-drawer-shell">
+            <button
+              aria-label="Close AI campaign drawer"
+              className="counterpulse-ai-drawer-backdrop"
+              type="button"
+              onClick={() => setIsAiDrawerOpen(false)}
+            />
           <div
             className={
               actionData?.aiSuggestion
@@ -696,9 +722,10 @@ export default function CreateCampaignPage() {
               locales={enabledLocales}
             />
             </aside>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </s-page>
   );
 }

@@ -3073,6 +3073,32 @@ s-page::part(page) {
   color: #92400e;
 }
 
+.counterpulse-regenerate-options {
+  display: grid;
+  gap: 10px;
+}
+
+.counterpulse-regenerate-option {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.counterpulse-regenerate-option:hover {
+  border-color: #2c6ecb;
+  background: #f5f8ff;
+}
+
+.counterpulse-regenerate-option small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
 .counterpulse-inline-link {
   display: inline;
   padding: 0;
@@ -4062,9 +4088,10 @@ s-page::part(page) {
 }
 
 .counterpulse-ai-drawer-cluster.has-preview {
-  width: min(1180px, 100vw);
+  width: min(1080px, 100vw);
   max-width: 100vw;
-  grid-template-columns: minmax(320px, 480px) minmax(420px, 520px);
+  /* Wing column = zoomed preview (1000px * 0.5 = 500px) + wing padding (28px). */
+  grid-template-columns: 528px minmax(420px, 540px);
 }
 
 /* On narrower windows the side-by-side preview can't fit — drop the wing and
@@ -4101,17 +4128,17 @@ s-page::part(page) {
   pointer-events: auto;
 }
 
+/* The preview renders the design at a desktop width (1000px) and zooms OUT to
+   fit the wing — "seen from far" so the whole layout is visible at any height.
+   `zoom` (unlike transform) reflows, so the layout box shrinks too and nothing
+   overflows the drawer. */
 .counterpulse-ai-drawer-preview-wing .counterpulse-variant-preview {
-  max-height: min(70vh, calc(100vh - 180px));
+  width: 1000px;
+  zoom: 0.5;
+  max-height: calc((100vh - 180px) / 0.5);
   min-height: 0;
   align-items: start;
   overflow: auto;
-  width: 100%;
-}
-
-/* Keep the previewed surface inside the wing so nothing overflows the drawer. */
-.counterpulse-ai-drawer-preview-wing .counterpulse-variant-preview__surface {
-  max-width: 100%;
 }
 
 .counterpulse-ai-drawer__header {

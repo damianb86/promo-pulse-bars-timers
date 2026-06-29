@@ -79,7 +79,10 @@ import {
   AI_CAMPAIGN_SYSTEM_PROMPT,
   buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
+  type CampaignAiRefinement,
 } from "./campaignPrompts.server";
+
+export type { CampaignAiRefinement } from "./campaignPrompts.server";
 
 type CampaignAiProviderOutput = {
   campaign?: Partial<CampaignSuggestionCampaign>;
@@ -106,6 +109,7 @@ type CampaignAiExperimentVariantOutput = Array<Partial<CampaignAiVariant>>;
 // text-only flow and existing provider implementations stay unchanged.
 export type CampaignAiGenerationContext = {
   referenceImage?: CampaignAiReferenceImage;
+  refinement?: CampaignAiRefinement;
 };
 
 export type CampaignAiProvider = {
@@ -127,6 +131,7 @@ export type CampaignAiProvider = {
 type CampaignAiGenerationOptions = {
   provider?: CampaignAiProvider;
   referenceImage?: CampaignAiReferenceImage;
+  refinement?: CampaignAiRefinement;
 };
 
 type CampaignAiInputLike = Partial<
@@ -573,9 +578,13 @@ export async function generateCampaignSuggestion(
   const normalizedInput = normalizeCampaignAiInput(input);
   const provider = options.provider ?? getDefaultCampaignAiProvider();
   const referenceImage = options.referenceImage;
+  const context: CampaignAiGenerationContext | undefined =
+    referenceImage || options.refinement
+      ? { referenceImage, refinement: options.refinement }
+      : undefined;
   const output = await provider.generateCampaignSuggestion(
     normalizedInput,
-    referenceImage ? { referenceImage } : undefined,
+    context,
   );
   const suggestion = completeCampaignSuggestion(
     normalizedInput,
@@ -708,10 +717,16 @@ function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
     source: "provider",
     async generateCampaignSuggestion(input, context) {
       const referenceImage = context?.referenceImage;
+      const refinement = context?.refinement;
 
       if (referenceImage) {
         try {
-          return await requestOpenAiJson(apiKey, input, referenceImage);
+          return await requestOpenAiJson(
+            apiKey,
+            input,
+            referenceImage,
+            refinement,
+          );
         } catch (error) {
           console.error(
             "AI campaign image analysis failed; retrying without the image",
@@ -719,7 +734,7 @@ function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
           );
           // Fall back to the text-only flow so the merchant still gets a draft.
           try {
-            return await requestOpenAiJson(apiKey, input);
+            return await requestOpenAiJson(apiKey, input, undefined, refinement);
           } catch (textError) {
             console.error(
               "AI campaign provider failed; using mock output",
@@ -731,7 +746,7 @@ function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
       }
 
       try {
-        return await requestOpenAiJson(apiKey, input);
+        return await requestOpenAiJson(apiKey, input, undefined, refinement);
       } catch (error) {
         console.error("AI campaign provider failed; using mock output", error);
         return buildMockCampaignSuggestion(input);
@@ -744,6 +759,7 @@ async function requestOpenAiJson(
   apiKey: string,
   input: CampaignAiInput,
   referenceImage?: CampaignAiReferenceImage,
+  refinement?: CampaignAiRefinement,
 ): Promise<CampaignAiProviderOutput> {
   const responsesUrl =
     process.env.OPENAI_RESPONSES_URL?.trim() ||
@@ -765,10 +781,13 @@ async function requestOpenAiJson(
 
   const userContent = referenceImage
     ? [
-        { type: "input_text", text: buildCampaignAiImageUserPrompt(input) },
+        {
+          type: "input_text",
+          text: buildCampaignAiImageUserPrompt(input, refinement),
+        },
         { type: "input_image", image_url: referenceImage.dataUrl },
       ]
-    : buildCampaignAiUserPrompt(input);
+    : buildCampaignAiUserPrompt(input, refinement);
 
   const response = await fetch(responsesUrl, {
     method: "POST",

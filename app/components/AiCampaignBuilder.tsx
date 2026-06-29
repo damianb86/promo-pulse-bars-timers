@@ -619,6 +619,27 @@ export function AiCampaignBuilder({
     useState<ReferenceImageState | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [refineModalOpen, setRefineModalOpen] = useState(false);
+  const [refineCloseness, setRefineCloseness] = useState("");
+
+  // Each new suggestion clears the refine flag so the next plain Generate is a
+  // fresh draft (only Regenerate re-enables refinement).
+  useEffect(() => {
+    setRefineCloseness("");
+  }, [suggestion]);
+
+  // Regenerate with a closeness rating: set it, then submit the generate form so
+  // the hidden refine fields travel with the request.
+  const regenerateWith = (closeness: string) => {
+    setRefineCloseness(closeness);
+    setRefineModalOpen(false);
+    window.requestAnimationFrame(() => {
+      const form = document.getElementById(
+        "ai-campaign-generate-form",
+      ) as HTMLFormElement | null;
+      form?.requestSubmit();
+    });
+  };
   const referenceImageMaxMb = Math.round(
     campaignAiReferenceImageMaxBytes / (1024 * 1024),
   );
@@ -926,6 +947,20 @@ export function AiCampaignBuilder({
               name="_action"
               type="hidden"
               value="generateAiCampaignSuggestion"
+            />
+            {/* Regenerate refinement: only populated when the merchant picks a
+                closeness rating, so a normal Generate stays a fresh draft. */}
+            <input
+              name="refineCloseness"
+              type="hidden"
+              value={refineCloseness}
+            />
+            <input
+              name="refineFromSuggestion"
+              type="hidden"
+              value={
+                refineCloseness && suggestion ? JSON.stringify(suggestion) : ""
+              }
             />
             <input
               name="objective"
@@ -1783,12 +1818,19 @@ export function AiCampaignBuilder({
                   <button
                     className="counterpulse-button-secondary"
                     disabled={isGenerating}
-                    form="ai-campaign-generate-form"
-                    type="submit"
+                    type="button"
+                    onClick={() => setRefineModalOpen(true)}
                   >
                     {isGenerating ? "Regenerating..." : "Regenerate"}
                   </button>
                 </div>
+
+                {refineModalOpen && (
+                  <RegenerateCloseModal
+                    onClose={() => setRefineModalOpen(false)}
+                    onSelect={regenerateWith}
+                  />
+                )}
 
                 {applied && (
                   <AppToast tone="success" title="Suggestion applied">
@@ -1952,6 +1994,95 @@ export function SuggestionMiniPreview({
           variant={variant}
           viewModel={viewModel}
         />
+      </div>
+    </div>
+  );
+}
+
+// Closeness ratings shown before regenerating. The label is the phrase sent to
+// the AI so it knows how much to change the design.
+const REGENERATE_CLOSENESS_OPTIONS = [
+  {
+    label: "Not close at all — rethink the design",
+    hint: "Explore a noticeably different direction.",
+  },
+  {
+    label: "Somewhat close — needs significant changes",
+    hint: "Keep the intent but change the layout substantially.",
+  },
+  {
+    label: "Fairly close — moderate adjustments",
+    hint: "Refine the structure and styling.",
+  },
+  {
+    label: "Very close — minor refinements",
+    hint: "Polish details; keep the overall design.",
+  },
+];
+
+function RegenerateCloseModal({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (closeness: string) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="counterpulse-modal-backdrop">
+      <button
+        aria-label="Close"
+        className="counterpulse-modal-backdrop__dismiss"
+        tabIndex={-1}
+        type="button"
+        onClick={onClose}
+      />
+      <div
+        aria-label="Regenerate campaign"
+        aria-modal="true"
+        className="counterpulse-modal"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <div>
+            <h2>How close is this design to what you want?</h2>
+            <p className="counterpulse-design-note">
+              Your answer tells the AI how much to change. It improves the current
+              draft instead of starting over.
+            </p>
+          </div>
+        </div>
+        <div className="counterpulse-modal__body">
+          <div className="counterpulse-regenerate-options">
+            {REGENERATE_CLOSENESS_OPTIONS.map((option) => (
+              <button
+                key={option.label}
+                className="counterpulse-regenerate-option"
+                type="button"
+                onClick={() => onSelect(option.label)}
+              >
+                <strong>{option.label}</strong>
+                <small>{option.hint}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="counterpulse-modal__actions">
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

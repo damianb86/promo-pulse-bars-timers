@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppAlert, InfoModal } from "./Notifications";
 
 import { DesignControls } from "./DesignControls";
+import { InspectorOverlay } from "./campaign-inspector/InspectorOverlay";
+import { ComponentInspectorModal } from "./campaign-inspector/ComponentInspectorModal";
+import { resolveInspectorComponent } from "./campaign-inspector/component-registry";
 import {
   CampaignPreviewPanel,
   type PreviewPlacement,
@@ -21,8 +24,10 @@ import {
   buildCampaignStructureTree,
   buildStructureCss,
   deriveCampaignStructureSpec,
+  getNodeAtPath,
   getNodeSlot,
   htmlToTree,
+  setNodeStyleAtPath,
   treeToHtml,
   type StructureNode,
 } from "../utils/campaign-structure";
@@ -141,6 +146,9 @@ export function CampaignDesignEditor({
   // mobile" is on.
   const [htmlModalOpen, setHtmlModalOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [inspectEnabled, setInspectEnabled] = useState(true);
+  const [inspectedPath, setInspectedPath] = useState<string | null>(null);
+  const previewHostRef = useRef<HTMLDivElement | null>(null);
   const [cssModalOpen, setCssModalOpen] = useState(false);
   const desktopSurface = useStructureSurface(
     viewModel,
@@ -227,6 +235,39 @@ export function CampaignDesignEditor({
 
     return () => window.clearTimeout(openModal);
   }, [designErrorSummary]);
+
+  // Props shared by the main DesignControls and the inspector modal's reused
+  // panel, so the modal edits the exact same component settings (no duplication).
+  const designControlsProps = {
+    mediaOptions: designMediaOptions,
+    errors,
+    hasOffer: Boolean(previewViewModel.offer),
+    hasTimer: isTimerShown(previewViewModel.timer),
+    isProPlan,
+    device: (device === "mobile" && design.separateMobileDesign
+      ? "mobile"
+      : "desktop") as "mobile" | "desktop",
+    progressStyle,
+    structureEdited: activeSurface.edited,
+    values: activeDesign,
+    presentSlots: activeSurface.presentSlots,
+    onChange: updateActiveDesign,
+    onAddSlot: activeSurface.addSlot,
+    onGoToSchedule,
+    onEditStructureCss: () => setCssModalOpen(true),
+    onEditStructureHtml: () => setHtmlModalOpen(true),
+    onProgressStyleChange,
+    onResetStructure: activeSurface.reset,
+  };
+
+  // Resolve the inspected node + its component descriptor for the modal.
+  const inspectedNode =
+    inspectedPath != null && activeSurface.displayedTree
+      ? getNodeAtPath(activeSurface.displayedTree, inspectedPath)
+      : null;
+  const inspectedComponent = inspectedNode
+    ? resolveInspectorComponent(inspectedNode)
+    : null;
 
   return (
     <s-section heading="Design & Preview">
@@ -361,52 +402,68 @@ export function CampaignDesignEditor({
             </div>
           </section>
 
-          <DesignControls
-            mediaOptions={designMediaOptions}
-            errors={errors}
-            hasOffer={Boolean(previewViewModel.offer)}
-            hasTimer={isTimerShown(previewViewModel.timer)}
-            isProPlan={isProPlan}
-            device={
-              device === "mobile" && design.separateMobileDesign
-                ? "mobile"
-                : "desktop"
-            }
-            progressStyle={progressStyle}
-            structureEdited={activeSurface.edited}
-            values={activeDesign}
-            presentSlots={activeSurface.presentSlots}
-            onChange={updateActiveDesign}
-            onAddSlot={activeSurface.addSlot}
-            onGoToSchedule={onGoToSchedule}
-            onEditStructureCss={() => setCssModalOpen(true)}
-            onEditStructureHtml={() => setHtmlModalOpen(true)}
-            onProgressStyleChange={onProgressStyleChange}
-            onResetStructure={activeSurface.reset}
-          />
+          <DesignControls {...designControlsProps} />
         </div>
 
-        <CampaignPreviewPanel
-          actualPlacements={actualPlacements}
-          ariaLabel="Design live campaign preview"
-          className="counterpulse-design-editor__preview"
-          design={design}
-          device={device}
-          mobileDesign={previewMobileDesign}
-          mobileStructureTree={
-            design.separateMobileDesign ? mobileSurface.tree : null
-          }
-          mobileStructureCss={
-            design.separateMobileDesign ? mobileSurface.displayedCss : ""
-          }
-          placement={placement}
-          structureTree={desktopSurface.tree}
-          structureCss={desktopSurface.displayedCss}
-          viewModel={previewViewModel}
-          onDeviceChange={setDevice}
-          onPlacementChange={selectPreviewPlacement}
-        />
+        <div
+          className="counterpulse-design-editor__preview-host"
+          ref={previewHostRef}
+        >
+          <CampaignPreviewPanel
+            actualPlacements={actualPlacements}
+            ariaLabel="Design live campaign preview"
+            className="counterpulse-design-editor__preview"
+            design={design}
+            device={device}
+            mobileDesign={previewMobileDesign}
+            mobileStructureTree={
+              design.separateMobileDesign ? mobileSurface.displayedTree : null
+            }
+            mobileStructureCss={
+              design.separateMobileDesign ? mobileSurface.displayedCss : ""
+            }
+            placement={placement}
+            structureTree={desktopSurface.displayedTree}
+            structureCss={desktopSurface.displayedCss}
+            inspect={inspectEnabled}
+            viewModel={previewViewModel}
+            onDeviceChange={setDevice}
+            onPlacementChange={selectPreviewPlacement}
+          />
+          <InspectorOverlay
+            containerRef={previewHostRef}
+            enabled={inspectEnabled}
+            onSelect={setInspectedPath}
+          />
+          <label className="counterpulse-inspector-toggle">
+            <input
+              checked={inspectEnabled}
+              type="checkbox"
+              onChange={(event) => setInspectEnabled(event.target.checked)}
+            />
+            <span>Inspect</span>
+          </label>
+        </div>
       </div>
+
+      {inspectedComponent && (
+        <ComponentInspectorModal
+          component={inspectedComponent}
+          nodeStyle={inspectedNode?.attrs?.style}
+          renderPanel={(panelTitle) => (
+            <DesignControls
+              {...designControlsProps}
+              panelFilter={new Set([panelTitle])}
+            />
+          )}
+          onApplyCommon={(declarations) => {
+            if (inspectedPath != null) {
+              activeSurface.updateNodeStyle(inspectedPath, declarations);
+            }
+          }}
+          onClose={() => setInspectedPath(null)}
+        />
+      )}
     </s-section>
   );
 }
@@ -665,11 +722,13 @@ type StructureSurface = {
   displayedHtml: string;
   displayedCss: string;
   tree: StructureNode | null;
+  displayedTree: StructureNode | null;
   presentSlots: ReadonlySet<string> | null;
   reset: () => void;
   changeHtml: (value: string) => void;
   changeCss: (value: string) => void;
   addSlot: (slot: string) => void;
+  updateNodeStyle: (path: string, declarations: Record<string, string>) => void;
 };
 
 // Manages one structural-HTML override surface (desktop or mobile): the live
@@ -743,6 +802,13 @@ function useStructureSurface(
     [edited, displayedHtml],
   );
 
+  // The parsed tree of whatever is currently shown (edited override OR generated
+  // from settings). Always present, for the visual inspector.
+  const displayedTree = useMemo(
+    () => htmlToTree(displayedHtml),
+    [displayedHtml],
+  );
+
   // Slots present in the current HTML. null when not overridden (the structure is
   // auto-generated from settings, so every applicable element is available).
   const presentSlots = useMemo<ReadonlySet<string> | null>(() => {
@@ -757,6 +823,21 @@ function useStructureSurface(
     walk(tree);
     return slots;
   }, [edited, tree]);
+
+  // Applies inline-style declarations to a node (by AST path) — the inspector's
+  // common properties. Editing a generated structure turns it into an override.
+  const updateNodeStyle = (
+    path: string,
+    declarations: Record<string, string>,
+  ) => {
+    const current = htmlToTree(displayedHtml);
+    if (!current) return;
+    const next = setNodeStyleAtPath(current, path, declarations);
+    setHtml(treeToHtml(next));
+    setCss((value) => (edited ? value : generatedCss));
+    setEdited(true);
+    setDirty(true);
+  };
 
   // Inserts a missing slot element into the edited HTML so its settings card
   // works again. Appends it to the surface root.
@@ -779,11 +860,13 @@ function useStructureSurface(
     displayedHtml,
     displayedCss,
     tree,
+    displayedTree,
     presentSlots,
     reset,
     changeHtml,
     changeCss,
     addSlot,
+    updateNodeStyle,
   };
 }
 

@@ -1,4 +1,9 @@
-import { useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { FieldInfoButton } from "./Notifications";
 import {
@@ -58,6 +63,10 @@ const designTimerTypeOptions: TimerTypeOption[] = designTimerStyleOptions.flatMa
     })),
 );
 
+// Restricts which DesignControls panels render (by title). Used by the inspector
+// modal to embed just the relevant component panel.
+const DesignPanelFilterContext = createContext<ReadonlySet<string> | null>(null);
+
 type DesignControlsProps = {
   values: CampaignDesignValues;
   errors?: CampaignDesignErrors;
@@ -79,6 +88,8 @@ type DesignControlsProps = {
   onAddSlot?: (slot: string) => void;
   // Switches the editor to the Campaign → Schedule tab (timer progress target).
   onGoToSchedule?: () => void;
+  // Only render these panels (by title). Undefined = all panels.
+  panelFilter?: ReadonlySet<string>;
 };
 
 export function DesignControls({
@@ -98,6 +109,7 @@ export function DesignControls({
   onResetStructure,
   onAddSlot,
   onGoToSchedule,
+  panelFilter,
 }: DesignControlsProps) {
   // Builds the missing-element list for a panel: for each [slot,label,present],
   // includes an entry (with an Add button) when the slot is absent from the
@@ -245,6 +257,7 @@ export function DesignControls({
   };
 
   return (
+    <DesignPanelFilterContext.Provider value={panelFilter ?? null}>
     <div className="counterpulse-design-controls">
       <DesignPanel title="Template">
         <DesignGroup error={errors.layout} label="Layout">
@@ -1275,6 +1288,7 @@ export function DesignControls({
         </DesignField>
       </DesignPanel>
     </div>
+    </DesignPanelFilterContext.Provider>
   );
 }
 
@@ -2696,6 +2710,11 @@ function DesignPanel({
 }) {
   const missing = missingElements ?? [];
   const isDisabled = missing.length > 0;
+  // When a panel filter is active (the visual inspector reuses a single panel in
+  // its modal), only the requested panels render.
+  const panelFilter = useContext(DesignPanelFilterContext);
+  if (panelFilter && !panelFilter.has(title)) return null;
+
   return (
     <section
       className={

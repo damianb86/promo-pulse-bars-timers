@@ -5,9 +5,13 @@ import {
   STRUCTURE_CSS_SCOPE_TOKEN,
   buildCampaignStructureTree,
   buildStructureCss,
+  getNodeAtPath,
   getNodeSlot,
   htmlToTree,
   packTree,
+  parseStyle,
+  serializeStyle,
+  setNodeStyleAtPath,
   treeToHtml,
   unpackTree,
   type StructureBuildSpec,
@@ -127,5 +131,54 @@ describe("buildStructureCss", () => {
     expect(css).toContain("--cp-content-max-width: 600px;");
     expect(css).toContain(".x { color: red; }");
     expect(css).not.toContain("</style>");
+  });
+});
+
+describe("node addressing + inline style helpers", () => {
+  const html =
+    '<section class="cp-promo"><div class="cp-left">' +
+    '<strong data-cp-slot="headline"></strong></div>' +
+    '<img src="/x.png" alt="a"></section>';
+
+  it("getNodeAtPath walks child indices", () => {
+    const tree = htmlToTree(html)!;
+    expect(getNodeAtPath(tree, "")?.tag).toBe("section");
+    expect(getNodeAtPath(tree, "0")?.attrs?.class).toBe("cp-left");
+    expect(getNodeAtPath(tree, "0-0")?.attrs?.["data-cp-slot"]).toBe("headline");
+    expect(getNodeAtPath(tree, "1")?.tag).toBe("img");
+    expect(getNodeAtPath(tree, "9")).toBeNull();
+  });
+
+  it("parseStyle / serializeStyle round-trip", () => {
+    const parsed = parseStyle("min-width: 100px; max-height: 40px");
+    expect(parsed).toEqual({ "min-width": "100px", "max-height": "40px" });
+    expect(serializeStyle(parsed)).toBe("min-width: 100px; max-height: 40px");
+  });
+
+  it("setNodeStyleAtPath merges + removes declarations immutably", () => {
+    const tree = htmlToTree(html)!;
+    const next = setNodeStyleAtPath(tree, "0", {
+      "min-width": "120px",
+      "max-width": "300px",
+    });
+    // Original untouched.
+    expect(getNodeAtPath(tree, "0")?.attrs?.style).toBeUndefined();
+    expect(getNodeAtPath(next, "0")?.attrs?.style).toBe(
+      "min-width: 120px; max-width: 300px",
+    );
+    // Removing a declaration drops it (and style when empty).
+    const cleared = setNodeStyleAtPath(next, "0", {
+      "min-width": "",
+      "max-width": "",
+    });
+    expect(getNodeAtPath(cleared, "0")?.attrs?.style).toBeUndefined();
+    // The class attribute is preserved.
+    expect(getNodeAtPath(cleared, "0")?.attrs?.class).toBe("cp-left");
+  });
+
+  it("setNodeStyleAtPath output round-trips through treeToHtml", () => {
+    const tree = htmlToTree(html)!;
+    const next = setNodeStyleAtPath(tree, "1", { "max-width": "100%" });
+    expect(treeToHtml(next)).toContain('style="max-width: 100%"');
   });
 });

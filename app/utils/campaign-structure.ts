@@ -646,6 +646,85 @@ export function unpackTree(packed: PackedStructure): StructureNode {
 }
 
 // ---------------------------------------------------------------------------
+// Node addressing + inline-style helpers (used by the visual inspector to edit a
+// specific node's common properties without hand-editing the HTML).
+//
+// A node "path" mirrors the render keys in StructurePromoSurface: the child
+// indices from the root, joined with "-" (e.g. "0-2-1"). The empty string "" is
+// the root itself.
+// ---------------------------------------------------------------------------
+
+export function getNodeAtPath(
+  tree: StructureNode,
+  path: string,
+): StructureNode | null {
+  if (!path) return tree;
+  let node: StructureNode | undefined = tree;
+  for (const segment of path.split("-")) {
+    const index = Number(segment);
+    if (!node?.children || !Number.isInteger(index)) return null;
+    node = node.children[index];
+  }
+  return node ?? null;
+}
+
+// Parses an inline style string into an ordered prop->value map.
+export function parseStyle(style: string | undefined): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!style) return result;
+  for (const decl of style.split(";")) {
+    const idx = decl.indexOf(":");
+    if (idx <= 0) continue;
+    const prop = decl.slice(0, idx).trim().toLowerCase();
+    const value = decl.slice(idx + 1).trim();
+    if (prop && value) result[prop] = value;
+  }
+  return result;
+}
+
+export function serializeStyle(style: Record<string, string>): string {
+  return Object.keys(style)
+    .filter((prop) => style[prop] !== "" && style[prop] != null)
+    .map((prop) => `${prop}: ${style[prop]}`)
+    .join("; ");
+}
+
+// Returns a deep-cloned tree with the given CSS declarations merged into the
+// inline `style` of the node at `path`. Declarations with empty values are
+// removed. The tree is cloned so callers can compare/replace immutably.
+export function setNodeStyleAtPath(
+  tree: StructureNode,
+  path: string,
+  declarations: Record<string, string>,
+): StructureNode {
+  const clone = cloneNode(tree);
+  const node = getNodeAtPath(clone, path);
+  if (!node || node.tag === TEXT_TAG) return clone;
+
+  const style = parseStyle(node.attrs?.style);
+  for (const prop of Object.keys(declarations)) {
+    const value = declarations[prop];
+    if (value === "" || value == null) delete style[prop];
+    else style[prop] = value;
+  }
+
+  const serialized = serializeStyle(style);
+  const attrs = { ...(node.attrs ?? {}) };
+  if (serialized) attrs.style = serialized;
+  else delete attrs.style;
+  node.attrs = Object.keys(attrs).length ? attrs : undefined;
+  return clone;
+}
+
+function cloneNode(node: StructureNode): StructureNode {
+  const next: StructureNode = { tag: node.tag };
+  if (node.text != null) next.text = node.text;
+  if (node.attrs) next.attrs = { ...node.attrs };
+  if (node.children) next.children = node.children.map(cloneNode);
+  return next;
+}
+
+// ---------------------------------------------------------------------------
 // Per-campaign style values. Emits the `--cp-*` custom properties (the same set
 // applied inline today by buildPreviewStyle / applyStyle) scoped to the campaign
 // surface, plus the merchant customCss. The shared layout rules stay in the

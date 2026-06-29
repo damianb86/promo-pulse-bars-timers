@@ -3121,6 +3121,60 @@ s-page::part(page) {
   font-size: 12px;
 }
 
+/* Visual inspector (Design tab preview). */
+.counterpulse-design-editor__preview-host {
+  position: relative;
+}
+
+.counterpulse-inspector-highlight {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  border: 1.5px dashed #2c6ecb;
+  border-radius: 4px;
+  background: rgba(44, 110, 203, 0.06);
+  box-shadow: 0 0 0 1px rgba(44, 110, 203, 0.18);
+  transition:
+    top 60ms ease,
+    left 60ms ease,
+    width 60ms ease,
+    height 60ms ease;
+}
+
+.counterpulse-inspector-toggle {
+  position: absolute;
+  z-index: 7;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #dfe3e8;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 650;
+  color: #374151;
+  cursor: pointer;
+}
+
+.counterpulse-inspector-panel {
+  margin-bottom: 14px;
+  border-bottom: 1px solid #eef1f4;
+  padding-bottom: 14px;
+}
+
+.counterpulse-inspector-common {
+  display: grid;
+  gap: 12px;
+}
+
+.counterpulse-inspector-common__group {
+  display: grid;
+  gap: 8px;
+}
+
 .counterpulse-inline-link {
   display: inline;
   padding: 0;

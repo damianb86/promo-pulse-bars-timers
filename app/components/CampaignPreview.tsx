@@ -54,6 +54,9 @@ type CampaignPreviewProps = {
   // The per-campaign CSS (scoped `--cp-*` vars + layout + custom CSS) that goes
   // with structureTree. Applied scoped so the preview matches the storefront.
   structureCss?: string;
+  // When true, each structure node is tagged with `data-cp-node="<path>"` so the
+  // visual inspector can resolve hovered/clicked elements back to the AST.
+  inspect?: boolean;
 };
 
 const placementLabels: Record<PreviewPlacement, string> = {
@@ -165,6 +168,7 @@ export function CampaignPreview({
   placement,
   structureTree = null,
   structureCss = "",
+  inspect = false,
 }: CampaignPreviewProps) {
   const now = usePreviewClock();
   const evergreenStorage = useMemo(
@@ -191,6 +195,7 @@ export function CampaignPreview({
       placement={placement}
       structureTree={structureTree}
       structureCss={structureCss}
+      inspect={inspect}
       style={previewStyle}
       timerState={timerState}
       variant={variant}
@@ -556,6 +561,7 @@ function PromoSurface({
   dataTestId,
   structureTree = null,
   structureCss = "",
+  inspect = false,
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -568,6 +574,7 @@ function PromoSurface({
   dataTestId?: string;
   structureTree?: StructureNode | null;
   structureCss?: string;
+  inspect?: boolean;
 }) {
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
@@ -679,6 +686,7 @@ function PromoSurface({
         bodyHtml={bodyText ? sanitizeBasicHtml(bodyText) : ""}
         placement={placement}
         structureCss={structureCss}
+        inspect={inspect}
         style={style}
         timerState={timerState}
         tree={structureTree}
@@ -978,6 +986,7 @@ function StructurePromoSurface({
   className,
   dataTestId,
   structureCss,
+  inspect = false,
 }: {
   tree: StructureNode;
   viewModel: CampaignViewModel;
@@ -997,6 +1006,7 @@ function StructurePromoSurface({
   className?: string;
   dataTestId?: string;
   structureCss: string;
+  inspect?: boolean;
 }) {
   // Unique per-instance scope so the campaign CSS (which targets __CP_SCOPE__)
   // only styles this surface — the same scoping the storefront applies.
@@ -1099,13 +1109,27 @@ function StructurePromoSurface({
   const renderNode = (node: StructureNode, key: string): ReactNode => {
     if (node.tag === TEXT_TAG) return node.text ?? "";
     const slot = getNodeSlot(node);
-    if (slot) return renderSlot(node, slot, key);
+    if (slot) {
+      const rendered = renderSlot(node, slot, key);
+      if (!inspect || rendered == null) return rendered;
+      // Wrap replace/fill slot output so the inspector can resolve it back to the
+      // AST node. `display: contents` keeps the wrapper out of the layout.
+      return createElement(
+        "span",
+        {
+          key,
+          "data-cp-node": key,
+          style: { display: "contents" } as CSSProperties,
+        },
+        rendered,
+      );
+    }
     const children = node.children?.map((child, index) =>
       renderNode(child, `${key}-${index}`),
     );
     return createElement(
       node.tag,
-      structureNodeProps(node, key),
+      structureNodeProps(node, key, inspect ? key : undefined),
       children && children.length ? children : undefined,
     );
   };
@@ -1128,7 +1152,7 @@ function StructurePromoSurface({
   const surface = createElement(
     tree.tag,
     {
-      ...structureNodeProps(tree, undefined),
+      ...structureNodeProps(tree, undefined, inspect ? "" : undefined),
       className: rootClassName,
       style,
       "data-testid": dataTestId,
@@ -1205,9 +1229,12 @@ const SLOT_INTERNAL_ATTRS = new Set([
 function structureNodeProps(
   node: StructureNode,
   key: string | undefined,
+  nodePath?: string,
 ): Record<string, unknown> {
   const props: Record<string, unknown> = {};
   if (key !== undefined) props.key = key;
+  // Tag the element with its AST path so the visual inspector can resolve it.
+  if (nodePath !== undefined) props["data-cp-node"] = nodePath;
   const attrs = node.attrs ?? {};
   for (const name of Object.keys(attrs)) {
     const value = attrs[name];

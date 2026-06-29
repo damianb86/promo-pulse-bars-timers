@@ -41,6 +41,7 @@ type CampaignPreviewPanelProps = {
   mobileStructureTree?: StructureNode | null;
   structureCss?: string;
   mobileStructureCss?: string;
+  inspect?: boolean;
   onDeviceChange: (device: PreviewDevice) => void;
   onPlacementChange: (placement: PreviewPlacement) => void;
 };
@@ -59,6 +60,7 @@ export function CampaignPreviewPanel({
   mobileStructureTree = null,
   structureCss = "",
   mobileStructureCss = "",
+  inspect = false,
   onDeviceChange,
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
@@ -120,6 +122,7 @@ export function CampaignPreviewPanel({
         placement={selectedPlacement}
         structureTree={resolvedStructureTree}
         structureCss={resolvedStructureCss}
+        inspect={inspect}
         viewModel={viewModel}
       />
       {meta}

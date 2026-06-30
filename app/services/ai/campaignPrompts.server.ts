@@ -50,7 +50,78 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v16";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v17";
+
+// Shared design-quality bar applied to EVERY generation (image or not). The
+// model must police its own output for legibility and polish, and FIX problems
+// rather than reproduce them.
+const DESIGN_QUALITY_GUIDANCE = `
+Design quality & professionalism (REQUIRED — judge your own output and fix it):
+- Coherence and professionalism come FIRST. A clean, on-brand, legible, responsive
+  campaign matters more than matching any reference image pixel-for-pixel. If a
+  color, size, position, or spacing choice would look unprofessional or hurt
+  readability, IMPROVE it — do not reproduce a flaw.
+- Contrast / legibility: body and headline text MUST contrast strongly with what
+  is directly behind them (aim for a WCAG AA-like ratio). Never put text on a busy
+  or low-contrast background without a solid color, a semi-opaque scrim, or a
+  gradient overlay behind it. Avoid light-on-light and dark-on-dark.
+- Sizes: keep type, buttons, timers, and icons proportionate to the placement.
+  Bars (TOP_BAR/BOTTOM_BAR) are slim — modest font sizes, one compact row. Never
+  oversize the timer or CTA so it dwarfs the copy.
+- Positions / collisions: elements must never overlap (especially the timer and
+  the text). Keep deliberate gaps and padding; at the target width and narrower,
+  nothing should touch or overflow.
+- Palette: use a small, harmonious palette (the chosen preset or, in image mode,
+  the image's colors). The CTA must stand out from the background. Limit accent
+  colors; avoid clashing hues.
+`.trim();
+
+// Shared visual-assets guidance (image + text-only flows). Only active when the
+// merchant turned the feature on; the server re-validates plan + scope.
+const VISUAL_ASSETS_GUIDANCE = `
+Visual assets (only when input.generateVisualAssets is true):
+- By DEFAULT (generateVisualAssets false/absent) leave "assets" as [] and never
+  reference an image URL you cannot see — recreate the look with colors/CSS only.
+- When input.generateVisualAssets is true, you SHOULD design a real visual layer
+  for the campaign, not just flat colors. In the STRONG MAJORITY of cases you must
+  generate a BACKGROUND for the campaign — either a seamless decorative PATTERN or
+  a tasteful BACKGROUND IMAGE that fits the brand, goal, season/event, and tone —
+  and apply it as the campaign background. You may also add icons/badges/textures
+  when they help. Keep the asset count minimal (max 8); usually 1 background plus
+  at most a couple of accents.
+- Apply the background via structureCss (so you MUST return structureHtml +
+  structureCss when you generate a background). Example:
+    __CP_SCOPE__ .cp-promo {
+      background-image: linear-gradient(<scrim>), url("{{asset:bg}}");
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+    }
+  For a tileable pattern use background-repeat: repeat with a sensible
+  background-size instead of cover. NEVER use background-attachment: fixed.
+- RESPONSIVE backgrounds: photos/illustrations use background-size: cover +
+  background-position: center so they fill any width without distortion; patterns
+  tile. The background must look right from ~100px up to full width, and the
+  content (not a fixed height) defines the campaign height. Prompt the image model
+  for art that has safe, low-detail areas where text sits, or generate it wide/
+  panoramic for bars.
+- LEGIBILITY over a background is mandatory: always layer a scrim/overlay (a
+  semi-opaque color or a linear-gradient) between the image and the text, and set
+  text colors that read clearly on it. Never ship text directly over a raw busy
+  image.
+- Asset spec shape: { "key": "short-id",
+    "type": "background|icon|badge|pattern|texture|decoration|image",
+    "source": "generated|svg",
+    "prompt": "detailed image-model prompt describing the asset, its style, palette,
+      and that it must leave clean space for text / tile seamlessly",
+    "svg": "<svg>...</svg> (only when source is svg)",
+    "region": { "x":0,"y":0,"width":0,"height":0 } (ONLY in image mode, see below) }
+  - Use source "svg" for simple flat icons/badges/shapes; "generated" for
+    photographic/illustrated/textured backgrounds and patterns.
+  - MANDATORY: every asset in "assets" MUST be referenced by its {{asset:key}}
+    placeholder in structureHtml or structureCss, or it is wasted. Prefer a CSS
+    background over an <img>. Only use <img> for true content images, and then the
+    src MUST be the {{asset:key}} placeholder. Never invent real URLs and never
+    leave an asset unreferenced.
+`.trim();
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -355,6 +426,10 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
   Pick the width that matches the placement you choose; never hard-code it as a
   fixed width (use it only to size type/spacing/columns sensibly).
 
+${DESIGN_QUALITY_GUIDANCE}
+
+${VISUAL_ASSETS_GUIDANCE}
+
 ${describeDesignLayoutsForAi()}
 `.trim();
 
@@ -478,52 +553,33 @@ Critical rules for image mode:
 - Use ONLY the fields in the catalog below. Never invent new design fields or new
   enum values. If something in the image cannot be reproduced exactly, choose the
   closest supported value.
-- Prioritize making the final campaign LOOK like the image. Visual similarity is
-  the goal.
+- Use the image as STRONG visual guidance, but a coherent, professional, legible,
+  responsive campaign is more important than copying the image exactly. If the
+  image has low contrast, cramped spacing, oversized elements, an awkward layout,
+  or anything that would look unprofessional, IMPROVE it instead of reproducing
+  the flaw (see the Design quality rules above). Match the brand/palette/mood, not
+  every imperfection.
 - Still keep all safety rules: status DRAFT, never invent stock counts or discount
   values that are not actually written in the image. If a discount %, amount,
   threshold, or code is clearly visible as text in the image, you may reflect it.
 - The merchant's text description (if any) refines or overrides the image; honor it
   when the two conflict.
 
-Visual assets (only when input.generateVisualAssets is true):
-- By DEFAULT (generateVisualAssets false or absent) you MUST leave "assets" as []
-  and never reference any image/background URL you cannot see. Recreate the look
-  with colors/gradients/CSS only.
-- When input.generateVisualAssets is true, you MAY return an "assets" array of the
-  visual assets needed to recreate the image (backgrounds, icons, badges,
-  patterns, textures, decorative images). Each asset:
-  { "key": "short-id", "type": "background|icon|badge|pattern|texture|decoration|image",
-    "source": "generated|svg", "prompt": "image-model prompt describing the asset",
-    "svg": "<svg>...</svg> (only when source is svg)",
-    "region": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 } }
-  - Use source "svg" for simple flat icons/badges/shapes (return clean <svg>); use
-    "generated" with a detailed prompt for photographic/complex backgrounds/textures.
-  - REGION (strongly preferred when the asset is visible in the uploaded image):
-    When an asset — a background, icon, illustration, decorative image, badge,
-    texture, logo, etc. — actually appears in the reference image, you MUST set
-    "region" to the normalized bounding box where it appears: x, y, width, height
-    each between 0 and 1, relative to the image (x/y = top-left corner, as
-    fractions of the image width/height). The pipeline crops exactly that region
-    and feeds it to the image model as a visual reference so the asset is recreated
-    faithfully and cleanly (isolated, transparent background) instead of being
-    invented from text. Make the box tight around the asset.
-  - Do NOT generate an asset purely from a text description when there is a clear
-    visual reference for it in the image — always provide the region in that case.
-    Only omit "region" for assets that are NOT present in the image (e.g. a brand
-    new decorative element you are adding). When you set region, still write a
-    "prompt" describing how to clean it up (e.g. "isolate this icon on a
-    transparent background, remove surrounding text").
-  - MANDATORY: every asset you list in "assets" MUST be referenced EXACTLY by its
-    {{asset:key}} placeholder somewhere in structureHtml or structureCss, or it is
-    wasted. Prefer a CSS background (e.g. background-image:
-    url("{{asset:hero-bg}}")) over an <img>. Only use <img> for true content
-    images, and then the src MUST be the placeholder: <img src="{{asset:product}}"
-    alt="...">. NEVER output an <img> without a real src placeholder, and never
-    leave an asset unreferenced. The app replaces the placeholder with the uploaded
-    Shopify file URL — never invent real URLs.
-  - Do NOT create an asset you will not reference; if you don't reference it, don't
-    list it. Keep the asset count minimal (only what's needed). Max 8.
+Visual assets in image mode (in addition to the Visual assets rules above):
+- The shared Visual assets rules already apply. In image mode you have one extra
+  tool — the "region" field — for assets that ALREADY appear in the uploaded image
+  (a background, icon, illustration, badge, texture, logo, etc.).
+- REGION: when an asset is visible in the reference image, set "region" to its
+  normalized bounding box — x, y, width, height each between 0 and 1, relative to
+  the image (x/y = top-left corner). The pipeline crops exactly that region and
+  feeds it to the image model as a visual reference, so the asset is recreated
+  faithfully and cleanly (isolated/transparent) instead of invented from text.
+  Make the box tight. Still write a "prompt" describing how to clean it up (e.g.
+  "isolate this icon on a transparent background, remove surrounding text").
+- Do NOT generate an asset purely from text when there is a clear visual reference
+  for it in the image — provide the region in that case. Omit "region" only for
+  brand-new assets you are adding (e.g. a fresh decorative background), which
+  follow the shared rules above.
 
 ${describeDesignSettingsForAi()}
 `.trim();

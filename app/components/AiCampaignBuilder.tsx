@@ -660,9 +660,9 @@ export function AiCampaignBuilder({
   const assetsAllowed = !assetsLockedReason;
   const [generateVisualAssets, setGenerateVisualAssets] = useState(false);
   const [assetScopeError, setAssetScopeError] = useState<string | null>(null);
-  // Only request assets when allowed AND a reference image is present.
-  const effectiveGenerateAssets =
-    generateVisualAssets && assetsAllowed && hasReferenceImage;
+  // Assets can be generated with OR without a reference image — the AI invents a
+  // fitting background/pattern when none is uploaded.
+  const effectiveGenerateAssets = generateVisualAssets && assetsAllowed;
 
   const toggleVisualAssets = async (checked: boolean) => {
     setAssetScopeError(null);
@@ -1152,26 +1152,21 @@ export function AiCampaignBuilder({
                   <label className="counterpulse-checkbox">
                     <input
                       checked={effectiveGenerateAssets}
-                      disabled={!hasReferenceImage}
                       type="checkbox"
                       onChange={(event) =>
                         toggleVisualAssets(event.target.checked)
                       }
                     />
                     <span>
-                      <strong>Generate visual assets from image</strong>
+                      <strong>Generate visual assets</strong>
                       <small>
-                        Detect and generate backgrounds, icons, badges and other
-                        assets, upload them to your Shopify Files, and use them in
-                        the campaign. Requires the Files permission.
+                        The AI designs a fitting background image or pattern (and
+                        any icons/badges it needs), uploads them to your Shopify
+                        Files, and uses them in the campaign. Works with or without
+                        a reference image. Requires the Files permission.
                       </small>
                     </span>
                   </label>
-                  {!hasReferenceImage && (
-                    <p className="counterpulse-design-note">
-                      Upload a reference image to enable visual asset generation.
-                    </p>
-                  )}
                   {assetScopeError && (
                     <AppAlert tone="critical" title="Permission required">
                       <s-paragraph>{assetScopeError}</s-paragraph>

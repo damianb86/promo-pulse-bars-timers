@@ -453,6 +453,26 @@ describe("AI campaign reference image", () => {
     expect(suggestion.design.backgroundColor).not.toBe("#FF00AA");
   });
 
+  it("includes visual-asset + design-quality guidance in the base (text-only) prompt", () => {
+    // Assets can be generated without a reference image now, so the guidance must
+    // live in the base prompt, not only in image mode.
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Visual assets");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("background");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Design quality");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Contrast");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("{{asset:");
+  });
+
+  it("rebalances image mode toward professionalism + keeps the region tool", () => {
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REGION");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "more important than copying the image",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain(
+      "Visual similarity is",
+    );
+  });
+
   it("builds an image system prompt that allows visual overrides and lists settings", () => {
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REFERENCE IMAGE MODE");
     // Reuses the base prompt + the design settings catalog.

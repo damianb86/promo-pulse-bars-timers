@@ -1160,10 +1160,11 @@ export function AiCampaignBuilder({
                     <span>
                       <strong>Generate visual assets</strong>
                       <small>
-                        The AI designs a fitting background image or pattern (and
-                        any icons/badges it needs), uploads them to your Shopify
-                        Files, and uses them in the campaign. Works with or without
-                        a reference image. Requires the Files permission.
+                        The AI designs a fitting background image or pattern
+                        (and any icons/badges it needs), uploads them to your
+                        Shopify Files, and uses them in the campaign. Works with
+                        or without a reference image. Requires the Files
+                        permission.
                       </small>
                     </span>
                   </label>
@@ -1198,8 +1199,13 @@ export function AiCampaignBuilder({
                     <span className="counterpulse-ai-option-card__icon">
                       <AiGoalIcon />
                     </span>
-                    <strong>{option.label}</strong>
-                    <small>{aiGoalDescriptions[option.value]}</small>
+                    <span className="counterpulse-ai-option-card__copy">
+                      <strong>{option.label}</strong>
+                      <small>{aiGoalDescriptions[option.value]}</small>
+                    </span>
+                    <span className="counterpulse-ai-option-card__arrow">
+                      <AiGoalArrowIcon />
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1826,8 +1832,8 @@ export function AiCampaignBuilder({
                   <div className="counterpulse-ai-review-callout__body">
                     <strong>Need help refining this campaign?</strong>
                     <p>
-                      Our team can review and improve the design manually. Tell us
-                      what you're trying to achieve.
+                      Our team can review and improve the design manually. Tell
+                      us what you're trying to achieve.
                     </p>
                   </div>
                   <button
@@ -1923,6 +1929,21 @@ function AiGoalIcon() {
   return (
     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
       <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 3.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6Zm0 3.2a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2Z" />
+    </svg>
+  );
+}
+
+function AiGoalArrowIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path
+        d="m9 5 7 7-7 7"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.4"
+      />
     </svg>
   );
 }
@@ -2047,7 +2068,8 @@ export function SuggestionMiniPreview({
   // already baked in) so the drawer preview matches the Design/Campaign previews
   // and the storefront.
   const structureTree = useMemo(
-    () => (suggestion.structureHtml ? htmlToTree(suggestion.structureHtml) : null),
+    () =>
+      suggestion.structureHtml ? htmlToTree(suggestion.structureHtml) : null,
     [suggestion.structureHtml],
   );
 
@@ -2128,8 +2150,8 @@ function RegenerateCloseModal({
           <div>
             <h2>How close is this design to what you want?</h2>
             <p className="counterpulse-design-note">
-              Your answer tells the AI how much to change. It improves the current
-              draft instead of starting over.
+              Your answer tells the AI how much to change. It improves the
+              current draft instead of starting over.
             </p>
           </div>
         </div>
@@ -2226,7 +2248,7 @@ function AskTeamReviewModal({
       <div
         aria-label="Ask our team to review"
         aria-modal="true"
-        className="counterpulse-modal counterpulse-modal--wide"
+        className="counterpulse-modal counterpulse-modal--wide counterpulse-modal--review"
         role="dialog"
       >
         <div className="counterpulse-modal__header">
@@ -2308,10 +2330,7 @@ function AskTeamReviewModal({
                 </dl>
                 {referenceImage && (
                   <figure className="counterpulse-ai-review-summary__image">
-                    <img
-                      alt="Reference"
-                      src={referenceImage.dataUrl}
-                    />
+                    <img alt="Reference" src={referenceImage.dataUrl} />
                     <figcaption>Reference image (attached)</figcaption>
                   </figure>
                 )}
@@ -2586,7 +2605,13 @@ function PreviewFieldIcon({ label }: { label: string }) {
       return (
         <svg {...common}>
           <path d="M4.5 12.2 12.2 4H20v7.8L11.8 20z" />
-          <circle cx="16.4" cy="7.6" r="1.1" fill="currentColor" stroke="none" />
+          <circle
+            cx="16.4"
+            cy="7.6"
+            r="1.1"
+            fill="currentColor"
+            stroke="none"
+          />
         </svg>
       );
     default:

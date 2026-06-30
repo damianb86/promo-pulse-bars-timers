@@ -353,6 +353,17 @@ export const action = async ({
               previousSuggestion.structureCss,
               previousAssets,
             ),
+            design: {
+              ...previousSuggestion.design,
+              backgroundImageUrl: dematerializeAssetUrls(
+                previousSuggestion.design.backgroundImageUrl,
+                previousAssets,
+              ),
+              customIconUrl: dematerializeAssetUrls(
+                previousSuggestion.design.customIconUrl,
+                previousAssets,
+              ),
+            },
             headline: previousSuggestion.campaign.headline ?? undefined,
             subheadline: previousSuggestion.campaign.subheadline ?? undefined,
           }
@@ -387,6 +398,15 @@ export const action = async ({
         ...suggestion,
         structureHtml: stripAssetPlaceholders(assetResult.html),
         structureCss: stripAssetPlaceholders(assetResult.css),
+        design: {
+          ...assetResult.design,
+          backgroundImageUrl: stripAssetPlaceholders(
+            assetResult.design.backgroundImageUrl,
+          ),
+          customIconUrl: stripAssetPlaceholders(
+            assetResult.design.customIconUrl,
+          ),
+        },
         generatedAssets: assetResult.assets.map((asset) => ({
           key: asset.key,
           assetType: asset.assetType,
@@ -847,62 +867,62 @@ export default function CreateCampaignPage() {
               type="button"
               onClick={() => setIsAiDrawerOpen(false)}
             />
-          <div
-            className={
-              selectedSuggestion
-                ? "counterpulse-ai-drawer-cluster has-preview"
-                : "counterpulse-ai-drawer-cluster"
-            }
-          >
-            {selectedSuggestion && (
-              <section
-                aria-label="AI suggestion preview"
-                className="counterpulse-ai-drawer-preview-wing"
-                data-testid="ai-drawer-preview"
-              >
-                <SuggestionMiniPreview suggestion={selectedSuggestion} />
-              </section>
-            )}
-            <aside
-              aria-label="AI Campaign Assistant"
-              className="counterpulse-ai-drawer"
+            <div
+              className={
+                selectedSuggestion
+                  ? "counterpulse-ai-drawer-cluster has-preview"
+                  : "counterpulse-ai-drawer-cluster"
+              }
             >
-            <div className="counterpulse-ai-drawer__header">
-              <div>
-                <p className="counterpulse-kicker">AI campaign assistant</p>
-                <h2>Generate a campaign draft</h2>
-              </div>
-              <button
-                aria-label="Close AI campaign drawer"
-                className="counterpulse-ai-drawer__close"
-                type="button"
-                onClick={() => setIsAiDrawerOpen(false)}
+              {selectedSuggestion && (
+                <section
+                  aria-label="AI suggestion preview"
+                  className="counterpulse-ai-drawer-preview-wing"
+                  data-testid="ai-drawer-preview"
+                >
+                  <SuggestionMiniPreview suggestion={selectedSuggestion} />
+                </section>
+              )}
+              <aside
+                aria-label="AI Campaign Assistant"
+                className="counterpulse-ai-drawer"
               >
-                x
-              </button>
-            </div>
-            <AiCampaignBuilder
-              errors={actionData?.aiErrors}
-              followUpQuestions={actionData?.aiFollowUpQuestions}
-              lockedReason={aiLockedReason}
-              assetsLockedReason={assetsLockedReason}
-              onApplied={() => setIsAiDrawerOpen(false)}
-              suggestion={selectedSuggestion}
-              templateSourceName={templateSourceName}
-              values={actionData?.aiInput ?? aiInput}
-              locales={enabledLocales}
-              versionCount={versions.length}
-              versionIndex={versionIndex}
-              onPrevVersion={() =>
-                setVersionIndex((index) => Math.max(0, index - 1))
-              }
-              onNextVersion={() =>
-                setVersionIndex((index) =>
-                  Math.min(versions.length - 1, index + 1),
-                )
-              }
-            />
-            </aside>
+                <div className="counterpulse-ai-drawer__header">
+                  <div>
+                    <p className="counterpulse-kicker">AI campaign assistant</p>
+                    <h2>Generate a campaign draft</h2>
+                  </div>
+                  <button
+                    aria-label="Close AI campaign drawer"
+                    className="counterpulse-ai-drawer__close"
+                    type="button"
+                    onClick={() => setIsAiDrawerOpen(false)}
+                  >
+                    x
+                  </button>
+                </div>
+                <AiCampaignBuilder
+                  errors={actionData?.aiErrors}
+                  followUpQuestions={actionData?.aiFollowUpQuestions}
+                  lockedReason={aiLockedReason}
+                  assetsLockedReason={assetsLockedReason}
+                  onApplied={() => setIsAiDrawerOpen(false)}
+                  suggestion={selectedSuggestion}
+                  templateSourceName={templateSourceName}
+                  values={actionData?.aiInput ?? aiInput}
+                  locales={enabledLocales}
+                  versionCount={versions.length}
+                  versionIndex={versionIndex}
+                  onPrevVersion={() =>
+                    setVersionIndex((index) => Math.max(0, index - 1))
+                  }
+                  onNextVersion={() =>
+                    setVersionIndex((index) =>
+                      Math.min(versions.length - 1, index + 1),
+                    )
+                  }
+                />
+              </aside>
             </div>
           </div>,
           document.body,

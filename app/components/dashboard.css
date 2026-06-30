@@ -1982,7 +1982,7 @@ s-page::part(page) {
   min-height: 0;
   align-items: start;
   overflow: auto;
-  zoom: .5;
+  zoom: 0.5;
 }
 
 .counterpulse-variant-drawer-preview-wing
@@ -3561,8 +3561,8 @@ s-page::part(page) {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   object-fit: contain;
-  background:
-    repeating-conic-gradient(#f3f4f6 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
+  background: repeating-conic-gradient(#f3f4f6 0% 25%, #ffffff 0% 50%) 50% /
+    16px 16px;
 }
 
 .counterpulse-inline-link {
@@ -3719,8 +3719,8 @@ s-page::part(page) {
   height: 76px;
   object-fit: contain;
   border-radius: 4px;
-  background:
-    repeating-conic-gradient(#f3f4f6 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
+  background: repeating-conic-gradient(#f3f4f6 0% 25%, #ffffff 0% 50%) 50% /
+    16px 16px;
 }
 
 .counterpulse-ai-asset-card figcaption {
@@ -3960,6 +3960,57 @@ s-page::part(page) {
   max-height: min(64vh, 560px);
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.counterpulse-modal--review {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 40px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.counterpulse-modal--review .counterpulse-modal__header {
+  display: block;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.counterpulse-modal--review .counterpulse-modal__header h2 {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.counterpulse-modal--review .counterpulse-design-note {
+  max-width: 560px;
+  margin-top: 6px;
+}
+
+.counterpulse-modal--review form {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.counterpulse-modal--review .counterpulse-modal__body {
+  max-height: none;
+  margin: 0;
+  overflow-y: auto;
+  padding: 20px 24px 18px;
+}
+
+.counterpulse-modal--review .counterpulse-modal__actions {
+  flex-wrap: nowrap;
+  padding: 14px 24px;
+  border-top: 1px solid #edf0f3;
+  background: #ffffff;
+}
+
+.counterpulse-modal--review .counterpulse-form-field textarea {
+  min-height: 118px;
 }
 
 @keyframes counterpulse-toast-in {
@@ -4883,7 +4934,7 @@ s-page::part(page) {
 .counterpulse-ai-shape-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .counterpulse-ai-option-card,
@@ -4907,12 +4958,55 @@ s-page::part(page) {
   text-align: left;
 }
 
+.counterpulse-ai-option-card {
+  min-height: 86px;
+  grid-template-columns: 52px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-color: #dfe3ee;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    inset 0 0 0 1px rgb(255 255 255 / 0.85);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+
+.counterpulse-ai-option-card:hover {
+  border-color: #c7d2fe;
+  background: #fcfcff;
+  box-shadow:
+    0 10px 24px rgb(15 23 42 / 0.08),
+    0 0 0 1px rgb(99 102 241 / 0.08);
+  transform: translateY(-1px);
+}
+
+.counterpulse-ai-option-card:focus-visible {
+  border-color: #635bff;
+  box-shadow:
+    0 0 0 3px rgb(99 102 241 / 0.18),
+    0 8px 22px rgb(15 23 42 / 0.08);
+  outline: none;
+}
+
 .counterpulse-ai-option-card[aria-pressed="true"],
 .counterpulse-ai-shape-card[aria-pressed="true"],
 .counterpulse-ai-chip[aria-pressed="true"] {
   border-color: #6d28d9;
   background: #f5f3ff;
   box-shadow: 0 0 0 1px #6d28d9;
+}
+
+.counterpulse-ai-option-card[aria-pressed="true"] {
+  border-color: #635bff;
+  background: #fafaff;
+  box-shadow:
+    0 0 0 1px #635bff,
+    0 12px 28px rgb(99 91 255 / 0.12);
 }
 
 .counterpulse-ai-option-card strong,
@@ -4931,8 +5025,50 @@ s-page::part(page) {
 }
 
 .counterpulse-ai-option-card__icon {
+  width: 52px;
+  height: 52px;
+  border: 1px solid #e5e7ff;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f7f7ff 0%, #eef2ff 100%);
+  color: #635bff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 8px 18px rgb(99 91 255 / 0.08);
+}
+
+.counterpulse-ai-option-card__icon svg {
   width: 30px;
   height: 30px;
+}
+
+.counterpulse-ai-option-card__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.counterpulse-ai-option-card__arrow {
+  display: inline-grid;
+  place-items: center;
+  color: #1f2937;
+  opacity: 0.84;
+  transition:
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.counterpulse-ai-option-card__arrow svg {
+  width: 22px;
+  height: 22px;
+}
+
+.counterpulse-ai-option-card:hover .counterpulse-ai-option-card__arrow,
+.counterpulse-ai-option-card[aria-pressed="true"]
+  .counterpulse-ai-option-card__arrow {
+  color: #635bff;
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .counterpulse-ai-chip-grid {
@@ -5157,16 +5293,16 @@ s-page::part(page) {
 .counterpulse-ai-review-summary {
   border: 1px solid #e3e6ea;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 14px;
   background: #fbfbfc;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .counterpulse-ai-review-summary__list {
   margin: 8px 0 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
 }
 
 .counterpulse-ai-review-summary__list dt {
@@ -5185,12 +5321,14 @@ s-page::part(page) {
 }
 
 .counterpulse-ai-review-summary__image {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
 }
 
 .counterpulse-ai-review-summary__image img {
-  max-width: 220px;
-  max-height: 140px;
+  display: block;
+  width: min(260px, 100%);
+  max-height: 160px;
+  object-fit: cover;
   border-radius: 8px;
   border: 1px solid #e3e6ea;
 }
@@ -5202,6 +5340,37 @@ s-page::part(page) {
 }
 
 @media (max-width: 560px) {
+  .counterpulse-modal-backdrop {
+    padding: 12px;
+  }
+
+  .counterpulse-modal--review {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .counterpulse-modal--review .counterpulse-modal__header {
+    padding: 18px 18px 14px;
+  }
+
+  .counterpulse-modal--review .counterpulse-modal__body {
+    padding: 16px 18px;
+  }
+
+  .counterpulse-modal--review .counterpulse-modal__actions {
+    flex-direction: column-reverse;
+    padding: 12px 18px;
+  }
+
+  .counterpulse-modal--review .counterpulse-modal__actions > button {
+    width: 100%;
+  }
+
+  .counterpulse-ai-review-summary__list {
+    grid-template-columns: 1fr;
+  }
+
   .counterpulse-ai-review-callout {
     flex-wrap: wrap;
   }

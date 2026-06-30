@@ -13,6 +13,7 @@ export type CampaignAiRefinement = {
   structureCss: string;
   headline?: string;
   subheadline?: string;
+  design?: Record<string, unknown>;
 };
 
 function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
@@ -36,6 +37,9 @@ function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
     refinement.subheadline
       ? `Previous subheadline: ${refinement.subheadline}`
       : "",
+    refinement.design
+      ? `Previous design settings JSON:\n${JSON.stringify(refinement.design, null, 2)}`
+      : "",
     refinement.structureHtml
       ? `Previous structureHtml:\n${refinement.structureHtml}`
       : "",
@@ -50,7 +54,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v17";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v18";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -89,14 +93,17 @@ Visual assets (only when input.generateVisualAssets is true):
   and apply it as the campaign background. You may also add icons/badges/textures
   when they help. Keep the asset count minimal (max 8); usually 1 background plus
   at most a couple of accents.
-- Apply the background via structureCss (so you MUST return structureHtml +
-  structureCss when you generate a background). Example:
-    __CP_SCOPE__ .cp-promo {
-      background-image: linear-gradient(<scrim>), url("{{asset:bg}}");
-      background-size: cover; background-position: center; background-repeat: no-repeat;
-    }
-  For a tileable pattern use background-repeat: repeat with a sensible
-  background-size instead of cover. NEVER use background-attachment: fixed.
+- Express generated visuals through native design settings whenever the setting
+  exists. A campaign surface background belongs in design.backgroundType = "IMAGE"
+  and design.backgroundImageUrl = "{{asset:bg}}" (or the relevant key), not in
+  structureCss. A generated custom icon belongs in design.icon = "CUSTOM" and
+  design.customIconUrl = "{{asset:icon}}". Keep structureHtml/structureCss empty
+  when the supported layout + settings can render the campaign professionally.
+- Use structureHtml/structureCss only for a genuinely custom arrangement or an
+  effect that settings cannot express. Do not duplicate a background in CSS when
+  design.backgroundImageUrl already applies it. If a tileable pattern needs a
+  repeat-specific treatment that settings cannot express, use short structureCss
+  for the repeat behavior and keep everything else in settings.
 - RESPONSIVE backgrounds: photos/illustrations use background-size: cover +
   background-position: center so they fill any width without distortion; patterns
   tile. The background must look right from ~100px up to full width, and the
@@ -104,23 +111,29 @@ Visual assets (only when input.generateVisualAssets is true):
   for art that has safe, low-detail areas where text sits, or generate it wide/
   panoramic for bars.
 - LEGIBILITY over a background is mandatory: always layer a scrim/overlay (a
-  semi-opaque color or a linear-gradient) between the image and the text, and set
-  text colors that read clearly on it. Never ship text directly over a raw busy
-  image.
+  semi-opaque color or a supported darker/lighter surface treatment) between the
+  image and the text when needed, and set text colors that read clearly on it.
+  Never ship text directly over a raw busy image.
 - Asset spec shape: { "key": "short-id",
     "type": "background|icon|badge|pattern|texture|decoration|image",
     "source": "generated|svg",
+    "imageSize": "1024x1024|1536x1024|1024x1536" (ONLY for generated bitmap assets),
     "prompt": "detailed image-model prompt describing the asset, its style, palette,
-      and that it must leave clean space for text / tile seamlessly",
+      exact intended use, canvas size/aspect ratio, and that it must leave clean
+      space for text / tile seamlessly",
     "svg": "<svg>...</svg> (only when source is svg)",
     "region": { "x":0,"y":0,"width":0,"height":0 } (ONLY in image mode, see below) }
   - Use source "svg" for simple flat icons/badges/shapes; "generated" for
     photographic/illustrated/textured backgrounds and patterns.
+  - Pick imageSize intentionally: 1536x1024 for wide/landscape campaign
+    backgrounds and banner art, 1024x1536 for tall/portrait drawer or card art,
+    and 1024x1024 for icons, badges, square decorations, and tileable patterns.
+    The prompt MUST name the intended canvas and aspect ratio naturally.
   - MANDATORY: every asset in "assets" MUST be referenced by its {{asset:key}}
-    placeholder in structureHtml or structureCss, or it is wasted. Prefer a CSS
-    background over an <img>. Only use <img> for true content images, and then the
-    src MUST be the {{asset:key}} placeholder. Never invent real URLs and never
-    leave an asset unreferenced.
+    placeholder in a native design setting (preferred: backgroundImageUrl or
+    customIconUrl), structureHtml, or structureCss, or it is wasted. Only use
+    <img> for true content images, and then the src MUST be the {{asset:key}}
+    placeholder. Never invent real URLs and never leave an asset unreferenced.
 `.trim();
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
@@ -251,9 +264,14 @@ strings, empty arrays, false, or safe defaults, not null:
 }
 
 Design guidance:
-- Select an existing design preset by templateKey when helpful, but do not
-  provide custom color, gradient, or background overrides. Promo Pulse will use
-  the colors built into the selected preset.
+- Prefer first-class design settings over custom structure or CSS. Use design.*
+  for layout, background, image background, colors, spacing, typography, button,
+  timer, progress, icon, border, radius, and motion whenever those settings can
+  express the visual result. Custom HTML/CSS is the exception, not the default.
+- Select an existing design preset by templateKey when helpful. In ordinary
+  text-only generations without visual assets, keep preset colors/backgrounds.
+  In reference-image or visual asset generations, populate the concrete design.*
+  visual fields needed for a polished result.
 - Use compact typography for badges and low-stock messages.
 - For TOP_BAR or BOTTOM_BAR with fullWidth true, set borderRadius 0.
 - For full-width bars that should keep a vertical reading order, prefer
@@ -369,6 +387,11 @@ Structural CSS (structureCss) — style the structure and add effects:
 - Put ALL styles for a custom structure here (and any extra effects/animations you
   want). Plain CSS only: no <style> tags, no @import, no JavaScript, no
   javascript:/data: URLs.
+- Do not use structureCss to recreate settings the app already supports. Surface
+  backgrounds should usually be design.backgroundType/backgroundImageUrl,
+  gradients should be design.gradient*, buttons should be design.button*, and
+  progress/timer visuals should be their design fields. CSS should only add the
+  small missing piece.
 - Scope every rule to this campaign with the __CP_SCOPE__ placeholder, which the
   app replaces with a unique per-campaign selector at render time. Put the design
   variables on the root and target your classes beneath it, e.g.:

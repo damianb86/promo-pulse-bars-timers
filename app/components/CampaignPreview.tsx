@@ -966,7 +966,9 @@ function PreviewProgress({
       <div className={className} style={vars}>
         <span
           className="counterpulse-preview-progress-circle"
-          style={{ "--cp-progress-deg": `${(pct / 100) * 360}deg` } as CSSProperties}
+          style={
+            { "--cp-progress-deg": `${(pct / 100) * 360}deg` } as CSSProperties
+          }
         >
           <span>{design.progressShowLabel ? `${pct}%` : ""}</span>
         </span>
@@ -1052,13 +1054,14 @@ function StructurePromoSurface({
     // Author attributes (class/id/style/data-*) on the slot are preserved so
     // merchants can style/position the element. data-cp-* config attrs are read
     // below and not rendered as raw attributes.
-    const attrProps = slotAttrProps(node, key);
+    const attrProps = slotAttrProps(node);
     const iconDesign = iconDesignForSlot(node, design);
     const forceCompact = node.attrs?.["data-cp-compact"];
     switch (slot) {
       case "headline":
         return (
           <strong
+            key={key}
             {...attrProps}
             dangerouslySetInnerHTML={{ __html: headlineHtml }}
           />
@@ -1066,6 +1069,7 @@ function StructurePromoSurface({
       case "body":
         return bodyHtml ? (
           <span
+            key={key}
             {...attrProps}
             suppressHydrationWarning
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -1077,6 +1081,7 @@ function StructurePromoSurface({
           node.tag === "a" ? "a" : node.tag === TEXT_TAG ? "span" : node.tag,
           {
             ...attrProps,
+            key,
             className: ["counterpulse-preview-cta", node.attrs?.class]
               .filter(Boolean)
               .join(" "),
@@ -1112,7 +1117,7 @@ function StructurePromoSurface({
         if (!timerState?.remainingMs) return null;
         const part = TIMER_PART_SLOTS[slot];
         return (
-          <span {...attrProps}>
+          <span key={key} {...attrProps}>
             {timerPartValue(part, timerState.remainingMs)}
           </span>
         );
@@ -1147,6 +1152,7 @@ function StructurePromoSurface({
         if (messageId && customMessagesHtml[messageId] != null) {
           return (
             <span
+              key={key}
               {...attrProps}
               suppressHydrationWarning
               dangerouslySetInnerHTML={{
@@ -1207,7 +1213,11 @@ function StructurePromoSurface({
       ? design.customCss.replace(/<\/?\s*style/gi, "")
       : "");
 
-  const rootProps = structureNodeProps(tree, undefined, inspect ? "" : undefined);
+  const rootProps = structureNodeProps(
+    tree,
+    "surface",
+    inspect ? "" : undefined,
+  );
   const surface = createElement(
     tree.tag,
     {
@@ -1310,10 +1320,7 @@ function structureNodeProps(
 
 // Author attributes for a slot element: same as structureNodeProps but without
 // the internal data-cp-* markers (they configure rendering, not the DOM).
-function slotAttrProps(
-  node: StructureNode,
-  key: string,
-): Record<string, unknown> {
+function slotAttrProps(node: StructureNode): Record<string, unknown> {
   const filtered: StructureNode = {
     tag: node.tag,
     attrs: Object.fromEntries(
@@ -1322,7 +1329,7 @@ function slotAttrProps(
       ),
     ),
   };
-  return structureNodeProps(filtered, key);
+  return structureNodeProps(filtered, undefined);
 }
 
 // Per-instance icon override from data-cp-icon / data-cp-icon-size on the slot.

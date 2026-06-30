@@ -26,8 +26,7 @@ function buildSuggestion(
     deliveryCutoff: {} as CampaignSuggestion["deliveryCutoff"],
     translations: {} as CampaignSuggestion["translations"],
     design: {} as CampaignSuggestion["design"],
-    structureHtml:
-      '<section><img src="{{asset:hero}}"></section>',
+    structureHtml: '<section><img src="{{asset:hero}}"></section>',
     structureCss: '.x{background:url("{{asset:hero}}")}',
     assets: [
       { key: "hero", type: "background", source: "generated", prompt: "a bg" },
@@ -75,7 +74,9 @@ function mockAdmin({ scopes }: { scopes: string[] }) {
       if (query.includes("fileCreate")) {
         return {
           json: async () => ({
-            data: { fileCreate: { files: [{ id: "gid://file/1" }], userErrors: [] } },
+            data: {
+              fileCreate: { files: [{ id: "gid://file/1" }], userErrors: [] },
+            },
           }),
         };
       }
@@ -184,6 +185,35 @@ describe("materializeCampaignAssets", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("rewrites generated background placeholders in design settings", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 200 }),
+    );
+
+    const result = await materializeCampaignAssets({
+      admin: mockAdmin({ scopes: ["write_files"] }),
+      shop: { plan: "PRO" },
+      suggestion: buildSuggestion({
+        structureHtml: '<section class="cp-promo"></section>',
+        structureCss: "",
+        design: {
+          backgroundType: "IMAGE",
+          backgroundImageUrl: "{{asset:hero}}",
+          customIconUrl: "",
+        } as CampaignSuggestion["design"],
+      }),
+      referenceImage: null,
+      provider: mockProvider,
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.design.backgroundImageUrl).toBe(
+      "https://cdn.shopify.com/hero.png",
+    );
+    expect(result.html).not.toContain("https://cdn.shopify.com/hero.png");
+    expect(result.css).not.toContain("https://cdn.shopify.com/hero.png");
+  });
+
   it("aborts with an error (no partial assets) when upload fails", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(null, { status: 500 }),
@@ -254,7 +284,9 @@ describe("materializeCampaignAssets", () => {
 
     expect(result.error).toBeNull();
     expect(generateSpy).toHaveBeenCalledTimes(1);
-    expect(result.assets[0].shopifyUrl).toBe("https://cdn.shopify.com/hero.png");
+    expect(result.assets[0].shopifyUrl).toBe(
+      "https://cdn.shopify.com/hero.png",
+    );
   });
 });
 

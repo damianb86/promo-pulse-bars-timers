@@ -31,6 +31,10 @@ export type MaterializeAssetsResult = {
   // HTML/CSS with {{asset:key}} placeholders replaced by Shopify URLs.
   html: string;
   css: string;
+  // Design settings with supported {{asset:key}} placeholders replaced by
+  // Shopify URLs. This lets backgrounds/icons use first-class settings instead
+  // of requiring custom HTML/CSS.
+  design: CampaignSuggestion["design"];
   assets: MaterializedAsset[];
   // User-facing error. When set, NO assets were applied and the placeholders are
   // left intact so the caller can decide how to surface the failure.
@@ -47,7 +51,9 @@ const ASSET_FEEDBACK_PATTERN =
 
 // Whether the merchant's refinement comment asks to change the visuals/assets.
 // Empty / unrelated feedback returns false so the existing assets are reused.
-export function refineFeedbackMentionsAssets(comment: string | undefined): boolean {
+export function refineFeedbackMentionsAssets(
+  comment: string | undefined,
+): boolean {
   if (!comment) return false;
   return ASSET_FEEDBACK_PATTERN.test(comment);
 }
@@ -75,15 +81,23 @@ export function dematerializeAssetUrls(
   return result;
 }
 
-function applyAssetUrls(
-  text: string,
-  byKey: Map<string, string>,
-): string {
+function applyAssetUrls(text: string, byKey: Map<string, string>): string {
   let result = text;
   for (const [key, url] of byKey) {
     result = result.split(PLACEHOLDER(key)).join(url);
   }
   return result;
+}
+
+function applyAssetUrlsToDesign(
+  design: CampaignSuggestion["design"],
+  byKey: Map<string, string>,
+): CampaignSuggestion["design"] {
+  return {
+    ...design,
+    backgroundImageUrl: applyAssetUrls(design.backgroundImageUrl ?? "", byKey),
+    customIconUrl: applyAssetUrls(design.customIconUrl ?? "", byKey),
+  };
 }
 
 // Generates the AI's visual assets, uploads them to Shopify Files, and rewrites
@@ -116,17 +130,26 @@ export async function materializeCampaignAssets({
   const requested = suggestion.input.generateVisualAssets === true;
   const baseHtml = suggestion.structureHtml;
   const baseCss = suggestion.structureCss;
+  const baseDesign = suggestion.design;
 
   const fail = (error: string): MaterializeAssetsResult => ({
     requested,
     html: baseHtml,
     css: baseCss,
+    design: baseDesign,
     assets: [],
     error,
   });
 
   if (!requested) {
-    return { requested: false, html: baseHtml, css: baseCss, assets: [], error: null };
+    return {
+      requested: false,
+      html: baseHtml,
+      css: baseCss,
+      design: baseDesign,
+      assets: [],
+      error: null,
+    };
   }
 
   // Plan gate (server-side authority).
@@ -144,7 +167,14 @@ export async function materializeCampaignAssets({
   const specs = suggestion.assets;
   if (specs.length === 0) {
     // Requested but the model proposed no assets — not an error.
-    return { requested: true, html: baseHtml, css: baseCss, assets: [], error: null };
+    return {
+      requested: true,
+      html: baseHtml,
+      css: baseCss,
+      design: baseDesign,
+      assets: [],
+      error: null,
+    };
   }
 
   const materialized: MaterializedAsset[] = [];
@@ -207,6 +237,7 @@ export async function materializeCampaignAssets({
     requested: true,
     html: applyAssetUrls(baseHtml, urlByKey),
     css: applyAssetUrls(baseCss, urlByKey),
+    design: applyAssetUrlsToDesign(baseDesign, urlByKey),
     assets: materialized,
     error: null,
   };

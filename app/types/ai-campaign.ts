@@ -132,6 +132,8 @@ export type CampaignAiAssetType =
   | "decoration"
   | "image";
 
+export type CampaignAiImageSize = "1024x1024" | "1536x1024" | "1024x1536";
+
 // A visual asset the AI wants for the campaign. Referenced from the structural
 // HTML/CSS via the placeholder `{{asset:key}}`, which the pipeline replaces with
 // the uploaded Shopify file URL.
@@ -140,6 +142,8 @@ export type CampaignAiAssetSpec = {
   type: CampaignAiAssetType;
   source: CampaignAiAssetSource;
   prompt: string;
+  // Preferred image-model canvas for generated bitmap assets.
+  imageSize?: CampaignAiImageSize;
   // Inline SVG markup (only when source === "svg").
   svg?: string;
   // When the asset is visible in the uploaded reference image, the normalized

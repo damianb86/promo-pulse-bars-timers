@@ -461,6 +461,12 @@ describe("AI campaign reference image", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Design quality");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Contrast");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("{{asset:");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("design.backgroundImageUrl");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("imageSize");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("1536x1024");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
+      "Prefer first-class design settings",
+    );
   });
 
   it("rebalances image mode toward professionalism + keeps the region tool", () => {
@@ -533,6 +539,7 @@ describe("AI campaign reference image", () => {
           type: "background",
           source: "generated",
           prompt: "isolate the hero graphic",
+          imageSize: "1536x1024",
           region: { x: 0.1, y: 0.2, width: 0.5, height: 0.6 },
         },
         {
@@ -550,8 +557,39 @@ describe("AI campaign reference image", () => {
     const bad = applied?.assets.find((asset) => asset.key === "bad");
 
     expect(hero?.region).toEqual({ x: 0.1, y: 0.2, width: 0.5, height: 0.6 });
+    expect(hero?.imageSize).toBe("1536x1024");
     // A degenerate region (zero width) is dropped.
     expect(bad?.region).toBeUndefined();
+  });
+
+  it("round-trips generated background placeholders through design settings", () => {
+    const reviewed = JSON.stringify({
+      promptVersion: "x",
+      source: "provider",
+      input: buildDefaultCampaignAiInput({
+        productContext: "sneakers",
+        generateVisualAssets: true,
+      }),
+      design: {
+        backgroundType: "IMAGE",
+        backgroundImageUrl: "{{asset:hero}}",
+      },
+      assets: [
+        {
+          key: "hero",
+          type: "background",
+          source: "generated",
+          prompt: "wide campaign background, 1536x1024 landscape canvas",
+          imageSize: "1536x1024",
+        },
+      ],
+    });
+
+    const applied = parseAppliedCampaignSuggestion(reviewed);
+
+    expect(applied?.design.backgroundType).toBe("IMAGE");
+    expect(applied?.design.backgroundImageUrl).toBe("{{asset:hero}}");
+    expect(applied?.assets[0].imageSize).toBe("1536x1024");
   });
 
   it("round-trips image-derived colors through the applied suggestion", () => {

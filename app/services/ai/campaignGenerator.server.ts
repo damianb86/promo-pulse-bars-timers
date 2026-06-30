@@ -50,6 +50,7 @@ import {
   type CampaignAiAssetSpec,
   type CampaignAiAssetSource,
   type CampaignAiAssetType,
+  type CampaignAiImageSize,
   type CampaignAiGeneratedAsset,
   type CampaignAiFreeShippingSettings,
   type CampaignAiInput,
@@ -590,7 +591,11 @@ export async function generateCampaignSuggestion(
     normalizedInput,
     output,
     provider.source,
-    Boolean(referenceImage),
+    {
+      referenceImageUsed: Boolean(referenceImage),
+      allowVisualOverrides:
+        Boolean(referenceImage) || normalizedInput.generateVisualAssets,
+    },
   );
 
   return sanitizeCampaignSuggestion(suggestion);
@@ -666,7 +671,11 @@ export function parseAppliedCampaignSuggestion(
         safety: parsed.safety,
       },
       parsed.source === "provider" ? "provider" : "mock",
-      Boolean(parsed.referenceImageUsed),
+      {
+        referenceImageUsed: Boolean(parsed.referenceImageUsed),
+        allowVisualOverrides:
+          Boolean(parsed.referenceImageUsed) || input.generateVisualAssets,
+      },
     );
 
     // Assets already generated + uploaded during generation round-trip here so
@@ -734,7 +743,12 @@ function createOpenAiCampaignProvider(apiKey: string): CampaignAiProvider {
           );
           // Fall back to the text-only flow so the merchant still gets a draft.
           try {
-            return await requestOpenAiJson(apiKey, input, undefined, refinement);
+            return await requestOpenAiJson(
+              apiKey,
+              input,
+              undefined,
+              refinement,
+            );
           } catch (textError) {
             console.error(
               "AI campaign provider failed; using mock output",
@@ -861,15 +875,21 @@ function completeCampaignSuggestion(
   input: CampaignAiInput,
   output: CampaignAiProviderOutput,
   source: CampaignSuggestionSource,
-  allowVisualOverrides = false,
+  options: {
+    referenceImageUsed?: boolean;
+    allowVisualOverrides?: boolean;
+  } = {},
 ): CampaignSuggestion {
   const fallback = buildMockCampaignSuggestion(input);
   const campaign = mergeCampaign(fallback.campaign, output.campaign);
+  const referenceImageUsed = options.referenceImageUsed === true;
+  const allowVisualOverrides =
+    options.allowVisualOverrides ?? referenceImageUsed;
 
   return {
     promptVersion: AI_CAMPAIGN_PROMPT_VERSION,
     source,
-    referenceImageUsed: allowVisualOverrides,
+    referenceImageUsed,
     input,
     campaign,
     timer: ensureTimerHasMockData(
@@ -1359,6 +1379,11 @@ const ASSET_SOURCES = new Set<CampaignAiAssetSource>([
   "extracted",
   "svg",
 ]);
+const AI_IMAGE_SIZES = new Set<CampaignAiImageSize>([
+  "1024x1024",
+  "1536x1024",
+  "1024x1536",
+]);
 
 // Parses the optional normalized region {x,y,width,height} (each 0..1) marking
 // where the asset appears in the reference image. Returns undefined unless all
@@ -1411,7 +1436,12 @@ function sanitizeAiAssetSpecs(
       key,
       type,
       source,
-      prompt: String(record.prompt ?? "").trim().slice(0, 800),
+      prompt: String(record.prompt ?? "")
+        .trim()
+        .slice(0, 1200),
+      imageSize: AI_IMAGE_SIZES.has(record.imageSize as CampaignAiImageSize)
+        ? (record.imageSize as CampaignAiImageSize)
+        : undefined,
       svg:
         source === "svg" && typeof record.svg === "string"
           ? record.svg
@@ -1443,8 +1473,7 @@ function sanitizeGeneratedAssets(value: unknown): CampaignAiGeneratedAsset[] {
       source,
       shopifyFileId,
       shopifyUrl,
-      modelUsed:
-        typeof record.modelUsed === "string" ? record.modelUsed : null,
+      modelUsed: typeof record.modelUsed === "string" ? record.modelUsed : null,
       promptUsed:
         typeof record.promptUsed === "string" ? record.promptUsed : null,
     });
@@ -1481,7 +1510,8 @@ function sanitizeCampaignSuggestion(
     design: sanitizeAiDesign(
       suggestion.design,
       buildDesign(suggestion.input),
-      Boolean(suggestion.referenceImageUsed),
+      Boolean(suggestion.referenceImageUsed) ||
+        suggestion.input.generateVisualAssets,
     ),
     // Sanitize any AI-authored structural HTML / CSS to the safe allowlist so a
     // generated override can never inject unsafe markup or styles.
@@ -2471,7 +2501,8 @@ function sanitizePartialDesign(
       ? { backgroundColor: design.backgroundColor }
       : {}),
     ...(typeof design.backgroundImageUrl === "string" &&
-    isSafeImageUrl(design.backgroundImageUrl)
+    (isSafeImageUrl(design.backgroundImageUrl) ||
+      isAssetPlaceholder(design.backgroundImageUrl))
       ? { backgroundImageUrl: design.backgroundImageUrl.slice(0, 1000) }
       : {}),
     ...(isHexColor(design.gradientStartColor)
@@ -2722,6 +2753,10 @@ function isHexColor(value: unknown) {
 
 function isSafeImageUrl(value: string) {
   return value.startsWith("/") || /^https?:\/\//i.test(value);
+}
+
+function isAssetPlaceholder(value: string) {
+  return /^\{\{asset:[a-zA-Z0-9_-]+\}\}$/.test(value.trim());
 }
 
 function sanitizeWeight(value: unknown, fallback: number) {

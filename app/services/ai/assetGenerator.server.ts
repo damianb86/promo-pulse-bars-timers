@@ -1,5 +1,6 @@
 import type {
   CampaignAiAssetSpec,
+  CampaignAiImageSize,
   CampaignAiReferenceImage,
 } from "../../types/ai-campaign";
 import { sanitizeStructureHtml } from "../../utils/structure-html";
@@ -35,6 +36,90 @@ export type AssetGenerationProvider = {
 // 1x1 transparent PNG — used by the mock provider so dev/E2E never call OpenAI.
 const MOCK_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+const OPENAI_IMAGE_SIZES = new Set<CampaignAiImageSize>([
+  "1024x1024",
+  "1536x1024",
+  "1024x1536",
+]);
+
+export function chooseOpenAiImageSize(
+  spec: Pick<CampaignAiAssetSpec, "type" | "prompt" | "region" | "imageSize">,
+): CampaignAiImageSize {
+  if (spec.imageSize && OPENAI_IMAGE_SIZES.has(spec.imageSize)) {
+    return spec.imageSize;
+  }
+
+  if (spec.region?.width && spec.region?.height) {
+    const ratio = spec.region.width / spec.region.height;
+    if (ratio >= 1.2) return "1536x1024";
+    if (ratio <= 0.82) return "1024x1536";
+  }
+
+  const prompt = `${spec.type} ${spec.prompt}`.toLowerCase();
+
+  if (
+    spec.type === "icon" ||
+    spec.type === "badge" ||
+    (spec.type === "pattern" && !/banner|bar|wide|landscape|hero/.test(prompt))
+  ) {
+    return "1024x1024";
+  }
+
+  if (
+    /drawer|portrait|vertical|tall|story|mobile|narrow card|side panel/.test(
+      prompt,
+    )
+  ) {
+    return "1024x1536";
+  }
+
+  if (
+    spec.type === "background" ||
+    spec.type === "image" ||
+    /banner|bar|wide|horizontal|landscape|panoramic|hero|background|cover/.test(
+      prompt,
+    )
+  ) {
+    return "1536x1024";
+  }
+
+  return "1024x1024";
+}
+
+function sizePromptSuffix(
+  size: CampaignAiImageSize,
+  spec: CampaignAiAssetSpec,
+) {
+  const orientation =
+    size === "1536x1024"
+      ? "landscape"
+      : size === "1024x1536"
+        ? "portrait"
+        : "square";
+  const textRule =
+    spec.type === "background" ||
+    spec.type === "pattern" ||
+    spec.type === "texture" ||
+    spec.type === "decoration"
+      ? "Do not render campaign copy, prices, discount text, countdown digits, logos, or readable typography inside the image; Promo Pulse will render live text and controls above it."
+      : "Avoid unnecessary readable text unless the asset itself is explicitly a typographic badge.";
+
+  return [
+    "",
+    `Canvas: ${size} px, ${orientation} composition.`,
+    "Compose for that exact aspect ratio with clean crop-safe edges and no important detail pressed against the border.",
+    textRule,
+    "Leave calm negative space or low-detail areas where campaign text can remain legible.",
+  ].join("\n");
+}
+
+function assetPrompt(spec: CampaignAiAssetSpec, size: CampaignAiImageSize) {
+  return `${spec.prompt || `Campaign ${spec.type} asset`}${sizePromptSuffix(
+    size,
+    spec,
+  )}`;
+}
 
 function materializeSvg(spec: CampaignAiAssetSpec): GeneratedAssetBinary {
   const safe = sanitizeStructureHtml(spec.svg ?? "", { pretty: false });
@@ -91,6 +176,7 @@ function createOpenAiAssetProvider(apiKey: string): AssetGenerationProvider {
   async function generateFromPrompt(
     spec: CampaignAiAssetSpec,
   ): Promise<GeneratedAssetBinary> {
+    const size = chooseOpenAiImageSize(spec);
     let response: Response;
     try {
       response = await fetch(imagesUrl, {
@@ -101,8 +187,8 @@ function createOpenAiAssetProvider(apiKey: string): AssetGenerationProvider {
         },
         body: JSON.stringify({
           model,
-          prompt: spec.prompt || `Campaign ${spec.type} asset`,
-          size: "1024x1024",
+          prompt: assetPrompt(spec, size),
+          size,
           n: 1,
         }),
       });
@@ -136,15 +222,23 @@ function createOpenAiAssetProvider(apiKey: string): AssetGenerationProvider {
     spec: CampaignAiAssetSpec,
     crop: { bytes: Buffer; mimeType: string },
   ): Promise<GeneratedAssetBinary> {
+    const size = chooseOpenAiImageSize(spec);
     const form = new FormData();
     form.set("model", model);
     form.set(
       "prompt",
-      spec.prompt ||
-        `Recreate this ${spec.type} as a clean, isolated, high-quality asset ` +
-          `with a transparent background, faithful to the reference.`,
+      assetPrompt(
+        {
+          ...spec,
+          prompt:
+            spec.prompt ||
+            `Recreate this ${spec.type} as a clean, isolated, high-quality asset ` +
+              `faithful to the reference.`,
+        },
+        size,
+      ),
     );
-    form.set("size", "1024x1024");
+    form.set("size", size);
     form.set("n", "1");
     form.set(
       "image",

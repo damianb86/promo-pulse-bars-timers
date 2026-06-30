@@ -54,7 +54,11 @@ import {
   refineFeedbackMentionsAssets,
   stripAssetPlaceholders,
 } from "../services/assets/campaignAssetPipeline.server";
-import { withImageDimensions } from "../services/assets/imageProcessing.server";
+import {
+  decodeDataUrl,
+  withImageDimensions,
+} from "../services/assets/imageProcessing.server";
+import { isValidEmail, sendCampaignReviewEmail } from "../email.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
 import {
   canCreateCampaign,
@@ -106,6 +110,8 @@ type ActionData = {
   aiSuggestion?: CampaignSuggestion | null;
   errors?: CampaignFormErrors;
   values?: CampaignFormValues;
+  // Result of the "Ask our team to review" submission from the AI drawer.
+  reviewRequest?: { ok: boolean; message: string };
 };
 
 type LoaderData = {
@@ -187,6 +193,78 @@ export const action = async ({
   const settings = await getShopSettingsOrDefaults(shop.id);
   const formData = await request.formData();
   const intent = formData.get("_action");
+
+  if (intent === "requestCampaignReview") {
+    const goalDetail = String(formData.get("reviewDetail") ?? "").trim();
+    if (!goalDetail) {
+      return {
+        reviewRequest: {
+          ok: false,
+          message: "Tell us what you're trying to achieve before sending.",
+        },
+      };
+    }
+    const replyEmail = String(formData.get("reviewEmail") ?? "").trim();
+    if (replyEmail && !isValidEmail(replyEmail)) {
+      return {
+        reviewRequest: { ok: false, message: "Enter a valid reply email." },
+      };
+    }
+
+    const fieldLabels: Array<[string, string]> = [
+      ["Objective", String(formData.get("objective") ?? "")],
+      ["Shape", String(formData.get("campaignShape") ?? "")],
+      ["Product / category", String(formData.get("productContext") ?? "")],
+      ["Event", String(formData.get("eventName") ?? "")],
+      ["Known offer", String(formData.get("knownOffer") ?? "")],
+      ["Brand tone", String(formData.get("brandTone") ?? "")],
+      ["Locale", String(formData.get("locale") ?? "")],
+      ["Notes", String(formData.get("merchantNotes") ?? "")],
+    ];
+
+    const { image } = parseCampaignAiReferenceImage(formData);
+    const attachments = image
+      ? (() => {
+          const decoded = decodeDataUrl(image.dataUrl);
+          return decoded
+            ? [
+                {
+                  filename: `reference.${
+                    decoded.mimeType.split("/")[1] || "png"
+                  }`,
+                  content: decoded.buffer,
+                  contentType: decoded.mimeType,
+                },
+              ]
+            : undefined;
+        })()
+      : undefined;
+
+    try {
+      await sendCampaignReviewEmail({
+        shop: shop.shopifyDomain,
+        replyEmail: replyEmail || undefined,
+        goalDetail,
+        fields: fieldLabels.map(([label, value]) => ({ label, value })),
+        attachments,
+      });
+      return {
+        reviewRequest: {
+          ok: true,
+          message:
+            "Thanks! Your request was sent to our team. We usually reply in under 48 business hours.",
+        },
+      };
+    } catch (error) {
+      console.error("Failed to send campaign review request", error);
+      return {
+        reviewRequest: {
+          ok: false,
+          message: "We couldn't send your request. Please try again.",
+        },
+      };
+    }
+  }
 
   if (intent === "generateAiCampaignSuggestion") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");

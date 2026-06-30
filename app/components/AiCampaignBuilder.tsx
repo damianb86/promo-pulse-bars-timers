@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { AppAlert, AppToast } from "./Notifications";
-import { Form, useNavigation } from "react-router";
+import { Form, useFetcher, useNavigation } from "react-router";
 
 import {
   type CampaignAiAnswerMap,
@@ -629,6 +629,7 @@ export function AiCampaignBuilder({
   const [imageError, setImageError] = useState<string | null>(null);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [refineModalOpen, setRefineModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [refineCloseness, setRefineCloseness] = useState("");
   const [refineComment, setRefineComment] = useState("");
 
@@ -1820,6 +1821,29 @@ export function AiCampaignBuilder({
                   </s-box>
                 )}
 
+                <div className="counterpulse-ai-review-callout">
+                  <span
+                    className="counterpulse-ai-review-callout__icon"
+                    aria-hidden="true"
+                  >
+                    <PreviewFieldIcon label="Targeting" />
+                  </span>
+                  <div className="counterpulse-ai-review-callout__body">
+                    <strong>Need help refining this campaign?</strong>
+                    <p>
+                      Our team can review and improve the design manually. Tell us
+                      what you're trying to achieve.
+                    </p>
+                  </div>
+                  <button
+                    className="counterpulse-button-secondary counterpulse-ai-review-callout__button"
+                    type="button"
+                    onClick={() => setReviewModalOpen(true)}
+                  >
+                    Ask our team to review
+                  </button>
+                </div>
+
                 <div className="counterpulse-actions">
                   <button
                     className="counterpulse-button"
@@ -1873,6 +1897,14 @@ export function AiCampaignBuilder({
                   <RegenerateCloseModal
                     onClose={() => setRefineModalOpen(false)}
                     onSubmit={regenerateWith}
+                  />
+                )}
+
+                {reviewModalOpen && (
+                  <AskTeamReviewModal
+                    input={formValues}
+                    referenceImage={referenceImage}
+                    onClose={() => setReviewModalOpen(false)}
                   />
                 )}
 
@@ -2157,6 +2189,186 @@ function RegenerateCloseModal({
   );
 }
 
+// "Ask our team to review": shows everything the merchant entered (including the
+// uploaded reference image), lets them describe their goal, and emails it to the
+// app's contact inbox via the route action (intent requestCampaignReview).
+function AskTeamReviewModal({
+  input,
+  referenceImage,
+  onClose,
+}: {
+  input: CampaignAiInput;
+  referenceImage: ReferenceImageState | null;
+  onClose: () => void;
+}) {
+  const fetcher = useFetcher<{
+    reviewRequest?: { ok: boolean; message: string };
+  }>();
+  const result = fetcher.data?.reviewRequest;
+  const submitting = fetcher.state !== "idle";
+  const sent = result?.ok === true;
+
+  const summary: Array<[string, string]> = [
+    ["Objective", input.objective],
+    ["Shape", input.campaignShape],
+    ["Product / category", input.productContext],
+    ["Event", input.eventName],
+    ["Known offer", input.knownOffer],
+    ["Brand tone", input.brandTone],
+    ["Locale", input.locale],
+    ["Notes", input.merchantNotes],
+  ];
+
+  return (
+    <div className="counterpulse-modal-backdrop">
+      <button
+        aria-label="Close"
+        className="counterpulse-modal-backdrop__dismiss"
+        tabIndex={-1}
+        type="button"
+        onClick={onClose}
+      />
+      <div
+        aria-label="Ask our team to review"
+        aria-modal="true"
+        className="counterpulse-modal counterpulse-modal--wide"
+        role="dialog"
+      >
+        <div className="counterpulse-modal__header">
+          <div>
+            <h2>Ask our team to review</h2>
+            <p className="counterpulse-design-note">
+              We'll review the inputs below and improve the campaign manually.
+            </p>
+          </div>
+        </div>
+
+        {sent ? (
+          <>
+            <div className="counterpulse-modal__body">
+              <AppAlert tone="success" title="Request sent">
+                <s-paragraph>{result?.message}</s-paragraph>
+              </AppAlert>
+            </div>
+            <div className="counterpulse-modal__actions">
+              <button
+                className="counterpulse-button"
+                type="button"
+                onClick={onClose}
+              >
+                Done
+              </button>
+            </div>
+          </>
+        ) : (
+          <fetcher.Form method="post">
+            <input type="hidden" name="_action" value="requestCampaignReview" />
+            <input type="hidden" name="objective" value={input.objective} />
+            <input
+              type="hidden"
+              name="campaignShape"
+              value={input.campaignShape}
+            />
+            <input
+              type="hidden"
+              name="productContext"
+              value={input.productContext}
+            />
+            <input type="hidden" name="eventName" value={input.eventName} />
+            <input type="hidden" name="knownOffer" value={input.knownOffer} />
+            <input type="hidden" name="brandTone" value={input.brandTone} />
+            <input type="hidden" name="locale" value={input.locale} />
+            <input
+              type="hidden"
+              name="merchantNotes"
+              value={input.merchantNotes}
+            />
+            {referenceImage && (
+              <>
+                <input
+                  type="hidden"
+                  name="referenceImageDataUrl"
+                  value={referenceImage.dataUrl}
+                />
+                <input
+                  type="hidden"
+                  name="referenceImageMimeType"
+                  value={referenceImage.mimeType}
+                />
+              </>
+            )}
+
+            <div className="counterpulse-modal__body">
+              <div className="counterpulse-ai-review-summary">
+                <p className="counterpulse-kicker">Your inputs</p>
+                <dl className="counterpulse-ai-review-summary__list">
+                  {summary
+                    .filter(([, value]) => value)
+                    .map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                </dl>
+                {referenceImage && (
+                  <figure className="counterpulse-ai-review-summary__image">
+                    <img
+                      alt="Reference"
+                      src={referenceImage.dataUrl}
+                    />
+                    <figcaption>Reference image (attached)</figcaption>
+                  </figure>
+                )}
+              </div>
+
+              <label className="counterpulse-form-field">
+                <span>What are you trying to achieve?</span>
+                <textarea
+                  name="reviewDetail"
+                  required
+                  rows={4}
+                  placeholder="Describe the result you want — the look, the message, what isn't working, deadlines, anything that helps us help you."
+                />
+              </label>
+              <label className="counterpulse-form-field">
+                <span>Reply email (optional)</span>
+                <input
+                  name="reviewEmail"
+                  type="email"
+                  placeholder="you@store.com"
+                />
+              </label>
+
+              {result && !result.ok && (
+                <AppAlert tone="critical" title="Couldn't send">
+                  <s-paragraph>{result.message}</s-paragraph>
+                </AppAlert>
+              )}
+            </div>
+            <div className="counterpulse-modal__actions">
+              <button
+                className="counterpulse-button-secondary"
+                type="button"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                className="counterpulse-button"
+                disabled={submitting}
+                type="submit"
+              >
+                {submitting ? "Sending..." : "Send to our team"}
+              </button>
+            </div>
+          </fetcher.Form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReferenceImageIcon() {
   return (
     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
@@ -2301,11 +2513,95 @@ function setNativeValue(
 
 function PreviewItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="counterpulse-empty-state__title">{label}</div>
-      <div>{value || "-"}</div>
+    <div className="counterpulse-ai-preview-item">
+      <span className="counterpulse-ai-preview-item__icon" aria-hidden="true">
+        <PreviewFieldIcon label={label} />
+      </span>
+      <div className="counterpulse-ai-preview-item__body">
+        <div className="counterpulse-ai-preview-item__label">{label}</div>
+        <div className="counterpulse-ai-preview-item__value">
+          {value || "-"}
+        </div>
+      </div>
     </div>
   );
+}
+
+// Small line icon per preview field, matching the redesigned suggestion card.
+function PreviewFieldIcon({ label }: { label: string }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    focusable: false,
+  };
+  switch (label) {
+    case "Headline":
+      return (
+        <svg {...common}>
+          <path d="M6 6h12M9 6v12M15 6v12" />
+        </svg>
+      );
+    case "Subheadline":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h12M4 17h8" />
+        </svg>
+      );
+    case "CTA":
+      return (
+        <svg {...common}>
+          <path d="M6 6l8 6-8 6V6Z" />
+          <path d="M16 8v8" />
+        </svg>
+      );
+    case "Type":
+      return (
+        <svg {...common}>
+          <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" />
+          <path d="M4 7l8 4 8-4M12 21V11" />
+        </svg>
+      );
+    case "Placement":
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M3 9h18" />
+        </svg>
+      );
+    case "Timer":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2.5M9 2h6" />
+        </svg>
+      );
+    case "Targeting":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 7.5a3 3 0 0 1 0 5M16.5 19a5.5 5.5 0 0 0-3-4.9" />
+        </svg>
+      );
+    case "Discount":
+      return (
+        <svg {...common}>
+          <path d="M4.5 12.2 12.2 4H20v7.8L11.8 20z" />
+          <circle cx="16.4" cy="7.6" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    default:
+      // Name
+      return (
+        <svg {...common}>
+          <path d="M7.5 7.5 4 12l3.5 4.5M16.5 7.5 20 12l-3.5 4.5M13.5 5l-3 14" />
+        </svg>
+      );
+  }
 }
 
 function FormField({

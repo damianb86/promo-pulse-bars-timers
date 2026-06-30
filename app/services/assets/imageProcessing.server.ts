@@ -22,6 +22,17 @@ export type CroppedRegion = {
   extension: string;
 };
 
+export type OptimizedImageBinary = {
+  bytes: Buffer;
+  mimeType: string;
+  extension: string;
+};
+
+const AI_REFERENCE_MAX_DIMENSION = 1600;
+const AI_REFERENCE_COMPRESS_ABOVE_BYTES = 900 * 1024;
+const AI_REFERENCE_JPEG_QUALITY = 86;
+const UPLOAD_WEBP_QUALITY = 88;
+
 // Parses a `data:<mime>;base64,<data>` URI into its raw bytes.
 export function decodeDataUrl(dataUrl: string): DecodedImage | null {
   const match = /^data:([^;,]+);base64,([\s\S]+)$/.exec(dataUrl.trim());
@@ -59,6 +70,93 @@ export async function withImageDimensions(
   if (!decoded) return image;
   const dims = await readImageDimensions(decoded.buffer);
   return dims ? { ...image, width: dims.width, height: dims.height } : image;
+}
+
+// Prepares a merchant-uploaded reference for multimodal analysis. Large
+// screenshots are expensive to send and do not need original-resolution pixels
+// for layout/color reasoning, so resize/compress only when it materially reduces
+// bytes. The original aspect ratio is preserved.
+export async function optimizeReferenceImageForAi(
+  image: CampaignAiReferenceImage,
+): Promise<CampaignAiReferenceImage> {
+  const decoded = decodeDataUrl(image.dataUrl);
+  if (!decoded) return image;
+
+  try {
+    const source = sharp(decoded.buffer).rotate();
+    const meta = await source.metadata();
+    const width = meta.width ?? image.width;
+    const height = meta.height ?? image.height;
+    if (!width || !height) return image;
+
+    const shouldResize = Math.max(width, height) > AI_REFERENCE_MAX_DIMENSION;
+    const shouldCompress =
+      decoded.buffer.byteLength > AI_REFERENCE_COMPRESS_ABOVE_BYTES;
+
+    if (!shouldResize && !shouldCompress) {
+      return { ...image, width, height };
+    }
+
+    let pipeline = sharp(decoded.buffer).rotate();
+    if (shouldResize) {
+      pipeline = pipeline.resize({
+        width: width >= height ? AI_REFERENCE_MAX_DIMENSION : undefined,
+        height: height > width ? AI_REFERENCE_MAX_DIMENSION : undefined,
+        fit: "inside",
+        withoutEnlargement: true,
+      });
+    }
+
+    const optimized = await pipeline
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: AI_REFERENCE_JPEG_QUALITY, mozjpeg: true })
+      .toBuffer();
+
+    // Keep the original when conversion does not buy a meaningful reduction.
+    if (optimized.byteLength >= decoded.buffer.byteLength * 0.9) {
+      return { ...image, width, height };
+    }
+
+    const dims = await readImageDimensions(optimized);
+    return {
+      dataUrl: `data:image/jpeg;base64,${optimized.toString("base64")}`,
+      mimeType: "image/jpeg",
+      width: dims?.width ?? width,
+      height: dims?.height ?? height,
+    };
+  } catch {
+    return image;
+  }
+}
+
+export async function optimizeGeneratedImageForUpload(
+  input: OptimizedImageBinary,
+): Promise<OptimizedImageBinary> {
+  if (
+    !input.mimeType.startsWith("image/") ||
+    input.mimeType === "image/svg+xml"
+  ) {
+    return input;
+  }
+
+  try {
+    const optimized = await sharp(input.bytes)
+      .rotate()
+      .webp({ quality: UPLOAD_WEBP_QUALITY, effort: 4 })
+      .toBuffer();
+
+    if (optimized.byteLength >= input.bytes.byteLength * 0.95) {
+      return input;
+    }
+
+    return {
+      bytes: optimized,
+      mimeType: "image/webp",
+      extension: "webp",
+    };
+  } catch {
+    return input;
+  }
 }
 
 function clamp01(value: number): number {

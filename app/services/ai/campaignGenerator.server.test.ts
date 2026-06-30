@@ -464,6 +464,8 @@ describe("AI campaign reference image", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("design.backgroundImageUrl");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("imageSize");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("1536x1024");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("responsive min-height");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("may become a taller");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
       "Prefer first-class design settings",
     );
@@ -507,6 +509,17 @@ describe("AI campaign reference image", () => {
     expect(prompt).toContain("linen shirts");
     expect(prompt).toContain('"targetLocales": [');
     expect(prompt).toContain('"it"');
+  });
+
+  it("omits empty merchant fields from prompt payloads", () => {
+    const prompt = buildCampaignAiUserPrompt(
+      buildDefaultCampaignAiInput({ productContext: "linen shirts" }),
+    );
+
+    expect(prompt).toContain("linen shirts");
+    expect(prompt).not.toContain('"campaignNameHint": ""');
+    expect(prompt).not.toContain('"quickStarts": []');
+    expect(prompt).not.toContain('"generateVisualAssets": false');
   });
 
   it("includes image dimensions and the no-inflate rule when provided", () => {

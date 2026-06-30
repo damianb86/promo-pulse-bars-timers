@@ -12,6 +12,7 @@ import {
   getAssetGenerationProvider,
   type AssetGenerationProvider,
 } from "../ai/assetGenerator.server";
+import { optimizeGeneratedImageForUpload } from "./imageProcessing.server";
 import { hasWriteFilesScope } from "./shopifyScopes.server";
 import { uploadFileToShopify } from "./shopifyFiles.server";
 
@@ -42,6 +43,13 @@ export type MaterializeAssetsResult = {
 };
 
 const PLACEHOLDER = (key: string) => `{{asset:${key}}}`;
+const OPTIMIZABLE_BITMAP_ASSET_TYPES = new Set<CampaignAiAssetSpec["type"]>([
+  "background",
+  "pattern",
+  "texture",
+  "decoration",
+  "image",
+]);
 
 // Words (English + Spanish) that signal the merchant's refinement feedback is
 // about the visuals/assets. When the feedback mentions none of these, a
@@ -207,10 +215,14 @@ export async function materializeCampaignAssets({
 
     try {
       const binary = await provider.generateAsset(spec, referenceImage);
+      const uploadBinary =
+        spec.source === "svg" || !OPTIMIZABLE_BITMAP_ASSET_TYPES.has(spec.type)
+          ? binary
+          : await optimizeGeneratedImageForUpload(binary);
       const uploaded = await uploadFileToShopify(admin, {
-        bytes: binary.bytes,
-        filename: `cp-${spec.key}.${binary.extension}`,
-        mimeType: binary.mimeType,
+        bytes: uploadBinary.bytes,
+        filename: `cp-${spec.key}.${uploadBinary.extension}`,
+        mimeType: uploadBinary.mimeType,
         alt: spec.prompt || spec.type,
       });
       urlByKey.set(spec.key, uploaded.url);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAMPAIGN_STRUCTURE_VERSION,
+  STRUCTURE_BASELINE_CSS,
   STRUCTURE_CSS_SCOPE_TOKEN,
   buildCampaignStructureTree,
   buildStructureCss,
@@ -122,6 +123,21 @@ describe("pack <-> unpack is fully reversible", () => {
 });
 
 describe("buildStructureCss", () => {
+  it("applies native surface settings to custom cp-promo roots", () => {
+    expect(STRUCTURE_BASELINE_CSS).toContain(
+      ".cp-promo{box-sizing:border-box;background:var(--cp-surface-bg)",
+    );
+    expect(STRUCTURE_BASELINE_CSS).toContain(
+      "border:var(--cp-border-size) solid var(--cp-border-color)",
+    );
+    expect(STRUCTURE_BASELINE_CSS).toContain(
+      "font-family:var(--cp-font-family)",
+    );
+    expect(STRUCTURE_BASELINE_CSS).toContain(
+      "padding:var(--cp-padding-block) var(--cp-padding-inline)",
+    );
+  });
+
   it("emits scoped css variables and appends sanitized custom css", () => {
     const css = buildStructureCss({
       backgroundColor: "#111827",

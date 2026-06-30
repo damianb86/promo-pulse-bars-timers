@@ -48,6 +48,39 @@ function buildRefinementSection(refinement?: CampaignAiRefinement): string[] {
       : "",
   ].filter(Boolean);
 }
+
+function hasEntries(value: Record<string, unknown>) {
+  return Object.keys(value).length > 0;
+}
+
+function buildPromptPayload(input: CampaignAiInput) {
+  const targetLocales = input.locales.length
+    ? input.locales
+    : [input.locale || "en"];
+  const payload: Record<string, unknown> = {
+    objective: input.objective,
+    campaignShape: input.campaignShape,
+    countryCode: input.countryCode || "US",
+    locale: input.locale || "en",
+    targetLocales,
+    brandTone: input.brandTone || "premium",
+    ctaUrl: input.ctaUrl || "/collections/all",
+  };
+
+  if (input.campaignNameHint) payload.campaignNameHint = input.campaignNameHint;
+  if (hasEntries(input.goalAnswers)) payload.goalAnswers = input.goalAnswers;
+  if (input.productContext) payload.productContext = input.productContext;
+  if (input.eventName) payload.eventName = input.eventName;
+  if (input.knownOffer) payload.knownOffer = input.knownOffer;
+  if (input.quickStarts.length) payload.quickStarts = input.quickStarts;
+  if (input.merchantNotes) payload.merchantNotes = input.merchantNotes;
+  if (hasEntries(input.followUpAnswers)) {
+    payload.followUpAnswers = input.followUpAnswers;
+  }
+  if (input.generateVisualAssets) payload.generateVisualAssets = true;
+
+  return payload;
+}
 import {
   describeDesignLayoutsForAi,
   describeDesignSettingsForAi,
@@ -106,10 +139,12 @@ Visual assets (only when input.generateVisualAssets is true):
   for the repeat behavior and keep everything else in settings.
 - RESPONSIVE backgrounds: photos/illustrations use background-size: cover +
   background-position: center so they fill any width without distortion; patterns
-  tile. The background must look right from ~100px up to full width, and the
-  content (not a fixed height) defines the campaign height. Prompt the image model
-  for art that has safe, low-detail areas where text sits, or generate it wide/
-  panoramic for bars.
+  tile. The background must look right from ~100px up to full width. Let copy and
+  controls define height by default, but if the generated/background image is
+  deliberately tall, preserve that visual with generous responsive padding,
+  aspect-ratio, or min-height where the placement can support it. Prompt the image
+  model for art that has safe, low-detail areas where text sits, or generate it
+  wide/panoramic for bars.
 - LEGIBILITY over a background is mandatory: always layer a scrim/overlay (a
   semi-opaque color or a supported darker/lighter surface treatment) between the
   image and the text when needed, and set text colors that read clearly on it.
@@ -393,17 +428,19 @@ Structural CSS (structureCss) — style the structure and add effects:
   progress/timer visuals should be their design fields. CSS should only add the
   small missing piece.
 - Scope every rule to this campaign with the __CP_SCOPE__ placeholder, which the
-  app replaces with a unique per-campaign selector at render time. Put the design
-  variables on the root and target your classes beneath it, e.g.:
-  __CP_SCOPE__ { --cp-bg: #111827; --cp-text: #ffffff; }
-  __CP_SCOPE__ .cp-promo { background: var(--cp-bg); color: var(--cp-text); }
+  app replaces with a unique per-campaign selector at render time. Native surface
+  settings already provide background, color, border, radius, and typography for
+  the root .cp-promo. Use CSS for layout/effects that settings do not express,
+  e.g.:
+  __CP_SCOPE__ .cp-promo { display: flex; flex-wrap: wrap; gap: var(--cp-gap); }
   __CP_SCOPE__ .cp-actions { gap: 12px; }
 - When you return structureHtml you SHOULD return structureCss too, otherwise the
   custom structure will render unstyled. If structureHtml is "", leave
   structureCss "" as well.
 - __CP_SCOPE__ is an ANCESTOR wrapper of your markup, so descendant selectors like
-  "__CP_SCOPE__ .cp-promo" correctly match your root element. Put shared variables
-  on "__CP_SCOPE__ {}" and style elements with "__CP_SCOPE__ .your-class {}".
+  "__CP_SCOPE__ .cp-promo" correctly match your root element. If you need extra
+  custom CSS variables for effects that settings cannot express, define them on
+  "__CP_SCOPE__ {}" and style elements with "__CP_SCOPE__ .your-class {}".
 
 Responsiveness (REQUIRED for every layout, predefined or custom):
 - The campaign MUST look correct at ANY width, not only via smaller-screen tweaks.
@@ -416,15 +453,18 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
   multi-column layouts to a single column and shrink/center content. A two-column
   hero MUST stack vertically on narrow screens.
 - Images must be responsive: max-width: 100%; height: auto.
-- AVOID ABSOLUTE/FIXED DIMENSIONS whenever possible. The content must define the
-  height — do NOT set fixed height/min-height on the surface, the root, or text
-  containers (it clips the copy). Use padding (clamp()) for vertical rhythm
-  instead of min-height. Reserve min-height ONLY for purely decorative image
-  panels, and even then keep it small. Never put overflow: hidden on a container
-  that holds text. Prefer max-width over width, and % / fr / auto over fixed px.
-- Respect the placement's natural size: TOP_BAR / BOTTOM_BAR are SLIM, single-row
-  banners — keep them compact (small type, one row that wraps), never a tall hero.
-  PRODUCT_PAGE / CART blocks may be taller. Match the placement you are given.
+- Avoid brittle fixed dimensions. Content-defined height is the default, and text
+  containers must stay auto-height. When a background image, reference image, or
+  generated visual is intentionally tall, or the placement is PRODUCT_PAGE,
+  CART_PAGE, or CART_DRAWER, you may use generous clamp() padding, aspect-ratio,
+  and a responsive min-height to preserve the visual. Never set fixed heights
+  that clip copy, and never put overflow: hidden on a container that holds text.
+  Prefer max-width over width, and % / fr / auto over fixed px.
+- Respect the placement's natural size: TOP_BAR / BOTTOM_BAR are usually slim
+  banners with compact type and a row that can wrap. They may become a taller
+  banner only when the reference/generated background is clearly tall and the
+  merchant intent benefits from that treatment. PRODUCT_PAGE / CART blocks may
+  be taller and image-led. Match the placement you are given.
 - The timer slot renders fixed-width digit boxes. Place it in a normal flow
   container that can wrap (flex with flex-wrap: wrap, or its own grid row) and give
   it room — NEVER overlap it with text or place it (or the text) with position:
@@ -460,26 +500,7 @@ export function buildCampaignAiUserPrompt(
   input: CampaignAiInput,
   refinement?: CampaignAiRefinement,
 ) {
-  const payload = {
-    objective: input.objective,
-    campaignShape: input.campaignShape,
-    campaignNameHint: input.campaignNameHint || "",
-    goalAnswers: input.goalAnswers,
-    productContext: input.productContext || "",
-    eventName: input.eventName || "",
-    countryCode: input.countryCode || "US",
-    locale: input.locale || "en",
-    targetLocales: input.locales.length
-      ? input.locales
-      : [input.locale || "en"],
-    brandTone: input.brandTone || "premium",
-    knownOffer: input.knownOffer || "",
-    quickStarts: input.quickStarts,
-    merchantNotes: input.merchantNotes || "",
-    followUpAnswers: input.followUpAnswers,
-    ctaUrl: input.ctaUrl || "/collections/all",
-    generateVisualAssets: input.generateVisualAssets,
-  };
+  const payload = buildPromptPayload(input);
 
   return [
     "Merchant input JSON:",
@@ -646,34 +667,15 @@ export function buildCampaignAiImageUserPrompt(
   refinement?: CampaignAiRefinement,
   referenceImage?: Pick<CampaignAiReferenceImage, "width" | "height">,
 ) {
-  const payload = {
-    objective: input.objective,
-    campaignShape: input.campaignShape,
-    campaignNameHint: input.campaignNameHint || "",
-    goalAnswers: input.goalAnswers,
-    productContext: input.productContext || "",
-    eventName: input.eventName || "",
-    countryCode: input.countryCode || "US",
-    locale: input.locale || "en",
-    targetLocales: input.locales.length
-      ? input.locales
-      : [input.locale || "en"],
-    brandTone: input.brandTone || "premium",
-    knownOffer: input.knownOffer || "",
-    quickStarts: input.quickStarts,
-    merchantNotes: input.merchantNotes || "",
-    followUpAnswers: input.followUpAnswers,
-    ctaUrl: input.ctaUrl || "/collections/all",
-    generateVisualAssets: input.generateVisualAssets,
-  };
+  const payload = buildPromptPayload(input);
 
   return [
     "A reference image is attached. Analyze it visually and reproduce it as a",
     "Promo Pulse campaign draft, matching layout, colors, spacing, typography,",
     "timer, button, and text as closely as the supported settings allow.",
     "",
-    "Optional merchant input JSON (fields may be empty when the merchant only",
-    "uploaded an image — in that case infer everything from the image):",
+    "Optional merchant input JSON (empty/default fields are omitted; when the",
+    "merchant only uploaded an image, infer the missing context from the image):",
     JSON.stringify(payload, null, 2),
     ...buildImageProportionLines(referenceImage),
     ...buildRefinementSection(refinement),

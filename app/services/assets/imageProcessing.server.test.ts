@@ -5,6 +5,8 @@ import type { CampaignAiReferenceImage } from "../../types/ai-campaign";
 import {
   cropReferenceRegion,
   decodeDataUrl,
+  optimizeGeneratedImageForUpload,
+  optimizeReferenceImageForAi,
   readImageDimensions,
   withImageDimensions,
 } from "./imageProcessing.server";
@@ -17,6 +19,20 @@ async function makePng(width: number, height: number): Promise<Buffer> {
       channels: 4,
       background: { r: 10, g: 20, b: 30, alpha: 1 },
     },
+  })
+    .png()
+    .toBuffer();
+}
+
+async function makeNoisyPng(width: number, height: number): Promise<Buffer> {
+  const raw = Buffer.alloc(width * height * 3);
+  let seed = 123456789;
+  for (let i = 0; i < raw.length; i += 1) {
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    raw[i] = (seed >>> 16) & 255;
+  }
+  return sharp(raw, {
+    raw: { width, height, channels: 3 },
   })
     .png()
     .toBuffer();
@@ -64,6 +80,47 @@ describe("withImageDimensions", () => {
     const enriched = await withImageDimensions(image);
     expect(enriched.width).toBe(1000);
     expect(enriched.height).toBe(200);
+  });
+});
+
+describe("optimizeReferenceImageForAi", () => {
+  it("resizes and compresses large reference images for the multimodal request", async () => {
+    const png = await makeNoisyPng(2200, 1200);
+    const optimized = await optimizeReferenceImageForAi({
+      dataUrl: `data:image/png;base64,${png.toString("base64")}`,
+      mimeType: "image/png",
+    });
+
+    expect(optimized.mimeType).toBe("image/jpeg");
+    expect(optimized.width).toBeLessThanOrEqual(1600);
+    expect(optimized.height).toBeLessThanOrEqual(1600);
+    expect(decodeDataUrl(optimized.dataUrl)!.buffer.byteLength).toBeLessThan(
+      png.byteLength,
+    );
+  });
+
+  it("keeps small reference images unchanged apart from dimensions", async () => {
+    const image = await makeReferenceImage(640, 180);
+    const optimized = await optimizeReferenceImageForAi(image);
+
+    expect(optimized.mimeType).toBe("image/png");
+    expect(optimized.width).toBe(640);
+    expect(optimized.height).toBe(180);
+  });
+});
+
+describe("optimizeGeneratedImageForUpload", () => {
+  it("converts large bitmap assets to smaller webp uploads", async () => {
+    const png = await makeNoisyPng(720, 420);
+    const optimized = await optimizeGeneratedImageForUpload({
+      bytes: png,
+      mimeType: "image/png",
+      extension: "png",
+    });
+
+    expect(optimized.mimeType).toBe("image/webp");
+    expect(optimized.extension).toBe("webp");
+    expect(optimized.bytes.byteLength).toBeLessThan(png.byteLength);
   });
 });
 

@@ -56,7 +56,7 @@ import {
 } from "../services/assets/campaignAssetPipeline.server";
 import {
   decodeDataUrl,
-  withImageDimensions,
+  optimizeReferenceImageForAi,
 } from "../services/assets/imageProcessing.server";
 import { isValidEmail, sendCampaignReviewEmail } from "../email.server";
 import { loadCampaignTargetingOptions } from "../services/campaign-targeting-options.server";
@@ -270,11 +270,11 @@ export const action = async ({
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
     const { image: parsedReferenceImage, error: referenceImageError } =
       parseCampaignAiReferenceImage(formData);
-    // Fill in the real pixel dimensions so the AI can reason about the image's
-    // aspect ratio vs. the campaign target width, and so the asset pipeline can
-    // crop normalized regions to pixels.
+    // Fill in real dimensions and send a compact analysis copy to the AI. The
+    // original upload still stays in the browser/email path; this only reduces
+    // the multimodal request payload.
     const referenceImage = parsedReferenceImage
-      ? await withImageDimensions(parsedReferenceImage)
+      ? await optimizeReferenceImageForAi(parsedReferenceImage)
       : null;
     // With a reference image the textual product context is optional — the image
     // carries the context the AI needs.

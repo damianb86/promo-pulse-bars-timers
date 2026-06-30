@@ -99,8 +99,9 @@ test("design changes update live preview and persist", async ({
   await editor.getByRole("option", { name: /^Action right\b/ }).click();
   await expect(layoutInput).toHaveValue("CTA_RIGHT");
   await expect(timerSizeInput).toHaveValue("32");
-  await page.getByRole("button", { name: "Plain" }).click();
-  await page.getByRole("button", { name: "Colon" }).click();
+  await editor
+    .getByRole("button", { name: "Plain colon", exact: true })
+    .click();
   await page.getByLabel("Show timer labels").uncheck();
   await editor.locator('select[name="icon"]').selectOption("FIRE");
   await editor.locator('input[name="iconSize"]').fill("36");

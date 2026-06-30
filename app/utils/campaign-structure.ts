@@ -53,6 +53,7 @@ export const REPLACE_SLOTS = [
 // collapsing the text column to one character per line next to a fixed-width
 // timer/image, the most common broken-layout failure mode.
 export const STRUCTURE_BASELINE_CSS = [
+  "__CP_SCOPE__ .cp-promo{box-sizing:border-box;background:var(--cp-surface-bg);color:var(--cp-text);border:var(--cp-border-size) solid var(--cp-border-color);border-radius:var(--cp-radius);font-family:var(--cp-font-family);font-size:var(--cp-font-size);padding:var(--cp-padding-block) var(--cp-padding-inline);margin:var(--cp-margin-top) var(--cp-margin-right) var(--cp-margin-bottom) var(--cp-margin-left)}",
   "__CP_SCOPE__ .cp-message,__CP_SCOPE__ .cp-message-copy,__CP_SCOPE__ .cp-left{min-width:0}",
   "__CP_SCOPE__ .cp-message-copy{flex:1 1 auto}",
   "__CP_SCOPE__ .cp-message-copy strong,__CP_SCOPE__ .cp-message-copy span,__CP_SCOPE__ .cp-message-copy p{overflow-wrap:break-word;word-break:normal}",

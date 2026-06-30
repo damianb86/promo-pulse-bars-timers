@@ -1382,6 +1382,7 @@
 
     var design = spec.design || {};
     fixRootClasses(root, spec.variant || "bar", spec.placement);
+    applyStyle(root, design);
     if (spec.className) root.className += " " + spec.className;
     if (spec.dataTestId) root.setAttribute("data-testid", spec.dataTestId);
 
@@ -1400,8 +1401,10 @@
     wrapper.appendChild(root);
 
     // Scoped safety baseline (keeps the text column from collapsing next to a
-    // fixed-width timer/image) + the campaign's own CSS, which can override it.
+    // fixed-width timer/image) and applies the native surface settings to
+    // custom roots. The campaign's own CSS follows and can override it.
     var baseline =
+      "__CP_SCOPE__ .cp-promo{box-sizing:border-box;background:var(--cp-surface-bg);color:var(--cp-text);border:var(--cp-border-size) solid var(--cp-border-color);border-radius:var(--cp-radius);font-family:var(--cp-font-family);font-size:var(--cp-font-size);padding:var(--cp-padding-block) var(--cp-padding-inline);margin:var(--cp-margin-top) var(--cp-margin-right) var(--cp-margin-bottom) var(--cp-margin-left)}" +
       "__CP_SCOPE__ .cp-message,__CP_SCOPE__ .cp-message-copy,__CP_SCOPE__ .cp-left{min-width:0}" +
       "__CP_SCOPE__ .cp-message-copy{flex:1 1 auto}" +
       "__CP_SCOPE__ .cp-message-copy strong,__CP_SCOPE__ .cp-message-copy span,__CP_SCOPE__ .cp-message-copy p{overflow-wrap:break-word;word-break:normal}";

@@ -87,9 +87,18 @@ export function applyCampaignDesignTemplate(
 export function applyCampaignLayoutDefaults(
   values: CampaignDesignValues,
 ): CampaignDesignValues {
+  const layoutDefaults = campaignLayoutDefaultValues[values.layout];
   return {
     ...values,
-    ...campaignLayoutDefaultValues[values.layout],
+    ...layoutDefaults,
+    timerNumberFontSize:
+      layoutDefaults.timerNumberFontSize ??
+      layoutDefaults.timerFontSize ??
+      values.timerNumberFontSize,
+    timerLabelFontSize:
+      layoutDefaults.timerLabelFontSize ??
+      layoutDefaults.legendFontSize ??
+      values.timerLabelFontSize,
   };
 }
 
@@ -454,6 +463,47 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   );
   validateIntegerRange(values, errors, "timerFontSize", 12, 72, "Timer size");
   validateIntegerRange(values, errors, "legendFontSize", 10, 24, "Legend size");
+  validateIntegerRange(
+    values,
+    errors,
+    "timerNumberFontSize",
+    12,
+    72,
+    "Timer number size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "timerLabelFontSize",
+    8,
+    28,
+    "Timer label size",
+  );
+  validateIntegerRange(values, errors, "timerGap", 0, 32, "Timer gap");
+  validateIntegerRange(
+    values,
+    errors,
+    "timerUnitGap",
+    0,
+    18,
+    "Timer number-label gap",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "timerPaddingBlock",
+    0,
+    32,
+    "Timer vertical padding",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "timerPaddingInline",
+    0,
+    40,
+    "Timer horizontal padding",
+  );
   validateIntegerRange(
     values,
     errors,

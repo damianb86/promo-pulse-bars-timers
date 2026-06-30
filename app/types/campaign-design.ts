@@ -93,6 +93,12 @@ export type CampaignDesignValues = {
   timerColor: string;
   legendFontSize: number;
   legendColor: string;
+  timerNumberFontSize: number;
+  timerLabelFontSize: number;
+  timerGap: number;
+  timerUnitGap: number;
+  timerPaddingBlock: number;
+  timerPaddingInline: number;
   timerStyle: DesignTimerStyleValue;
   timerFormat: DesignTimerFormatValue;
   timerNumberLayout: DesignTimerNumberLayoutValue;
@@ -231,6 +237,12 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   timerColor: "#111827",
   legendFontSize: 12,
   legendColor: "#6B7280",
+  timerNumberFontSize: 38,
+  timerLabelFontSize: 12,
+  timerGap: 10,
+  timerUnitGap: 3,
+  timerPaddingBlock: 8,
+  timerPaddingInline: 12,
   timerStyle: "PLAIN",
   timerFormat: "UNITS",
   timerNumberLayout: "INLINE",

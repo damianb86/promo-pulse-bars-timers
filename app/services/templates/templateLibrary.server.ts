@@ -922,6 +922,27 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     ),
     legendColor:
       readString(input.legendColor) || defaultCampaignDesignValues.legendColor,
+    timerNumberFontSize: readInteger(
+      input.timerNumberFontSize,
+      defaultCampaignDesignValues.timerNumberFontSize,
+    ),
+    timerLabelFontSize: readInteger(
+      input.timerLabelFontSize,
+      defaultCampaignDesignValues.timerLabelFontSize,
+    ),
+    timerGap: readInteger(input.timerGap, defaultCampaignDesignValues.timerGap),
+    timerUnitGap: readInteger(
+      input.timerUnitGap,
+      defaultCampaignDesignValues.timerUnitGap,
+    ),
+    timerPaddingBlock: readInteger(
+      input.timerPaddingBlock,
+      defaultCampaignDesignValues.timerPaddingBlock,
+    ),
+    timerPaddingInline: readInteger(
+      input.timerPaddingInline,
+      defaultCampaignDesignValues.timerPaddingInline,
+    ),
     timerStyle:
       readEnum(input.timerStyle, ["PLAIN", "GROUPED", "BOXES"]) ??
       defaultCampaignDesignValues.timerStyle,

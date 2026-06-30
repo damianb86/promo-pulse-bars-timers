@@ -2570,6 +2570,24 @@ function sanitizePartialDesign(
     ...(isHexColor(design.legendColor)
       ? { legendColor: design.legendColor }
       : {}),
+    ...(typeof design.timerNumberFontSize === "number"
+      ? { timerNumberFontSize: clampInteger(design.timerNumberFontSize, 12, 72) }
+      : {}),
+    ...(typeof design.timerLabelFontSize === "number"
+      ? { timerLabelFontSize: clampInteger(design.timerLabelFontSize, 8, 28) }
+      : {}),
+    ...(typeof design.timerGap === "number"
+      ? { timerGap: clampInteger(design.timerGap, 0, 32) }
+      : {}),
+    ...(typeof design.timerUnitGap === "number"
+      ? { timerUnitGap: clampInteger(design.timerUnitGap, 0, 18) }
+      : {}),
+    ...(typeof design.timerPaddingBlock === "number"
+      ? { timerPaddingBlock: clampInteger(design.timerPaddingBlock, 0, 32) }
+      : {}),
+    ...(typeof design.timerPaddingInline === "number"
+      ? { timerPaddingInline: clampInteger(design.timerPaddingInline, 0, 40) }
+      : {}),
     ...(design.timerStyle === "PLAIN" ||
     design.timerStyle === "GROUPED" ||
     design.timerStyle === "BOXES"

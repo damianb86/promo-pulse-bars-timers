@@ -141,6 +141,36 @@ export function parseCampaignDesignFormData(
     legendColor:
       readString(formData, "legendColor") ||
       defaultCampaignDesignValues.legendColor,
+    timerNumberFontSize: readInteger(
+      formData,
+      "timerNumberFontSize",
+      defaultCampaignDesignValues.timerNumberFontSize,
+    ),
+    timerLabelFontSize: readInteger(
+      formData,
+      "timerLabelFontSize",
+      defaultCampaignDesignValues.timerLabelFontSize,
+    ),
+    timerGap: readInteger(
+      formData,
+      "timerGap",
+      defaultCampaignDesignValues.timerGap,
+    ),
+    timerUnitGap: readInteger(
+      formData,
+      "timerUnitGap",
+      defaultCampaignDesignValues.timerUnitGap,
+    ),
+    timerPaddingBlock: readInteger(
+      formData,
+      "timerPaddingBlock",
+      defaultCampaignDesignValues.timerPaddingBlock,
+    ),
+    timerPaddingInline: readInteger(
+      formData,
+      "timerPaddingInline",
+      defaultCampaignDesignValues.timerPaddingInline,
+    ),
     timerStyle: readTimerStyle(formData),
     timerFormat: readTimerFormat(formData),
     timerNumberLayout: readTimerNumberLayout(formData),

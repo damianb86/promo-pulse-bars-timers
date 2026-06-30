@@ -15,6 +15,8 @@ export function deriveMobileDesignFromDesktop(
     subheadingFontSize: scaleTextSize(desktopDesign.subheadingFontSize, 10),
     timerFontSize: scaleTextSize(desktopDesign.timerFontSize, 12),
     legendFontSize: scaleTextSize(desktopDesign.legendFontSize, 10),
+    timerNumberFontSize: scaleTextSize(desktopDesign.timerNumberFontSize, 12),
+    timerLabelFontSize: scaleTextSize(desktopDesign.timerLabelFontSize, 8),
   };
 }
 

@@ -12,6 +12,8 @@ import {
   parseStyle,
   serializeStyle,
   setNodeStyleAtPath,
+  TIMER_PART_SLOTS,
+  timerPartValue,
   treeToHtml,
   unpackTree,
   type StructureBuildSpec,
@@ -180,5 +182,27 @@ describe("node addressing + inline style helpers", () => {
     const tree = htmlToTree(html)!;
     const next = setNodeStyleAtPath(tree, "1", { "max-width": "100%" });
     expect(treeToHtml(next)).toContain('style="max-width: 100%"');
+  });
+});
+
+describe("timerPartValue", () => {
+  // 1 day, 2 hours, 3 minutes, 4 seconds in ms.
+  const ms = ((1 * 24 + 2) * 3600 + 3 * 60 + 4) * 1000;
+
+  it("computes zero-padded countdown parts", () => {
+    expect(timerPartValue("days", ms)).toBe("1");
+    expect(timerPartValue("hours", ms)).toBe("02");
+    expect(timerPartValue("minutes", ms)).toBe("03");
+    expect(timerPartValue("seconds", ms)).toBe("04");
+  });
+
+  it("clamps negative remaining time to zero", () => {
+    expect(timerPartValue("hours", -5000)).toBe("00");
+    expect(timerPartValue("days", -5000)).toBe("0");
+  });
+
+  it("maps the timer-part slots to their part", () => {
+    expect(TIMER_PART_SLOTS["timer-days"]).toBe("days");
+    expect(TIMER_PART_SLOTS["timer-seconds"]).toBe("seconds");
   });
 });

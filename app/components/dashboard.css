@@ -1982,6 +1982,7 @@ s-page::part(page) {
   min-height: 0;
   align-items: start;
   overflow: auto;
+  zoom: .5;
 }
 
 .counterpulse-variant-drawer-preview-wing

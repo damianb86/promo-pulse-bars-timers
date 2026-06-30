@@ -550,8 +550,27 @@
   }
 
   // Live update of an existing timer node built by buildTimer.
+  // Zero-padded value of one countdown part (mirrors timerPartValue in
+  // app/utils/campaign-structure.ts).
+  function timerPartValue(part, remainingMs) {
+    var total = Math.max(0, Math.floor((remainingMs || 0) / 1000));
+    if (part === "days") return String(Math.floor(total / 86400));
+    if (part === "hours") return pad(Math.floor((total % 86400) / 3600));
+    if (part === "minutes") return pad(Math.floor((total % 3600) / 60));
+    return pad(total % 60);
+  }
+
   function updateTimer(node, remainingMs, design) {
     if (!node) return;
+
+    // Single live countdown part (data-cp-slot="timer-days|hours|minutes|seconds").
+    var partName = node.getAttribute("data-cp-timer-part");
+    if (partName) {
+      var nextPart = timerPartValue(partName, remainingMs);
+      if (node.textContent !== nextPart) node.textContent = nextPart;
+      return;
+    }
+
     var parts = visibleTimerParts(buildTimerParts(remainingMs, design), design);
     var animate = hasTickAnimation(node);
 
@@ -1380,15 +1399,19 @@
     wrapper.style.display = "contents";
     wrapper.appendChild(root);
 
-    var css = typeof structure.css === "string" ? structure.css : "";
-    if (css) {
-      var scoped = css
-        .replace(/__CP_SCOPE__/g, '[data-cp-uid="' + scopeId + '"]')
-        .replace(/<\/?\s*style/gi, "");
-      var styleNode = document.createElement("style");
-      styleNode.textContent = scoped;
-      wrapper.appendChild(styleNode);
-    }
+    // Scoped safety baseline (keeps the text column from collapsing next to a
+    // fixed-width timer/image) + the campaign's own CSS, which can override it.
+    var baseline =
+      "__CP_SCOPE__ .cp-message,__CP_SCOPE__ .cp-message-copy,__CP_SCOPE__ .cp-left{min-width:0}" +
+      "__CP_SCOPE__ .cp-message-copy{flex:1 1 auto}" +
+      "__CP_SCOPE__ .cp-message-copy strong,__CP_SCOPE__ .cp-message-copy span,__CP_SCOPE__ .cp-message-copy p{overflow-wrap:break-word;word-break:normal}";
+    var css = baseline + "\n" + (typeof structure.css === "string" ? structure.css : "");
+    var scoped = css
+      .replace(/__CP_SCOPE__/g, '[data-cp-uid="' + scopeId + '"]')
+      .replace(/<\/?\s*style/gi, "");
+    var styleNode = document.createElement("style");
+    styleNode.textContent = scoped;
+    wrapper.appendChild(styleNode);
 
     return wrapper;
   }
@@ -1491,6 +1514,19 @@
         case "progress":
           fillReplaceSlot(slotEl, buildProgress(spec, design));
           break;
+        case "timer-days":
+        case "timer-hours":
+        case "timer-minutes":
+        case "timer-seconds": {
+          // Single live countdown part: fill the number now and tag it so the
+          // per-second tick loop keeps it updated.
+          var part = slot.slice("timer-".length);
+          var ms = spec.timer ? spec.timer.remainingMs : 0;
+          slotEl.textContent = timerPartValue(part, ms);
+          slotEl.setAttribute("data-cp-timer", "true");
+          slotEl.setAttribute("data-cp-timer-part", part);
+          break;
+        }
         default: {
           // Custom reusable message: data-cp-slot="custom-<id>". Fill with the
           // merchant's snippet, interpolating the campaign's dynamic variables.

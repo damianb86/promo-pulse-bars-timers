@@ -24,6 +24,10 @@ const SLOT_COMPONENTS: Record<
 > = {
   timer: { label: "Timer", panelTitle: "Timer Style" },
   "timer-inline": { label: "Timer", panelTitle: "Timer Style" },
+  "timer-days": { label: "Timer · days", panelTitle: "Timer Style" },
+  "timer-hours": { label: "Timer · hours", panelTitle: "Timer Style" },
+  "timer-minutes": { label: "Timer · minutes", panelTitle: "Timer Style" },
+  "timer-seconds": { label: "Timer · seconds", panelTitle: "Timer Style" },
   progress: { label: "Progress bar", panelTitle: "Progress" },
   offer: { label: "Discount code", panelTitle: "Offer code" },
   icon: { label: "Icon", panelTitle: "Elements" },

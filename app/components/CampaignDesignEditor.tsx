@@ -681,7 +681,7 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
   {
     example: '<div data-cp-slot="timer"></div>',
     renders:
-      "The live countdown. Renders with the timer style/format from Design settings and updates every second on the storefront. When the timer expires it shows the expired message (expiredText) from settings in its place.",
+      "The full live countdown — it already draws the digits AND the separators/labels per the timer Design settings (style PLAIN/GROUPED/BOXES + format COLON/labels). Do NOT add your own ':' or unit labels around it; choose the look in Design settings instead. When the timer expires it shows the expired message (expiredText) in its place.",
     attributes:
       'class, id, style, data-*. data-cp-compact="true" forces the compact one-line timer; "false" forces the full timer. Use data-cp-slot="timer-inline" inside the copy block for an inline compact timer.',
   },
@@ -707,6 +707,13 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
     example: '<div data-cp-slot="badge-timer"></div>',
     renders:
       "A compact countdown rendered inside a product badge (badge campaigns with a timer). Shown only when the badge campaign has a timer.",
+    attributes: "class, id, style, data-*.",
+  },
+  {
+    example:
+      '<span data-cp-slot="timer-days"></span> (also -hours/-minutes/-seconds)',
+    renders:
+      "A SINGLE live countdown part — just the number, ticking every second. Place them anywhere and add your own separators/labels around them (e.g. a custom timer layout). Use these instead of the full timer slot when you need to position the parts yourself; don't mix both.",
     attributes: "class, id, style, data-*.",
   },
   {

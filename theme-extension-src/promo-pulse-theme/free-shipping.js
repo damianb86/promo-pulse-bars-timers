@@ -308,7 +308,13 @@
 
     container = getPlacementContainer(campaign.placement);
     if (existing) {
-      updateExistingBar(existing, campaign);
+      // Rebuild the whole bar so EVERY dynamic variable re-resolves with the new
+      // cart (remaining_amount, cart_subtotal, progress_percent, and any token in
+      // the headline / custom HTML text), not just the body + progress bar.
+      bar = buildBar(campaign);
+      bar.id = slotId;
+      existing.replaceWith(bar);
+      startCountdown(bar, campaign);
       emitImpressionOnce(campaign);
       return;
     }
@@ -697,13 +703,15 @@
 
     bar.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date());
-      var countdown = bar.querySelector("[data-cp-timer]");
+      var countdowns = bar.querySelectorAll("[data-cp-timer]");
       var design = campaign.design || {};
 
-      if (!countdown) return;
+      if (!countdowns.length) return;
 
       if (state.isExpired) {
-        countdown.remove();
+        Array.prototype.forEach.call(countdowns, function (node) {
+          node.remove();
+        });
         bar.classList.add("counterpulse-preview-promo--expired");
 
         if (shouldHideExpiredCampaign(campaign)) {
@@ -712,7 +720,9 @@
         return;
       }
 
-      window.CountPulseSurface.updateTimer(countdown, state.remainingMs, design);
+      Array.prototype.forEach.call(countdowns, function (node) {
+        window.CountPulseSurface.updateTimer(node, state.remainingMs, design);
+      });
     }, 1000);
   }
 

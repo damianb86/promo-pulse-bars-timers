@@ -1274,7 +1274,8 @@
 
     window.setInterval(function () {
       var timerState = calculateTimerState(campaign, new Date());
-      var countdown = bar.querySelector("[data-cp-timer]");
+      var countdowns = bar.querySelectorAll("[data-cp-timer]");
+      var countdown = countdowns[0];
       var subheadline = bar.querySelector(
         ".counterpulse-preview-message-copy > span",
       );
@@ -1284,7 +1285,9 @@
       if (!countdown) return;
 
       if (timerState.isExpired) {
-        countdown.remove();
+        Array.prototype.forEach.call(countdowns, function (node) {
+          node.remove();
+        });
         bar.classList.add("counterpulse-preview-promo--expired");
 
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
@@ -1305,11 +1308,13 @@
         return;
       }
 
-      window.CountPulseSurface.updateTimer(
-        countdown,
-        timerState.remainingMs,
-        campaign.design || {},
-      );
+      Array.prototype.forEach.call(countdowns, function (node) {
+        window.CountPulseSurface.updateTimer(
+          node,
+          timerState.remainingMs,
+          campaign.design || {},
+        );
+      });
     }, 1000);
   }
 

@@ -699,7 +699,7 @@
       ".counterpulse-preview-message-copy > span",
     );
     var nextMessage = buildCartCampaignDetail(campaign, timerState, config);
-    var countdown = card.querySelector("[data-cp-timer]");
+    var countdowns = card.querySelectorAll("[data-cp-timer]");
 
     if (subheadline && subheadline.textContent !== nextMessage) {
       subheadline.textContent = nextMessage;
@@ -707,8 +707,10 @@
 
     updateFreeShippingProgress(card, campaign, config);
 
-    if (countdown && timerState.isActive) {
-      window.CountPulseSurface.updateTimer(countdown, timerState.remainingMs, design);
+    if (countdowns.length && timerState.isActive) {
+      Array.prototype.forEach.call(countdowns, function (node) {
+        window.CountPulseSurface.updateTimer(node, timerState.remainingMs, design);
+      });
     }
 
     if (timerState.isExpired) {
@@ -1159,7 +1161,8 @@
 
     card.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date(), config);
-      var countdown = card.querySelector("[data-cp-timer]");
+      var countdowns = card.querySelectorAll("[data-cp-timer]");
+      var countdown = countdowns[0];
       var subheadline = card.querySelector(
         ".counterpulse-preview-message-copy > span",
       );
@@ -1168,7 +1171,9 @@
 
       if (!countdown) return;
       if (state.isExpired) {
-        countdown.remove();
+        Array.prototype.forEach.call(countdowns, function (node) {
+          node.remove();
+        });
         card.classList.add("counterpulse-preview-promo--expired");
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
           if (subheadline) subheadline.textContent = expiredText;

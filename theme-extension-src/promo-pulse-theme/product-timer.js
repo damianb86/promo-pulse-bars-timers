@@ -740,7 +740,8 @@
 
     card.__promoPulseTimerInterval = window.setInterval(function () {
       var state = calculateTimerState(campaign, new Date());
-      var countdown = card.querySelector("[data-cp-timer]");
+      var countdowns = card.querySelectorAll("[data-cp-timer]");
+      var countdown = countdowns[0];
       var subheadline = card.querySelector(
         ".counterpulse-preview-message-copy > span",
       );
@@ -749,7 +750,9 @@
 
       if (!countdown) return;
       if (state.isExpired) {
-        countdown.remove();
+        Array.prototype.forEach.call(countdowns, function (node) {
+          node.remove();
+        });
         card.classList.add("counterpulse-preview-promo--expired");
         if (expiredBehavior === "SHOW_CUSTOM_TITLE" && expiredText) {
           if (subheadline) subheadline.textContent = expiredText;
@@ -763,11 +766,13 @@
         return;
       }
 
-      window.CountPulseSurface.updateTimer(
-        countdown,
-        state.remainingMs,
-        campaign.design || {},
-      );
+      Array.prototype.forEach.call(countdowns, function (node) {
+        window.CountPulseSurface.updateTimer(
+          node,
+          state.remainingMs,
+          campaign.design || {},
+        );
+      });
     }, 1000);
   }
 

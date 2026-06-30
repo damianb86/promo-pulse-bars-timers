@@ -48,7 +48,59 @@ export const REPLACE_SLOTS = [
   "badge-timer",
 ] as const;
 
-export const FILL_SLOTS = ["headline", "body", "cta", "badge-text"] as const;
+// Scoped safety CSS applied under every structure surface BEFORE the campaign's
+// own CSS (which can override it). Keeps the standard cp-* skeleton from
+// collapsing the text column to one character per line next to a fixed-width
+// timer/image, the most common broken-layout failure mode.
+export const STRUCTURE_BASELINE_CSS = [
+  "__CP_SCOPE__ .cp-message,__CP_SCOPE__ .cp-message-copy,__CP_SCOPE__ .cp-left{min-width:0}",
+  "__CP_SCOPE__ .cp-message-copy{flex:1 1 auto}",
+  "__CP_SCOPE__ .cp-message-copy strong,__CP_SCOPE__ .cp-message-copy span,__CP_SCOPE__ .cp-message-copy p{overflow-wrap:break-word;word-break:normal}",
+].join("\n");
+
+export const FILL_SLOTS = [
+  "headline",
+  "body",
+  "cta",
+  "badge-text",
+  // Individual live countdown parts — render just the number and tick every
+  // second on the storefront, so the merchant can place days/hours/minutes/
+  // seconds anywhere in the custom HTML.
+  "timer-days",
+  "timer-hours",
+  "timer-minutes",
+  "timer-seconds",
+] as const;
+
+// The four single-part timer slots, mapped to how to compute their value.
+export const TIMER_PART_SLOTS: Record<
+  string,
+  "days" | "hours" | "minutes" | "seconds"
+> = {
+  "timer-days": "days",
+  "timer-hours": "hours",
+  "timer-minutes": "minutes",
+  "timer-seconds": "seconds",
+};
+
+// Computes the zero-padded value of one countdown part from a remaining-ms value.
+export function timerPartValue(
+  part: "days" | "hours" | "minutes" | "seconds",
+  remainingMs: number,
+): string {
+  const total = Math.max(0, Math.floor(remainingMs / 1000));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  switch (part) {
+    case "days":
+      return String(Math.floor(total / 86400));
+    case "hours":
+      return pad(Math.floor((total % 86400) / 3600));
+    case "minutes":
+      return pad(Math.floor((total % 3600) / 60));
+    default:
+      return pad(total % 60);
+  }
+}
 
 export type StructureSlot =
   | (typeof REPLACE_SLOTS)[number]

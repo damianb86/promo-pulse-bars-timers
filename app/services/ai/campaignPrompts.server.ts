@@ -50,7 +50,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v15";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v16";
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
 You are Promo Pulse AI Campaign Builder for a Shopify embedded app.
@@ -252,11 +252,21 @@ Structural HTML (structureHtml) — reshape the layout when needed:
   - data-cp-slot="body" (a <span>) — the supporting line
   - data-cp-slot="cta" (a <span>, or <a> for a link) — the action button
   - data-cp-slot="icon" — the icon (only if design.icon is not NONE)
-  - data-cp-slot="timer" — the countdown (use "timer-inline" instead inside the
-    message copy for inline/one-line layouts)
+  - data-cp-slot="timer" — the FULL countdown widget. It already renders the
+    digits AND the separators/labels according to the timer design settings
+    (timerStyle PLAIN/GROUPED/BOXES + timerFormat COLON/labeled units). NEVER add
+    your own ":" separators or unit labels as literal text around it — those are
+    not part of the structure, won't be styled, and look broken. To get colons,
+    set timerFormat COLON; to get boxes, set timerStyle BOXES. One timer/
+    timer-inline per campaign.
   - data-cp-slot="offer" — the discount code / copy / apply controls
   - data-cp-slot="close" — the dismiss button
   - data-cp-slot="timer-inline" — a compact one-line timer (variant of timer)
+  - data-cp-slot="timer-days" / "timer-hours" / "timer-minutes" / "timer-seconds"
+    — a SINGLE live countdown part (just the number, ticking every second). Use
+    these ONLY when you need to lay out the parts yourself in custom positions
+    (e.g. a bespoke design). Write your own separators/labels around them as
+    normal HTML text/elements. Do NOT combine them with the full "timer" slot.
   - data-cp-slot="progress" — a progress bar. Its look is fully configured by the
     Progress design settings (target, style bar/steps/circle, colors, height,
     radius, effect, label) — do NOT style the fill yourself. Add it (an empty
@@ -328,6 +338,14 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 - Give every flex/grid child min-width: 0 so long text and the timer can shrink
   instead of forcing horizontal overflow. The whole campaign must never scroll
   horizontally.
+- CRITICAL — never let the text column collapse. When the headline/body sit in a
+  flex ROW next to a fixed-width element (the timer slot, an image, a button), the
+  text wrapper MUST have flex: 1 1 auto AND min-width: 0; otherwise the fixed
+  element eats all the width and the text squeezes to one character per line. The
+  text wrapper should GROW to fill the row, and the row should flex-wrap so the
+  timer drops below on narrow widths. Use overflow-wrap: break-word (NOT
+  word-break: break-all) on text. Test mentally: at the target width the headline
+  must read on normal horizontal lines, never vertically.
 - TARGET WIDTH per placement — design for roughly this content width, but it MUST
   still look right narrower and wider (fluid + wrap):
   - TOP_BAR / BOTTOM_BAR: ~1000px (wide, slim banner)

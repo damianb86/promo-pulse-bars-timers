@@ -13,7 +13,10 @@ import type { CampaignDesignValues } from "../types/campaign-design";
 import { sanitizeBasicHtml } from "../utils/basic-html";
 import {
   getNodeSlot,
+  STRUCTURE_BASELINE_CSS,
   TEXT_TAG,
+  TIMER_PART_SLOTS,
+  timerPartValue,
   type StructureNode,
 } from "../utils/campaign-structure";
 import {
@@ -1038,11 +1041,9 @@ function StructurePromoSurface({
   // Unique per-instance scope so the campaign CSS (which targets __CP_SCOPE__)
   // only styles this surface — the same scoping the storefront applies.
   const scopeId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const scopedCss = structureCss
-    ? structureCss
-        .replace(/__CP_SCOPE__/g, `[data-cp-uid="${scopeId}"]`)
-        .replace(/<\/?\s*style/gi, "")
-    : "";
+  const scopedCss = `${STRUCTURE_BASELINE_CSS}\n${structureCss ?? ""}`
+    .replace(/__CP_SCOPE__/g, `[data-cp-uid="${scopeId}"]`)
+    .replace(/<\/?\s*style/gi, "");
   const renderSlot = (
     node: StructureNode,
     slot: string,
@@ -1104,6 +1105,18 @@ function StructurePromoSurface({
             timerState={timerState}
           />
         ) : null;
+      case "timer-days":
+      case "timer-hours":
+      case "timer-minutes":
+      case "timer-seconds": {
+        if (!timerState?.remainingMs) return null;
+        const part = TIMER_PART_SLOTS[slot];
+        return (
+          <span {...attrProps}>
+            {timerPartValue(part, timerState.remainingMs)}
+          </span>
+        );
+      }
       case "offer":
         return hasOffer ? (
           <OfferPreview key={key} design={design} viewModel={viewModel} />

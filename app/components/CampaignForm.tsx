@@ -30,6 +30,8 @@ import {
 } from "../types/campaign-options";
 import { CampaignControlStatusBadge } from "./CampaignControlStatusBadge";
 import {
+  type CampaignDesignErrors,
+  type CampaignDesignMediaOptions,
   defaultCampaignDesignValues,
   type CampaignDesignValues,
 } from "../types/campaign-design";
@@ -76,16 +78,18 @@ import {
 } from "../types/localization";
 import { getDefaultCampaignTranslationValues } from "../utils/campaign-localization";
 import { buildCampaignViewModel } from "../utils/campaign-view-model";
-import { htmlToTree, type StructureNode } from "../utils/campaign-structure";
+import {
+  buildCampaignStructureTree,
+  buildStructureCss,
+  deriveCampaignStructureSpec,
+  htmlToTree,
+  type StructureNode,
+} from "../utils/campaign-structure";
 import { EditorTabIcon } from "./CampaignEditorLayout";
 import {
   CampaignDesignEditor,
   type StructureFormPayload,
 } from "./CampaignDesignEditor";
-import type {
-  CampaignDesignErrors,
-  CampaignDesignMediaOptions,
-} from "../types/campaign-design";
 import { applyCampaignTypeDefaultTextValues } from "../utils/campaign-type-text-defaults";
 import { deriveMobileDesignFromDesktop } from "../utils/responsive-design";
 import type { CampaignSuggestion } from "../types/ai-campaign";
@@ -124,7 +128,9 @@ type CampaignFormProps = {
   // Saved structural HTML/CSS override so this preview renders the exact same
   // generated HTML the storefront uses (matches the Design tab preview).
   structureTree?: StructureNode | null;
+  mobileStructureTree?: StructureNode | null;
   structureCss?: string;
+  mobileStructureCss?: string;
   // Saved custom-message snippets (JSON array of {id, text}) placed in the custom
   // HTML via data-cp-slot="custom-<id>". Edited in the Message tab.
   structureMessages?: string;
@@ -613,7 +619,9 @@ export function CampaignForm({
   lockedCustomCssReason,
   mobileDesign = design,
   structureTree = null,
+  mobileStructureTree = null,
   structureCss = "",
+  mobileStructureCss = "",
   structureMessages: initialStructureMessages = "",
   values,
   errors = {},
@@ -782,13 +790,6 @@ export function CampaignForm({
     }
     return null;
   }, [designStructureForm]);
-  const previewStructureTree =
-    liveDesignStructure?.tree ?? aiStructure?.tree ?? structureTree;
-  const previewStructureCss = liveDesignStructure
-    ? liveDesignStructure.css
-    : aiStructure
-      ? aiStructure.css
-      : structureCss;
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
@@ -1036,6 +1037,60 @@ export function CampaignForm({
       usesFreeShippingSettings,
     ],
   );
+  const generatedStructureTree = useMemo(
+    () =>
+      buildCampaignStructureTree(
+        deriveCampaignStructureSpec(
+          previewViewModel,
+          effectiveDesign,
+          "block",
+          campaignPreviewPlacement,
+        ),
+      ),
+    [campaignPreviewPlacement, effectiveDesign, previewViewModel],
+  );
+  const generatedStructureCss = useMemo(
+    () => buildStructureCss(effectiveDesign),
+    [effectiveDesign],
+  );
+  const generatedMobileStructureTree = useMemo(
+    () =>
+      buildCampaignStructureTree(
+        deriveCampaignStructureSpec(
+          previewViewModel,
+          effectiveMobileDesign,
+          "block",
+          campaignPreviewPlacement,
+        ),
+      ),
+    [campaignPreviewPlacement, effectiveMobileDesign, previewViewModel],
+  );
+  const generatedMobileStructureCss = useMemo(
+    () => buildStructureCss(effectiveMobileDesign),
+    [effectiveMobileDesign],
+  );
+  const previewStructureTree =
+    liveDesignStructure?.tree ??
+    aiStructure?.tree ??
+    structureTree ??
+    generatedStructureTree;
+  const hasStructureOverride = Boolean(
+    liveDesignStructure || aiStructure || structureTree,
+  );
+  const previewMobileStructureTree =
+    mobileStructureTree ??
+    (hasStructureOverride ? null : generatedMobileStructureTree);
+  const previewStructureCss = liveDesignStructure
+    ? liveDesignStructure.css
+    : aiStructure
+      ? aiStructure.css
+      : structureTree
+        ? structureCss
+        : generatedStructureCss;
+  const previewMobileStructureCss =
+    mobileStructureTree || !hasStructureOverride
+      ? mobileStructureCss || generatedMobileStructureCss
+      : "";
   const summaryRows = useMemo(
     () => [
       ["Campaign type", activeCampaignTypeLabel],
@@ -3300,8 +3355,8 @@ export function CampaignForm({
                         {incompatible.badgeLabels.join(", ")}) render a small
                         badge over product media, while{" "}
                         {incompatible.nonBadgeLabels.join(", ")} render a
-                        banner or card. A single design can't be tuned well for
-                        both shapes.
+                        banner or card. A single design can&apos;t be tuned well
+                        for both shapes.
                       </p>
                       <p>
                         Create one campaign for the badge placements and another
@@ -4096,7 +4151,9 @@ export function CampaignForm({
                 mobileDesign={effectiveMobileDesign}
                 placement={campaignPreviewPlacement}
                 structureTree={previewStructureTree}
+                mobileStructureTree={previewMobileStructureTree}
                 structureCss={previewStructureCss}
+                mobileStructureCss={previewMobileStructureCss}
                 customMessages={customMessages}
                 viewModel={previewViewModel}
                 onDeviceChange={setPreviewDevice}

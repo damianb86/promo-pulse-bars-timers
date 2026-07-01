@@ -10294,7 +10294,9 @@ s-page::part(page) {
 .counterpulse-preview-shell--mobile
   .counterpulse-preview-promo--layout-cta_right,
 .counterpulse-preview-shell--mobile
-  .counterpulse-preview-promo--layout-cta_left {
+  .counterpulse-preview-promo--layout-cta_left,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread {
   grid-template-columns: 1fr;
   justify-items: center;
   text-align: center;
@@ -10332,10 +10334,27 @@ s-page::part(page) {
   .counterpulse-preview-actions,
 .counterpulse-preview-shell--mobile
   .counterpulse-preview-promo--layout-cta_left
+  .counterpulse-preview-progress,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread
+  .counterpulse-preview-message,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread
+  .counterpulse-preview-timer,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread
+  .counterpulse-preview-actions,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread
   .counterpulse-preview-progress {
   grid-column: auto;
   grid-row: auto;
   justify-self: auto;
+}
+
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-spread {
+  padding-inline: var(--cp-padding-inline);
 }
 
 .counterpulse-preview-shell--mobile .counterpulse-preview-promo--layout-inline {
@@ -11000,17 +11019,31 @@ s-page::part(page) {
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-message {
   grid-column: 1;
   justify-content: flex-start;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .counterpulse-preview-promo--layout-balanced
   .counterpulse-preview-message-copy {
   justify-items: start;
+  max-width: 100%;
+}
+
+.counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-message-copy
+  > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer {
   grid-column: 2;
   grid-row: 1;
   justify-self: end;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions {
@@ -11127,6 +11160,22 @@ s-page::part(page) {
   grid-column: 2;
 }
 
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer {
+  justify-self: end;
+  justify-content: flex-end;
+}
+
+.counterpulse-preview-promo--layout-cta_left
+  .counterpulse-preview-message-copy {
+  justify-items: end;
+  text-align: right;
+}
+
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
+  justify-self: end;
+}
+
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions {
   grid-column: 1;
   grid-row: 1 / span 3;
@@ -11216,17 +11265,39 @@ s-page::part(page) {
   align-items: center;
   text-align: left;
 }
+
+.counterpulse-preview-promo--layout-spread.counterpulse-preview-promo--full-width {
+  padding-inline: max(
+    var(--cp-padding-inline),
+    calc(
+      (100% - var(--cp-content-max-width, 1100px)) / 2 + var(--cp-padding-inline)
+    )
+  );
+}
+
 .counterpulse-preview-promo--layout-spread .counterpulse-preview-message {
   grid-column: 1;
   justify-content: flex-start;
+  max-width: 100%;
+  min-width: 0;
 }
 .counterpulse-preview-promo--layout-spread .counterpulse-preview-message-copy {
   justify-items: start;
   text-align: left;
+  max-width: 100%;
+}
+.counterpulse-preview-promo--layout-spread
+  .counterpulse-preview-message-copy
+  > * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .counterpulse-preview-promo--layout-spread .counterpulse-preview-timer {
   grid-column: 2;
   justify-self: center;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 .counterpulse-preview-promo--layout-spread .counterpulse-preview-actions {
   grid-column: 3;
@@ -12192,7 +12263,8 @@ s-page::part(page) {
   }
 
   .counterpulse-preview-promo--layout-cta_right,
-  .counterpulse-preview-promo--layout-cta_left {
+  .counterpulse-preview-promo--layout-cta_left,
+  .counterpulse-preview-promo--layout-spread {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
@@ -12208,10 +12280,18 @@ s-page::part(page) {
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
   .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions,
-  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
+  .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress,
+  .counterpulse-preview-promo--layout-spread .counterpulse-preview-message,
+  .counterpulse-preview-promo--layout-spread .counterpulse-preview-timer,
+  .counterpulse-preview-promo--layout-spread .counterpulse-preview-actions,
+  .counterpulse-preview-promo--layout-spread .counterpulse-preview-progress {
     grid-column: auto;
     grid-row: auto;
     justify-self: auto;
+  }
+
+  .counterpulse-preview-promo--layout-spread {
+    padding-inline: var(--cp-padding-inline);
   }
 
   .counterpulse-preview-message-copy {
@@ -14097,33 +14177,33 @@ s-page::part(page) {
   text-align: center;
 }
 
-/* 2) Mobile card — timer on the LEFT, message on the RIGHT (side by side),
-      action spans full-width underneath both. */
+/* 2) Mobile card — centered rounded card: timer, message, full-width action. */
 .counterpulse-preview-promo--layout-mobile_card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "timer message"
-    "actions actions";
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  text-align: left;
+  gap: max(10px, var(--cp-gap));
+  text-align: center;
   width: 100%;
+  overflow: hidden;
 }
 .counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-message {
-  grid-area: message;
-  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
 }
 .counterpulse-preview-promo--layout-mobile_card
   .counterpulse-preview-message-copy {
-  justify-items: start;
-  text-align: left;
+  justify-items: center;
+  text-align: center;
 }
 .counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-timer {
-  grid-area: timer;
+  order: -1;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .counterpulse-preview-promo--layout-mobile_card .counterpulse-preview-actions {
-  grid-area: actions;
   width: 100%;
   flex-direction: column;
   align-items: stretch;
@@ -14312,29 +14392,30 @@ s-page::part(page) {
   background: #202223;
 }
 
-/* Card: timer left, message right, action full-width underneath. */
+/* Card: timer, message, action stacked inside a centered rounded card. */
 .counterpulse-layout-preview--mobile_card {
-  grid-template-columns: 0.7fr 1.3fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto;
   align-content: center;
-  gap: 4px 6px;
+  justify-items: center;
+  gap: 4px;
 }
 .counterpulse-layout-preview--mobile_card span:nth-child(1) {
-  grid-column: 2;
-  grid-row: 1;
-  width: 92%;
+  grid-column: 1;
+  grid-row: 2;
+  width: 82%;
   height: 6px;
 }
 .counterpulse-layout-preview--mobile_card span:nth-child(2) {
   grid-column: 1;
   grid-row: 1;
-  width: 100%;
+  width: 74%;
   height: 16px;
 }
 .counterpulse-layout-preview--mobile_card span:nth-child(3) {
-  grid-column: 1 / span 2;
-  grid-row: 2;
-  width: 100%;
+  grid-column: 1;
+  grid-row: 3;
+  width: 92%;
   height: 8px;
   background: #202223;
 }

@@ -52,6 +52,12 @@ type PreviewPlacement =
   | "CART_DRAWER"
   | "PRODUCT_BADGE";
 
+type SlotRootProps = {
+  className?: string;
+  style?: CSSProperties;
+  [key: string]: unknown;
+};
+
 type CampaignPreviewProps = {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
@@ -871,14 +877,23 @@ function fixStructureRootClasses(
   return keep.join(" ");
 }
 
-function PreviewCloseButton({ design }: { design: CampaignDesignValues }) {
+function PreviewCloseButton({
+  design,
+  className = "",
+  style,
+  ...rootProps
+}: { design: CampaignDesignValues } & SlotRootProps) {
   return (
     <span
-      className="counterpulse-preview-close"
+      {...rootProps}
+      className={["counterpulse-preview-close", className]
+        .filter(Boolean)
+        .join(" ")}
       aria-hidden="true"
       style={{
         width: `${design.closeButtonSize}px`,
         height: `${design.closeButtonSize}px`,
+        ...(style ?? {}),
       }}
     >
       <svg
@@ -928,11 +943,14 @@ function PreviewProgress({
   design,
   percentage,
   unlocked,
+  className: incomingClassName = "",
+  style: incomingStyle,
+  ...rootProps
 }: {
   design: CampaignDesignValues;
   percentage: number;
   unlocked?: boolean;
-}) {
+} & SlotRootProps) {
   const pct = Math.round(percentage);
   const style = (design.progressBarStyle || "BAR").toLowerCase();
   const effect = (design.progressEffect || "NONE").toLowerCase();
@@ -949,6 +967,7 @@ function PreviewProgress({
     `counterpulse-preview-progress--${style}`,
     `counterpulse-preview-progress--effect-${effect}`,
     unlocked ? "counterpulse-preview-progress--unlocked" : "",
+    incomingClassName,
   ]
     .filter(Boolean)
     .join(" ");
@@ -957,7 +976,7 @@ function PreviewProgress({
     const steps = clampNumber(design.progressSteps, 2, 12, 4);
     const filled = Math.round((pct / 100) * steps);
     return (
-      <div className={className} style={vars}>
+      <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
         <span className="counterpulse-preview-progress-steps">
           {Array.from({ length: steps }).map((_, index) => (
             <span key={index} className={index < filled ? "is-filled" : ""} />
@@ -972,7 +991,7 @@ function PreviewProgress({
 
   if (style === "circle") {
     return (
-      <div className={className} style={vars}>
+      <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
         <span
           className="counterpulse-preview-progress-circle"
           style={
@@ -986,7 +1005,7 @@ function PreviewProgress({
   }
 
   return (
-    <div className={className} style={vars}>
+    <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
       <span>
         <span style={{ width: `${pct}%` }} />
       </span>
@@ -1399,20 +1418,28 @@ function iconDesignForSlot(
 function OfferPreview({
   viewModel,
   design,
+  className = "",
+  style,
+  ...rootProps
 }: {
   viewModel: CampaignViewModel;
   design: CampaignDesignValues;
-}) {
+} & SlotRootProps) {
   const offer = viewModel.offer;
 
   if (!offer || !isOfferVisible(viewModel, design)) return null;
 
   return (
     <span
+      {...rootProps}
       className={[
         "counterpulse-preview-offer",
         `counterpulse-preview-offer--${design.offerCodeLayout.toLowerCase()}`,
-      ].join(" ")}
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={style}
     >
       {design.showDiscountCode ? (
         <span className="counterpulse-preview-code-wrap">
@@ -1458,12 +1485,15 @@ function TimerDisplay({
   timerState,
   deliveryTime,
   compact = false,
+  className = "",
+  style,
+  ...rootProps
 }: {
   design: CampaignDesignValues;
   timerState: TimerState | null;
   deliveryTime?: string;
   compact?: boolean;
-}) {
+} & SlotRootProps) {
   const timerParts = timerState?.isActive
     ? buildTimerParts(timerState.remainingMs, design)
     : buildTimerPartsFromText(deliveryTime);
@@ -1500,6 +1530,7 @@ function TimerDisplay({
 
       return (
         <div
+          {...rootProps}
           className={[
             "counterpulse-preview-timer",
             "counterpulse-preview-timer--colon",
@@ -1507,9 +1538,11 @@ function TimerDisplay({
             "counterpulse-preview-timer--colon-boxes",
             `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
             compact ? "counterpulse-preview-timer--compact" : "",
+            className,
           ]
             .filter(Boolean)
             .join(" ")}
+          style={style}
           suppressHydrationWarning
         >
           {colonBoxNodes}
@@ -1521,6 +1554,7 @@ function TimerDisplay({
 
     return (
       <div
+        {...rootProps}
         key={timerText}
         className={[
           "counterpulse-preview-timer",
@@ -1528,7 +1562,11 @@ function TimerDisplay({
           `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
           `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
           compact ? "counterpulse-preview-timer--compact" : "",
-        ].join(" ")}
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={style}
         suppressHydrationWarning
       >
         {timerText}
@@ -1539,12 +1577,17 @@ function TimerDisplay({
   if (compact && design.timerStyle === "PLAIN") {
     return (
       <span
+        {...rootProps}
         key={visibleTimerParts.map((part) => part.value).join(":")}
         className={[
           "counterpulse-preview-timer",
           "counterpulse-preview-timer--inline-plain",
           `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
-        ].join(" ")}
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={style}
         suppressHydrationWarning
       >
         {visibleTimerParts
@@ -1560,6 +1603,7 @@ function TimerDisplay({
 
   return (
     <div
+      {...rootProps}
       className={[
         "counterpulse-preview-timer",
         `counterpulse-preview-timer--${design.timerStyle.toLowerCase()}`,
@@ -1568,9 +1612,11 @@ function TimerDisplay({
           : "",
         `counterpulse-preview-timer--tick-${design.timerTickAnimation.toLowerCase()}`,
         compact ? "counterpulse-preview-timer--compact" : "",
+        className,
       ]
         .filter(Boolean)
         .join(" ")}
+      style={style}
       suppressHydrationWarning
     >
       {visibleTimerParts.map((part) => (
@@ -1583,7 +1629,12 @@ function TimerDisplay({
   );
 }
 
-function PreviewIcon({ design }: { design: CampaignDesignValues }) {
+function PreviewIcon({
+  design,
+  className = "",
+  style,
+  ...rootProps
+}: { design: CampaignDesignValues } & SlotRootProps) {
   if (design.icon === "NONE") return null;
 
   const iconStyle = {
@@ -1593,8 +1644,11 @@ function PreviewIcon({ design }: { design: CampaignDesignValues }) {
   if (design.icon === "CUSTOM" && design.customIconUrl) {
     return (
       <span
-        className="counterpulse-preview-icon"
-        style={iconStyle}
+        {...rootProps}
+        className={["counterpulse-preview-icon", className]
+          .filter(Boolean)
+          .join(" ")}
+        style={{ ...iconStyle, ...(style ?? {}) }}
         aria-hidden="true"
       >
         <img alt="" src={design.customIconUrl} />
@@ -1603,8 +1657,11 @@ function PreviewIcon({ design }: { design: CampaignDesignValues }) {
   }
   return (
     <span
-      className="counterpulse-preview-icon"
-      style={iconStyle}
+      {...rootProps}
+      className={["counterpulse-preview-icon", className]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ ...iconStyle, ...(style ?? {}) }}
       aria-hidden="true"
     >
       <PreviewIconSvg icon={design.icon} />

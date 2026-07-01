@@ -200,7 +200,7 @@ export const campaignLayoutDefaultValues: Record<
   },
   CTA_LEFT: {
     showButton: true,
-    alignment: "LEFT",
+    alignment: "RIGHT",
     timerStyle: "GROUPED",
     timerFormat: "UNITS",
     timerShowLabels: true,

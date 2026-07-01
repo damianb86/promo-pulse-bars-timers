@@ -1816,13 +1816,47 @@ export default function EditCampaignPage() {
     experimentAutoWinnerSaveBarState.dirty ||
     behaviorTargetingSaveBarState.dirty ||
     structureDirty;
-  // Saved structural HTML override → tree, so the Campaign tab preview renders the
-  // exact same generated HTML as the Design tab and the storefront.
+  // Structural HTML override → tree. Prefer the live Design-editor payload when
+  // present so the Campaign tab preview stays identical before saving too.
   const savedStructureTree = useMemo(
     () =>
       structureEdited && structureHtml ? htmlToTree(structureHtml) : null,
     [structureEdited, structureHtml],
   );
+  const savedMobileStructureTree = useMemo(
+    () =>
+      mobileStructureEdited && mobileStructureHtml
+        ? htmlToTree(mobileStructureHtml)
+        : null,
+    [mobileStructureEdited, mobileStructureHtml],
+  );
+  const campaignPreviewStructureTree = useMemo(() => {
+    if (structureForm) {
+      return structureForm.structureEdited && structureForm.structureHtml
+        ? htmlToTree(structureForm.structureHtml)
+        : null;
+    }
+    return savedStructureTree;
+  }, [savedStructureTree, structureForm]);
+  const campaignPreviewMobileStructureTree = useMemo(() => {
+    if (structureForm) {
+      return structureForm.mobileStructureEdited &&
+        structureForm.mobileStructureHtml
+        ? htmlToTree(structureForm.mobileStructureHtml)
+        : null;
+    }
+    return savedMobileStructureTree;
+  }, [savedMobileStructureTree, structureForm]);
+  const campaignPreviewStructureCss = structureForm
+    ? structureForm.structureEdited
+      ? structureForm.structureCss
+      : ""
+    : structureCss;
+  const campaignPreviewMobileStructureCss = structureForm
+    ? structureForm.mobileStructureEdited
+      ? structureForm.mobileStructureCss
+      : ""
+    : mobileStructureCss;
   const savedCustomMessages = useMemo(
     () => parseCustomMessages(structureMessages),
     [structureMessages],
@@ -2085,8 +2119,10 @@ export default function EditCampaignPage() {
                   confirmOnSubmit={false}
                   design={draftDesignValues}
                   mobileDesign={draftMobileDesignValues}
-                  structureTree={savedStructureTree}
-                  structureCss={structureCss}
+                  structureTree={campaignPreviewStructureTree}
+                  mobileStructureTree={campaignPreviewMobileStructureTree}
+                  structureCss={campaignPreviewStructureCss}
+                  mobileStructureCss={campaignPreviewMobileStructureCss}
                   structureMessages={structureMessages}
                   designHiddenInputs={
                     <>

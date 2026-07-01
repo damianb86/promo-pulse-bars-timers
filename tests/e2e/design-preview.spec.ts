@@ -49,6 +49,17 @@ test("design changes update live preview and persist", async ({
   await expect(livePreview).toHaveClass(
     /counterpulse-preview-promo--layout-balanced/,
   );
+  const splitMessageBox = await livePreview
+    .locator(".counterpulse-preview-message")
+    .boundingBox();
+  const splitTimerBox = await livePreview
+    .locator(".counterpulse-preview-timer")
+    .boundingBox();
+  expect(splitMessageBox).not.toBeNull();
+  expect(splitTimerBox).not.toBeNull();
+  expect(splitMessageBox!.x + splitMessageBox!.width).toBeLessThanOrEqual(
+    splitTimerBox!.x + 1,
+  );
 
   await editor.getByRole("button", { name: "Layout options" }).click();
   await editor.getByRole("option", { name: /^Inline\b/ }).click();
@@ -244,6 +255,171 @@ test("design changes update live preview and persist", async ({
   await expect(
     reloadedEditor.locator('select[name="timerTickAnimation"]'),
   ).toHaveValue("PULSE");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("structure slot styles apply to hydrated timer in design and campaign previews", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("countdown");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
+
+  const editor = page.getByRole("tabpanel", { name: "Design" });
+  await editor.getByRole("button", { name: "View / edit HTML" }).click();
+  const htmlDialog = page.getByRole("dialog", {
+    name: "Campaign HTML structure (desktop)",
+  });
+  const htmlTextarea = htmlDialog.getByLabel(
+    "Campaign HTML structure (desktop)",
+  );
+  const html = await htmlTextarea.inputValue();
+  expect(html).toContain('data-cp-slot="timer"');
+  await htmlTextarea.fill(
+    html.replace(
+      'data-cp-slot="timer"',
+      'data-cp-slot="timer" style="max-width: 150px; display: none; width: 20%"',
+    ),
+  );
+  await htmlDialog.getByRole("button", { name: "Done" }).click();
+
+  const designTimer = page.locator(
+    ".counterpulse-design-editor__preview .counterpulse-preview-timer",
+  );
+  await expect(designTimer).toHaveCSS("display", "none");
+
+  await page.getByRole("tab", { name: "Campaign" }).click();
+  const campaignTimer = page.locator(
+    ".counterpulse-campaign-preview-panel .counterpulse-preview-timer",
+  );
+  await expect(campaignTimer).toHaveCSS("display", "none");
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("advanced layouts keep content aligned across desktop and mobile", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("countdown");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Design" }).click();
+
+  const editor = page.getByRole("tabpanel", { name: "Design" });
+  const previewPanel = editor.locator(".counterpulse-design-editor__preview");
+  const preview = previewPanel.locator(".counterpulse-preview-promo").first();
+
+  await editor.getByLabel("Full width").check();
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Spread row\b/ }).click();
+  await expect(preview).toHaveClass(/counterpulse-preview-promo--layout-spread/);
+  const spreadPadding = await preview.evaluate((element) =>
+    Number.parseFloat(window.getComputedStyle(element).paddingLeft),
+  );
+  expect(spreadPadding).toBeGreaterThan(40);
+
+  await previewPanel
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
+  await expect(preview).toHaveClass(/counterpulse-preview-promo--layout-spread/);
+  const mobileSpread = await preview.evaluate((element) => {
+    const promo = element.getBoundingClientRect();
+    const message = element
+      .querySelector(".counterpulse-preview-message")
+      ?.getBoundingClientRect();
+    const timer = element
+      .querySelector(".counterpulse-preview-timer")
+      ?.getBoundingClientRect();
+    const actions = element
+      .querySelector(".counterpulse-preview-actions")
+      ?.getBoundingClientRect();
+    return {
+      actionBelowTimer: Boolean(timer && actions && actions.top >= timer.bottom),
+      messageInside: Boolean(
+        message && message.left >= promo.left && message.right <= promo.right,
+      ),
+      timerInside: Boolean(
+        timer && timer.left >= promo.left && timer.right <= promo.right,
+      ),
+    };
+  });
+  expect(mobileSpread).toEqual({
+    actionBelowTimer: true,
+    messageInside: true,
+    timerInside: true,
+  });
+
+  await previewPanel
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Desktop" })
+    .click();
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Action left\b/ }).click();
+  await expect(preview).toHaveClass(
+    /counterpulse-preview-promo--layout-cta_left/,
+  );
+  await expect(
+    preview.locator(".counterpulse-preview-message-copy"),
+  ).toHaveCSS("text-align", "right");
+  await expect(preview.locator(".counterpulse-preview-timer")).toHaveCSS(
+    "justify-content",
+    "flex-end",
+  );
+
+  await editor.getByLabel("Separate desktop and mobile design").check();
+  await editor
+    .locator(".counterpulse-design-editor__controls")
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Mobile card\b/ }).click();
+  await expect(preview).toHaveClass(
+    /counterpulse-preview-promo--layout-mobile_card/,
+  );
+  const mobileCard = await preview.evaluate((element) => {
+    const promo = element.getBoundingClientRect();
+    const message = element
+      .querySelector(".counterpulse-preview-message")
+      ?.getBoundingClientRect();
+    const timer = element
+      .querySelector(".counterpulse-preview-timer")
+      ?.getBoundingClientRect();
+    const actions = element
+      .querySelector(".counterpulse-preview-actions")
+      ?.getBoundingClientRect();
+    const within = (rect: DOMRect | undefined) =>
+      Boolean(
+        rect &&
+          rect.left >= promo.left &&
+          rect.right <= promo.right &&
+          rect.top >= promo.top &&
+          rect.bottom <= promo.bottom,
+      );
+    return {
+      timerBeforeMessage: Boolean(timer && message && timer.bottom <= message.top),
+      messageInside: within(message),
+      timerInside: within(timer),
+      actionsInside: within(actions),
+    };
+  });
+  expect(mobileCard).toEqual({
+    timerBeforeMessage: true,
+    messageInside: true,
+    timerInside: true,
+    actionsInside: true,
+  });
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

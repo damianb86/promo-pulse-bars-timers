@@ -191,9 +191,17 @@ export type CampaignDesignErrors = Partial<
   form?: string;
 };
 
-export type CampaignDesignTemplate = CampaignDesignValues & {
+export type CampaignDesignTemplateMeta = {
   label: string;
+  description: string;
+  bestFor: string;
+  visualCode: string;
+  emphasizes: string;
+  avoids: string;
 };
+
+export type CampaignDesignTemplate = CampaignDesignValues &
+  CampaignDesignTemplateMeta;
 
 export type CampaignDesignImageOption = {
   id: string;
@@ -322,11 +330,183 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   offerApplyBehavior: "SHOW_APPLIED",
 };
 
+const campaignDesignTemplateMeta = {
+  dawn: {
+    label: "Dawn",
+    description:
+      "Bright gradient preset for upbeat launches, fresh offers, and positive sitewide announcements.",
+    bestFor:
+      "Optimistic sale bars, product launches, seasonal refreshes, and campaigns that should feel energetic without being aggressive.",
+    visualCode:
+      "Aqua-to-violet gradient, dark blue copy, white accents, and a dark timer surface. It reads as modern, friendly, and high-energy.",
+    emphasizes:
+      "Color, freshness, and a clear timer/CTA contrast against a cheerful surface.",
+    avoids:
+      "Very serious operational notices, luxury dark campaigns, or long dense copy.",
+  },
+  "fifty-shades": {
+    label: "50 Shades",
+    description:
+      "Muted dark split preset for professional urgency with copy balanced against timer/action.",
+    bestFor:
+      "Premium neutral sales, B2B-style announcements, and countdowns that need contrast without loud red sale language.",
+    visualCode:
+      "Slate background, light text, restrained gray accents, BALANCED layout with copy on one side and timer/action on the other.",
+    emphasizes:
+      "A composed two-column hierarchy, readable contrast, and understated timer/action prominence.",
+    avoids:
+      "Playful events, bright holiday campaigns, tiny badges, or mobile-only compact bars.",
+  },
+  love: {
+    label: "Love",
+    description:
+      "Compact red-pink inline preset for slim bars with a playful emotional hook.",
+    bestFor:
+      "Valentine-style offers, beauty/fashion promos, social launches, and short copy that should fit in one punchy row.",
+    visualCode:
+      "Hot gradient, navy CTA/timer treatment, INLINE layout, colon timer, low vertical padding.",
+    emphasizes:
+      "Speed, emotion, compactness, and a high-contrast CTA inside a slim surface.",
+    avoids:
+      "Long explanations, cart drawers, conservative B2B messaging, or multi-line operational details.",
+  },
+  "black-friday": {
+    label: "Black Friday",
+    description:
+      "Stark black-and-gold preset for high-impact sale events and clear discounts.",
+    bestFor:
+      "Black Friday, Cyber Monday, limited drops, and campaigns where a concrete discount must dominate.",
+    visualCode:
+      "Black surface, gold accent, sticky behavior, tag icon, sharp high-contrast retail-event language.",
+    emphasizes:
+      "Discount, urgency, event energy, and a premium sale feel with minimal decoration.",
+    avoids:
+      "Soft announcements, free-shipping progress, delivery promises, or campaigns with no real offer.",
+  },
+  "flash-sale": {
+    label: "Flash Sale",
+    description:
+      "Urgent red gradient preset for timer-led offers with a clear CTA.",
+    bestFor:
+      "Short flash sales, countdown bars, timed discount pushes, and offers where urgency is real and central.",
+    visualCode:
+      "Red gradient, fire icon, yellow timer contrast, dark timer surface, sticky sale treatment.",
+    emphasizes:
+      "Deadline pressure, timer visibility, and a bold call to action.",
+    avoids:
+      "Evergreen announcements, calm brand messages, or scarcity/discount claims the merchant did not provide.",
+  },
+  "free-shipping": {
+    label: "Free Shipping",
+    description:
+      "Mint green value preset for shipping thresholds, cart progress, and reassurance.",
+    bestFor:
+      "Free-shipping goals, cart progress nudges, threshold messaging, and value-driven offers.",
+    visualCode:
+      "Soft green surface, truck icon, trustworthy dark green copy, boxed/grouped timer styling if urgency is added.",
+    emphasizes:
+      "Savings, reassurance, cart value, and progress toward a clear threshold.",
+    avoids:
+      "Hard scarcity, luxury dark mood, aggressive flash-sale language, or product badges.",
+  },
+  "delivery-cutoff": {
+    label: "Delivery Cutoff",
+    description:
+      "Blue operational preset for order-by deadlines and delivery confidence.",
+    bestFor:
+      "Daily delivery cutoffs, shipping windows, fulfillment notices, and practical time-sensitive promises.",
+    visualCode:
+      "Blue information palette, clock icon, grouped timer surface, clear but calm deadline hierarchy.",
+    emphasizes:
+      "Reliability, time remaining, and the action needed before a fulfillment cutoff.",
+    avoids:
+      "Emotional sales, vague urgency, product merchandising badges, or unsupported delivery guarantees.",
+  },
+  "low-stock": {
+    label: "Low Stock",
+    description:
+      "Warm orange product-urgency preset for real inventory pressure and quick action.",
+    bestFor:
+      "Low-stock product-page messages, collection nudges, and urgency based on real inventory rules.",
+    visualCode:
+      "Warm orange surface, tag icon, left alignment, compact copy, and attention without a loud countdown by default.",
+    emphasizes:
+      "Product demand, urgency, and clarity near the buying decision.",
+    avoids:
+      "Fake exact quantities, broad sitewide announcements, free-shipping thresholds, or long explanatory copy.",
+  },
+  "clean-minimal": {
+    label: "Clean Minimal",
+    description:
+      "Neutral white preset that lets copy and CTA lead without strong styling assumptions.",
+    bestFor:
+      "Unknown categories, premium/simple stores, announcements, and safe drafts when the input does not imply a strong theme.",
+    visualCode:
+      "White card, neutral border, black CTA, standard stacked hierarchy, theme-friendly typography.",
+    emphasizes:
+      "Legibility, brand safety, and compatibility with most storefronts.",
+    avoids:
+      "High-energy sale moments that need stronger color, or campaigns where the timer must be the visual hero.",
+  },
+  "wide-clean": {
+    label: "Wide Clean",
+    description:
+      "Full-width light preset for polished sitewide messages that need more breathing room.",
+    bestFor:
+      "Top/bottom bars, broad announcements, free-shipping reminders, and copy that benefits from a wide readable row/stack.",
+    visualCode:
+      "Full-width light gray surface, teal CTA/accent, zero radius, broad content max-width, grouped timer.",
+    emphasizes:
+      "Scanning across a wide bar, clear hierarchy, and a professional storefront-native feel.",
+    avoids:
+      "Tiny badges, narrow cart drawers, or image-led hero compositions.",
+  },
+  "cart-compact": {
+    label: "Cart Compact",
+    description:
+      "Dense card preset for cart drawers/pages where action and timer must fit tightly.",
+    bestFor:
+      "Cart rescue, checkout urgency, compact cart reminders, and small surfaces with a strong CTA.",
+    visualCode:
+      "White compact card, dark CTA, amber timer, boxed timer surface, COMPACT_STACK layout.",
+    emphasizes:
+      "Checkout action, timer clarity, and efficient use of narrow drawer space.",
+    avoids:
+      "Wide top bars, decorative launches, or long brand storytelling.",
+  },
+  "premium-dark": {
+    label: "Premium Dark",
+    description:
+      "Dark luxury preset for elevated limited offers and sophisticated campaigns.",
+    bestFor:
+      "Premium products, luxury drops, VIP offers, gifting campaigns, and high-value promotions.",
+    visualCode:
+      "Deep navy-to-purple gradient, white CTA, violet accent, grouped timer, gift icon.",
+    emphasizes:
+      "Exclusivity, contrast, and an upscale mood rather than loud retail urgency.",
+    avoids:
+      "Operational delivery notices, cheerful spring launches, low-stock warnings, or dense cart UI.",
+  },
+  holiday: {
+    label: "Holiday",
+    description:
+      "Festive green/red preset for seasonal gifting, holiday events, and cheerful promotions.",
+    bestFor:
+      "Christmas/holiday sales, gift campaigns, seasonal launches, and event-led announcements.",
+    visualCode:
+      "Soft green background, red accent, gift icon, rounded friendly card treatment.",
+    emphasizes:
+      "Seasonality, gifting, approachability, and a clear festive CTA.",
+    avoids:
+      "Evergreen premium offers, operational messages, or subdued brand systems.",
+  },
+} satisfies Record<string, CampaignDesignTemplateMeta>;
+
 export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta.dawn,
     templateKey: "dawn",
-    label: "Dawn",
     backgroundType: "GRADIENT",
     backgroundColor: "#EAFBFF",
     gradientStartColor: "#45E4D9",
@@ -353,8 +533,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["fifty-shades"],
     templateKey: "fifty-shades",
-    label: "50 Shades",
     layout: "BALANCED",
     backgroundColor: "#313E50",
     textColor: "#F8FAFC",
@@ -379,8 +559,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta.love,
     templateKey: "love",
-    label: "Love",
     layout: "INLINE",
     backgroundType: "GRADIENT",
     backgroundColor: "#991B1B",
@@ -414,8 +594,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["black-friday"],
     templateKey: "black-friday",
-    label: "Black Friday",
     backgroundColor: "#050505",
     textColor: "#FFFFFF",
     closeButtonColor: "#FFFFFF",
@@ -435,8 +615,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["flash-sale"],
     templateKey: "flash-sale",
-    label: "Flash Sale",
     backgroundColor: "#7F1D1D",
     textColor: "#FFFFFF",
     closeButtonColor: "#FFFFFF",
@@ -463,8 +643,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["free-shipping"],
     templateKey: "free-shipping",
-    label: "Free Shipping",
     backgroundColor: "#ECFDF5",
     textColor: "#064E3B",
     closeButtonColor: "#064E3B",
@@ -486,8 +666,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["delivery-cutoff"],
     templateKey: "delivery-cutoff",
-    label: "Delivery Cutoff",
     backgroundColor: "#EFF6FF",
     textColor: "#1E3A8A",
     closeButtonColor: "#1E3A8A",
@@ -509,8 +689,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["low-stock"],
     templateKey: "low-stock",
-    label: "Low Stock",
     backgroundColor: "#FFF7ED",
     textColor: "#7C2D12",
     closeButtonColor: "#7C2D12",
@@ -527,13 +707,13 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["clean-minimal"],
     templateKey: "clean-minimal",
-    label: "Clean Minimal",
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["wide-clean"],
     templateKey: "wide-clean",
-    label: "Wide Clean",
     layout: "STACKED_WIDE",
     fullWidth: true,
     contentMaxWidth: 1040,
@@ -560,8 +740,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["cart-compact"],
     templateKey: "cart-compact",
-    label: "Cart Compact",
     layout: "COMPACT_STACK",
     contentMaxWidth: 420,
     backgroundColor: "#FFFFFF",
@@ -587,8 +767,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["premium-dark"],
     templateKey: "premium-dark",
-    label: "Premium Dark",
     backgroundColor: "#111827",
     textColor: "#F9FAFB",
     closeButtonColor: "#F9FAFB",
@@ -615,8 +795,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
   },
   {
     ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta.holiday,
     templateKey: "holiday",
-    label: "Holiday",
     backgroundColor: "#F0FDF4",
     textColor: "#14532D",
     closeButtonColor: "#14532D",
@@ -772,6 +952,26 @@ export function describeDesignLayoutsForAi() {
     "Mobile layouts (these change WHERE elements sit and cannot be reproduced with other settings; only valid on the mobile design — to use one, set separateMobileDesign true and place it in mobileDesign.layout, never in the top-level design.layout):",
     ...mobile.map(format),
     "Guidance: pick MOBILE_COMPACT_BAR or MOBILE_BANNER for slim/top-bar style urgency; MOBILE_CARD or MOBILE_SHEET for product-page/cart blocks that need a clear tappable action; MOBILE_SPOTLIGHT when the countdown itself is the hook.",
+  ].join("\n");
+}
+
+// Human-readable preset catalog for AI generation. The model should choose a
+// preset first, then layer intentional setting tweaks on top of that preset.
+export function describeDesignTemplatesForAi() {
+  return [
+    "Built-in preset catalog — choose templateKey FIRST, before deciding custom fields:",
+    ...campaignDesignTemplates.map((template) =>
+      [
+        `- ${template.templateKey} (${template.label})`,
+        `  Short UI description: ${template.description}`,
+        `  Best for: ${template.bestFor}`,
+        `  Visual code: ${template.visualCode}`,
+        `  Emphasizes: ${template.emphasizes}`,
+        `  Avoids / weak fit: ${template.avoids}`,
+        `  Default layout: ${template.layout}; background: ${template.backgroundType}; icon: ${template.showIcon ? template.icon : "NONE"}; timer style: ${template.timerStyle}/${template.timerFormat}; fullWidth: ${template.fullWidth}.`,
+      ].join("\n"),
+    ),
+    "Selection rule: pick the preset whose bestFor + visualCode match the campaign objective, placement, tone, offer, timer need, discount/free-shipping/delivery context, urgency level, and expected surface size. If none is clearly implied, use clean-minimal for safe brand compatibility.",
   ].join("\n");
 }
 
@@ -1096,5 +1296,7 @@ export function describeDesignSettingsForAi() {
     "- progressTrackColor, progressFillColor, progressTextColor (6-digit hex).",
     "",
     `Built-in design presets (templateKey) you can start from, then override the visual fields above to match the image: ${templateExamples}.`,
+    "",
+    describeDesignTemplatesForAi(),
   ].join("\n");
 }

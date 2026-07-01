@@ -78,6 +78,7 @@ import {
   AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT,
   AI_CAMPAIGN_PROMPT_VERSION,
   AI_CAMPAIGN_SYSTEM_PROMPT,
+  AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT,
   buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
   type CampaignAiRefinement,
@@ -151,7 +152,7 @@ const defaultInput: CampaignAiInput = {
   goalAnswers: {},
   productContext: "",
   eventName: "",
-  countryCode: "US",
+  countryCode: "",
   locale: "en",
   brandTone: "premium",
   knownOffer: "",
@@ -210,12 +211,10 @@ export function buildDefaultCampaignAiInput(
 
 export function parseCampaignAiFormData(
   formData: FormData,
-  options: { requireProductContext?: boolean } = {},
 ): {
   values: CampaignAiInput;
   errors: CampaignAiFormErrors;
 } {
-  const requireProductContext = options.requireProductContext ?? true;
   const values = normalizeCampaignAiInput({
     objective: readString(formData, "objective") || defaultInput.objective,
     campaignNameHint: readString(formData, "campaignNameHint"),
@@ -224,8 +223,7 @@ export function parseCampaignAiFormData(
     goalAnswers: readAnswerMap(formData, "goalAnswersJson"),
     productContext: readString(formData, "productContext"),
     eventName: readString(formData, "eventName"),
-    countryCode:
-      readString(formData, "countryCode") || defaultInput.countryCode,
+    countryCode: readString(formData, "countryCode"),
     locale: readString(formData, "locale") || defaultInput.locale,
     brandTone: readString(formData, "brandTone") || defaultInput.brandTone,
     knownOffer: readString(formData, "knownOffer"),
@@ -239,10 +237,6 @@ export function parseCampaignAiFormData(
   });
 
   const errors: CampaignAiFormErrors = {};
-
-  if (requireProductContext && !values.productContext) {
-    errors.productContext = "Product or category is required.";
-  }
 
   if (!isValidStorefrontUrl(values.ctaUrl)) {
     errors.ctaUrl =
@@ -792,6 +786,7 @@ async function requestOpenAiJson(
       mimeType: referenceImage.mimeType,
     });
   }
+  const usesVisualPrompt = Boolean(referenceImage) || input.generateVisualAssets;
 
   const userContent = referenceImage
     ? [
@@ -820,7 +815,9 @@ async function requestOpenAiJson(
           role: "system",
           content: referenceImage
             ? AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT
-            : AI_CAMPAIGN_SYSTEM_PROMPT,
+            : usesVisualPrompt
+              ? AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT
+              : AI_CAMPAIGN_SYSTEM_PROMPT,
         },
         { role: "user", content: userContent },
       ],
@@ -2170,7 +2167,7 @@ function normalizeAnswerMap(value: unknown): CampaignAiAnswerMap {
 
 function normalizeCountry(value: unknown) {
   const country = typeof value === "string" ? value.trim().toUpperCase() : "";
-  return /^[A-Z]{2}$/.test(country) ? country : defaultInput.countryCode;
+  return country === "" || /^[A-Z]{2}$/.test(country) ? country : "";
 }
 
 function getCampaignTypeForObjective(

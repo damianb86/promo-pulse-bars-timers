@@ -328,6 +328,11 @@ describe("describeDesignSettingsForAi", () => {
   it("lists every built-in preset key as a starting point", () => {
     for (const template of campaignDesignTemplates) {
       expect(catalog).toContain(template.templateKey);
+      expect(template.description).toBeTruthy();
+      expect(template.bestFor).toBeTruthy();
+      expect(template.visualCode).toBeTruthy();
+      expect(template.emphasizes).toBeTruthy();
+      expect(template.avoids).toBeTruthy();
     }
   });
 

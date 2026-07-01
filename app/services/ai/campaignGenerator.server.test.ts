@@ -15,6 +15,7 @@ import {
 import {
   AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT,
   AI_CAMPAIGN_SYSTEM_PROMPT,
+  AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT,
   buildCampaignAiImageUserPrompt,
   buildCampaignAiUserPrompt,
 } from "./campaignPrompts.server";
@@ -216,6 +217,21 @@ describe("AI campaign generator", () => {
     });
   });
 
+  it("allows blank product context and country in the AI drawer", () => {
+    const formData = new FormData();
+    formData.set("objective", "FLASH_SALE");
+    formData.set("campaignShape", "sitewide");
+    formData.set("locale", "en");
+    formData.set("brandTone", "premium");
+    formData.set("ctaUrl", "/collections/all");
+
+    const parsed = parseCampaignAiFormData(formData);
+
+    expect(parsed.errors).toEqual({});
+    expect(parsed.values.productContext).toBe("");
+    expect(parsed.values.countryCode).toBe("");
+  });
+
   it("asks one optional follow-up batch when required context is missing", () => {
     const input = buildDefaultCampaignAiInput({
       goalAnswers: {},
@@ -384,18 +400,15 @@ describe("AI campaign reference image", () => {
     expect(result.error).toContain("too large");
   });
 
-  it("makes product context optional when requireProductContext is false", () => {
+  it("keeps product context optional for the AI drawer", () => {
     const formData = new FormData();
     formData.set("objective", "FLASH_SALE");
     formData.set("ctaUrl", "/collections/all");
 
-    const required = parseCampaignAiFormData(formData);
-    const optional = parseCampaignAiFormData(formData, {
-      requireProductContext: false,
-    });
+    const parsed = parseCampaignAiFormData(formData);
 
-    expect(required.errors.productContext).toBeTruthy();
-    expect(optional.errors.productContext).toBeUndefined();
+    expect(parsed.errors.productContext).toBeUndefined();
+    expect(parsed.values.productContext).toBe("");
   });
 
   it("passes the reference image to the provider and keeps its visual overrides", async () => {
@@ -453,21 +466,38 @@ describe("AI campaign reference image", () => {
     expect(suggestion.design.backgroundColor).not.toBe("#FF00AA");
   });
 
-  it("includes visual-asset + design-quality guidance in the base (text-only) prompt", () => {
-    // Assets can be generated without a reference image now, so the guidance must
-    // live in the base prompt, not only in image mode.
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Visual assets");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("background");
+  it("keeps the base prompt preset-first when no visual assets are requested", () => {
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
+      "Preset-first design workflow",
+    );
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Built-in preset catalog");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("flash-sale (Flash Sale)");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Design quality");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Contrast");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("{{asset:");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("design.backgroundImageUrl");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("imageSize");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("1536x1024");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("responsive min-height");
-    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("may become a taller");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
       "Prefer first-class design settings",
+    );
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("keep assets as []");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).not.toContain("{{asset:");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).not.toContain("imageSize");
+  });
+
+  it("moves visual-asset guidance to the visual prompt", () => {
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("VISUAL ASSET MODE");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("Visual assets");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("background");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("{{asset:");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain(
+      "design.backgroundImageUrl",
+    );
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("imageSize");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("1536x1024");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain(
+      "responsive min-height",
+    );
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain("may become a taller");
+    expect(AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT).toContain(
+      "Built-in preset catalog",
     );
   });
 
@@ -504,6 +534,7 @@ describe("AI campaign reference image", () => {
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
       "Design settings catalog",
     );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("VISUAL ASSET MODE");
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("backgroundColor");
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
       "Start from the closest templateKey/preset",
@@ -536,10 +567,23 @@ describe("AI campaign reference image", () => {
       buildDefaultCampaignAiInput({ productContext: "linen shirts" }),
     );
 
+    expect(prompt).toContain("No reference image is attached");
     expect(prompt).toContain("linen shirts");
     expect(prompt).not.toContain('"campaignNameHint": ""');
     expect(prompt).not.toContain('"quickStarts": []');
     expect(prompt).not.toContain('"generateVisualAssets": false');
+  });
+
+  it("marks text-only prompts as visual when assets are requested", () => {
+    const prompt = buildCampaignAiUserPrompt(
+      buildDefaultCampaignAiInput({
+        generateVisualAssets: true,
+        productContext: "linen shirts",
+      }),
+    );
+
+    expect(prompt).toContain("Visual asset generation is requested");
+    expect(prompt).toContain('"generateVisualAssets": true');
   });
 
   it("includes image dimensions and the no-inflate rule when provided", () => {

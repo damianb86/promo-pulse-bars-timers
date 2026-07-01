@@ -330,13 +330,7 @@ export function DesignControls({
                 </span>
                 <span className="counterpulse-preview-select__content">
                   <strong>{template.label}</strong>
-                  <small>
-                    {template.backgroundType === "GRADIENT"
-                      ? "Gradient preset"
-                      : template.backgroundType === "IMAGE"
-                        ? "Image preset"
-                        : "Solid preset"}
-                  </small>
+                  <small>{template.description}</small>
                 </span>
               </button>
             ))}
@@ -1715,7 +1709,9 @@ function CustomCssInfoContent() {
       <p>
         Custom CSS should target Promo Pulse storefront classes only. Use it for
         small visual adjustments that are not covered by the normal design
-        controls.
+        controls. Every rule you add here is automatically scoped to this
+        campaign, so plain selectors like <code>.pp-bar</code> only affect this
+        campaign — no wrapper or <code>__CP_SCOPE__</code> prefix needed.
       </p>
       <ul className="counterpulse-info-list">
         <li>

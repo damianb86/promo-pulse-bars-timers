@@ -19,11 +19,17 @@ test("AI Campaign Builder generates a reviewed draft before saving", async ({
   await expect(
     aiBuilder.getByText("Start with intent, not copywriting"),
   ).toBeVisible();
+  await expect(
+    aiBuilder.getByRole("heading", {
+      name: "Match an existing banner or timer (optional)",
+    }),
+  ).toHaveCount(0);
+  await expect(aiBuilder.getByText("Generate visual assets")).toHaveCount(0);
+  await expect(aiBuilder.getByLabel("Country").first()).toHaveValue("");
   await aiBuilder
     .getByLabel("Product, collection, or audience")
     .fill("trail running shoes");
   await aiBuilder.getByLabel("Event or season").first().fill("Summer launch");
-  await aiBuilder.getByLabel("Country").first().fill("US");
   await aiBuilder.getByLabel("Language").first().selectOption("es");
   await aiBuilder.getByRole("button", { name: /^Urgent$/ }).click();
   await aiBuilder.getByLabel("Offer details").fill("20% off");

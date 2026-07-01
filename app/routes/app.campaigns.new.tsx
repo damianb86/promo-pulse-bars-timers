@@ -135,6 +135,7 @@ type CreateStructureDraft = {
 
 type LoaderData = {
   aiInput: CampaignAiInput;
+  aiVisualControlsEnabled: boolean;
   aiLockedReason?: string;
   assetsLockedReason?: string;
   isProPlan: boolean;
@@ -166,15 +167,17 @@ export const loader = async ({
     templateKey && templateGate.allowed
       ? await getCampaignTemplateByKey(templateKey, shop.id)
       : null;
+  const aiVisualControlsEnabled = isAiVisualControlsEnabled();
 
   return {
     aiInput: template
       ? buildCampaignAiInputFromTemplate(template, settings.enabledLocales)
       : buildDefaultCampaignAiInput({
-          countryCode: settings.defaultCountry ?? "US",
+          countryCode: "",
           locale: settings.defaultLocale,
           locales: settings.enabledLocales,
         }),
+    aiVisualControlsEnabled,
     aiLockedReason: aiGate.allowed ? undefined : aiGate.reason,
     assetsLockedReason: getLockedFeatureReason(shop, "ai_visual_assets"),
     isProPlan: canUseFeature(shop, "custom_css").allowed,
@@ -212,6 +215,7 @@ export const action = async ({
   const settings = await getShopSettingsOrDefaults(shop.id);
   const formData = await request.formData();
   const intent = formData.get("_action");
+  const aiVisualControlsEnabled = isAiVisualControlsEnabled();
 
   if (intent === "requestCampaignReview") {
     const goalDetail = String(formData.get("reviewDetail") ?? "").trim();
@@ -241,7 +245,9 @@ export const action = async ({
       ["Notes", String(formData.get("merchantNotes") ?? "")],
     ];
 
-    const { image } = parseCampaignAiReferenceImage(formData);
+    const { image } = aiVisualControlsEnabled
+      ? parseCampaignAiReferenceImage(formData)
+      : { image: null };
     const attachments = image
       ? (() => {
           const decoded = decodeDataUrl(image.dataUrl);
@@ -288,7 +294,9 @@ export const action = async ({
   if (intent === "generateAiCampaignSuggestion") {
     const aiGate = canUsePremiumFeature(shop, "AI_CAMPAIGN_BUILDER");
     const { image: parsedReferenceImage, error: referenceImageError } =
-      parseCampaignAiReferenceImage(formData);
+      aiVisualControlsEnabled
+        ? parseCampaignAiReferenceImage(formData)
+        : { image: null, error: undefined };
     // Fill in real dimensions and send a compact analysis copy to the AI. The
     // original upload still stays in the browser/email path; this only reduces
     // the multimodal request payload.
@@ -297,12 +305,13 @@ export const action = async ({
       : null;
     // With a reference image the textual product context is optional — the image
     // carries the context the AI needs.
-    const parsedAi = parseCampaignAiFormData(formData, {
-      requireProductContext: !referenceImage,
-    });
+    const parsedAi = parseCampaignAiFormData(formData);
     const aiValues = buildDefaultCampaignAiInput({
       ...parsedAi.values,
       locales: settings.enabledLocales,
+      generateVisualAssets: aiVisualControlsEnabled
+        ? parsedAi.values.generateVisualAssets
+        : false,
     });
 
     if (!aiGate.allowed) {
@@ -788,6 +797,7 @@ export default function CreateCampaignPage() {
   const actionData = useActionData<typeof action>() as ActionData | undefined;
   const {
     aiInput,
+    aiVisualControlsEnabled,
     aiLockedReason,
     assetsLockedReason,
     isProPlan,
@@ -949,6 +959,7 @@ export default function CreateCampaignPage() {
                   followUpQuestions={actionData?.aiFollowUpQuestions}
                   lockedReason={aiLockedReason}
                   assetsLockedReason={assetsLockedReason}
+                  visualControlsEnabled={aiVisualControlsEnabled}
                   onApplied={() => setIsAiDrawerOpen(false)}
                   suggestion={selectedSuggestion}
                   templateSourceName={templateSourceName}
@@ -1008,6 +1019,10 @@ function toCreateStructureDraft(
     mobileStructureHtml: structure.editedMobileHtml ?? "",
     mobileStructureCss: structure.editedMobileCss ?? "",
   };
+}
+
+function isAiVisualControlsEnabled() {
+  return process.env.PROMO_PULSE_AI_VISUAL_CONTROLS_ENABLED === "true";
 }
 
 async function applyAiSuggestionToCampaign({

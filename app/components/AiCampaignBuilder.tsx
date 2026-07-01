@@ -39,6 +39,7 @@ type AiCampaignBuilderProps = {
   // Set (with the upgrade reason) when the plan does not allow AI visual asset
   // generation. Undefined means the feature is available (PRO).
   assetsLockedReason?: string;
+  visualControlsEnabled?: boolean;
   locales?: readonly string[];
   onApplied?: () => void;
   suggestion?: CampaignSuggestion | null;
@@ -602,6 +603,7 @@ export function AiCampaignBuilder({
   suggestion,
   templateSourceName,
   values,
+  visualControlsEnabled = false,
   versionCount = 0,
   versionIndex = 0,
   onPrevVersion,
@@ -636,8 +638,12 @@ export function AiCampaignBuilder({
   // Each new suggestion clears the refine fields so the next plain Generate is a
   // fresh draft (only Regenerate re-enables refinement).
   useEffect(() => {
-    setRefineCloseness("");
-    setRefineComment("");
+    const resetRefinement = window.setTimeout(() => {
+      setRefineCloseness("");
+      setRefineComment("");
+    }, 0);
+
+    return () => window.clearTimeout(resetRefinement);
   }, [suggestion]);
 
   // Regenerate with a closeness rating + optional comment: set them, then submit
@@ -656,13 +662,14 @@ export function AiCampaignBuilder({
   const referenceImageMaxMb = Math.round(
     campaignAiReferenceImageMaxBytes / (1024 * 1024),
   );
-  const hasReferenceImage = Boolean(referenceImage);
+  const hasReferenceImage = visualControlsEnabled && Boolean(referenceImage);
   const assetsAllowed = !assetsLockedReason;
   const [generateVisualAssets, setGenerateVisualAssets] = useState(false);
   const [assetScopeError, setAssetScopeError] = useState<string | null>(null);
   // Assets can be generated with OR without a reference image — the AI invents a
   // fitting background/pattern when none is uploaded.
-  const effectiveGenerateAssets = generateVisualAssets && assetsAllowed;
+  const effectiveGenerateAssets =
+    visualControlsEnabled && generateVisualAssets && assetsAllowed;
 
   const toggleVisualAssets = async (checked: boolean) => {
     setAssetScopeError(null);
@@ -1026,7 +1033,7 @@ export function AiCampaignBuilder({
             {activeLocales.map((locale) => (
               <input key={locale} name="locales" type="hidden" value={locale} />
             ))}
-            {referenceImage && (
+            {visualControlsEnabled && referenceImage && (
               <>
                 <input
                   name="referenceImageDataUrl"
@@ -1041,146 +1048,149 @@ export function AiCampaignBuilder({
               </>
             )}
 
-            <div className="counterpulse-ai-step">
-              <div>
-                <p className="counterpulse-kicker">Reference image</p>
-                <h3>Match an existing banner or timer (optional)</h3>
-                <p>
-                  Upload a screenshot of a promo bar, countdown, or banner and
-                  the AI reproduces its layout, colors, spacing, and text using
-                  your real campaign settings. Skip it to generate from your
-                  description only.
-                </p>
-              </div>
+            <input
+              name="generateVisualAssets"
+              type="hidden"
+              value={effectiveGenerateAssets ? "true" : "false"}
+            />
 
-              {imageError && (
-                <AppAlert tone="critical" title="Image could not be used">
-                  <s-paragraph>{imageError}</s-paragraph>
-                </AppAlert>
-              )}
+            {visualControlsEnabled && (
+              <div className="counterpulse-ai-step">
+                <div>
+                  <p className="counterpulse-kicker">Reference image</p>
+                  <h3>Match an existing banner or timer (optional)</h3>
+                  <p>
+                    Upload a screenshot of a promo bar, countdown, or banner and
+                    the AI reproduces its layout, colors, spacing, and text using
+                    your real campaign settings. Skip it to generate from your
+                    description only.
+                  </p>
+                </div>
 
-              {referenceImage ? (
-                <div className="counterpulse-ai-image-preview">
-                  <img
-                    alt="Reference campaign preview"
-                    className="counterpulse-ai-image-preview__image"
-                    src={referenceImage.dataUrl}
-                  />
-                  <div className="counterpulse-ai-image-preview__meta">
-                    <strong>{referenceImage.name || "Reference image"}</strong>
-                    <small>{formatBytes(referenceImage.sizeBytes)}</small>
-                    <div className="counterpulse-ai-image-preview__actions">
-                      <button
-                        className="counterpulse-button-secondary"
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        Replace
-                      </button>
-                      <button
-                        className="counterpulse-button-secondary"
-                        type="button"
-                        onClick={removeReferenceImage}
-                      >
-                        Remove
-                      </button>
+                {imageError && (
+                  <AppAlert tone="critical" title="Image could not be used">
+                    <s-paragraph>{imageError}</s-paragraph>
+                  </AppAlert>
+                )}
+
+                {referenceImage ? (
+                  <div className="counterpulse-ai-image-preview">
+                    <img
+                      alt="Reference campaign preview"
+                      className="counterpulse-ai-image-preview__image"
+                      src={referenceImage.dataUrl}
+                    />
+                    <div className="counterpulse-ai-image-preview__meta">
+                      <strong>
+                        {referenceImage.name || "Reference image"}
+                      </strong>
+                      <small>{formatBytes(referenceImage.sizeBytes)}</small>
+                      <div className="counterpulse-ai-image-preview__actions">
+                        <button
+                          className="counterpulse-button-secondary"
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Replace
+                        </button>
+                        <button
+                          className="counterpulse-button-secondary"
+                          type="button"
+                          onClick={removeReferenceImage}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <button
-                  className={
-                    isDraggingImage
-                      ? "counterpulse-ai-dropzone counterpulse-ai-dropzone--active"
-                      : "counterpulse-ai-dropzone"
-                  }
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setIsDraggingImage(true);
-                  }}
-                  onDragEnter={(event) => {
-                    event.preventDefault();
-                    setIsDraggingImage(true);
-                  }}
-                  onDragLeave={(event) => {
-                    event.preventDefault();
-                    setIsDraggingImage(false);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setIsDraggingImage(false);
-                    handleImageFiles(event.dataTransfer.files);
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="counterpulse-ai-dropzone__icon"
+                ) : (
+                  <button
+                    className={
+                      isDraggingImage
+                        ? "counterpulse-ai-dropzone counterpulse-ai-dropzone--active"
+                        : "counterpulse-ai-dropzone"
+                    }
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setIsDraggingImage(true);
+                    }}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      setIsDraggingImage(true);
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      setIsDraggingImage(false);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setIsDraggingImage(false);
+                      handleImageFiles(event.dataTransfer.files);
+                    }}
                   >
-                    <ReferenceImageIcon />
-                  </span>
-                  <strong>Drag &amp; drop an image here</strong>
-                  <span>
-                    or click to browse — PNG, JPG, JPEG, or WEBP up to{" "}
-                    {referenceImageMaxMb} MB
-                  </span>
-                </button>
-              )}
-
-              <input
-                accept={campaignAiReferenceImageAccept}
-                className="counterpulse-ai-file-input"
-                ref={fileInputRef}
-                type="file"
-                onChange={(event) => {
-                  handleImageFiles(event.currentTarget.files);
-                  event.currentTarget.value = "";
-                }}
-              />
-
-              {/* Hidden field: the server re-validates plan + scope, so the
-                  checkbox alone never enables generation. */}
-              <input
-                name="generateVisualAssets"
-                type="hidden"
-                value={effectiveGenerateAssets ? "true" : "false"}
-              />
-
-              {assetsAllowed ? (
-                <div className="counterpulse-ai-asset-toggle">
-                  <label className="counterpulse-checkbox">
-                    <input
-                      checked={effectiveGenerateAssets}
-                      type="checkbox"
-                      onChange={(event) =>
-                        toggleVisualAssets(event.target.checked)
-                      }
-                    />
-                    <span>
-                      <strong>Generate visual assets</strong>
-                      <small>
-                        The AI designs a fitting background image or pattern
-                        (and any icons/badges it needs), uploads them to your
-                        Shopify Files, and uses them in the campaign. Works with
-                        or without a reference image. Requires the Files
-                        permission.
-                      </small>
+                    <span
+                      aria-hidden="true"
+                      className="counterpulse-ai-dropzone__icon"
+                    >
+                      <ReferenceImageIcon />
                     </span>
-                  </label>
-                  {assetScopeError && (
-                    <AppAlert tone="critical" title="Permission required">
-                      <s-paragraph>{assetScopeError}</s-paragraph>
-                    </AppAlert>
-                  )}
-                </div>
-              ) : (
-                <PlanUpgradeCallout
-                  message={assetsLockedReason}
-                  title="AI visual assets is a Pro feature"
+                    <strong>Drag &amp; drop an image here</strong>
+                    <span>
+                      or click to browse — PNG, JPG, JPEG, or WEBP up to{" "}
+                      {referenceImageMaxMb} MB
+                    </span>
+                  </button>
+                )}
+
+                <input
+                  accept={campaignAiReferenceImageAccept}
+                  className="counterpulse-ai-file-input"
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={(event) => {
+                    handleImageFiles(event.currentTarget.files);
+                    event.currentTarget.value = "";
+                  }}
                 />
-              )}
-            </div>
+
+                {assetsAllowed ? (
+                  <div className="counterpulse-ai-asset-toggle">
+                    <label className="counterpulse-checkbox">
+                      <input
+                        aria-label="Generate visual assets"
+                        checked={effectiveGenerateAssets}
+                        type="checkbox"
+                        onChange={(event) =>
+                          toggleVisualAssets(event.target.checked)
+                        }
+                      />
+                      <span>
+                        <strong>Generate visual assets</strong>
+                        <small>
+                          The AI designs a fitting background image or pattern
+                          (and any icons/badges it needs), uploads them to your
+                          Shopify Files, and uses them in the campaign. Works
+                          with or without a reference image. Requires the Files
+                          permission.
+                        </small>
+                      </span>
+                    </label>
+                    {assetScopeError && (
+                      <AppAlert tone="critical" title="Permission required">
+                        <s-paragraph>{assetScopeError}</s-paragraph>
+                      </AppAlert>
+                    )}
+                  </div>
+                ) : (
+                  <PlanUpgradeCallout
+                    message={assetsLockedReason}
+                    title="AI visual assets is a Pro feature"
+                  />
+                )}
+              </div>
+            )}
 
             <div className="counterpulse-ai-step">
               <div>
@@ -1197,7 +1207,7 @@ export function AiCampaignBuilder({
                     onClick={() => selectGoal(option.value)}
                   >
                     <span className="counterpulse-ai-option-card__icon">
-                      <AiGoalIcon />
+                      <AiGoalIcon goal={option.value} />
                     </span>
                     <span className="counterpulse-ai-option-card__copy">
                       <strong>{option.label}</strong>
@@ -1469,7 +1479,6 @@ export function AiCampaignBuilder({
                         ? "Optional when an image is attached. Add anything the image cannot show."
                         : "Example: premium skincare bundles, summer dresses, returning customers, first-time buyers."
                     }
-                    required={!referenceImage}
                     onChange={(event) =>
                       updateValue("productContext", event.currentTarget.value)
                     }
@@ -1537,7 +1546,7 @@ export function AiCampaignBuilder({
                     value={formValues.countryCode}
                     maxLength={2}
                     disabled={isFieldIgnored("countryCode")}
-                    placeholder="US"
+                    placeholder="Optional. US, CA, GB..."
                     onChange={(event) =>
                       updateValue(
                         "countryCode",
@@ -1593,7 +1602,6 @@ export function AiCampaignBuilder({
                 >
                   <input
                     value={formValues.productContext}
-                    required={!referenceImage}
                     onChange={(event) =>
                       updateValue("productContext", event.currentTarget.value)
                     }
@@ -1833,7 +1841,7 @@ export function AiCampaignBuilder({
                     <strong>Need help refining this campaign?</strong>
                     <p>
                       Our team can review and improve the design manually. Tell
-                      us what you're trying to achieve.
+                      us what you&apos;re trying to achieve.
                     </p>
                   </div>
                   <button
@@ -1925,10 +1933,95 @@ export function AiCampaignBuilder({
   );
 }
 
-function AiGoalIcon() {
+function AiGoalIcon({ goal }: { goal: CampaignAiInput["objective"] }) {
   return (
     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-      <path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm0 3.2a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6Zm0 3.2a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2Z" />
+      {goal === "FLASH_SALE" && (
+        <path
+          d="M13 2 5 13h6l-1 9 9-13h-6l1-7Z"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "FREE_SHIPPING" && (
+        <>
+          <path
+            d="M3 7h11v9H3V7Zm11 3h4l3 3v3h-7v-6Z"
+            fill="none"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {goal === "CART_RESCUE" && (
+        <path
+          d="M5 5h2l2 10h8l2-7H8m3 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM4 12l-2 2 2 2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "DELIVERY_CUTOFF" && (
+        <>
+          <circle
+            cx="12"
+            cy="12"
+            fill="none"
+            r="8"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path
+            d="M12 7v5l3 2"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+        </>
+      )}
+      {goal === "LOW_STOCK_URGENCY" && (
+        <path
+          d="M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "PRODUCT_BADGE" && (
+        <path
+          d="M4 7V4h3m10 0h3v3M4 17v3h3m10 0h3v-3M8 8h8v8H8V8Zm2.5 4h3"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
+      {goal === "ANNOUNCEMENT" && (
+        <path
+          d="M4 10v4h4l8 4V6l-8 4H4Zm12 0 4-2v8l-4-2"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      )}
     </svg>
   );
 }
@@ -2255,7 +2348,8 @@ function AskTeamReviewModal({
           <div>
             <h2>Ask our team to review</h2>
             <p className="counterpulse-design-note">
-              We'll review the inputs below and improve the campaign manually.
+              We&apos;ll review the inputs below and improve the campaign
+              manually.
             </p>
           </div>
         </div>
@@ -2337,7 +2431,10 @@ function AskTeamReviewModal({
               </div>
 
               <label className="counterpulse-form-field">
-                <span>What are you trying to achieve?</span>
+                <span>
+                  What are you trying to achieve?{" "}
+                  <span className="counterpulse-required-marker">*</span>
+                </span>
                 <textarea
                   name="reviewDetail"
                   required

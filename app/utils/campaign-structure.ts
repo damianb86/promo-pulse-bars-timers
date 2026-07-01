@@ -805,6 +805,183 @@ function cloneNode(node: StructureNode): StructureNode {
 
 export const STRUCTURE_CSS_SCOPE_TOKEN = "__CP_SCOPE__";
 
+// At-rules whose body contains style rules that must themselves be scoped.
+const CSS_NESTED_AT_RULE = /^@(media|supports|container|layer|scope)\b/i;
+
+// Rewrites merchant "Custom CSS" so every selector is confined to a single
+// campaign surface: each top-level selector is prefixed with `scope` (the
+// per-campaign scope token/selector) unless it already references it. Nested
+// at-rules (@media/@supports/…) recurse; @keyframes/@font-face/@page/@import and
+// other statement/keyframe blocks are left untouched so their inner selectors
+// (0%, from, to, …) are not mangled. This lets merchants author plain CSS
+// (`.cp-promo { … }`) and have it only affect their campaign — no `__CP_SCOPE__`
+// bookkeeping required. Already-scoped rules (e.g. AI-authored) pass through.
+export function scopeCustomCss(
+  css: string,
+  scope: string = STRUCTURE_CSS_SCOPE_TOKEN,
+): string {
+  const input = (css ?? "").trim();
+  if (!input) return "";
+  return scopeCssRules(input, scope).trim();
+}
+
+function scopeCssRules(css: string, scope: string): string {
+  let out = "";
+  let i = 0;
+  const len = css.length;
+
+  while (i < len) {
+    // Preserve leading whitespace/comments verbatim.
+    const triviaStart = i;
+    i = skipCssTrivia(css, i);
+    out += css.slice(triviaStart, i);
+    if (i >= len) break;
+
+    // Read the prelude up to the next top-level `{`, `;` or `}`.
+    let j = i;
+    let parens = 0;
+    while (j < len) {
+      const c = css[j];
+      if (c === '"' || c === "'") {
+        j = skipCssString(css, j);
+        continue;
+      }
+      if (c === "/" && css[j + 1] === "*") {
+        j = skipCssComment(css, j);
+        continue;
+      }
+      if (c === "(") parens++;
+      else if (c === ")") parens = Math.max(0, parens - 1);
+      else if (parens === 0 && (c === "{" || c === ";" || c === "}")) break;
+      j++;
+    }
+
+    if (j >= len) {
+      out += css.slice(i);
+      break;
+    }
+
+    const delimiter = css[j];
+    if (delimiter === ";" || delimiter === "}") {
+      // Statement at-rule (@import/@charset) or stray token — leave as-is.
+      out += css.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+
+    // delimiter === "{" — a rule with a block. Keep the original block text
+    // (and prelude whitespace) so only the selector is rewritten.
+    const rawPrelude = css.slice(i, j);
+    const trimmedPrelude = rawPrelude.trim();
+    const blockEnd = matchCssBrace(css, j);
+    const block = css.slice(j, blockEnd + 1);
+
+    if (trimmedPrelude.startsWith("@")) {
+      if (CSS_NESTED_AT_RULE.test(trimmedPrelude)) {
+        const inner = css.slice(j + 1, blockEnd);
+        out += `${rawPrelude}{${scopeCssRules(inner, scope)}}`;
+      } else {
+        // @keyframes/@font-face/@page/… — leave the whole rule untouched.
+        out += css.slice(i, blockEnd + 1);
+      }
+    } else {
+      const trailingWs = rawPrelude.slice(trimmedPrelude.length);
+      out += `${scopeCssSelectorList(trimmedPrelude, scope)}${trailingWs}${block}`;
+    }
+    i = blockEnd + 1;
+  }
+
+  return out;
+}
+
+function scopeCssSelectorList(selectorList: string, scope: string): string {
+  return splitTopLevelCommas(selectorList)
+    .map((selector) => {
+      const trimmed = selector.trim();
+      if (!trimmed) return trimmed;
+      // Leave already-scoped selectors and nesting selectors untouched.
+      if (trimmed.includes(scope) || trimmed.startsWith("&")) return trimmed;
+      return `${scope} ${trimmed}`;
+    })
+    .join(", ");
+}
+
+function splitTopLevelCommas(value: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < value.length; i++) {
+    const c = value[i];
+    if (c === '"' || c === "'") {
+      i = skipCssString(value, i) - 1;
+      continue;
+    }
+    if (c === "(" || c === "[") depth++;
+    else if (c === ")" || c === "]") depth = Math.max(0, depth - 1);
+    else if (c === "," && depth === 0) {
+      parts.push(value.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(value.slice(start));
+  return parts;
+}
+
+function skipCssTrivia(css: string, i: number): number {
+  const len = css.length;
+  while (i < len) {
+    const c = css[i];
+    if (c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f") {
+      i++;
+    } else if (c === "/" && css[i + 1] === "*") {
+      i = skipCssComment(css, i);
+    } else {
+      break;
+    }
+  }
+  return i;
+}
+
+function skipCssComment(css: string, i: number): number {
+  const end = css.indexOf("*/", i + 2);
+  return end === -1 ? css.length : end + 2;
+}
+
+function skipCssString(css: string, i: number): number {
+  const quote = css[i];
+  let j = i + 1;
+  while (j < css.length) {
+    if (css[j] === "\\") {
+      j += 2;
+      continue;
+    }
+    if (css[j] === quote) return j + 1;
+    j++;
+  }
+  return css.length;
+}
+
+function matchCssBrace(css: string, openIndex: number): number {
+  let depth = 0;
+  for (let i = openIndex; i < css.length; i++) {
+    const c = css[i];
+    if (c === '"' || c === "'") {
+      i = skipCssString(css, i) - 1;
+      continue;
+    }
+    if (c === "/" && css[i + 1] === "*") {
+      i = skipCssComment(css, i) - 1;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return css.length;
+}
+
 const FONT_FAMILIES: Record<string, string> = {
   THEME: "inherit",
   SYSTEM:
@@ -1004,7 +1181,10 @@ export function buildStructureCss(design: StyleDesignInput): string {
 
   const customCss = (design.customCss ?? "").trim();
   if (customCss) {
-    css += `\n${customCss.replace(/<\/?\s*style/gi, "")}`;
+    // Auto-scope the merchant CSS to this campaign's surface so plain selectors
+    // (`.cp-promo {}`) only affect this campaign — no `__CP_SCOPE__` needed.
+    const scoped = scopeCustomCss(customCss.replace(/<\/?\s*style/gi, ""));
+    css += `\n${scoped}`;
   }
   return css;
 }

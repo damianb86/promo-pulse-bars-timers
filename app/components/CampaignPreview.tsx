@@ -16,6 +16,7 @@ import type { CampaignDesignValues } from "../types/campaign-design";
 import { sanitizeBasicHtml } from "../utils/basic-html";
 import {
   getNodeSlot,
+  scopeCustomCss,
   STRUCTURE_BASELINE_CSS,
   TEXT_TAG,
   TIMER_PART_SLOTS,
@@ -605,6 +606,9 @@ function PromoSurface({
   customMessages?: CustomMessage[];
   inspect?: boolean;
 }) {
+  // Unique per-instance scope so merchant custom CSS only styles this surface,
+  // mirroring the storefront scoping (data-cp-uid + scoped selectors).
+  const scopeId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const freeShippingPreview = buildFreeShippingPreview(viewModel);
   const deliveryPreview = buildDeliveryPreview(viewModel, now);
   const hasBadgeTimer = Boolean(timerState?.isActive || deliveryPreview);
@@ -750,6 +754,7 @@ function PromoSurface({
       ]
         .filter(Boolean)
         .join(" ")}
+      data-cp-uid={scopeId}
       data-testid={dataTestId}
       style={style}
     >
@@ -840,7 +845,10 @@ function PromoSurface({
       {design.customCss.trim() ? (
         <style
           dangerouslySetInnerHTML={{
-            __html: design.customCss.replace(/<\/?\s*style/gi, ""),
+            __html: scopeCustomCss(
+              design.customCss.replace(/<\/?\s*style/gi, ""),
+              `[data-cp-uid="${scopeId}"]`,
+            ),
           }}
         />
       ) : null}

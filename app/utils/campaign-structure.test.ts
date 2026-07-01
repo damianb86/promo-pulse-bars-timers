@@ -6,6 +6,7 @@ import {
   STRUCTURE_CSS_SCOPE_TOKEN,
   buildCampaignStructureTree,
   buildStructureCss,
+  scopeCustomCss,
   getNodeAtPath,
   getNodeSlot,
   htmlToTree,
@@ -149,6 +150,51 @@ describe("buildStructureCss", () => {
     expect(css).toContain("--cp-content-max-width: 600px;");
     expect(css).toContain(".x { color: red; }");
     expect(css).not.toContain("</style>");
+  });
+
+  it("auto-scopes appended custom css to the campaign token", () => {
+    const css = buildStructureCss({
+      customCss: ".cp-promo { color: red; }",
+    });
+    expect(css).toContain(`${STRUCTURE_CSS_SCOPE_TOKEN} .cp-promo`);
+  });
+});
+
+describe("scopeCustomCss", () => {
+  const S = "__CP_SCOPE__";
+
+  it("prefixes plain selectors with the scope", () => {
+    expect(scopeCustomCss(".cp-promo { color: red; }")).toBe(
+      `${S} .cp-promo { color: red; }`,
+    );
+  });
+
+  it("scopes every selector in a comma list", () => {
+    expect(scopeCustomCss(".a, .b .c { color: red; }")).toBe(
+      `${S} .a, ${S} .b .c { color: red; }`,
+    );
+  });
+
+  it("does not double-scope selectors that already reference the scope", () => {
+    expect(scopeCustomCss(`${S} .cp-promo { color: red; }`)).toBe(
+      `${S} .cp-promo { color: red; }`,
+    );
+  });
+
+  it("recurses into @media but leaves @keyframes selectors untouched", () => {
+    const scoped = scopeCustomCss(
+      "@media (max-width: 600px) { .cp-promo { color: red; } }",
+    );
+    expect(scoped).toContain(`@media (max-width: 600px) { ${S} .cp-promo`);
+
+    const kf = scopeCustomCss("@keyframes spin { 0% { opacity: 0; } }");
+    expect(kf).toBe("@keyframes spin { 0% { opacity: 0; } }");
+  });
+
+  it("accepts a concrete scope selector", () => {
+    expect(scopeCustomCss(".cp-promo { color: red; }", '[data-cp-uid="x"]')).toBe(
+      '[data-cp-uid="x"] .cp-promo { color: red; }',
+    );
   });
 });
 

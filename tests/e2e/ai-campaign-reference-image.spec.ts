@@ -10,6 +10,8 @@ const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMEAQEY1Jl5AAAAAElFTkSuQmCC",
   "base64",
 );
+const visualControlsEnabled =
+  process.env.PROMO_PULSE_AI_VISUAL_CONTROLS_ENABLED === "true";
 
 async function openAiDrawer(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "AI campaign" }).click();
@@ -20,11 +22,40 @@ async function openAiDrawer(page: import("@playwright/test").Page) {
   return aiBuilder;
 }
 
+test("hides reference image and visual asset controls when disabled", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  test.skip(visualControlsEnabled, "Visual controls are enabled for this run.");
+
+  await resetDb("pro");
+  await loginAsDemoShop("/app/campaigns/new");
+
+  const aiBuilder = await openAiDrawer(page);
+  await expect(
+    aiBuilder.getByRole("heading", {
+      name: "Match an existing banner or timer (optional)",
+    }),
+  ).toHaveCount(0);
+  await expect(aiBuilder.getByText("Drag & drop an image here")).toHaveCount(0);
+  await expect(aiBuilder.getByText("Generate visual assets")).toHaveCount(0);
+  await expect(aiBuilder.locator('input[type="file"]')).toHaveCount(0);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("uploads a reference image and generates a draft without a description", async ({
   page,
   resetDb,
   loginAsDemoShop,
 }) => {
+  test.skip(
+    !visualControlsEnabled,
+    "Reference-image controls are disabled by default.",
+  );
+
   await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
@@ -82,6 +113,11 @@ test("un-ignoring a field re-enables its input", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
+  test.skip(
+    !visualControlsEnabled,
+    "Reference-image controls are disabled by default.",
+  );
+
   await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
@@ -113,6 +149,11 @@ test("rejects an unsupported file type and keeps the dropzone", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
+  test.skip(
+    !visualControlsEnabled,
+    "Reference-image controls are disabled by default.",
+  );
+
   await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 
@@ -145,6 +186,11 @@ test("removes and replaces the reference image before generating", async ({
   resetDb,
   loginAsDemoShop,
 }) => {
+  test.skip(
+    !visualControlsEnabled,
+    "Reference-image controls are disabled by default.",
+  );
+
   await resetDb("pro");
   await loginAsDemoShop("/app/campaigns/new");
 

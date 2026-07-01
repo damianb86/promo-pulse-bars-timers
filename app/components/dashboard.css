@@ -4608,6 +4608,12 @@ s-page::part(page) {
   padding: 18px;
   background: #ffffff;
   box-shadow: -24px 0 54px rgba(15, 23, 42, 0.18);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   pointer-events: auto;
 }
 
@@ -4735,6 +4741,9 @@ s-page::part(page) {
 .counterpulse-ai-option-card__icon svg {
   width: 20px;
   height: 20px;
+}
+
+.counterpulse-ai-builder__icon svg {
   fill: currentColor;
 }
 
@@ -5045,6 +5054,11 @@ s-page::part(page) {
   height: 30px;
 }
 
+.counterpulse-required-marker {
+  color: #bf0711;
+  font-weight: 800;
+}
+
 .counterpulse-ai-option-card__copy {
   display: grid;
   min-width: 0;
@@ -5247,7 +5261,7 @@ s-page::part(page) {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 16px;
+  margin: 16px 0;
   padding: 16px;
   border: 1px solid #ece9f5;
   border-radius: 12px;

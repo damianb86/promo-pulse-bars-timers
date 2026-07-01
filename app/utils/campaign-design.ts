@@ -18,6 +18,7 @@ import {
   designTimerStyleOptions,
   findCampaignDesignTemplate,
   type CampaignDesignErrors,
+  type CampaignDesignTemplate,
   type CampaignDesignValues,
 } from "../types/campaign-design";
 
@@ -72,16 +73,30 @@ export function applyCampaignDesignTemplate(
   currentValues: CampaignDesignValues = defaultCampaignDesignValues,
 ): CampaignDesignValues {
   const template = findCampaignDesignTemplate(templateKey);
+  const templateValues = toTemplateDesignValues(template);
   const layout = currentValues.layout;
 
   return applyCampaignLayoutDefaults({
     ...currentValues,
-    ...template,
+    ...templateValues,
     templateKey: template.templateKey,
     customCss: currentValues.customCss,
     layout,
     separateMobileDesign: currentValues.separateMobileDesign,
   });
+}
+
+function toTemplateDesignValues(
+  template: CampaignDesignTemplate,
+): CampaignDesignValues {
+  const values: Partial<CampaignDesignTemplate> = { ...template };
+  delete values.label;
+  delete values.description;
+  delete values.bestFor;
+  delete values.visualCode;
+  delete values.emphasizes;
+  delete values.avoids;
+  return values as CampaignDesignValues;
 }
 
 export function applyCampaignLayoutDefaults(

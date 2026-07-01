@@ -500,7 +500,7 @@ export function buildCampaignAiInputFromTemplate(
     goalAnswers: {},
     productContext: settings.productContext ?? "selected products",
     eventName: template.eventName,
-    countryCode: template.countryCode ?? "US",
+    countryCode: template.countryCode ?? "",
     locale: normalizeTemplateLocale(template.locale),
     brandTone: readBrandTone(template.category),
     knownOffer: settings.knownOffer ?? "",

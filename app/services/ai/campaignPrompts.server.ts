@@ -84,10 +84,11 @@ function buildPromptPayload(input: CampaignAiInput) {
 import {
   describeDesignLayoutsForAi,
   describeDesignSettingsForAi,
+  describeDesignTemplatesForAi,
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v19";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v20";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -169,6 +170,64 @@ Visual assets (only when input.generateVisualAssets is true):
     customIconUrl), structureHtml, or structureCss, or it is wasted. Only use
     <img> for true content images, and then the src MUST be the {{asset:key}}
     placeholder. Never invent real URLs and never leave an asset unreferenced.
+`.trim();
+
+const PRESET_FIRST_GUIDANCE = `
+Preset-first design workflow (REQUIRED when no reference image is attached and
+input.generateVisualAssets is false/absent):
+1. Read ALL merchant context before choosing a preset: objective, campaignShape,
+   goalAnswers, followUpAnswers, knownOffer, discount/free-shipping/delivery
+   implications, timer need/duration/window, placement, tone, country/locale,
+   product context, event/season, CTA URL, and notes.
+2. Choose exactly one built-in preset/templateKey from the catalog below as the
+   visual foundation. The preset is not cosmetic; it encodes mood, hierarchy,
+   default layout, timer treatment, icon style, and where attention goes.
+3. Choose the standard design.layout that best fits the selected placement and
+   message hierarchy. Use the layout catalog to decide whether the copy, timer,
+   and CTA should be stacked, split, inline, action-led, timer-led, or spread.
+4. Keep the selected preset's visual system unless there is a concrete reason to
+   tweak it. Safe tweaks include layout, fullWidth, radius, padding/gap,
+   typography sizes, timer style/format/spacing, icon choice, button visibility,
+   progress settings, and small color adjustments for contrast or goal fit.
+5. Do NOT generate visual assets, do NOT invent image URLs, keep assets as [],
+   and leave backgroundImageUrl/customIconUrl empty unless the merchant supplied
+   an existing URL in text.
+6. Final pass: only after preset + settings are chosen, use design.customCss,
+   structureHtml, and structureCss for a small missing detail that settings
+   cannot express (for example a custom grouping, an accent border, a refined
+   spacing effect, or a slight reorder). Prefer empty structureHtml/structureCss.
+7. The output should look like a polished customized preset, not a raw custom
+   webpage. First-class Promo Pulse settings should carry the design.
+`.trim();
+
+const PRESET_FIRST_DESIGN_FIELDS = `
+Preset-first supported design fields (use these to customize the chosen preset):
+- design.templateKey: REQUIRED; one of the built-in preset keys.
+- design.layout: one desktop layout from the layout catalog.
+- design.backgroundType: usually SOLID or GRADIENT when the preset-first
+  no-assets workflow applies. In that no-assets workflow, do not use IMAGE
+  unless the merchant explicitly supplied an existing image URL in the text
+  input. Visual asset mode has its own IMAGE/backgroundImageUrl rules.
+- Safe color fields: backgroundColor, gradientStartColor, gradientEndColor,
+  gradientAngle, textColor, titleColor, subheadingColor, accentColor,
+  buttonColor, buttonTextColor, borderColor, closeButtonColor, timerColor,
+  legendColor, timerSurfaceColor, timerSurfaceBorderColor.
+- Safe spacing/surface fields: fullWidth, borderRadius, borderSize,
+  paddingBlock, paddingInline, contentGap, contentMaxWidth, alignment,
+  showCloseButton.
+- Safe typography fields: fontFamily, fontSize, titleFontSize,
+  subheadingFontSize, timerFontSize, legendFontSize, timerNumberFontSize,
+  timerLabelFontSize.
+- Safe timer fields: timerStyle, timerFormat, timerNumberLayout,
+  timerShowLabels, timerShowSeconds, timerGap, timerUnitGap,
+  timerPaddingBlock, timerPaddingInline, timerSurfaceBorderSize,
+  timerSurfaceRadius, timerTickAnimation.
+- Safe action/icon/progress fields: showButton, showIcon, icon, iconSize,
+  showProgressBar, progressTarget, progressBarStyle, progressSteps,
+  progressHeight, progressRadius, progressTrackColor, progressFillColor,
+  progressTextColor, progressEffect, progressShowLabel.
+- design.customCss is allowed for small finishing details that settings cannot
+  express. Keep it short and scoped to stable preview class names.
 `.trim();
 
 export const AI_CAMPAIGN_SYSTEM_PROMPT = `
@@ -300,13 +359,10 @@ strings, empty arrays, false, or safe defaults, not null:
 
 Design guidance:
 - Prefer first-class design settings over custom structure or CSS. Use design.*
-  for layout, background, image background, colors, spacing, typography, button,
+  for templateKey, layout, background, colors, spacing, typography, button,
   timer, progress, icon, border, radius, and motion whenever those settings can
-  express the visual result. Custom HTML/CSS is the exception, not the default.
-- Select an existing design preset by templateKey when helpful. In ordinary
-  text-only generations without visual assets, keep preset colors/backgrounds.
-  In reference-image or visual asset generations, populate the concrete design.*
-  visual fields needed for a polished result.
+  express the visual result. Custom HTML/CSS is a final polish step, not the
+  default.
 - Use compact typography for badges and low-stock messages.
 - For TOP_BAR or BOTTOM_BAR with fullWidth true, set borderRadius 0.
 - For full-width bars that should keep a vertical reading order, prefer
@@ -491,9 +547,40 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 
 ${DESIGN_QUALITY_GUIDANCE}
 
-${VISUAL_ASSETS_GUIDANCE}
+${PRESET_FIRST_GUIDANCE}
+
+${PRESET_FIRST_DESIGN_FIELDS}
+
+${describeDesignTemplatesForAi()}
 
 ${describeDesignLayoutsForAi()}
+`.trim();
+
+export const AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT = `
+${AI_CAMPAIGN_SYSTEM_PROMPT}
+
+=== VISUAL ASSET MODE ===
+Use this mode when a reference image is attached OR input.generateVisualAssets is
+true. The generation still starts from a built-in preset/templateKey, but it may
+add visual assets and concrete design.* visual overrides to produce a more
+custom campaign.
+
+Visual mode workflow:
+1. Choose the closest preset/templateKey from the preset catalog first.
+2. Choose the best standard design.layout for the selected placement and goal.
+3. Apply supported design.* fields to adapt the preset: background treatment,
+   colors, timer surfaces, typography, button/icon treatment, spacing, radius,
+   progress, and motion.
+4. If generateVisualAssets is true, design only the minimal assets needed for a
+   professional result and reference them through native settings whenever
+   possible (especially backgroundImageUrl/customIconUrl).
+5. Use structureHtml/structureCss only after the preset/settings pass, for a
+   genuinely custom arrangement or effect the built-in layouts/settings cannot
+   express cleanly.
+
+${VISUAL_ASSETS_GUIDANCE}
+
+${describeDesignSettingsForAi()}
 `.trim();
 
 export function buildCampaignAiUserPrompt(
@@ -501,8 +588,13 @@ export function buildCampaignAiUserPrompt(
   refinement?: CampaignAiRefinement,
 ) {
   const payload = buildPromptPayload(input);
+  const modeLine = input.generateVisualAssets
+    ? "Visual asset generation is requested. Start from the best preset, then add the minimal generated assets and supported visual overrides needed for a polished result."
+    : "No reference image is attached and visual asset generation is not requested. Use the preset-first workflow: choose the best templateKey, tune settings, and keep assets empty.";
 
   return [
+    modeLine,
+    "",
     "Merchant input JSON:",
     JSON.stringify(payload, null, 2),
     ...buildRefinementSection(refinement),
@@ -517,7 +609,7 @@ export function buildCampaignAiUserPrompt(
 // a screenshot to copy: presets/settings remain the foundation, with targeted
 // visual overrides only when they make the campaign more polished.
 export const AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT = `
-${AI_CAMPAIGN_SYSTEM_PROMPT}
+${AI_CAMPAIGN_VISUAL_SYSTEM_PROMPT}
 
 === STYLE REFERENCE IMAGE MODE ===
 The merchant attached a reference image of an existing promotional element
@@ -643,8 +735,6 @@ Visual assets in image mode (in addition to the Visual assets rules above):
   for it in the image — provide the region in that case. Omit "region" only for
   brand-new assets you are adding (e.g. a fresh decorative background), which
   follow the shared rules above.
-
-${describeDesignSettingsForAi()}
 `.trim();
 
 function buildImageProportionLines(

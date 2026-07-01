@@ -1170,6 +1170,9 @@
     );
     applyStyle(section, design);
     if (spec.dataTestId) section.setAttribute("data-testid", spec.dataTestId);
+    // Per-surface scope so merchant custom CSS only affects this campaign.
+    var legacyScopeId = uniqueScopeId();
+    section.setAttribute("data-cp-uid", legacyScopeId);
 
     // Message block
     var message = el("div", "counterpulse-preview-message");
@@ -1234,7 +1237,10 @@
     // <style> within the surface; a defensive strip prevents </style> breakout.
     if (typeof design.customCss === "string" && design.customCss.trim()) {
       var styleNode = document.createElement("style");
-      styleNode.textContent = design.customCss.replace(/<\/?\s*style/gi, "");
+      styleNode.textContent = scopeCustomCss(
+        design.customCss.replace(/<\/?\s*style/gi, ""),
+        '[data-cp-uid="' + legacyScopeId + '"]',
+      );
       section.appendChild(styleNode);
     }
 
@@ -1292,6 +1298,170 @@
 
   function uniqueScopeId() {
     return "cp" + Math.random().toString(36).slice(2, 9);
+  }
+
+  // Mirror of scopeCustomCss() in app/utils/campaign-structure.ts. Prefixes every
+  // top-level selector in merchant CSS with `scope` so plain selectors only
+  // affect this campaign. Nested at-rules recurse; @keyframes/@font-face/@import
+  // and already-scoped selectors are left untouched.
+  var CSS_NESTED_AT_RULE = /^@(media|supports|container|layer|scope)\b/i;
+
+  function scopeCustomCss(css, scope) {
+    var input = (css == null ? "" : String(css)).trim();
+    if (!input) return "";
+    return scopeCssRules(input, scope).trim();
+  }
+
+  function scopeCssRules(css, scope) {
+    var out = "";
+    var i = 0;
+    var len = css.length;
+
+    while (i < len) {
+      var triviaStart = i;
+      i = skipCssTrivia(css, i);
+      out += css.slice(triviaStart, i);
+      if (i >= len) break;
+
+      var j = i;
+      var parens = 0;
+      while (j < len) {
+        var c = css[j];
+        if (c === '"' || c === "'") {
+          j = skipCssString(css, j);
+          continue;
+        }
+        if (c === "/" && css[j + 1] === "*") {
+          j = skipCssComment(css, j);
+          continue;
+        }
+        if (c === "(") parens++;
+        else if (c === ")") parens = Math.max(0, parens - 1);
+        else if (parens === 0 && (c === "{" || c === ";" || c === "}")) break;
+        j++;
+      }
+
+      if (j >= len) {
+        out += css.slice(i);
+        break;
+      }
+
+      var delimiter = css[j];
+      if (delimiter === ";" || delimiter === "}") {
+        out += css.slice(i, j + 1);
+        i = j + 1;
+        continue;
+      }
+
+      var rawPrelude = css.slice(i, j);
+      var trimmedPrelude = rawPrelude.trim();
+      var blockEnd = matchCssBrace(css, j);
+      var block = css.slice(j, blockEnd + 1);
+
+      if (trimmedPrelude.charAt(0) === "@") {
+        if (CSS_NESTED_AT_RULE.test(trimmedPrelude)) {
+          var inner = css.slice(j + 1, blockEnd);
+          out += rawPrelude + "{" + scopeCssRules(inner, scope) + "}";
+        } else {
+          out += css.slice(i, blockEnd + 1);
+        }
+      } else {
+        var trailingWs = rawPrelude.slice(trimmedPrelude.length);
+        out +=
+          scopeCssSelectorList(trimmedPrelude, scope) + trailingWs + block;
+      }
+      i = blockEnd + 1;
+    }
+
+    return out;
+  }
+
+  function scopeCssSelectorList(selectorList, scope) {
+    return splitTopLevelCommas(selectorList)
+      .map(function (selector) {
+        var trimmed = selector.trim();
+        if (!trimmed) return trimmed;
+        if (trimmed.indexOf(scope) !== -1 || trimmed.charAt(0) === "&")
+          return trimmed;
+        return scope + " " + trimmed;
+      })
+      .join(", ");
+  }
+
+  function splitTopLevelCommas(value) {
+    var parts = [];
+    var depth = 0;
+    var start = 0;
+    for (var i = 0; i < value.length; i++) {
+      var c = value[i];
+      if (c === '"' || c === "'") {
+        i = skipCssString(value, i) - 1;
+        continue;
+      }
+      if (c === "(" || c === "[") depth++;
+      else if (c === ")" || c === "]") depth = Math.max(0, depth - 1);
+      else if (c === "," && depth === 0) {
+        parts.push(value.slice(start, i));
+        start = i + 1;
+      }
+    }
+    parts.push(value.slice(start));
+    return parts;
+  }
+
+  function skipCssTrivia(css, i) {
+    var len = css.length;
+    while (i < len) {
+      var c = css[i];
+      if (c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f") {
+        i++;
+      } else if (c === "/" && css[i + 1] === "*") {
+        i = skipCssComment(css, i);
+      } else {
+        break;
+      }
+    }
+    return i;
+  }
+
+  function skipCssComment(css, i) {
+    var end = css.indexOf("*/", i + 2);
+    return end === -1 ? css.length : end + 2;
+  }
+
+  function skipCssString(css, i) {
+    var quote = css[i];
+    var j = i + 1;
+    while (j < css.length) {
+      if (css[j] === "\\") {
+        j += 2;
+        continue;
+      }
+      if (css[j] === quote) return j + 1;
+      j++;
+    }
+    return css.length;
+  }
+
+  function matchCssBrace(css, openIndex) {
+    var depth = 0;
+    for (var i = openIndex; i < css.length; i++) {
+      var c = css[i];
+      if (c === '"' || c === "'") {
+        i = skipCssString(css, i) - 1;
+        continue;
+      }
+      if (c === "/" && css[i + 1] === "*") {
+        i = skipCssComment(css, i) - 1;
+        continue;
+      }
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return css.length;
   }
 
   // Replace the slot placeholder with a built node, or remove it when null.

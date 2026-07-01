@@ -46,6 +46,10 @@ export default defineConfig({
       APP_ENV: appEnv,
       NODE_ENV: nodeEnv,
       PORT: String(port),
+      PROMO_PULSE_AI_VISUAL_CONTROLS_ENABLED:
+        process.env.PROMO_PULSE_AI_VISUAL_CONTROLS_ENABLED ||
+        envFile.PROMO_PULSE_AI_VISUAL_CONTROLS_ENABLED ||
+        "false",
       PROMO_PULSE_DEV_PLAN: "AGENCY",
       SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY || "e2e_test_api_key",
       SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET || "e2e_test_secret",

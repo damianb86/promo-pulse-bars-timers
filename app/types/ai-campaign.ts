@@ -116,8 +116,8 @@ export type CampaignAiInput = {
   followUpAnswers: CampaignAiAnswerMap;
   ctaUrl: string;
   locales: StorefrontLocale[];
-  // Whether the merchant asked the AI to generate visual assets from the
-  // reference image (PRO + write_files only; validated server-side).
+  // Whether the merchant asked the AI to generate visual assets (PRO +
+  // write_files only; validated server-side and feature-flagged in the drawer).
   generateVisualAssets: boolean;
 };
 

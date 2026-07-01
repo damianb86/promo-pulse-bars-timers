@@ -1154,6 +1154,7 @@ enum DesignAlignment {
 enum DesignLayout {
   STANDARD
   BALANCED
+  BALANCED_REVERSE
   INLINE
   STACKED_WIDE
   COMPACT_STACK

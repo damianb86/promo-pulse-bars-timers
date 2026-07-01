@@ -42,7 +42,9 @@ test("design changes update live preview and persist", async ({
   await expect(cardPanel.getByRole("radio", { name: /Image/ })).toBeVisible();
 
   await editor.getByRole("button", { name: "Layout options" }).click();
-  await editor.getByRole("option", { name: /^Split\b/ }).click();
+  await editor
+    .getByRole("option", { name: /^Split Two-column composition\b/ })
+    .click();
   await expect(layoutInput).toHaveValue("BALANCED");
   await expect(titleSizeInput).toHaveValue("22");
   await expect(timerSizeInput).toHaveValue("34");

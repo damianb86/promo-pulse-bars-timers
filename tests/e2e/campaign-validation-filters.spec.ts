@@ -17,9 +17,25 @@ test("campaign creation shows server validation errors", async ({
   await page.getByRole("combobox", { name: /^Status$/ }).selectOption("ACTIVE");
   await page.getByRole("tab", { name: "Message" }).click();
   await page.getByLabel("CTA URL").fill("ftp://example.com");
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  const editor = page.locator(".counterpulse-design-section");
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Action left\b/ }).click();
+  await editor.locator('input[name="titleFontSize"]').fill("31");
+  await editor.getByLabel("Separate desktop and mobile design").check();
+  await editor
+    .locator(".counterpulse-design-editor__controls")
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
+  await editor.getByRole("button", { name: "Layout options" }).click();
+  await editor.getByRole("option", { name: /^Mobile card\b/ }).click();
+
   await page.getByRole("button", { name: "Save campaign" }).click();
   await confirmAction(page, "Save campaign");
 
+  await page.getByRole("tab", { name: "Campaign" }).click();
   await page.getByRole("tab", { name: "Setup" }).click();
   await expect(
     page.getByText("Campaign name is required.", { exact: true }),
@@ -31,6 +47,26 @@ test("campaign creation shows server validation errors", async ({
     }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/app\/campaigns\/new$/);
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  const restoredEditor = page.locator(".counterpulse-design-section");
+  await expect(restoredEditor.locator('input[name="layout"]')).toHaveValue(
+    "CTA_LEFT",
+  );
+  await expect(
+    restoredEditor.locator('input[name="titleFontSize"]'),
+  ).toHaveValue("31");
+  await expect(
+    restoredEditor.getByLabel("Separate desktop and mobile design"),
+  ).toBeChecked();
+  await restoredEditor
+    .locator(".counterpulse-design-editor__controls")
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
+  await expect(restoredEditor.locator('input[name="layout"]')).toHaveValue(
+    "MOBILE_CARD",
+  );
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

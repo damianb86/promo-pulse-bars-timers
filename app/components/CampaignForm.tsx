@@ -1113,11 +1113,13 @@ export function CampaignForm({
       : propStructure
         ? propStructure.css
         : structureTree
-        ? structureCss
-        : generatedStructureCss;
+          ? structureCss
+          : generatedStructureCss;
   const previewMobileStructureCss =
     propMobileStructure || mobileStructureTree || !hasStructureOverride
-      ? propMobileStructure?.css || mobileStructureCss || generatedMobileStructureCss
+      ? propMobileStructure?.css ||
+        mobileStructureCss ||
+        generatedMobileStructureCss
       : "";
   const summaryRows = useMemo(
     () => [
@@ -1998,8 +2000,10 @@ export function CampaignForm({
           </div>
         )}
 
-        {campaignSectionActive && (
-          <>
+        {/* Kept mounted (only visually hidden) when the Design sub-section is
+            active so every campaign field — including the required name — still
+            submits with the form instead of being dropped. */}
+        <div hidden={!campaignSectionActive}>
         {shouldShowBuilderTabs && (
           <div
             className="counterpulse-builder-tabs"
@@ -4202,8 +4206,7 @@ export function CampaignForm({
             </aside>
           )}
         </div>
-          </>
-        )}
+        </div>
 
         {showDesignEditor && topSection === "design" && (
           <div className="counterpulse-design-section">

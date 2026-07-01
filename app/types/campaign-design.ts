@@ -2,6 +2,7 @@ export type DesignAlignmentValue = "LEFT" | "CENTER" | "RIGHT";
 export type DesignLayoutValue =
   | "STANDARD"
   | "BALANCED"
+  | "BALANCED_REVERSE"
   | "INLINE"
   | "STACKED_WIDE"
   | "COMPACT_STACK"
@@ -648,6 +649,12 @@ export const designLayoutOptions: Array<{
     label: "Split",
     description:
       "Two-column composition with copy on the left and timer/action on the right.",
+  },
+  {
+    value: "BALANCED_REVERSE",
+    label: "Split reversed",
+    description:
+      "Mirror of Split: timer/action on the left and copy on the right.",
   },
   {
     value: "INLINE",

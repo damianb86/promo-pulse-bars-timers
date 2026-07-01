@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "DesignLayout" ADD VALUE 'BALANCED_REVERSE';

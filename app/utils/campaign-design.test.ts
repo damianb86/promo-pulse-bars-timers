@@ -71,6 +71,7 @@ describe("campaign design validation", () => {
     expect(designLayoutOptions.map((option) => option.value)).toEqual([
       "STANDARD",
       "BALANCED",
+      "BALANCED_REVERSE",
       "INLINE",
       "STACKED_WIDE",
       "COMPACT_STACK",

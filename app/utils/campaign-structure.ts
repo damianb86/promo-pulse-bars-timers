@@ -845,6 +845,12 @@ export type StyleDesignInput = {
   timerColor?: string;
   legendFontSize?: number;
   legendColor?: string;
+  timerNumberFontSize?: number;
+  timerLabelFontSize?: number;
+  timerGap?: number;
+  timerUnitGap?: number;
+  timerPaddingBlock?: number;
+  timerPaddingInline?: number;
   timerSurfaceColor?: string;
   timerSurfaceBorderColor?: string;
   timerSurfaceBorderSize?: number;
@@ -941,6 +947,18 @@ export function buildStructureCssVars(design: StyleDesignInput): Record<string, 
     "--cp-timer-color": design.timerColor ?? "",
     "--cp-legend-size": px(design.legendFontSize, 11),
     "--cp-legend-color": design.legendColor ?? "",
+    "--cp-timer-number-size": px(
+      design.timerNumberFontSize,
+      design.timerFontSize ?? 20,
+    ),
+    "--cp-timer-label-size": px(
+      design.timerLabelFontSize,
+      design.legendFontSize ?? 11,
+    ),
+    "--cp-timer-gap": px(design.timerGap, 10),
+    "--cp-timer-unit-gap": px(design.timerUnitGap, 3),
+    "--cp-timer-padding-block": px(design.timerPaddingBlock, 8),
+    "--cp-timer-padding-inline": px(design.timerPaddingInline, 12),
     "--cp-timer-surface": design.timerSurfaceColor ?? "",
     "--cp-timer-border": design.timerSurfaceBorderColor ?? "",
     "--cp-timer-border-size": px(design.timerSurfaceBorderSize, 0),

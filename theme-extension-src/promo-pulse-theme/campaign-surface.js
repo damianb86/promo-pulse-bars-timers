@@ -321,6 +321,14 @@
       "--cp-timer-color": design.timerColor,
       "--cp-legend-size": num(design.legendFontSize, 11) + "px",
       "--cp-legend-color": design.legendColor,
+      "--cp-timer-number-size":
+        num(design.timerNumberFontSize, num(design.timerFontSize, 20)) + "px",
+      "--cp-timer-label-size":
+        num(design.timerLabelFontSize, num(design.legendFontSize, 11)) + "px",
+      "--cp-timer-gap": num(design.timerGap, 10) + "px",
+      "--cp-timer-unit-gap": num(design.timerUnitGap, 3) + "px",
+      "--cp-timer-padding-block": num(design.timerPaddingBlock, 8) + "px",
+      "--cp-timer-padding-inline": num(design.timerPaddingInline, 12) + "px",
       "--cp-timer-surface": design.timerSurfaceColor,
       "--cp-timer-border": design.timerSurfaceBorderColor,
       "--cp-timer-border-size": num(design.timerSurfaceBorderSize, 0) + "px",

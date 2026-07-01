@@ -1,10 +1,13 @@
 import {
   createElement,
+  cloneElement,
+  isValidElement,
   useEffect,
   useId,
   useMemo,
   useState,
   type CSSProperties,
+  type ReactElement,
   type ReactNode,
 } from "react";
 
@@ -508,6 +511,12 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-timer-color": design.timerColor,
     "--cp-legend-size": `${design.legendFontSize}px`,
     "--cp-legend-color": design.legendColor,
+    "--cp-timer-number-size": `${design.timerNumberFontSize}px`,
+    "--cp-timer-label-size": `${design.timerLabelFontSize}px`,
+    "--cp-timer-gap": `${design.timerGap}px`,
+    "--cp-timer-unit-gap": `${design.timerUnitGap}px`,
+    "--cp-timer-padding-block": `${design.timerPaddingBlock}px`,
+    "--cp-timer-padding-inline": `${design.timerPaddingInline}px`,
     "--cp-timer-surface": design.timerSurfaceColor,
     "--cp-timer-border": design.timerSurfaceBorderColor,
     "--cp-timer-border-size": `${design.timerSurfaceBorderSize}px`,
@@ -1089,27 +1098,37 @@ function StructurePromoSurface({
           ctaText,
         );
       case "icon":
-        return <PreviewIcon key={key} design={iconDesign} />;
+        return mergeSlotProps(
+          <PreviewIcon design={iconDesign} />,
+          attrProps,
+          key,
+        );
       case "timer":
-        return hasTimer ? (
-          <TimerDisplay
-            key={key}
-            compact={forceCompact === "true"}
-            design={design}
-            deliveryTime={deliveryPreview?.timeRemaining}
-            timerState={timerState}
-          />
-        ) : null;
+        return hasTimer
+          ? mergeSlotProps(
+              <TimerDisplay
+                compact={forceCompact === "true"}
+                design={design}
+                deliveryTime={deliveryPreview?.timeRemaining}
+                timerState={timerState}
+              />,
+              attrProps,
+              key,
+            )
+          : null;
       case "timer-inline":
-        return hasTimer ? (
-          <TimerDisplay
-            key={key}
-            compact={forceCompact !== "false"}
-            design={design}
-            deliveryTime={deliveryPreview?.timeRemaining}
-            timerState={timerState}
-          />
-        ) : null;
+        return hasTimer
+          ? mergeSlotProps(
+              <TimerDisplay
+                compact={forceCompact !== "false"}
+                design={design}
+                deliveryTime={deliveryPreview?.timeRemaining}
+                timerState={timerState}
+              />,
+              attrProps,
+              key,
+            )
+          : null;
       case "timer-days":
       case "timer-hours":
       case "timer-minutes":
@@ -1123,13 +1142,17 @@ function StructurePromoSurface({
         );
       }
       case "offer":
-        return hasOffer ? (
-          <OfferPreview key={key} design={design} viewModel={viewModel} />
-        ) : null;
+        return hasOffer
+          ? mergeSlotProps(
+              <OfferPreview design={design} viewModel={viewModel} />,
+              attrProps,
+              key,
+            )
+          : null;
       case "close":
-        return design.showCloseButton ? (
-          <PreviewCloseButton key={key} design={design} />
-        ) : null;
+        return design.showCloseButton
+          ? mergeSlotProps(<PreviewCloseButton design={design} />, attrProps, key)
+          : null;
       case "progress": {
         const pct = resolveProgressPercent(
           design,
@@ -1137,14 +1160,17 @@ function StructurePromoSurface({
           timerState,
           viewModel,
         );
-        return pct == null ? null : (
-          <PreviewProgress
-            key={key}
-            design={design}
-            percentage={pct}
-            unlocked={freeShippingPreview?.unlocked}
-          />
-        );
+        return pct == null
+          ? null
+          : mergeSlotProps(
+              <PreviewProgress
+                design={design}
+                percentage={pct}
+                unlocked={freeShippingPreview?.unlocked}
+              />,
+              attrProps,
+              key,
+            );
       }
       default: {
         // Custom reusable message: data-cp-slot="custom-<id>".
@@ -1330,6 +1356,29 @@ function slotAttrProps(node: StructureNode): Record<string, unknown> {
     ),
   };
   return structureNodeProps(filtered, undefined);
+}
+
+function mergeSlotProps(
+  element: ReactNode,
+  attrProps: Record<string, unknown>,
+  key: string,
+): ReactNode {
+  if (!isValidElement(element)) return element;
+  const current = element.props as {
+    className?: string;
+    style?: CSSProperties;
+  };
+  const incomingClass = attrProps.className as string | undefined;
+  const incomingStyle = attrProps.style as CSSProperties | undefined;
+  return cloneElement(element as ReactElement<Record<string, unknown>>, {
+    ...attrProps,
+    key,
+    className: [current.className, incomingClass].filter(Boolean).join(" "),
+    style: {
+      ...(current.style ?? {}),
+      ...(incomingStyle ?? {}),
+    },
+  });
 }
 
 // Per-instance icon override from data-cp-icon / data-cp-icon-size on the slot.

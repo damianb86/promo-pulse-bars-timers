@@ -102,7 +102,19 @@ test("design changes update live preview and persist", async ({
   await editor
     .getByRole("button", { name: "Plain colon", exact: true })
     .click();
+  await editor.locator('input[name="timerNumberFontSize"]').fill("28");
+  await editor.locator('input[name="timerLabelFontSize"]').fill("13");
+  await editor.locator('input[name="timerGap"]').fill("4");
+  await editor.locator('input[name="timerUnitGap"]').fill("2");
   await page.getByLabel("Show timer labels").uncheck();
+  await expect(livePreview.locator(".counterpulse-preview-timer")).toHaveCSS(
+    "font-size",
+    "28px",
+  );
+  await expect(livePreview.locator(".counterpulse-preview-timer")).toHaveCSS(
+    "gap",
+    "4px",
+  );
   await editor.locator('select[name="icon"]').selectOption("FIRE");
   await editor.locator('input[name="iconSize"]').fill("36");
   await editor.locator('input[name="gradientStartColor"]').fill("#123456");
@@ -193,6 +205,18 @@ test("design changes update live preview and persist", async ({
   await expect(reloadedEditor.locator('input[name="timerFormat"]')).toHaveValue(
     "COLON",
   );
+  await expect(
+    reloadedEditor.locator('input[name="timerNumberFontSize"]'),
+  ).toHaveValue("28");
+  await expect(
+    reloadedEditor.locator('input[name="timerLabelFontSize"]'),
+  ).toHaveValue("13");
+  await expect(reloadedEditor.locator('input[name="timerGap"]')).toHaveValue(
+    "4",
+  );
+  await expect(
+    reloadedEditor.locator('input[name="timerUnitGap"]'),
+  ).toHaveValue("2");
   await expect(
     reloadedEditor.getByLabel("Show timer labels"),
   ).not.toBeChecked();

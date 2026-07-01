@@ -11298,7 +11298,7 @@ s-page::part(page) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--cp-timer-gap, 10px);
   color: var(--cp-timer-color);
   font-size: var(--cp-timer-size);
   font-variant-numeric: tabular-nums;
@@ -11314,12 +11314,13 @@ s-page::part(page) {
 
 .counterpulse-preview-timer--inline-plain {
   color: var(--cp-timer-color);
-  font-size: var(--cp-timer-size);
+  font-size: var(--cp-timer-number-size, var(--cp-timer-size));
   font-weight: 800;
   line-height: 1;
 }
 
 .counterpulse-preview-timer--colon {
+  font-size: var(--cp-timer-number-size, var(--cp-timer-size));
   font-weight: 850;
   line-height: 1;
   letter-spacing: 0;
@@ -11342,18 +11343,20 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-timer--grouped {
-  padding: 8px 12px;
+  padding: var(--cp-timer-padding-block, 8px)
+    var(--cp-timer-padding-inline, 12px);
   border: var(--cp-timer-border-size) solid var(--cp-timer-border);
   border-radius: var(--cp-timer-radius);
   background: var(--cp-timer-surface);
 }
 
 .counterpulse-preview-timer--boxes {
-  gap: 8px;
+  gap: var(--cp-timer-gap, 8px);
 }
 
 .counterpulse-preview-timer--colon.counterpulse-preview-timer--boxes {
-  padding: 8px 12px;
+  padding: var(--cp-timer-padding-block, 8px)
+    var(--cp-timer-padding-inline, 12px);
   border: var(--cp-timer-border-size) solid var(--cp-timer-border);
   border-radius: var(--cp-timer-radius);
   background: var(--cp-timer-surface);
@@ -11363,12 +11366,13 @@ s-page::part(page) {
   min-width: 42px;
   display: grid;
   justify-items: center;
-  gap: 3px;
+  gap: var(--cp-timer-unit-gap, 3px);
 }
 
 .counterpulse-preview-timer--boxes .counterpulse-preview-timer-unit {
   min-width: 56px;
-  padding: 8px 10px;
+  padding: var(--cp-timer-padding-block, 8px)
+    var(--cp-timer-padding-inline, 10px);
   border: var(--cp-timer-border-size) solid var(--cp-timer-border);
   border-radius: var(--cp-timer-radius);
   background: var(--cp-timer-surface);
@@ -11376,7 +11380,7 @@ s-page::part(page) {
 
 .counterpulse-preview-timer-unit strong {
   color: var(--cp-timer-color);
-  font-size: 1em;
+  font-size: var(--cp-timer-number-size, 1em);
   font-weight: 850;
   line-height: 0.95;
 }
@@ -11401,7 +11405,7 @@ s-page::part(page) {
 
 .counterpulse-preview-timer-unit small {
   color: var(--cp-legend-color);
-  font-size: var(--cp-legend-size);
+  font-size: var(--cp-timer-label-size, var(--cp-legend-size));
   font-weight: 500;
   line-height: 1;
 }
@@ -14241,13 +14245,14 @@ s-page::part(page) {
   padding: 0;
   border: 0;
   background: transparent;
-  gap: 6px;
+  gap: var(--cp-timer-gap, 6px);
   align-items: center;
 }
 
 .counterpulse-preview-timer--colon-boxes .counterpulse-preview-timer-unit {
   min-width: 2.6em;
-  padding: 6px 8px;
+  padding: var(--cp-timer-padding-block, 6px)
+    var(--cp-timer-padding-inline, 8px);
 }
 
 .counterpulse-preview-timer--colon-boxes .counterpulse-preview-timer-sep {

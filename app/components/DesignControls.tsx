@@ -577,6 +577,45 @@ export function DesignControls({
               onChange={(checked) => updateValue("timerShowSeconds", checked)}
             />
 
+            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+              <NumberField
+                error={errors.timerNumberFontSize}
+                label="Number size"
+                max={72}
+                min={12}
+                name="timerNumberFontSize"
+                value={values.timerNumberFontSize}
+                onChange={(value) => updateNumber("timerNumberFontSize", value)}
+              />
+              <NumberField
+                error={errors.timerLabelFontSize}
+                label="Label size"
+                max={28}
+                min={8}
+                name="timerLabelFontSize"
+                value={values.timerLabelFontSize}
+                onChange={(value) => updateNumber("timerLabelFontSize", value)}
+              />
+              <NumberField
+                error={errors.timerGap}
+                label="Number spacing"
+                max={32}
+                min={0}
+                name="timerGap"
+                value={values.timerGap}
+                onChange={(value) => updateNumber("timerGap", value)}
+              />
+              <NumberField
+                error={errors.timerUnitGap}
+                label="Number-label gap"
+                max={18}
+                min={0}
+                name="timerUnitGap"
+                value={values.timerUnitGap}
+                onChange={(value) => updateNumber("timerUnitGap", value)}
+              />
+            </div>
+
             <DesignGroup error={errors.timerStyle} label="Type">
               <div className="counterpulse-timer-style-picker counterpulse-timer-style-picker--combined">
                 {designTimerTypeOptions.map((option) => {
@@ -662,6 +701,36 @@ export function DesignControls({
 
             {values.timerStyle !== "PLAIN" && (
               <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <NumberField
+                  error={errors.timerPaddingBlock}
+                  label={
+                    values.timerStyle === "BOXES"
+                      ? "Box vertical padding"
+                      : "Group vertical padding"
+                  }
+                  max={32}
+                  min={0}
+                  name="timerPaddingBlock"
+                  value={values.timerPaddingBlock}
+                  onChange={(value) =>
+                    updateNumber("timerPaddingBlock", value)
+                  }
+                />
+                <NumberField
+                  error={errors.timerPaddingInline}
+                  label={
+                    values.timerStyle === "BOXES"
+                      ? "Box horizontal padding"
+                      : "Group horizontal padding"
+                  }
+                  max={40}
+                  min={0}
+                  name="timerPaddingInline"
+                  value={values.timerPaddingInline}
+                  onChange={(value) =>
+                    updateNumber("timerPaddingInline", value)
+                  }
+                />
                 <ColorField
                   error={errors.timerSurfaceColor}
                   label={
@@ -732,6 +801,16 @@ export function DesignControls({
                   name="timerSurfaceRadius"
                   type="hidden"
                   value={values.timerSurfaceRadius}
+                />
+                <input
+                  name="timerPaddingBlock"
+                  type="hidden"
+                  value={values.timerPaddingBlock}
+                />
+                <input
+                  name="timerPaddingInline"
+                  type="hidden"
+                  value={values.timerPaddingInline}
                 />
               </>
             )}
@@ -1125,8 +1204,8 @@ export function DesignControls({
             </div>
             <p className="counterpulse-field-hint">
               Enter a number (px), a CSS length like 24px / 10% / 1rem, or
-              "auto". The defaults (top, left and right at 0, bottom auto) keep
-              the banner full-width across the top of the page.
+              &quot;auto&quot;. The defaults (top, left and right at 0, bottom
+              auto) keep the banner full-width across the top of the page.
             </p>
           </div>
         ) : (
@@ -3195,6 +3274,8 @@ function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
     name === "titleFontSize" ||
     name === "subheadingFontSize" ||
     name === "legendFontSize" ||
+    name === "timerNumberFontSize" ||
+    name === "timerLabelFontSize" ||
     name === "offerCodeFontSize"
   ) {
     return "typography";
@@ -3207,12 +3288,12 @@ function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
   if (name === "timerSurfaceBorderSize") return "borderSize";
   if (name === "animationDurationMs") return "duration";
   if (name === "iconSize") return "iconSize";
-  if (name === "contentGap" || name === "offerCodeGap") return "gap";
+  if (name === "contentGap" || name === "offerCodeGap" || name === "timerGap" || name === "timerUnitGap") return "gap";
   if (name === "contentMaxWidth") return "maxWidth";
-  if (name === "paddingBlock" || name === "offerCodePaddingBlock") {
+  if (name === "paddingBlock" || name === "offerCodePaddingBlock" || name === "timerPaddingBlock") {
     return "verticalPadding";
   }
-  if (name === "paddingInline" || name === "offerCodePaddingInline") {
+  if (name === "paddingInline" || name === "offerCodePaddingInline" || name === "timerPaddingInline") {
     return "horizontalPadding";
   }
 

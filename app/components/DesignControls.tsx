@@ -442,38 +442,6 @@ export function DesignControls({
             value={values.subheadingColor}
             onChange={(value) => updateColor("subheadingColor", value)}
           />
-          <NumberField
-            error={errors.timerFontSize}
-            label="Timer size"
-            max={72}
-            min={12}
-            name="timerFontSize"
-            value={values.timerFontSize}
-            onChange={(value) => updateNumber("timerFontSize", value)}
-          />
-          <ColorField
-            error={errors.timerColor}
-            label="Timer color"
-            name="timerColor"
-            value={values.timerColor}
-            onChange={(value) => updateColor("timerColor", value)}
-          />
-          <NumberField
-            error={errors.legendFontSize}
-            label="Legend size"
-            max={24}
-            min={10}
-            name="legendFontSize"
-            value={values.legendFontSize}
-            onChange={(value) => updateNumber("legendFontSize", value)}
-          />
-          <ColorField
-            error={errors.legendColor}
-            label="Legend color"
-            name="legendColor"
-            value={values.legendColor}
-            onChange={(value) => updateColor("legendColor", value)}
-          />
         </div>
       </DesignPanel>
 
@@ -613,6 +581,38 @@ export function DesignControls({
                 name="timerUnitGap"
                 value={values.timerUnitGap}
                 onChange={(value) => updateNumber("timerUnitGap", value)}
+              />
+              <ColorField
+                error={errors.timerColor}
+                label="Timer color"
+                name="timerColor"
+                value={values.timerColor}
+                onChange={(value) => updateColor("timerColor", value)}
+              />
+              <NumberField
+                error={errors.timerFontSize}
+                label="Timer size"
+                max={72}
+                min={12}
+                name="timerFontSize"
+                value={values.timerFontSize}
+                onChange={(value) => updateNumber("timerFontSize", value)}
+              />
+              <ColorField
+                error={errors.legendColor}
+                label="Legend color"
+                name="legendColor"
+                value={values.legendColor}
+                onChange={(value) => updateColor("legendColor", value)}
+              />
+              <NumberField
+                error={errors.legendFontSize}
+                label="Legend size"
+                max={24}
+                min={10}
+                name="legendFontSize"
+                value={values.legendFontSize}
+                onChange={(value) => updateNumber("legendFontSize", value)}
               />
             </div>
 
@@ -3395,6 +3395,18 @@ function TimerStyleHiddenInputs({ values }: { values: CampaignDesignValues }) {
         value={values.timerSecondsLabel}
       />
       <input name="timerStyle" type="hidden" value={values.timerStyle} />
+      <input name="timerColor" type="hidden" value={values.timerColor} />
+      <input
+        name="timerFontSize"
+        type="hidden"
+        value={values.timerFontSize}
+      />
+      <input name="legendColor" type="hidden" value={values.legendColor} />
+      <input
+        name="legendFontSize"
+        type="hidden"
+        value={values.legendFontSize}
+      />
       <input
         name="timerSurfaceColor"
         type="hidden"

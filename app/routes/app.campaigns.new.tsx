@@ -47,6 +47,7 @@ import { buildCampaignPersistenceError } from "../services/campaign-save-errors.
 import {
   parseCampaignStructureForm,
   parseResponsiveCampaignDesignFormData,
+  type ParsedCampaignStructureForm,
 } from "../services/campaign-design-form.server";
 import {
   dematerializeAssetUrls,
@@ -86,6 +87,10 @@ import type {
   CampaignSuggestion,
 } from "../types/ai-campaign";
 import {
+  type CampaignDesignErrors,
+  type CampaignDesignValues,
+} from "../types/campaign-design";
+import {
   buildCampaignBadgeSettingsValues,
   buildCampaignCartRescueSettingsValues,
   buildCampaignDeliveryCutoffSettingsValues,
@@ -108,10 +113,24 @@ type ActionData = {
   aiFollowUpQuestions?: CampaignAiFollowUpQuestion[];
   aiInput?: CampaignAiInput;
   aiSuggestion?: CampaignSuggestion | null;
+  designErrors?: CampaignDesignErrors;
+  designValues?: CampaignDesignValues;
   errors?: CampaignFormErrors;
+  mobileDesignValues?: CampaignDesignValues;
+  structureDraft?: CreateStructureDraft;
+  structureMessages?: string;
   values?: CampaignFormValues;
   // Result of the "Ask our team to review" submission from the AI drawer.
   reviewRequest?: { ok: boolean; message: string };
+};
+
+type CreateStructureDraft = {
+  structureEdited: boolean;
+  structureHtml: string;
+  structureCss: string;
+  mobileStructureEdited: boolean;
+  mobileStructureHtml: string;
+  mobileStructureCss: string;
 };
 
 type LoaderData = {
@@ -493,9 +512,11 @@ export const action = async ({
   const appliedAiSuggestion = parseAppliedCampaignSuggestion(
     formData.get("aiSuggestionJson"),
   );
+  const preservedDraft = buildPreservedCreateDraft(formData, shop.plan);
 
   if (hasCampaignFormErrors(parsed.errors)) {
     return {
+      ...preservedDraft,
       errors: parsed.errors,
       values: parsed.values,
       aiSuggestion: appliedAiSuggestion,
@@ -534,6 +555,7 @@ export const action = async ({
 
     if (!createGate.allowed) {
       return {
+        ...preservedDraft,
         values: parsed.values,
         aiSuggestion: appliedAiSuggestion,
         errors: {
@@ -547,6 +569,7 @@ export const action = async ({
 
       if (!aiGate.allowed) {
         return {
+          ...preservedDraft,
           values: parsed.values,
           aiSuggestion: appliedAiSuggestion,
           errors: {
@@ -564,6 +587,7 @@ export const action = async ({
 
     if (planErrors.length > 0) {
       return {
+        ...preservedDraft,
         values: parsed.values,
         aiSuggestion: appliedAiSuggestion,
         errors: {
@@ -577,6 +601,7 @@ export const action = async ({
 
       if (!discountGate.allowed) {
         return {
+          ...preservedDraft,
           values: parsed.values,
           aiSuggestion: appliedAiSuggestion,
           errors: {
@@ -748,6 +773,7 @@ export const action = async ({
     console.error("Failed to create campaign", error);
 
     return {
+      ...preservedDraft,
       values: parsed.values,
       aiSuggestion: appliedAiSuggestion,
       errors: buildCampaignPersistenceError(error, {
@@ -825,11 +851,28 @@ export default function CreateCampaignPage() {
       <div className="counterpulse-create-workspace">
         <div className="counterpulse-create-workspace__main">
           <CampaignForm
-            key={JSON.stringify(actionData?.values ?? defaults)}
+            key={JSON.stringify({
+              values: actionData?.values ?? defaults,
+              design: actionData?.designValues ?? null,
+              mobileDesign: actionData?.mobileDesignValues ?? null,
+              structure: actionData?.structureDraft ?? null,
+            })}
             mode="create"
             messageLocales={enabledLocales}
             lockedTargetingFeatures={lockedTargetingFeatures}
             targetingOptions={targetingOptions}
+            design={actionData?.designValues}
+            designErrors={actionData?.designErrors}
+            mobileDesign={actionData?.mobileDesignValues}
+            structureEdited={actionData?.structureDraft?.structureEdited}
+            structureHtml={actionData?.structureDraft?.structureHtml}
+            structureCss={actionData?.structureDraft?.structureCss}
+            mobileStructureEdited={
+              actionData?.structureDraft?.mobileStructureEdited
+            }
+            mobileStructureHtml={actionData?.structureDraft?.mobileStructureHtml}
+            mobileStructureCss={actionData?.structureDraft?.mobileStructureCss}
+            structureMessages={actionData?.structureMessages}
             values={actionData?.values ?? defaults}
             errors={actionData?.errors}
             // On a save error, re-seed the form with the AI draft that was
@@ -929,6 +972,42 @@ export default function CreateCampaignPage() {
         )}
     </s-page>
   );
+}
+
+function buildPreservedCreateDraft(
+  formData: FormData,
+  plan: Shop["plan"],
+): Pick<
+  ActionData,
+  | "designErrors"
+  | "designValues"
+  | "mobileDesignValues"
+  | "structureDraft"
+  | "structureMessages"
+> {
+  const parsedDesign = parseResponsiveCampaignDesignFormData(formData, plan);
+  const structure = parseCampaignStructureForm(formData);
+
+  return {
+    designErrors: parsedDesign.errors,
+    designValues: parsedDesign.values,
+    mobileDesignValues: parsedDesign.mobileValues,
+    structureDraft: toCreateStructureDraft(structure),
+    structureMessages: structure.messages,
+  };
+}
+
+function toCreateStructureDraft(
+  structure: ParsedCampaignStructureForm,
+): CreateStructureDraft {
+  return {
+    structureEdited: Boolean(structure.editedHtml),
+    structureHtml: structure.editedHtml ?? "",
+    structureCss: structure.editedCss ?? "",
+    mobileStructureEdited: Boolean(structure.editedMobileHtml),
+    mobileStructureHtml: structure.editedMobileHtml ?? "",
+    mobileStructureCss: structure.editedMobileCss ?? "",
+  };
 }
 
 async function applyAiSuggestionToCampaign({

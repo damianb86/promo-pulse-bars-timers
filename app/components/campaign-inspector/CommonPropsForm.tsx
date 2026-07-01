@@ -1,43 +1,29 @@
 import { useMemo, useState } from "react";
 
 import { parseStyle } from "../../utils/campaign-structure";
-import {
-  COMMON_PROP_DESCRIPTORS,
-  commonPropGroups,
-  type CommonPropDescriptor,
-} from "./common-props-registry";
-
-// CSS properties already covered by the structured fields — everything else in
-// the node's inline style is treated as a free-form custom declaration.
-const KNOWN_CSS_PROPS = new Set(
-  COMMON_PROP_DESCRIPTORS.map((descriptor) => descriptor.cssProp),
-);
 
 // Per-node CSS editor (the shared "common properties"). One collapsible panel
-// (collapsed by default, slides down on click) holding every group separated by
-// titles. Fields reuse the design-control classes so padding/borders/icons match
-// the rest of the editor, and the grid fits up to ~6 related fields per row.
+// (collapsed by default, slides down on click) exposing every inline-style
+// declaration as free-form Custom CSS. Fields reuse the design-control classes
+// so padding/borders/icons match the rest of the editor.
 export function CommonPropsForm({
   style,
-  isText,
   onApply,
 }: {
   style: string | undefined;
-  isText: boolean;
   onApply: (declarations: Record<string, string>) => void;
 }) {
   const current = useMemo(() => parseStyle(style), [style]);
   const [open, setOpen] = useState(false);
-  const setCount = Object.keys(current).length;
 
-  // Free-form declarations that are not one of the structured fields above.
-  const customEntries = useMemo(
-    () =>
-      Object.entries(current).filter(([prop]) => !KNOWN_CSS_PROPS.has(prop)),
-    [current],
-  );
+  // Every declaration on the node is editable as a custom entry.
+  const customEntries = useMemo(() => Object.entries(current), [current]);
+  const setCount = customEntries.length;
+
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
+  // The property being edited (so renaming it removes the original chip).
+  const [editingProp, setEditingProp] = useState<string | null>(null);
 
   const normalizeProp = (prop: string) =>
     prop.trim().toLowerCase().replace(/\s+/g, "-");
@@ -46,90 +32,23 @@ export function CommonPropsForm({
     const prop = normalizeProp(newKey);
     const value = newValue.trim();
     if (!prop || !value) return;
-    onApply({ [prop]: value });
+    // When the property was renamed, drop the original declaration too.
+    const declarations: Record<string, string> =
+      editingProp && editingProp !== prop
+        ? { [editingProp]: "", [prop]: value }
+        : { [prop]: value };
+    onApply(declarations);
     setNewKey("");
     setNewValue("");
+    setEditingProp(null);
   };
 
-  // Load a chip back into the editor inputs (and drop it) so it can be edited.
+  // Load a chip back into the editor inputs so it can be edited. The chip stays
+  // in place until the edit is re-applied, so nothing is lost mid-edit.
   const editCustom = (prop: string, value: string) => {
     setNewKey(prop);
     setNewValue(value);
-    onApply({ [prop]: "" });
-  };
-
-  // Flex item props only make sense when the element is a flex container, so the
-  // Flex group is hidden unless display is flex / inline-flex.
-  const isFlex =
-    current.display === "flex" || current.display === "inline-flex";
-  const groups = useMemo(
-    () =>
-      commonPropGroups(isText).filter(
-        (group) => group.group !== "Flex" || isFlex,
-      ),
-    [isText, isFlex],
-  );
-
-  const renderControl = (descriptor: CommonPropDescriptor) => {
-    const value = current[descriptor.cssProp] ?? "";
-    const apply = (next: string) => onApply({ [descriptor.cssProp]: next });
-
-    if (descriptor.kind === "color") {
-      return (
-        <span className="counterpulse-card-color-control counterpulse-design-color-control">
-          <span className="counterpulse-card-color-control__swatch">
-            <input
-              aria-label={`${descriptor.label} color`}
-              type="color"
-              value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
-              onChange={(event) => apply(event.target.value)}
-            />
-          </span>
-          <input
-            placeholder="inherit"
-            value={value}
-            onChange={(event) => apply(event.target.value)}
-          />
-          <span className="counterpulse-card-color-control__picker" aria-hidden="true">
-            <GroupIcon kind="Typography" />
-          </span>
-        </span>
-      );
-    }
-
-    return (
-      <span className="counterpulse-card-number-control counterpulse-design-number-control">
-        <span className="counterpulse-card-number-control__icon" aria-hidden="true">
-          <GroupIcon kind={descriptor.group} />
-        </span>
-        {descriptor.kind === "select" ? (
-          <select value={value} onChange={(event) => apply(event.target.value)}>
-            {(descriptor.options ?? []).map((option) => (
-              <option key={option} value={option}>
-                {option === "" ? "Not set" : option}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            placeholder="auto"
-            type="text"
-            value={value}
-            onChange={(event) => apply(event.target.value)}
-          />
-        )}
-        <button
-          aria-label={`Clear ${descriptor.label}`}
-          className="counterpulse-card-number-control__unit counterpulse-inspector-clear"
-          disabled={!value}
-          tabIndex={-1}
-          type="button"
-          onClick={() => apply("")}
-        >
-          {value ? "×" : ""}
-        </button>
-      </span>
-    );
+    setEditingProp(prop);
   };
 
   return (
@@ -141,8 +60,8 @@ export function CommonPropsForm({
         onClick={() => setOpen((value) => !value)}
       >
         <span className="counterpulse-inspector-collapsible__title">
-          <GroupIcon kind="Size" />
-          <span>Layout &amp; style</span>
+          <GroupIcon kind="Custom" />
+          <span>Custom CSS</span>
           {setCount > 0 && (
             <span className="counterpulse-inspector-badge">{setCount}</span>
           )}
@@ -163,30 +82,6 @@ export function CommonPropsForm({
         data-open={open ? "true" : "false"}
       >
         <div className="counterpulse-inspector-collapsible__inner">
-          {groups.map((group) => (
-            <div key={group.group} className="counterpulse-inspector-group">
-              <p className="counterpulse-inspector-group__title">
-                <GroupIcon kind={group.group} />
-                <span>{group.group}</span>
-              </p>
-              <div className="counterpulse-inspector-grid">
-                {group.descriptors.map((descriptor) => (
-                  <label
-                    key={descriptor.key}
-                    className="counterpulse-form-field counterpulse-design-control-field"
-                  >
-                    <span className="counterpulse-card-field__label">
-                      <span className="counterpulse-design-field-title">
-                        {descriptor.label}
-                      </span>
-                    </span>
-                    {renderControl(descriptor)}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-
           {/* Free-form CSS declarations: add one Key:Value at a time. Existing
               ones show as chips that can be edited (loaded back into the inputs)
               or removed. */}

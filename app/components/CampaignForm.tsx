@@ -131,6 +131,10 @@ type CampaignFormProps = {
   mobileStructureTree?: StructureNode | null;
   structureCss?: string;
   mobileStructureCss?: string;
+  structureEdited?: boolean;
+  structureHtml?: string;
+  mobileStructureEdited?: boolean;
+  mobileStructureHtml?: string;
   // Saved custom-message snippets (JSON array of {id, text}) placed in the custom
   // HTML via data-cp-slot="custom-<id>". Edited in the Message tab.
   structureMessages?: string;
@@ -622,6 +626,10 @@ export function CampaignForm({
   mobileStructureTree = null,
   structureCss = "",
   mobileStructureCss = "",
+  structureEdited = false,
+  structureHtml = "",
+  mobileStructureEdited = false,
+  mobileStructureHtml = "",
   structureMessages: initialStructureMessages = "",
   values,
   errors = {},
@@ -790,6 +798,22 @@ export function CampaignForm({
     }
     return null;
   }, [designStructureForm]);
+  const propStructure = useMemo(() => {
+    if (!structureEdited || !structureHtml) return null;
+    return {
+      html: structureHtml,
+      tree: htmlToTree(structureHtml),
+      css: structureCss,
+    };
+  }, [structureCss, structureEdited, structureHtml]);
+  const propMobileStructure = useMemo(() => {
+    if (!mobileStructureEdited || !mobileStructureHtml) return null;
+    return {
+      html: mobileStructureHtml,
+      tree: htmlToTree(mobileStructureHtml),
+      css: mobileStructureCss,
+    };
+  }, [mobileStructureCss, mobileStructureEdited, mobileStructureHtml]);
   const basicTargetingLocked = lockedTargetingFeatures?.basic ?? "";
   const geoTargetingLocked = lockedTargetingFeatures?.geo ?? "";
   const advancedTargetingLocked = lockedTargetingFeatures?.advanced ?? "";
@@ -1072,24 +1096,28 @@ export function CampaignForm({
   const previewStructureTree =
     liveDesignStructure?.tree ??
     aiStructure?.tree ??
+    propStructure?.tree ??
     structureTree ??
     generatedStructureTree;
   const hasStructureOverride = Boolean(
-    liveDesignStructure || aiStructure || structureTree,
+    liveDesignStructure || aiStructure || propStructure || structureTree,
   );
   const previewMobileStructureTree =
+    propMobileStructure?.tree ??
     mobileStructureTree ??
     (hasStructureOverride ? null : generatedMobileStructureTree);
   const previewStructureCss = liveDesignStructure
     ? liveDesignStructure.css
     : aiStructure
       ? aiStructure.css
-      : structureTree
+      : propStructure
+        ? propStructure.css
+        : structureTree
         ? structureCss
         : generatedStructureCss;
   const previewMobileStructureCss =
-    mobileStructureTree || !hasStructureOverride
-      ? mobileStructureCss || generatedMobileStructureCss
+    propMobileStructure || mobileStructureTree || !hasStructureOverride
+      ? propMobileStructure?.css || mobileStructureCss || generatedMobileStructureCss
       : "";
   const summaryRows = useMemo(
     () => [
@@ -4196,12 +4224,25 @@ export function CampaignForm({
               // survive switching tabs) falling back to the AI-applied structure,
               // so its preview always matches the Campaign-tab preview.
               structureEdited={
-                liveDesignStructure ? true : Boolean(aiStructure)
+                liveDesignStructure
+                  ? true
+                  : structureEdited || Boolean(aiStructure)
               }
               structureHtml={
-                liveDesignStructure?.html ?? aiStructure?.html ?? ""
+                liveDesignStructure?.html ||
+                structureHtml ||
+                aiStructure?.html ||
+                ""
               }
-              structureCss={liveDesignStructure?.css ?? aiStructure?.css ?? ""}
+              structureCss={
+                liveDesignStructure?.css ||
+                structureCss ||
+                aiStructure?.css ||
+                ""
+              }
+              mobileStructureEdited={mobileStructureEdited}
+              mobileStructureHtml={mobileStructureHtml}
+              mobileStructureCss={mobileStructureCss}
               customMessages={customMessages}
               onStructureChange={setDesignStructureForm}
             />

@@ -88,11 +88,7 @@ export function ComponentInspectorModal({
         <div className="counterpulse-modal__body">
           <div className="counterpulse-inspector-panels">
             {/* 1. Common properties, first. */}
-            <CommonPropsForm
-              style={nodeStyle}
-              isText={component.isText}
-              onApply={onApplyCommon}
-            />
+            <CommonPropsForm style={nodeStyle} onApply={onApplyCommon} />
 
             {/* Image source (with Shopify library picker) for <img> nodes. */}
             {isImage && (

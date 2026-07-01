@@ -373,6 +373,8 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     legendFontSize: 11,
     paddingBlock: 14,
     paddingInline: 18,
+    timerSurfaceColor: "#28323F",
+    timerSurfaceBorderColor: "#55647B",
   },
   {
     ...defaultCampaignDesignValues,

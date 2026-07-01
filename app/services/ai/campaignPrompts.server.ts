@@ -87,7 +87,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v18";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v19";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -513,17 +513,21 @@ export function buildCampaignAiUserPrompt(
 
 // System prompt used when the merchant uploads a reference image. It reuses the
 // full base prompt (same JSON shape, same safety rules) and adds image-analysis
-// guidance plus the design-settings catalog. Unlike the text-only flow, the
-// model is explicitly allowed and encouraged to return concrete visual overrides
-// (colors, gradients, spacing) so the generated campaign matches the image.
+// guidance plus the design-settings catalog. The image is a style reference, not
+// a screenshot to copy: presets/settings remain the foundation, with targeted
+// visual overrides only when they make the campaign more polished.
 export const AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT = `
 ${AI_CAMPAIGN_SYSTEM_PROMPT}
 
-=== REFERENCE IMAGE MODE ===
+=== STYLE REFERENCE IMAGE MODE ===
 The merchant attached a reference image of an existing promotional element
 (an announcement/promo bar, countdown timer, banner, badge, or cart message).
-Your task is to reproduce that image as closely as possible using ONLY the
-Promo Pulse settings described above and in the catalog below.
+Treat it as a STYLE REFERENCE and source of useful visual signals, not as a
+campaign screenshot that must be copied exactly. Your job is to produce the best
+Promo Pulse campaign for the merchant's goal using the established presets and
+settings as much as possible. The final campaign should feel inspired by the
+image while being cleaner, more legible, more responsive, and more complete than
+a literal reproduction.
 
 The image is NOT necessarily a countdown timer. It may be any kind of banner:
 a plain promotional/announcement bar, a sale banner, a free-shipping bar, a
@@ -536,18 +540,30 @@ How to analyze the image:
   CART_TIMER) when a real countdown/clock is actually visible in the image. If the
   image is just a promotional/announcement banner with no countdown, use goal
   ANNOUNCEMENT with a bar type and DO NOT fabricate a timer or countdown urgency.
+- First choose the closest preset/templateKey and standard design.layout that can
+  deliver a polished version of the reference. Keep structureHtml/structureCss
+  empty unless the reference contains a genuinely custom arrangement the presets
+  cannot express cleanly.
+- Extract useful style signals: palette, background treatment, image/illustration
+  usage, icons, badges, artifacts/decoration, button treatment, border/radius,
+  shadow/outline mood, density, typography style, element ordering, alignment,
+  and relative emphasis. Use these signals to tune settings; do not copy defects,
+  cramped spacing, awkward crops, noise, or low contrast.
 - Read the layout: is it full-width or a contained card? Is the content one
   inline row or a vertical stack? Where do the message and button sit (and the
-  timer, if any)? Pick the design.layout and fullWidth that reproduce that
-  arrangement.
-- Extract the colors precisely as 6-digit hex: background (solid or gradient),
-  headline color, subheading color, button fill, button text, borders (and timer
-  digit color only if a timer is shown). If you see a gradient, set backgroundType
-  GRADIENT with start/end colors and an angle.
-- Estimate spacing: padding (slim vs tall bar), gap between elements, corner
-  rounding (sharp full-width bar vs rounded pill/card), border thickness.
-- Estimate typography: relative title vs body (and timer, if any) sizes, and
-  whether the font looks default/system, serif, rounded, condensed, etc.
+  timer, if any)? Pick the design.layout and fullWidth that best adapt that
+  arrangement to Promo Pulse and the selected placement.
+- Extract colors as 6-digit hex when they help: background (solid/gradient/image),
+  headline color, subheading color, button fill, button text, borders, and timer
+  colors only when a timer is shown. Prefer the closest preset palette if it is
+  already coherent; override individual fields only to capture the reference
+  mood or improve contrast.
+- Estimate spacing and scale as design intent, not pixel copying: slim vs tall,
+  airy vs dense, compact vs hero, corner rounding, border thickness, timer box
+  padding/gaps, CTA prominence, icon size, and safe text areas.
+- Estimate typography style: relative title/body/timer sizes, number vs label
+  balance, and whether the font feels default/system, serif, rounded, condensed,
+  premium, playful, or technical. Map that to supported fontFamily and sizes.
 - Only if the image shows a countdown, detect the timer style: bare digits
   (PLAIN), one container (GROUPED), or separate digit tiles (BOXES); colon
   HH:MM:SS vs labeled units; the digit and label colors and the surface behind
@@ -559,18 +575,20 @@ How to analyze the image:
   "YYYY-MM-DDTHH:mm"), or for a session timer use EVERGREEN_SESSION with a
   durationMinutes. Never leave a timer campaign without an end date or duration.
 - Detect buttons and icons: only set showButton true / showIcon true and pick an
-  icon when the image actually shows one. Use the visible button label as ctaText.
+  icon when the image actually shows one or when it materially improves the
+  campaign. Use the visible button label as ctaText when it is useful, otherwise
+  write a clearer CTA for the merchant goal.
 - Transcribe visible text into headline / subheadline / ctaText / expiredText,
   cleaned up and shortened to fit the placement.
 
-Proportions & scale (match the real image, do not inflate):
+Proportions & scale (adapt the style, do not inflate):
 - You are told the uploaded image's real pixel width, height, and aspect ratio,
   and the TARGET WIDTH the campaign renders at for the chosen placement (see the
-  per-placement target widths above). Use these to adapt the design faithfully.
+  per-placement target widths above). Use these to understand the source style,
+  then adapt it to a responsive Promo Pulse campaign.
 - The target render width is fixed by the placement — do NOT change it. Your job
-  is to fit the image's content into that width while preserving the image's
-  visual scale (font sizes, button sizes, timer sizes, icon sizes, and bar
-  height relative to its width).
+  is to create a coherent campaign at that width, preserving the reference's
+  visual intent without forcing its exact pixel scale.
 - HORIZONTAL BARS/BANNERS (image much wider than tall — aspect ratio roughly 3:1
   or wider, or a TOP_BAR/BOTTOM_BAR placement): when the target width is WIDER
   than the source image, DO NOT scale everything up. Specifically:
@@ -581,8 +599,8 @@ Proportions & scale (match the real image, do not inflate):
       shows — keep a similar visual height.
   Instead, use the extra horizontal space to SPACE OUT, ALIGN, and REPOSITION the
   elements horizontally (e.g. justify-content: space-between, larger horizontal
-  gaps, push the CTA to the right). The result must read as the same bar stretched
-  to the wider width, NOT a zoomed-in version.
+  gaps, push the CTA to the right). The result should read as a professional
+  campaign inspired by the same style, NOT a zoomed-in screenshot.
 - Keep the rendered height proportional to the source image's aspect ratio at the
   target width ONLY for tall/contained cards. For slim bars, prioritize a small,
   consistent height over matching the raw aspect ratio.
@@ -590,19 +608,20 @@ Proportions & scale (match the real image, do not inflate):
   side of smaller, tighter typography and spacing that matches a real promo bar.
 
 Critical rules for image mode:
-- OVERRIDE the earlier "do not provide custom color/gradient/background overrides"
-  rule: in image mode you SHOULD populate the design.* visual fields (colors,
-  gradient, padding, radius, sizes, alignment, layout, timer style) to match the
-  image. Use the chosen templateKey only as a starting point.
+- In image mode you MAY populate design.* visual fields (colors, gradient,
+  background image, padding, radius, sizes, alignment, layout, timer style,
+  timer spacing, icon, progress, button treatment) when doing so improves the
+  campaign. Start from the closest templateKey/preset and keep supported preset
+  behavior whenever it already produces a polished result.
 - Use ONLY the fields in the catalog below. Never invent new design fields or new
-  enum values. If something in the image cannot be reproduced exactly, choose the
-  closest supported value.
-- Use the image as STRONG visual guidance, but a coherent, professional, legible,
+  enum values. If something in the image cannot be expressed exactly, choose the
+  closest supported setting or omit it.
+- Use the image as STRONG style guidance, but a coherent, professional, legible,
   responsive campaign is more important than copying the image exactly. If the
   image has low contrast, cramped spacing, oversized elements, an awkward layout,
-  or anything that would look unprofessional, IMPROVE it instead of reproducing
-  the flaw (see the Design quality rules above). Match the brand/palette/mood, not
-  every imperfection.
+  a bad crop, or anything that would look unprofessional, IMPROVE it instead of
+  reproducing the flaw (see the Design quality rules above). Match the brand,
+  palette, mood, element hierarchy, and useful assets, not every imperfection.
 - Still keep all safety rules: status DRAFT, never invent stock counts or discount
   values that are not actually written in the image. If a discount %, amount,
   threshold, or code is clearly visible as text in the image, you may reflect it.
@@ -670,9 +689,11 @@ export function buildCampaignAiImageUserPrompt(
   const payload = buildPromptPayload(input);
 
   return [
-    "A reference image is attached. Analyze it visually and reproduce it as a",
-    "Promo Pulse campaign draft, matching layout, colors, spacing, typography,",
-    "timer, button, and text as closely as the supported settings allow.",
+    "A reference image is attached. Analyze it visually as a style reference,",
+    "then create a polished Promo Pulse campaign draft using presets/settings as",
+    "much as possible. Borrow useful visual signals such as palette, typography,",
+    "icons, imagery, spacing, element hierarchy, and positioning, but do not copy",
+    "the image literally when a cleaner responsive campaign would be better.",
     "",
     "Optional merchant input JSON (empty/default fields are omitted; when the",
     "merchant only uploaded an image, infer the missing context from the image):",
@@ -681,6 +702,6 @@ export function buildCampaignAiImageUserPrompt(
     ...buildRefinementSection(refinement),
     "",
     "Return the complete Promo Pulse campaign draft JSON, including populated",
-    "design.* visual fields that match the image.",
+    "design.* visual fields that express the reference style professionally.",
   ].join("\n");
 }

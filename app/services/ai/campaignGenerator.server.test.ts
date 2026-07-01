@@ -471,18 +471,32 @@ describe("AI campaign reference image", () => {
     );
   });
 
-  it("rebalances image mode toward professionalism + keeps the region tool", () => {
+  it("treats image mode as style reference + keeps the region tool", () => {
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REGION");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "STYLE REFERENCE IMAGE MODE",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toMatch(
+      /not as a\s+campaign screenshot that must be copied exactly/,
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "using the established presets and",
+    );
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
       "more important than copying the image",
     );
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain(
       "Visual similarity is",
     );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain(
+      "reproduce that image as closely as possible",
+    );
   });
 
   it("builds an image system prompt that allows visual overrides and lists settings", () => {
-    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("REFERENCE IMAGE MODE");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "STYLE REFERENCE IMAGE MODE",
+    );
     // Reuses the base prompt + the design settings catalog.
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
       "Promo Pulse AI Campaign Builder",
@@ -491,7 +505,10 @@ describe("AI campaign reference image", () => {
       "Design settings catalog",
     );
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("backgroundColor");
-    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain("OVERRIDE");
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).toContain(
+      "Start from the closest templateKey/preset",
+    );
+    expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain("OVERRIDE");
     // Still never asks for experiment variants.
     expect(AI_CAMPAIGN_IMAGE_SYSTEM_PROMPT).not.toContain('"variants"');
   });
@@ -506,6 +523,9 @@ describe("AI campaign reference image", () => {
     );
 
     expect(prompt).toContain("reference image is attached");
+    expect(prompt).toContain("style reference");
+    expect(prompt).toContain("using presets/settings");
+    expect(prompt).toContain("do not copy");
     expect(prompt).toContain("linen shirts");
     expect(prompt).toContain('"targetLocales": [');
     expect(prompt).toContain('"it"');

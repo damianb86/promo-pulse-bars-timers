@@ -26,7 +26,6 @@ import {
   defaultCampaignDesignValues,
   type CampaignDesignValues,
 } from "../types/campaign-design";
-import { decodePackedStructure } from "./campaign-structure";
 import { parseCustomMessages } from "./custom-messages";
 import { resolveMobileCampaignDesign } from "./responsive-design";
 import {
@@ -95,8 +94,8 @@ export type StorefrontCampaignResponseItem = {
   type: string;
   goal: string;
   placement: string;
-  placementSelector: string;
-  placementStyle: string;
+  placementSelector?: string;
+  placementStyle?: string;
   design: ReturnType<typeof serializeDesign>;
   timer: ReturnType<typeof serializeTimer>;
   cartRescue?: ReturnType<typeof serializeCartRescue>;
@@ -383,45 +382,47 @@ export function serializeDesign(
     ? resolveMobileCampaignDesign(desktopDesign, mobileDesign)
     : desktopDesign;
 
-  const structure = serializeStructure(design, isMobileDevice ? mobileDesign : null);
+  const structure = serializeStructure(
+    design,
+    isMobileDevice ? mobileDesign : null,
+  );
 
-  return {
+  return compactDesignPayload({
     ...resolvedDesign,
     showIcon: resolvedDesign.icon !== "NONE",
     // In structure mode the merchant custom CSS is already baked into
     // structure.css, so don't ship it twice.
     customCss: structure ? "" : resolvedDesign.customCss,
     structure,
-  };
+  });
 }
 
 // Emits the per-campaign structural HTML (dictionary-packed AST) + CSS for the
-// storefront. Returns null for legacy campaigns with no saved structure, in which
-// case the theme extension falls back to its built-in surface builder. On mobile
-// the mobile override (stored in the mobile design JSON) is used when present;
-// otherwise the desktop structure is reused (so identical mobile HTML is never
-// duplicated).
+// storefront. Returns null when a campaign has no saved structure, in which case
+// the theme extension uses its built-in surface builder. On mobile the mobile
+// override (stored in the mobile design JSON) is used when present; otherwise
+// the desktop structure is reused (so identical mobile HTML is never duplicated).
 function serializeStructure(
   design: CampaignDesign | null,
   mobileOverride: Partial<CampaignDesignValues> | null,
 ) {
   if (!design) return null;
 
-  const mobileSource = mobileOverride as
-    | {
-        mobileStructureCompact?: string | null;
-        mobileStructureCss?: string | null;
-        mobileStructureVersion?: number | null;
-      }
-    | null;
+  const mobileSource = mobileOverride as {
+    mobileStructureCompact?: string | null;
+    mobileStructureCss?: string | null;
+    mobileStructureVersion?: number | null;
+  } | null;
 
-  const mobilePacked = decodePackedStructure(mobileSource?.mobileStructureCompact);
+  const mobilePacked = readStructureCompact(
+    mobileSource?.mobileStructureCompact,
+  );
   if (mobilePacked) {
-    return {
+    return compactStructurePayload({
       packed: mobilePacked,
       css: mobileSource?.mobileStructureCss ?? "",
       version: mobileSource?.mobileStructureVersion ?? 1,
-    };
+    });
   }
 
   const structureDesign = design as CampaignDesign & {
@@ -431,10 +432,10 @@ function serializeStructure(
     structureVersion?: number | null;
   };
 
-  const packed = decodePackedStructure(structureDesign.structureCompact);
+  const packed = readStructureCompact(structureDesign.structureCompact);
   if (!packed) return null;
 
-  return {
+  return compactStructurePayload({
     packed,
     css: structureDesign.structureCss ?? "",
     // Custom reusable message snippets the merchant placed via
@@ -442,7 +443,78 @@ function serializeStructure(
     // storefront can fill those slots (and interpolate the dynamic variables).
     messages: parseCustomMessages(structureDesign.structureMessages),
     version: structureDesign.structureVersion ?? 1,
+  });
+}
+
+function readStructureCompact(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function compactStructurePayload(input: {
+  packed: string;
+  css: string;
+  messages?: ReturnType<typeof parseCustomMessages>;
+  version: number;
+}) {
+  return {
+    packed: input.packed,
+    ...(input.css ? { css: input.css } : {}),
+    ...(input.messages && input.messages.length > 0
+      ? { messages: input.messages }
+      : {}),
+    ...(input.version !== 1 ? { version: input.version } : {}),
   };
+}
+
+function compactDesignPayload(
+  design: CampaignDesignValues & {
+    structure: ReturnType<typeof serializeStructure>;
+  },
+) {
+  const output: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(design)) {
+    if (key === "structure") {
+      if (value) output.structure = value;
+      continue;
+    }
+
+    if (
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      isDesignDefaultValue(key, value)
+    ) {
+      continue;
+    }
+
+    output[key] = value;
+  }
+
+  return output;
+}
+
+function isDesignDefaultValue(key: string, value: unknown) {
+  const defaultValue =
+    defaultCampaignDesignValues[key as keyof CampaignDesignValues];
+
+  if (defaultValue === undefined) return false;
+
+  if (isColorLikeValue(defaultValue) || isColorLikeValue(value)) {
+    return (
+      normalizeColorLikeValue(defaultValue) === normalizeColorLikeValue(value)
+    );
+  }
+
+  return value === defaultValue;
+}
+
+function isColorLikeValue(value: unknown) {
+  return typeof value === "string" && /^#[0-9a-f]{3,8}$/i.test(value);
+}
+
+function normalizeColorLikeValue(value: unknown) {
+  return typeof value === "string" ? value.toUpperCase() : value;
 }
 
 function isMobileDesignDevice(device: string) {
@@ -453,6 +525,7 @@ function serializeDesktopDesign(design: CampaignDesign | null) {
   if (!design) return defaultCampaignDesignValues;
 
   const desktopDesign = { ...design } as Partial<CampaignDesignValues> & {
+    campaignId?: unknown;
     mobileDesign?: unknown;
     customCss?: string | null;
     structureCompact?: unknown;
@@ -461,6 +534,7 @@ function serializeDesktopDesign(design: CampaignDesign | null) {
     structureVersion?: unknown;
     structureEdited?: unknown;
   };
+  delete desktopDesign.campaignId;
   delete desktopDesign.mobileDesign;
   // Internal structure storage columns: the storefront only consumes the decoded
   // `structure` field (see serializeStructure), so never leak the raw stored
@@ -487,13 +561,13 @@ function readCampaignDesignJsonObject(value: unknown) {
 function serializeTimer(timerSettings: TimerSettings | null) {
   if (!timerSettings) return null;
 
-  return {
+  return compactObject({
     mode: timerSettings.mode,
     durationMinutes: timerSettings.durationMinutes,
     recurringDays: timerSettings.recurringDays,
     resetBehavior: timerSettings.resetBehavior,
     expiredBehavior: timerSettings.expiredBehavior,
-  };
+  });
 }
 
 function serializeCartRescue(settings: CartRescueSettings | null) {
@@ -620,11 +694,17 @@ function serializeLowStock(settings: LowStockSettings | null) {
 function serializeBadge(settings: BadgeSettings | null) {
   if (!settings) return null;
 
-  return {
+  return compactObject({
     badgeText: settings.badgeText,
-    badgeShape: readBadgeShape(settings.badgeShape),
-    badgePosition: readBadgePosition(settings.badgePosition),
-  };
+    badgeShape:
+      readBadgeShape(settings.badgeShape) === "PILL"
+        ? ""
+        : readBadgeShape(settings.badgeShape),
+    badgePosition:
+      readBadgePosition(settings.badgePosition) === "TOP_RIGHT"
+        ? ""
+        : readBadgePosition(settings.badgePosition),
+  });
 }
 
 function serializeTexts(campaign: StorefrontCampaignSource, locale: string) {
@@ -708,7 +788,7 @@ function serializeDiscount(discountSync: DiscountSync | null) {
 
   const showCodeOnStorefront = campaignShowsDiscountCode(discountSync);
 
-  return {
+  return compactObject({
     method: discountSync.method,
     discountCode: showCodeOnStorefront ? discountSync.discountCode : null,
     uniqueCode:
@@ -719,7 +799,26 @@ function serializeDiscount(discountSync: DiscountSync | null) {
             expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
           }
         : null,
-  };
+  });
+}
+
+function compactObject<T extends Record<string, unknown>>(value: T) {
+  return Object.entries(value).reduce<Record<string, unknown>>(
+    (output, [key, entry]) => {
+      if (
+        entry === null ||
+        entry === undefined ||
+        entry === "" ||
+        (Array.isArray(entry) && entry.length === 0)
+      ) {
+        return output;
+      }
+
+      output[key] = entry;
+      return output;
+    },
+    {},
+  ) as Partial<T>;
 }
 
 // A variant's designOverride can carry a nested `mobileDesign` override plus a
@@ -813,7 +912,8 @@ function readList(searchParams: URLSearchParams, key: string) {
 // Single token the storefront can send instead of listing every placement, to
 // keep the campaigns request compact. The backend expands it to the full set of
 // front (storefront-renderable) placements.
-export const ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN = "ALL_FRONT_DEFAULT_PLACEMENTS";
+export const ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN =
+  "ALL_FRONT_DEFAULT_PLACEMENTS";
 
 // Placements rendered from the campaigns endpoint. Badge placements
 // (PRODUCT_PAGE_BADGE, COLLECTION_CARD) are intentionally excluded: they are

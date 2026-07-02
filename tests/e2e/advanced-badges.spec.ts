@@ -60,7 +60,6 @@ test("product badges are configured from campaign setup and evaluated for storef
     expect.arrayContaining([
       expect.objectContaining({
         campaignId,
-        ruleId: null,
         text: "Simple badge",
         badge: expect.objectContaining({
           badgePosition: "BOTTOM_LEFT",

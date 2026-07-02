@@ -39,12 +39,12 @@ describe("serializeDesign structure payload", () => {
     packTree(buildCampaignStructureTree(baseSpec)),
   );
 
-  it("emits decoded structure and never leaks internal storage columns", () => {
+  it("emits compact structure text and never leaks internal storage columns", () => {
     const design = {
       icon: "NONE",
       customCss: ".x{color:red}",
       structureCompact: compact,
-      structureCss: '__CP_SCOPE__{--cp-bg:#000}\n.x{color:red}',
+      structureCss: "__CP_SCOPE__{--cp-bg:#000}\n.x{color:red}",
       structureVersion: 1,
       structureEdited: true,
     } as unknown as Parameters<typeof serializeDesign>[0];
@@ -52,16 +52,20 @@ describe("serializeDesign structure payload", () => {
     const result = serializeDesign(design) as Record<string, unknown>;
 
     expect(result.structure).not.toBeNull();
+    expect(result.structure).toMatchObject({
+      packed: compact,
+      css: "__CP_SCOPE__{--cp-bg:#000}\n.x{color:red}",
+    });
     expect(result).not.toHaveProperty("structureCompact");
     expect(result).not.toHaveProperty("structureVersion");
     expect(result).not.toHaveProperty("structureEdited");
     // structureCss is exposed only inside `structure`, not as a top-level field.
     expect(result).not.toHaveProperty("structureCss");
     // customCss is baked into structure.css, so it is not shipped twice.
-    expect(result.customCss).toBe("");
+    expect(result).not.toHaveProperty("customCss");
   });
 
-  it("keeps customCss and omits structure for legacy designs", () => {
+  it("keeps customCss and omits structure when no saved structure exists", () => {
     const design = {
       icon: "NONE",
       customCss: ".x{color:red}",
@@ -69,7 +73,7 @@ describe("serializeDesign structure payload", () => {
     } as unknown as Parameters<typeof serializeDesign>[0];
 
     const result = serializeDesign(design) as Record<string, unknown>;
-    expect(result.structure).toBeNull();
+    expect(result).not.toHaveProperty("structure");
     expect(result.customCss).toBe(".x{color:red}");
   });
 });
@@ -284,7 +288,6 @@ describe("storefront campaign serialization", () => {
 
     expect(serialized?.discount).toEqual({
       method: "UNIQUE_CODE",
-      discountCode: null,
       uniqueCode: {
         endpoint: "/api/storefront/unique-code/assign",
         autoApply: true,
@@ -309,7 +312,6 @@ describe("storefront campaign serialization", () => {
 
     expect(serialized?.discount).toMatchObject({
       method: "CODE",
-      discountCode: null,
     });
     expect(JSON.stringify(serialized)).not.toContain("FREESHIP");
   });
@@ -430,8 +432,6 @@ describe("storefront campaign serialization", () => {
       })?.design,
     ).toMatchObject({
       backgroundColor: "#F97316",
-      textColor: "#111827",
-      showDiscountCode: true,
       offerCodeLayout: "COMPACT",
       customCss: ".pp-bar { font-weight: 700; }",
     });
@@ -443,7 +443,6 @@ describe("storefront campaign serialization", () => {
       })?.design,
     ).toMatchObject({
       backgroundColor: "#F97316",
-      textColor: "#111827",
     });
   });
 

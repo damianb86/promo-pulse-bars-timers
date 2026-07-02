@@ -1302,13 +1302,26 @@ function buildDesign(input: CampaignAiInput): CampaignDesignValues {
 }
 
 function selectDesignTemplateKey(input: CampaignAiInput) {
+  const tone = input.brandTone;
+  // A richer, tone-led preset for goals whose default preset is plain, so a
+  // non-minimal brand never falls back to a bare light card (mirrors the
+  // tone→visual guidance in the AI prompt).
+  const tonePreset =
+    tone === "urgent"
+      ? "flash-sale"
+      : tone === "playful"
+        ? "holiday"
+        : tone === "premium" || tone === "luxury"
+          ? "premium-dark"
+          : null;
+
   if (input.objective === "FREE_SHIPPING") return "free-shipping";
   if (input.objective === "DELIVERY_CUTOFF") return "delivery-cutoff";
-  if (input.objective === "LOW_STOCK_URGENCY") return "low-stock";
+  if (input.objective === "LOW_STOCK_URGENCY") return tonePreset ?? "low-stock";
   if (input.objective === "PRODUCT_BADGE") return "clean-minimal";
-  if (input.brandTone === "urgent") return "flash-sale";
-  if (input.brandTone === "playful") return "holiday";
-  if (input.brandTone === "minimal") return "clean-minimal";
+  if (tone === "urgent") return "flash-sale";
+  if (tone === "playful") return "holiday";
+  if (tone === "minimal") return "clean-minimal";
 
   return "premium-dark";
 }

@@ -743,9 +743,20 @@ export const action = async ({
     });
 
     if (appliedAiSuggestion) {
+      // The form was seeded with the AI suggestion, so its design/structure
+      // inputs reflect the suggestion PLUS any manual edits the merchant made
+      // afterwards. Persist those (not the raw suggestion) so tweaks aren't lost;
+      // the suggestion still supplies its generated assets + structure fallback.
+      const parsedDesign = parseResponsiveCampaignDesignFormData(
+        formData,
+        shop.plan,
+      );
       await applyAiSuggestionToCampaign({
         campaignId: campaign.id,
         formValues: parsed.values,
+        design: parsedDesign.values,
+        mobileDesign: parsedDesign.mobileValues,
+        structure: parseCampaignStructureForm(formData),
         locales: settings.enabledLocales,
         shopId: shop.id,
         suggestion: appliedAiSuggestion,
@@ -1028,28 +1039,43 @@ function isAiVisualControlsEnabled() {
 async function applyAiSuggestionToCampaign({
   campaignId,
   formValues,
+  design,
+  mobileDesign,
+  structure,
   locales,
   shopId,
   suggestion,
 }: {
   campaignId: string;
   formValues: CampaignFormValues;
+  // Design + structure parsed from the form (reflecting the merchant's edits on
+  // top of the applied suggestion). Fall back to the suggestion's design/structure
+  // when not provided (e.g. legacy callers).
+  design?: CampaignDesignValues;
+  mobileDesign?: CampaignDesignValues;
+  structure?: ParsedCampaignStructureForm;
   locales: readonly string[];
   shopId: string;
   suggestion: CampaignSuggestion;
 }) {
   // Assets were already generated + uploaded to Shopify during generation; the
   // suggestion carries the rewritten HTML/CSS (Shopify URLs) and the uploaded
-  // records, so just persist them here (no re-upload).
+  // records, so just persist them here (no re-upload). Prefer the merchant's
+  // edited design/structure from the form; fall back to the suggestion's.
+  const designValues = design ?? suggestion.design;
+  const mobileDesignValues = mobileDesign ?? design ?? suggestion.design;
+  const structureOptions = structure?.editedHtml
+    ? structure
+    : {
+        editedHtml: stripAssetPlaceholders(suggestion.structureHtml) || null,
+        editedCss: stripAssetPlaceholders(suggestion.structureCss) || null,
+      };
   await updateCampaignDesignForShop(
     campaignId,
     shopId,
-    suggestion.design,
-    suggestion.design,
-    {
-      editedHtml: stripAssetPlaceholders(suggestion.structureHtml) || null,
-      editedCss: stripAssetPlaceholders(suggestion.structureCss) || null,
-    },
+    designValues,
+    mobileDesignValues,
+    structureOptions,
   );
 
   await saveCampaignAssets(

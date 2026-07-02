@@ -26,10 +26,11 @@ type StorefrontSnapshot = {
 };
 
 type StorefrontPayloadBody = {
-  campaigns: StorefrontCampaignResponseItem[];
+  campaigns?: StorefrontCampaignResponseItem[];
   // Index of campaign IDs by placement; full campaign data lives in `campaigns`.
-  placements: Record<string, string[]>;
-  settings: PublicShopSettings | null;
+  placements?: Record<string, string[]>;
+  settings?: Partial<PublicShopSettings>;
+  badges?: true;
 };
 
 type StorefrontPayloadEntry = {

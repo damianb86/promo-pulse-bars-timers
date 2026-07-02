@@ -36,6 +36,10 @@ import {
 
 import prisma from "../db.server";
 import { publishCampaignForShop } from "../models/campaign.server";
+import {
+  clearStorefrontCacheForTests,
+  invalidateStorefrontCacheForShop,
+} from "./storefront-cache.server";
 
 export const E2E_DEMO_SHOP_DOMAIN =
   process.env.E2E_DEMO_SHOP_DOMAIN?.trim() || "demo-shop.myshopify.com";
@@ -165,6 +169,7 @@ export async function resetE2ETestDatabase(
   scenario: E2ETestScenario = "empty",
 ) {
   requireE2ETestMode();
+  await resetE2EStorefrontCache();
 
   await prisma.$transaction([
     prisma.analyticsEvent.deleteMany({}),
@@ -197,7 +202,15 @@ export async function resetE2ETestDatabase(
     },
   });
 
+  await resetE2EStorefrontCache();
+
   return { shop, campaignCount, scenario };
+}
+
+async function resetE2EStorefrontCache() {
+  clearStorefrontCacheForTests();
+  await invalidateStorefrontCacheForShop(E2E_DEMO_SHOP_DOMAIN);
+  clearStorefrontCacheForTests();
 }
 
 function parseCookieHeader(header: string) {

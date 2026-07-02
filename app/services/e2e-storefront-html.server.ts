@@ -41,6 +41,7 @@ export function buildE2EStorefrontHtml(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>${title}</title>
+    <link rel="stylesheet" href="/__test/theme-asset/campaign-surface.css" />
     <link rel="stylesheet" href="/__test/theme-asset/promo-pulse.css" />
     <style>
       body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #202223; }
@@ -373,6 +374,7 @@ function productCard({
 
 function scriptsForKind(kind: StorefrontPageKind) {
   const common = `
+    <script src="/__test/theme-asset/campaign-surface.js" defer></script>
     <script src="/__test/theme-asset/discount-code.js" defer></script>`;
 
   if (kind === "product") {

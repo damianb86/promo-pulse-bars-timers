@@ -211,7 +211,9 @@
         name: variant.name,
       },
       texts: mergePlainObjects(campaign.texts, variant.textOverride),
-      design: mergePlainObjects(campaign.design, variant.designOverride),
+      design: normalizeCampaignDesign(
+        mergePlainObjects(campaign.design, variant.designOverride),
+      ),
       discount: mergePlainObjects(campaign.discount, variant.discountOverride),
     });
 
@@ -1012,6 +1014,7 @@
     return {
       campaigns: selectStorefrontCampaigns(payload, placement, options),
       settings: payload.settings || null,
+      badgesEnabled: payload && payload.badges === true,
       url: payload.__promoPulseUrl || "",
     };
   }
@@ -1093,9 +1096,10 @@
           expiresAt: readPayloadExpiresAt(payload, Date.now()),
           payload: clonePlainObject(payload),
         };
-        if (payload.settings && typeof payload.settings === "object") {
-          window.PromoPulseSettings = payload.settings;
-        }
+        window.PromoPulseSettings =
+          payload.settings && typeof payload.settings === "object"
+            ? payload.settings
+            : {};
         return payload;
       })
       .catch(function (error) {
@@ -1361,7 +1365,7 @@
     var matchingById;
     var anyById;
 
-    if (!campaignId) return matching;
+    if (!campaignId) return normalizeCampaigns(matching);
 
     matchingById = matching.filter(function (campaign) {
       return campaign.id === campaignId;
@@ -1371,14 +1375,39 @@
       matchingById.length ||
       requestedPlacements.indexOf("CUSTOM_SELECTOR") !== -1
     ) {
-      return matchingById;
+      return normalizeCampaigns(matchingById);
     }
 
     anyById = campaigns.filter(function (campaign) {
       return campaign.id === campaignId;
     });
 
-    return anyById.length ? anyById : matchingById;
+    return normalizeCampaigns(anyById.length ? anyById : matchingById);
+  }
+
+  function normalizeCampaigns(campaigns) {
+    return campaigns.map(normalizeCampaign);
+  }
+
+  function normalizeCampaign(campaign) {
+    if (!campaign || typeof campaign !== "object") return campaign;
+
+    return Object.assign({}, campaign, {
+      design: normalizeCampaignDesign(campaign.design),
+    });
+  }
+
+  function normalizeCampaignDesign(design) {
+    if (
+      window.CountPulseSurface &&
+      typeof window.CountPulseSurface.normalizeDesign === "function"
+    ) {
+      return window.CountPulseSurface.normalizeDesign(design);
+    }
+
+    return design && typeof design === "object" && !Array.isArray(design)
+      ? design
+      : {};
   }
 
   function readPlacementList(value) {

@@ -337,6 +337,30 @@ test("PRODUCT_BADGE renders collection and product-page badges without duplicate
   expectNoFailedRequests(page);
 });
 
+test("PRODUCT_BADGE auto-init skips badges endpoint when no badge campaigns exist", async ({
+  page,
+  resetDb,
+}) => {
+  const badgeRequests: string[] = [];
+
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+
+    if (url.pathname === "/apps/promo-pulse/api/storefront/badges") {
+      badgeRequests.push(url.toString());
+    }
+  });
+
+  await resetDb("empty");
+  await page.goto("/__test/storefront");
+
+  await expect(page.locator(".e2e-product-card")).toHaveCount(3);
+  await expect(page.locator(".pp-badge")).toHaveCount(0);
+  expect(badgeRequests).toHaveLength(0);
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("PRODUCT_BADGE keeps badge rendering when assigned to a global placement", async ({
   page,
   resetDb,

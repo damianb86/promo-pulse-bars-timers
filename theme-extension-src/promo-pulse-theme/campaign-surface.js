@@ -25,6 +25,166 @@
     CASUAL: '"Trebuchet MS", "Comic Sans MS", system-ui, sans-serif',
   };
 
+  var DEFAULT_DESIGN = {
+    templateKey: "clean-minimal",
+    layout: "STANDARD",
+    backgroundType: "SOLID",
+    backgroundColor: "#FFFFFF",
+    backgroundImageUrl: "",
+    gradientStartColor: "#252237",
+    gradientEndColor: "#4C4861",
+    gradientAngle: 90,
+    textColor: "#111827",
+    accentColor: "#2563EB",
+    buttonColor: "#111827",
+    buttonTextColor: "#FFFFFF",
+    closeButtonColor: "#111827",
+    fontSize: 14,
+    borderRadius: 4,
+    borderSize: 1,
+    borderColor: "#E5E7EB",
+    fontFamily: "THEME",
+    titleFontSize: 22,
+    titleColor: "#111827",
+    subheadingFontSize: 14,
+    subheadingColor: "#4B5563",
+    timerFontSize: 38,
+    timerColor: "#111827",
+    legendFontSize: 12,
+    legendColor: "#6B7280",
+    timerNumberFontSize: 38,
+    timerLabelFontSize: 12,
+    timerGap: 10,
+    timerUnitGap: 3,
+    timerPaddingBlock: 8,
+    timerPaddingInline: 12,
+    timerStyle: "PLAIN",
+    timerFormat: "UNITS",
+    timerNumberLayout: "INLINE",
+    timerShowLabels: true,
+    timerShowSeconds: true,
+    timerDaysLabel: "Days",
+    timerHoursLabel: "Hrs",
+    timerMinutesLabel: "Mins",
+    timerSecondsLabel: "Secs",
+    timerHideZeroDays: true,
+    timerSurfaceColor: "#FFFFFF",
+    timerSurfaceBorderColor: "#D1D5DB",
+    timerSurfaceBorderSize: 0,
+    timerSurfaceRadius: 8,
+    paddingBlock: 20,
+    paddingInline: 24,
+    marginTop: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    contentGap: 8,
+    contentMaxWidth: 960,
+    fullWidth: false,
+    positionMode: "FLOW",
+    positionSticky: false,
+    floatPosition: "FIXED",
+    floatOffsetTop: "0",
+    floatOffsetBottom: "auto",
+    floatOffsetLeft: "0",
+    floatOffsetRight: "0",
+    entranceAnimation: "FADE",
+    exitAnimation: "FADE",
+    animationDurationMs: 220,
+    timerTickAnimation: "NONE",
+    separateMobileDesign: false,
+    mobileEnabled: true,
+    customCss: "",
+    alignment: "CENTER",
+    showCloseButton: true,
+    closeButtonSize: 20,
+    dismissBehavior: "SHOW_AGAIN",
+    showButton: true,
+    showProgressBar: true,
+    progressTarget: "FREE_SHIPPING",
+    progressBarStyle: "BAR",
+    progressSteps: 4,
+    progressHeight: 8,
+    progressRadius: 999,
+    progressTrackColor: "#E5E7EB",
+    progressFillColor: "#22C55E",
+    progressTextColor: "#111827",
+    progressEffect: "NONE",
+    progressShowLabel: false,
+    showIcon: false,
+    icon: "NONE",
+    iconSize: 20,
+    customIconUrl: "",
+    showDiscountCode: true,
+    showCopyCodeButton: true,
+    showApplyDiscountButton: true,
+    offerCodeLayout: "INLINE",
+    offerCodeLabel: "Discount code",
+    copyCodeLabel: "Copy code",
+    copiedCodeLabel: "Copied",
+    applyDiscountLabel: "Apply discount",
+    appliedDiscountMessage: "Discount applied successfully.",
+    offerCodeTextColor: "#111827",
+    offerCodeBackgroundColor: "#FFFFFF",
+    offerCodeBorderColor: "#D1D5DB",
+    offerCodeFontSize: 13,
+    offerCodeBorderRadius: 4,
+    offerCodePaddingBlock: 5,
+    offerCodePaddingInline: 8,
+    offerCodeGap: 6,
+    offerCopyBehavior: "FEEDBACK",
+    offerApplyBehavior: "SHOW_APPLIED",
+  };
+
+  function normalizeDesign(input) {
+    var design = {};
+    var raw =
+      input && typeof input === "object" && !Array.isArray(input) ? input : {};
+
+    Object.keys(DEFAULT_DESIGN).forEach(function (key) {
+      design[key] = DEFAULT_DESIGN[key];
+    });
+    Object.keys(raw).forEach(function (key) {
+      var value = raw[key];
+      if (value !== undefined && value !== null) design[key] = value;
+    });
+
+    design.structure = normalizeStructure(raw.structure);
+
+    return design;
+  }
+
+  function normalizeStructure(input) {
+    var packed;
+    var output;
+
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      return null;
+    }
+
+    packed = decodePackedStructure(input.packed);
+    if (!packed) return null;
+
+    output = {};
+    Object.keys(input).forEach(function (key) {
+      output[key] = input[key];
+    });
+    output.packed = packed;
+    output.css = output.css || "";
+
+    return output;
+  }
+
+  function decodePackedStructure(value) {
+    if (typeof value !== "string" || !value.trim()) return null;
+
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return null;
+    }
+  }
+
   function el(tag, className) {
     var node = document.createElement(tag);
     if (className) node.className = className;
@@ -201,7 +361,9 @@
     var replacements = {
       time_left: friendlyTimeLeft(spec),
       year: String(now.getFullYear()),
-      month: now.toLocaleDateString(spec.locale || undefined, { month: "long" }),
+      month: now.toLocaleDateString(spec.locale || undefined, {
+        month: "long",
+      }),
       day: String(now.getDate()),
       weekday: now.toLocaleDateString(spec.locale || undefined, {
         weekday: "long",
@@ -282,9 +444,9 @@
   function getSurfaceBackground(design) {
     if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
       return (
-        "linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url(\"" +
+        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
         escapeCssUrl(design.backgroundImageUrl) +
-        "\") center / cover no-repeat"
+        '") center / cover no-repeat'
       );
     }
     if (design.backgroundType === "GRADIENT") {
@@ -303,6 +465,8 @@
 
   // Mirrors buildPreviewStyle() in CampaignPreview.tsx.
   function applyStyle(node, design) {
+    design = normalizeDesign(design);
+
     var vars = {
       "--cp-surface-bg": getSurfaceBackground(design),
       "--cp-bg": design.backgroundColor,
@@ -375,6 +539,8 @@
 
   // Mirrors buildTimerParts() in CampaignPreview.tsx.
   function buildTimerParts(remainingMs, design) {
+    design = normalizeDesign(design);
+
     var totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
     var days = Math.floor(totalSeconds / 86400);
     var includeDays = !design.timerHideZeroDays || days > 0;
@@ -438,6 +604,8 @@
 
   // Mirrors TimerDisplay() in CampaignPreview.tsx. Returns a DOM node or null.
   function buildTimer(spec, design, compact) {
+    design = normalizeDesign(design);
+
     var parts;
     if (spec.timer && spec.timer.isActive) {
       parts = buildTimerParts(spec.timer.remainingMs, design);
@@ -580,6 +748,7 @@
 
   function updateTimer(node, remainingMs, design) {
     if (!node) return;
+    design = normalizeDesign(design);
 
     // Single live countdown part (data-cp-slot="timer-days|hours|minutes|seconds").
     var partName = node.getAttribute("data-cp-timer-part");
@@ -633,7 +802,9 @@
       return;
     }
 
-    var units = node.querySelectorAll(".counterpulse-preview-timer-unit strong");
+    var units = node.querySelectorAll(
+      ".counterpulse-preview-timer-unit strong",
+    );
     for (var i = 0; i < units.length && i < parts.length; i += 1) {
       if (units[i].textContent !== parts[i].value) {
         units[i].textContent = parts[i].value;
@@ -668,7 +839,9 @@
       node.classList.contains("counterpulse-preview-timer--colon") ||
       node.classList.contains("counterpulse-preview-timer--inline-plain")
     ) {
-      var nextText = node.classList.contains("counterpulse-preview-timer--colon")
+      var nextText = node.classList.contains(
+        "counterpulse-preview-timer--colon",
+      )
         ? parts
             .map(function (part) {
               return part.value;
@@ -688,7 +861,9 @@
       return;
     }
 
-    var units = node.querySelectorAll(".counterpulse-preview-timer-unit strong");
+    var units = node.querySelectorAll(
+      ".counterpulse-preview-timer-unit strong",
+    );
     for (var i = 0; i < units.length && i < parts.length; i += 1) {
       if (units[i].textContent !== parts[i].value) {
         units[i].textContent = parts[i].value;
@@ -1119,11 +1294,12 @@
    */
   function build(spec) {
     spec = spec || {};
-    var design = spec.design || {};
+    spec.design = normalizeDesign(spec.design);
+    var design = spec.design;
     var variant = spec.variant || "bar";
 
-    // Structure-driven render (saved HTML). Falls through to the legacy builder
-    // when the campaign has no saved structure or anything goes wrong.
+    // Structure-driven render (saved HTML). Falls through to the standard
+    // builder when the campaign has no saved structure or anything goes wrong.
     if (design.structure) {
       var fromStructure = buildFromStructure(spec);
       if (fromStructure) return fromStructure;
@@ -1137,14 +1313,19 @@
           "counterpulse-preview-badge",
           "counterpulse-preview-badge--" + lower(badge.shape || "PILL"),
           "counterpulse-preview-badge--" + dash(badge.position || "TOP_RIGHT"),
+          "pp-badge",
+          "pp-badge--" + lower(badge.shape || "PILL"),
+          "pp-badge--" + dash(badge.position || "TOP_RIGHT"),
           spec.className || "",
         ]
           .filter(Boolean)
           .join(" "),
       );
       applyStyle(badgeNode, design);
-      if (spec.dataTestId) badgeNode.setAttribute("data-testid", spec.dataTestId);
+      if (spec.dataTestId)
+        badgeNode.setAttribute("data-testid", spec.dataTestId);
       var badgeLabel = document.createElement("span");
+      badgeLabel.className = "pp-badge-text";
       badgeLabel.textContent = interpolateMessage(
         badge.text || spec.headline || "",
         spec,
@@ -1152,7 +1333,10 @@
       badgeNode.appendChild(badgeLabel);
       if (spec.hasTimer) {
         var badgeTimer = buildTimer(spec, design, true);
-        if (badgeTimer) badgeNode.appendChild(badgeTimer);
+        if (badgeTimer) {
+          badgeTimer.classList.add("pp-countdown", "pp-countdown--compact");
+          badgeNode.appendChild(badgeTimer);
+        }
       }
       return badgeNode;
     }
@@ -1181,8 +1365,8 @@
     applyStyle(section, design);
     if (spec.dataTestId) section.setAttribute("data-testid", spec.dataTestId);
     // Per-surface scope so merchant custom CSS only affects this campaign.
-    var legacyScopeId = uniqueScopeId();
-    section.setAttribute("data-cp-uid", legacyScopeId);
+    var scopeId = uniqueScopeId();
+    section.setAttribute("data-cp-uid", scopeId);
 
     // Message block
     var message = el("div", "counterpulse-preview-message");
@@ -1211,7 +1395,8 @@
     }
 
     // Actions (offer + cta)
-    var offerNode = spec.couponNode || buildOffer(design, spec.offer, spec.offerHandlers);
+    var offerNode =
+      spec.couponNode || buildOffer(design, spec.offer, spec.offerHandlers);
     // The renderer pre-gates CTA visibility (showButton / cart-rescue rules),
     // so the surface simply renders whatever cta text it is handed.
     var hasCta = Boolean(spec.cta);
@@ -1249,7 +1434,7 @@
       var styleNode = document.createElement("style");
       styleNode.textContent = scopeCustomCss(
         design.customCss.replace(/<\/?\s*style/gi, ""),
-        '[data-cp-uid="' + legacyScopeId + '"]',
+        '[data-cp-uid="' + scopeId + '"]',
       );
       section.appendChild(styleNode);
     }
@@ -1264,13 +1449,24 @@
   // from that AST instead of the built-in surface builder: rebuild the DOM from
   // the dictionary-packed nodes, scope + inject the per-campaign CSS, then
   // hydrate the `data-cp-slot` placeholders with the same dynamic builders used
-  // by the legacy path (timer, offer, progress, icon, close, headline/body/cta).
-  // Falls back to null so build() can use the legacy path on any problem.
+  // by the standard builder (timer, offer, progress, icon, close,
+  // headline/body/cta). Falls back to null so build() can use the standard path
+  // on any problem.
   // -------------------------------------------------------------------------
 
   var SVG_TAGS = {
-    svg: 1, path: 1, circle: 1, line: 1, rect: 1, polygon: 1, polyline: 1,
-    ellipse: 1, g: 1, defs: 1, use: 1, title: 1,
+    svg: 1,
+    path: 1,
+    circle: 1,
+    line: 1,
+    rect: 1,
+    polygon: 1,
+    polyline: 1,
+    ellipse: 1,
+    g: 1,
+    defs: 1,
+    use: 1,
+    title: 1,
   };
   var SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -1377,8 +1573,7 @@
         }
       } else {
         var trailingWs = rawPrelude.slice(trimmedPrelude.length);
-        out +=
-          scopeCssSelectorList(trimmedPrelude, scope) + trailingWs + block;
+        out += scopeCssSelectorList(trimmedPrelude, scope) + trailingWs + block;
       }
       i = blockEnd + 1;
     }
@@ -1556,7 +1751,7 @@
   function buildFromStructure(spec) {
     var structure = spec.design && spec.design.structure;
     if (!structure || !structure.packed) return null;
-    // Badge variant keeps the legacy builder (its structure differs enough that
+    // Badge variant keeps the standard builder (its structure differs enough that
     // the saved block structure is not a drop-in).
     if (spec.variant === "badge") return null;
 
@@ -1596,7 +1791,10 @@
       "__CP_SCOPE__ .cp-message,__CP_SCOPE__ .cp-message-copy,__CP_SCOPE__ .cp-left{min-width:0}" +
       "__CP_SCOPE__ .cp-message-copy{flex:1 1 auto}" +
       "__CP_SCOPE__ .cp-message-copy strong,__CP_SCOPE__ .cp-message-copy span,__CP_SCOPE__ .cp-message-copy p{overflow-wrap:break-word;word-break:normal}";
-    var css = baseline + "\n" + (typeof structure.css === "string" ? structure.css : "");
+    var css =
+      baseline +
+      "\n" +
+      (typeof structure.css === "string" ? structure.css : "");
     var scoped = css
       .replace(/__CP_SCOPE__/g, '[data-cp-uid="' + scopeId + '"]')
       .replace(/<\/?\s*style/gi, "");
@@ -1801,7 +1999,8 @@
       totalMs = Math.round(Number(timer.durationMinutes)) * 60000;
     } else {
       var startsAt = parseDate(campaign.startsAt);
-      if (startsAt && endsAt) totalMs = Math.max(0, endsAt.getTime() - startsAt.getTime());
+      if (startsAt && endsAt)
+        totalMs = Math.max(0, endsAt.getTime() - startsAt.getTime());
     }
     return {
       isActive: Boolean(endsAt && !expired),
@@ -1815,6 +2014,7 @@
     build: build,
     interpolate: interpolateMessage,
     applyStyle: applyStyle,
+    normalizeDesign: normalizeDesign,
     computeTimerState: computeTimerState,
     buildTimer: buildTimer,
     updateTimer: updateTimer,

@@ -5,6 +5,8 @@ import type { LoaderFunctionArgs } from "react-router";
 import { requireE2ETestMode } from "../services/e2e-test.server";
 
 const allowedAssets = new Set([
+  "campaign-surface.css",
+  "campaign-surface.js",
   "cart-timer.js",
   "delivery-cutoff.js",
   "discount-code.js",

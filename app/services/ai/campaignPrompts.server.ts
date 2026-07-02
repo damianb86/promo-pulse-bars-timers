@@ -88,7 +88,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v20";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v21";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -198,6 +198,38 @@ input.generateVisualAssets is false/absent):
    spacing effect, or a slight reorder). Prefer empty structureHtml/structureCss.
 7. The output should look like a polished customized preset, not a raw custom
    webpage. First-class Promo Pulse settings should carry the design.
+`.trim();
+
+const TONE_AND_RICHNESS_GUIDANCE = `
+Let the merchant tone drive the VISUAL (input.brandTone) — REQUIRED:
+- brandTone is not just a copywriting hint; it must shape the visual mood. Two
+  campaigns with the same goal but different tones MUST look clearly different.
+  In the preset-first (no-image) flow the chosen preset/templateKey is your main
+  lever for palette and mood, so pick the preset whose feel matches the tone,
+  then tune the supported settings.
+- Tone → preset/mood direction (pick the closest fitting preset from the catalog;
+  these are guides, not the only valid choice):
+  * premium → confident and refined with strong contrast; prefer a rich dark or
+    deep branded background (e.g. premium-dark) or an elegant contained card.
+  * luxury  → understated and elegant, high contrast, generous spacing; a
+    deep/muted sophisticated palette, refined type, subtle borders/radius.
+  * urgent  → bold and high-energy with a hot, saturated palette (e.g. flash-sale
+    or black-friday), a prominent timer using GROUPED/BOXES surfaces, punchy CTA.
+  * playful → warm, friendly and colorful (e.g. holiday); rounded corners, a
+    friendly icon, lively accents.
+  * minimal → the ONLY tone that should read clean/understated: a light or white
+    background, PLAIN timer, few accents (e.g. clean-minimal). Do NOT apply this
+    restraint to the other tones.
+- ANTI-DEFAULT RULE: unless brandTone is "minimal" (or the merchant explicitly
+  asked for a clean/simple/white look), do NOT default to a plain white
+  background or the clean-minimal preset. Choose a preset with a distinctive,
+  on-brand background and palette, and give the timer a real surface treatment
+  (GROUPED or BOXES) instead of bare PLAIN digits when the placement allows.
+- The goal only sets a STARTING family; the tone decides the mood. A low-stock,
+  free-shipping, or delivery campaign for a premium/luxury/urgent brand must still
+  look premium/bold — not a plain light card. When the goal's obvious preset is
+  plain but the tone is not minimal, pick a richer preset (or richer timer surface
+  and deeper palette via the preset) that still fits the goal.
 `.trim();
 
 const PRESET_FIRST_DESIGN_FIELDS = `
@@ -483,20 +515,22 @@ Structural CSS (structureCss) — style the structure and add effects:
   gradients should be design.gradient*, buttons should be design.button*, and
   progress/timer visuals should be their design fields. CSS should only add the
   small missing piece.
-- Scope every rule to this campaign with the __CP_SCOPE__ placeholder, which the
-  app replaces with a unique per-campaign selector at render time. Native surface
-  settings already provide background, color, border, radius, and typography for
-  the root .cp-promo. Use CSS for layout/effects that settings do not express,
-  e.g.:
-  __CP_SCOPE__ .cp-promo { display: flex; flex-wrap: wrap; gap: var(--cp-gap); }
-  __CP_SCOPE__ .cp-actions { gap: 12px; }
+- You do NOT need any scope prefix. The app automatically scopes every rule you
+  write to this campaign, so write plain CSS with the structure's own class names.
+  Native surface settings already provide background, color, border, radius, and
+  typography for the root .cp-promo. Use CSS for layout/effects that settings do
+  not express, e.g.:
+  .cp-promo { display: flex; flex-wrap: wrap; gap: var(--cp-gap); }
+  .cp-actions { gap: 12px; }
+- Do NOT use the old "__CP_SCOPE__" placeholder anymore. It still works if present
+  (kept for backward compatibility), but it is unnecessary — plain selectors are
+  scoped for you. Prefer clean, unprefixed selectors.
 - When you return structureHtml you SHOULD return structureCss too, otherwise the
   custom structure will render unstyled. If structureHtml is "", leave
   structureCss "" as well.
-- __CP_SCOPE__ is an ANCESTOR wrapper of your markup, so descendant selectors like
-  "__CP_SCOPE__ .cp-promo" correctly match your root element. If you need extra
-  custom CSS variables for effects that settings cannot express, define them on
-  "__CP_SCOPE__ {}" and style elements with "__CP_SCOPE__ .your-class {}".
+- To style the campaign root itself, target ".cp-promo". If you need extra custom
+  CSS variables for effects that settings cannot express, you may define them on
+  ".cp-promo {}" and style elements with ".your-class {}".
 
 Responsiveness (REQUIRED for every layout, predefined or custom):
 - The campaign MUST look correct at ANY width, not only via smaller-screen tweaks.
@@ -548,6 +582,8 @@ Responsiveness (REQUIRED for every layout, predefined or custom):
 ${DESIGN_QUALITY_GUIDANCE}
 
 ${PRESET_FIRST_GUIDANCE}
+
+${TONE_AND_RICHNESS_GUIDANCE}
 
 ${PRESET_FIRST_DESIGN_FIELDS}
 

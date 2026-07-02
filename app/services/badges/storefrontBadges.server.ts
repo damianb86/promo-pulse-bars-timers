@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   CampaignStatus,
   CampaignType,
@@ -27,8 +29,10 @@ import {
 import { canUsePremiumFeature } from "../premiumFeatures.server";
 import {
   applySettingsToStorefrontContext,
+  defaultShopSettingsValues,
   getShopSettingsOrDefaults,
   serializePublicShopSettings,
+  type PublicShopSettings,
 } from "../shopSettings.server";
 import {
   buildCorsHeaders,
@@ -53,9 +57,9 @@ export type StorefrontBadge = {
   timer: StorefrontCampaignResponseItem["timer"];
   badge: {
     badgeText: string;
-    badgeShape: string;
-    badgePosition: string;
-    url: string;
+    badgeShape?: string;
+    badgePosition?: string;
+    url?: string;
   };
   startsAt: string | null;
   endsAt: string | null;
@@ -87,7 +91,7 @@ export async function loadStorefrontBadgesPayload(
   if (!access.ok) {
     return jsonResponse(
       { error: access.error },
-      { status: access.status, cacheControl: "no-store", access },
+      { status: access.status, cacheControl: "no-store", access, request },
     );
   }
 
@@ -98,7 +102,7 @@ export async function loadStorefrontBadgesPayload(
   if (!rateLimit.allowed) {
     return jsonResponse(
       { error: "Too many requests. Try again shortly." },
-      { status: 429, cacheControl: "no-store", rateLimit, access },
+      { status: 429, cacheControl: "no-store", rateLimit, access, request },
     );
   }
 
@@ -107,7 +111,12 @@ export async function loadStorefrontBadgesPayload(
   if (!shop) {
     return jsonResponse(
       { badges: [], settings: null },
-      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
+      {
+        cacheControl: getBadgeCacheControl(context),
+        rateLimit,
+        access,
+        request,
+      },
     );
   }
 
@@ -120,14 +129,19 @@ export async function loadStorefrontBadgesPayload(
   if (context.placement && !placementType) {
     return jsonResponse(
       { badges: [], settings: publicSettings },
-      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
+      {
+        cacheControl: getBadgeCacheControl(context),
+        rateLimit,
+        access,
+        request,
+      },
     );
   }
 
   if (await hasReachedMonthlyImpressions(shop)) {
     return jsonResponse(
       { badges: [], settings: publicSettings },
-      { cacheControl: "no-store", rateLimit, access },
+      { cacheControl: "no-store", rateLimit, access, request },
     );
   }
 
@@ -150,7 +164,12 @@ export async function loadStorefrontBadgesPayload(
         gated: !advancedGate.allowed,
         requiredPlan: advancedGate.requiredPlan,
       },
-      { cacheControl: getBadgeCacheControl(context), rateLimit, access },
+      {
+        cacheControl: getBadgeCacheControl(context),
+        rateLimit,
+        access,
+        request,
+      },
     );
   }
 
@@ -178,7 +197,7 @@ export async function loadStorefrontBadgesPayload(
       gated: !advancedGate.allowed,
       requiredPlan: advancedGate.requiredPlan,
     },
-    { cacheControl: getBadgeCacheControl(context), rateLimit, access },
+    { cacheControl: getBadgeCacheControl(context), rateLimit, access, request },
   );
 }
 
@@ -499,8 +518,7 @@ function buildSimpleBadgeFallback({
 
   return serializedCampaigns
     .filter(
-      (campaign) =>
-        campaign.badge?.badgeText || campaign.texts?.badgeText,
+      (campaign) => campaign.badge?.badgeText || campaign.texts?.badgeText,
     )
     .map(toSimpleStorefrontBadge);
 }
@@ -522,12 +540,12 @@ function toAdvancedStorefrontBadge(
     placement: getCampaignPlacement(rule.campaign, context),
     design: mergeBadgeDesign(campaignDesign, ruleDesign),
     timer: serializeStorefrontCampaign(rule.campaign, context)?.timer ?? null,
-    badge: {
-      badgeText: badge.text,
-      badgeShape: readBadgeShape(ruleDesign.shape),
-      badgePosition: readBadgePosition(ruleDesign.position),
-      url: ruleDesign.url ?? "",
-    },
+    badge: compactBadgePayload({
+      text: badge.text,
+      shape: readBadgeShape(ruleDesign.shape),
+      position: readBadgePosition(ruleDesign.position),
+      url: ruleDesign.url,
+    }),
     startsAt: rule.campaign.startsAt?.toISOString() ?? null,
     endsAt: rule.campaign.endsAt?.toISOString() ?? null,
     timezone: rule.campaign.timezone,
@@ -546,15 +564,38 @@ function toSimpleStorefrontBadge(
     placement: campaign.placement,
     design: campaign.design,
     timer: campaign.timer,
-    badge: {
-      badgeText: campaign.badge?.badgeText || campaign.texts.badgeText,
-      badgeShape: campaign.badge?.badgeShape ?? "PILL",
-      badgePosition: campaign.badge?.badgePosition ?? "TOP_RIGHT",
-      url: "",
-    },
+    badge: compactBadgePayload({
+      text: campaign.badge?.badgeText || campaign.texts.badgeText,
+      shape: campaign.badge?.badgeShape,
+      position: campaign.badge?.badgePosition,
+    }),
     startsAt: campaign.startsAt,
     endsAt: campaign.endsAt,
     timezone: campaign.timezone,
+  };
+}
+
+function compactBadgePayload({
+  text,
+  shape,
+  position,
+  url,
+}: {
+  text: string;
+  shape?: string;
+  position?: string;
+  url?: string | null;
+}) {
+  const normalizedShape = readBadgeShape(shape);
+  const normalizedPosition = readBadgePosition(position);
+
+  return {
+    badgeText: text,
+    ...(normalizedShape !== "PILL" ? { badgeShape: normalizedShape } : {}),
+    ...(normalizedPosition !== "TOP_RIGHT"
+      ? { badgePosition: normalizedPosition }
+      : {}),
+    ...(url ? { url } : {}),
   };
 }
 
@@ -608,13 +649,32 @@ function jsonResponse(
     cacheControl: string;
     rateLimit?: ReturnType<typeof checkStorefrontRateLimit>;
     access?: ReturnType<typeof verifyStorefrontAccess>;
+    request?: Request;
   },
 ) {
+  const compactBody = compactBadgeResponse(body);
+  const noStore = /\bno-store\b/i.test(options.cacheControl);
+  const etag =
+    !noStore && (options.status ?? 200) >= 200 && (options.status ?? 200) < 300
+      ? quoteEtag(stableHash(compactBody))
+      : "";
   const headers = new Headers({
     "Cache-Control": options.cacheControl,
-    "Content-Type": "application/json; charset=utf-8",
     ...buildCorsHeaders(options.access),
   });
+
+  if (etag) {
+    const maxAge = readCacheControlMaxAge(options.cacheControl);
+
+    headers.set("ETag", etag);
+    if (maxAge !== null) {
+      headers.set(
+        "X-Promo-Pulse-Cache-Expires-At",
+        new Date(Date.now() + maxAge * 1000).toISOString(),
+      );
+      headers.set("X-Promo-Pulse-Client-Cache-Max-Age", String(maxAge));
+    }
+  }
 
   if (options.rateLimit) {
     headers.set("X-RateLimit-Limit", String(options.rateLimit.limit));
@@ -625,10 +685,129 @@ function jsonResponse(
     );
   }
 
-  return new Response(JSON.stringify(body), {
+  if (etag && requestMatchesEtag(options.request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+
+  headers.set("Content-Type", "application/json; charset=utf-8");
+
+  return new Response(JSON.stringify(compactBody), {
     status: options.status ?? 200,
     headers,
   });
+}
+
+function requestMatchesEtag(request: Request | undefined, etag: string) {
+  const header = request?.headers.get("if-none-match");
+
+  if (!header) return false;
+
+  return header
+    .split(",")
+    .map((value) => value.trim())
+    .includes(etag);
+}
+
+function readCacheControlMaxAge(value: string) {
+  const match = value.match(/\bmax-age=(\d+)/i);
+
+  return match ? Number(match[1]) : null;
+}
+
+function quoteEtag(value: string) {
+  return `"ppb-${value}"`;
+}
+
+function stableHash(value: unknown) {
+  return createHash("sha256")
+    .update(JSON.stringify(normalizeForHash(value)))
+    .digest("hex")
+    .slice(0, 32);
+}
+
+function normalizeForHash(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeForHash);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.keys(value as Record<string, unknown>)
+    .sort()
+    .reduce<Record<string, unknown>>((output, key) => {
+      output[key] = normalizeForHash((value as Record<string, unknown>)[key]);
+      return output;
+    }, {});
+}
+
+function compactBadgeResponse(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(compactBadgeResponse);
+  }
+
+  if (!value || typeof value !== "object") return value;
+
+  const output: Record<string, unknown> = {};
+
+  for (const [key, entry] of Object.entries(value)) {
+    const compactedEntry =
+      key === "settings" && entry
+        ? compactSettingsPayload(entry as PublicShopSettings)
+        : compactBadgeResponse(entry);
+
+    if (isEmptyStorefrontValue(compactedEntry)) continue;
+
+    output[key] = compactedEntry;
+  }
+
+  return output;
+}
+
+function compactSettingsPayload(settings: PublicShopSettings) {
+  const output = Object.entries(settings).reduce<Record<string, unknown>>(
+    (values, [key, value]) => {
+      if (isEmptyStorefrontValue(value)) return values;
+      if (isDefaultSettingValue(key, value)) return values;
+
+      values[key] = value;
+      return values;
+    },
+    {},
+  );
+
+  return Object.keys(output).length > 0 ? output : null;
+}
+
+function isDefaultSettingValue(key: string, value: unknown) {
+  const defaultValue =
+    defaultShopSettingsValues[key as keyof typeof defaultShopSettingsValues];
+
+  if (Array.isArray(value) && Array.isArray(defaultValue)) {
+    return arraysEqual(value, defaultValue);
+  }
+
+  if (isPlainObject(value) && isPlainObject(defaultValue)) {
+    return JSON.stringify(value) === JSON.stringify(defaultValue);
+  }
+
+  return value === defaultValue;
+}
+
+function arraysEqual(first: unknown[], second: unknown[]) {
+  return (
+    first.length === second.length &&
+    first.every((value, index) => value === second[index])
+  );
+}
+
+function isEmptyStorefrontValue(value: unknown) {
+  return (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    (isPlainObject(value) && Object.keys(value).length === 0)
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function getPlacementType(value: string) {

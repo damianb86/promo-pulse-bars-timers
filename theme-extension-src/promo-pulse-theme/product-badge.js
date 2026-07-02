@@ -8,6 +8,8 @@
   var collectionBadgeBatchQueue = [];
   var collectionBadgeBatchTimer = null;
   var collectionBadgeBatchSequence = 0;
+  var badgeEligibilityCache = {};
+  var badgeEligibilityPendingRequests = {};
   var badgeRequestTtlMs = 300000;
 
   [].slice.call(document.querySelectorAll(".pp-product-badge")).forEach(init);
@@ -163,14 +165,85 @@
   }
 
   function fetchBadges(config) {
-    if (shouldBatchCollectionBadgeRequest(config)) {
-      return fetchCollectionBadgeBatch(config);
+    return hasConfiguredBadgeCampaigns(config).then(function (hasBadges) {
+      if (!hasBadges) return [];
+
+      if (shouldBatchCollectionBadgeRequest(config)) {
+        return fetchCollectionBadgeBatch(config);
+      }
+
+      return fetchJson(buildBadgesUrl(config)).then(function (payload) {
+        applyStorefrontSettings(config, payload.settings);
+        return Array.isArray(payload.badges) ? payload.badges : [];
+      });
+    });
+  }
+
+  function hasConfiguredBadgeCampaigns(config) {
+    var eligibilityConfig;
+    var eligibilityKey;
+
+    if (typeof window.PromoPulseFetchCampaigns !== "function") {
+      return Promise.resolve(false);
     }
 
-    return fetchJson(buildBadgesUrl(config)).then(function (payload) {
-      applyStorefrontSettings(config, payload.settings);
-      return Array.isArray(payload.badges) ? payload.badges : [];
-    });
+    eligibilityConfig = buildBadgeEligibilityConfig(config);
+    eligibilityKey = buildBadgeEligibilityKey(eligibilityConfig);
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        badgeEligibilityCache,
+        eligibilityKey,
+      )
+    ) {
+      return Promise.resolve(badgeEligibilityCache[eligibilityKey]);
+    }
+
+    if (badgeEligibilityPendingRequests[eligibilityKey]) {
+      return badgeEligibilityPendingRequests[eligibilityKey];
+    }
+
+    badgeEligibilityPendingRequests[eligibilityKey] = window
+      .PromoPulseFetchCampaigns(eligibilityConfig, "", {})
+      .then(function (payload) {
+        applyStorefrontSettings(config, payload.settings);
+        badgeEligibilityCache[eligibilityKey] = payload.badgesEnabled === true;
+        return badgeEligibilityCache[eligibilityKey];
+      })
+      .catch(function () {
+        badgeEligibilityCache[eligibilityKey] = false;
+        return false;
+      })
+      .finally(function () {
+        delete badgeEligibilityPendingRequests[eligibilityKey];
+      });
+
+    return badgeEligibilityPendingRequests[eligibilityKey];
+  }
+
+  function buildBadgeEligibilityConfig(config) {
+    return {
+      shop: config.shop,
+      locale: config.locale,
+      country: config.country,
+      market: config.market,
+      currency: config.currency,
+      device: config.device,
+      apiBaseUrl: config.apiBaseUrl,
+    };
+  }
+
+  function buildBadgeEligibilityKey(config) {
+    return [
+      config.shop || "",
+      window.location.pathname || "/",
+      config.locale || "",
+      config.country || "",
+      config.market || "",
+      config.currency || "",
+      config.device || "",
+      config.apiBaseUrl || "",
+    ].join("|");
   }
 
   function shouldBatchCollectionBadgeRequest(config) {
@@ -267,7 +340,7 @@
   }
 
   function buildBatchBadgeContext(config) {
-    return {
+    return compactContext({
       key: config.__badgeBatchKey,
       productId: config.productId,
       productTags: config.productTags,
@@ -279,7 +352,22 @@
       compareAtPrice: config.compareAtPrice,
       discountActive: config.discountActive,
       metafields: config.metafields,
-    };
+    });
+  }
+
+  function compactContext(context) {
+    var output = {};
+
+    Object.keys(context).forEach(function (key) {
+      var value = context[key];
+
+      if (value === undefined || value === null || value === "") return;
+      if (Array.isArray(value) && value.length === 0) return;
+
+      output[key] = value;
+    });
+
+    return output;
   }
 
   function fetchJson(url) {
@@ -802,7 +890,7 @@
 
   function renderBadge(badgePayload, isAutomaticSlot, slot) {
     var badge = badgePayload.badge || {};
-    var design = badgePayload.design || {};
+    var design = normalizeDesign(badgePayload.design);
     var text = badge.badgeText || badgePayload.text || "Limited offer";
     var href = badge.url || "";
     var timerState = calculateTimerState(badgePayload, new Date());
@@ -1402,5 +1490,18 @@
     config.customCollectionCardSelector =
       settings.customCollectionCardSelector ||
       config.customCollectionCardSelector;
+  }
+
+  function normalizeDesign(design) {
+    if (
+      window.CountPulseSurface &&
+      typeof window.CountPulseSurface.normalizeDesign === "function"
+    ) {
+      return window.CountPulseSurface.normalizeDesign(design);
+    }
+
+    return design && typeof design === "object" && !Array.isArray(design)
+      ? design
+      : {};
   }
 })();

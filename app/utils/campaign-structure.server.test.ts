@@ -72,4 +72,26 @@ describe("generateStructureFromHtml", () => {
   it("returns null for empty html", () => {
     expect(generateStructureFromHtml("", design)).toBeNull();
   });
+
+  it("auto-scopes plain hand-edited/AI css (no __CP_SCOPE__ needed)", () => {
+    const result = generateStructureFromHtml(
+      '<section class="cp-promo"><div data-cp-slot="headline"></div></section>',
+      design,
+      ".cp-promo { display: flex; }",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.css).toContain("__CP_SCOPE__ .cp-promo { display: flex; }");
+  });
+
+  it("keeps already-scoped css untouched (backward compatible)", () => {
+    const result = generateStructureFromHtml(
+      '<section class="cp-promo"><div data-cp-slot="headline"></div></section>',
+      design,
+      "__CP_SCOPE__ .cp-promo { display: flex; }",
+    );
+    expect(result!.css).toContain("__CP_SCOPE__ .cp-promo { display: flex; }");
+    expect(result!.css).not.toContain(
+      "__CP_SCOPE__ __CP_SCOPE__",
+    );
+  });
 });

@@ -15,6 +15,7 @@ import {
   deriveCampaignStructureSpec,
   encodePackedStructure,
   packTree,
+  scopeCustomCss,
   type StructureSpecDesign,
   type StructureSpecViewModel,
   type StyleDesignInput,
@@ -51,9 +52,12 @@ export function generateStructureFromHtml(
 ): GeneratedStructure | null {
   const tree = parseSafeStructureTree(html);
   if (!tree) return null;
+  // Auto-scope the hand-edited/AI CSS so plain selectors (`.cp-promo {}`) only
+  // affect this campaign — the `__CP_SCOPE__` token is optional (already-scoped
+  // selectors pass through untouched).
   const css =
     typeof cssOverride === "string" && cssOverride.trim()
-      ? cssOverride
+      ? scopeCustomCss(cssOverride)
       : buildStructureCss(design);
   return {
     compact: encodePackedStructure(packTree(tree)),

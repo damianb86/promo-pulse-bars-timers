@@ -375,7 +375,8 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     const mismatchBody = await mismatchResponse.json();
 
     expect(mismatchResponse.status).toBe(200);
-    expect(mismatchBody.campaigns).toEqual([]);
+    expect(mismatchBody).not.toHaveProperty("campaigns");
+    expect(mismatchBody).not.toHaveProperty("placements");
   });
 
   it("flushes cached storefront payloads when publishing campaign changes", async () => {

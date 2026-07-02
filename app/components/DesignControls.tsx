@@ -578,37 +578,32 @@ export function DesignControls({
               />
               <ColorField
                 error={errors.timerColor}
-                label="Timer color"
+                label="Number color"
                 name="timerColor"
                 value={values.timerColor}
                 onChange={(value) => updateColor("timerColor", value)}
               />
-              <NumberField
-                error={errors.timerFontSize}
-                label="Timer size"
-                max={72}
-                min={12}
-                name="timerFontSize"
-                value={values.timerFontSize}
-                onChange={(value) => updateNumber("timerFontSize", value)}
-              />
               <ColorField
                 error={errors.legendColor}
-                label="Legend color"
+                label="Label color"
                 name="legendColor"
                 value={values.legendColor}
                 onChange={(value) => updateColor("legendColor", value)}
               />
-              <NumberField
-                error={errors.legendFontSize}
-                label="Legend size"
-                max={24}
-                min={10}
-                name="legendFontSize"
-                value={values.legendFontSize}
-                onChange={(value) => updateNumber("legendFontSize", value)}
-              />
             </div>
+            {/* "Timer size"/"Legend size" were duplicates of Number/Label size;
+                the values are kept (fed as fallbacks in the CSS vars) but no
+                longer separately editable. */}
+            <input
+              name="timerFontSize"
+              type="hidden"
+              value={values.timerFontSize}
+            />
+            <input
+              name="legendFontSize"
+              type="hidden"
+              value={values.legendFontSize}
+            />
 
             <DesignGroup error={errors.timerStyle} label="Type">
               <div className="counterpulse-timer-style-picker counterpulse-timer-style-picker--combined">

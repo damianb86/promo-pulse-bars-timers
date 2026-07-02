@@ -510,13 +510,15 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-border-color": design.borderColor,
     "--cp-align": getTextAlign(design.alignment),
     "--cp-justify": getJustifyContent(design.alignment),
+    "--cp-justify-items": getJustifyItems(design.alignment),
     "--cp-title-size": `${design.titleFontSize}px`,
     "--cp-title-color": design.titleColor,
     "--cp-subheading-size": `${design.subheadingFontSize}px`,
     "--cp-subheading-color": design.subheadingColor,
-    "--cp-timer-size": `${design.timerFontSize}px`,
+    // Number/Label size drive all timer sizing (see buildStructureCssVars).
+    "--cp-timer-size": `${design.timerNumberFontSize}px`,
     "--cp-timer-color": design.timerColor,
-    "--cp-legend-size": `${design.legendFontSize}px`,
+    "--cp-legend-size": `${design.timerLabelFontSize}px`,
     "--cp-legend-color": design.legendColor,
     "--cp-timer-number-size": `${design.timerNumberFontSize}px`,
     "--cp-timer-label-size": `${design.timerLabelFontSize}px`,
@@ -574,6 +576,12 @@ function getJustifyContent(alignment: CampaignDesignValues["alignment"]) {
 function getTextAlign(alignment: CampaignDesignValues["alignment"]) {
   if (alignment === "LEFT") return "left";
   if (alignment === "RIGHT") return "right";
+  return "center";
+}
+
+function getJustifyItems(alignment: CampaignDesignValues["alignment"]) {
+  if (alignment === "LEFT") return "start";
+  if (alignment === "RIGHT") return "end";
   return "center";
 }
 

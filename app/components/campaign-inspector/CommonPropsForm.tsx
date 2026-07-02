@@ -2,6 +2,63 @@ import { useMemo, useState } from "react";
 
 import { parseStyle } from "../../utils/campaign-structure";
 
+// Common CSS properties surfaced as (non-restricting) autocomplete suggestions
+// for the free-form Custom CSS property input.
+const CSS_PROPERTY_SUGGESTIONS = [
+  "align-items",
+  "align-self",
+  "background",
+  "background-color",
+  "background-image",
+  "border",
+  "border-color",
+  "border-radius",
+  "border-width",
+  "box-shadow",
+  "color",
+  "cursor",
+  "display",
+  "filter",
+  "flex",
+  "flex-direction",
+  "flex-wrap",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "gap",
+  "grid-template-columns",
+  "height",
+  "justify-content",
+  "justify-items",
+  "letter-spacing",
+  "line-height",
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "max-width",
+  "min-height",
+  "min-width",
+  "opacity",
+  "outline",
+  "overflow",
+  "padding",
+  "padding-block",
+  "padding-inline",
+  "position",
+  "text-align",
+  "text-decoration",
+  "text-transform",
+  "transform",
+  "transition",
+  "white-space",
+  "width",
+  "z-index",
+];
+
+const CSS_PROPERTY_DATALIST_ID = "counterpulse-css-property-suggestions";
+
 // Per-node CSS editor (the shared "common properties"). One collapsible panel
 // (collapsed by default, slides down on click) exposing every inline-style
 // declaration as free-form Custom CSS. Fields reuse the design-control classes
@@ -122,10 +179,16 @@ export function CommonPropsForm({
               </div>
             )}
 
+            <datalist id={CSS_PROPERTY_DATALIST_ID}>
+              {CSS_PROPERTY_SUGGESTIONS.map((property) => (
+                <option key={property} value={property} />
+              ))}
+            </datalist>
             <div className="counterpulse-inspector-custom-add">
               <input
                 aria-label="Custom property"
                 className="counterpulse-inspector-custom-add__key"
+                list={CSS_PROPERTY_DATALIST_ID}
                 placeholder="property (e.g. box-shadow)"
                 type="text"
                 value={newKey}

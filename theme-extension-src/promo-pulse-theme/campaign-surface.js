@@ -273,6 +273,12 @@
     return "center";
   }
 
+  function getJustifyItems(alignment) {
+    if (alignment === "LEFT") return "start";
+    if (alignment === "RIGHT") return "end";
+    return "center";
+  }
+
   function getSurfaceBackground(design) {
     if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
       return (
@@ -313,13 +319,17 @@
       "--cp-border-color": design.borderColor,
       "--cp-align": getTextAlign(design.alignment),
       "--cp-justify": getJustifyContent(design.alignment),
+      "--cp-justify-items": getJustifyItems(design.alignment),
       "--cp-title-size": num(design.titleFontSize, 18) + "px",
       "--cp-title-color": design.titleColor,
       "--cp-subheading-size": num(design.subheadingFontSize, 14) + "px",
       "--cp-subheading-color": design.subheadingColor,
-      "--cp-timer-size": num(design.timerFontSize, 20) + "px",
+      // Number/Label size drive all timer sizing (see buildStructureCssVars).
+      "--cp-timer-size":
+        num(design.timerNumberFontSize, num(design.timerFontSize, 20)) + "px",
       "--cp-timer-color": design.timerColor,
-      "--cp-legend-size": num(design.legendFontSize, 11) + "px",
+      "--cp-legend-size":
+        num(design.timerLabelFontSize, num(design.legendFontSize, 11)) + "px",
       "--cp-legend-color": design.legendColor,
       "--cp-timer-number-size":
         num(design.timerNumberFontSize, num(design.timerFontSize, 20)) + "px",

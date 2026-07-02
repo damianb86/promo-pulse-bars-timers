@@ -10956,7 +10956,7 @@ s-page::part(page) {
   box-sizing: border-box;
   display: grid;
   align-items: center;
-  justify-items: center;
+  justify-items: var(--cp-justify-items, center);
   gap: var(--cp-gap);
   margin: var(--cp-margin-top, 0) var(--cp-margin-right, 0)
     var(--cp-margin-bottom, 0) var(--cp-margin-left, 0);
@@ -10988,7 +10988,8 @@ s-page::part(page) {
 
 .counterpulse-preview-promo--bar {
   width: calc(100% - 96px);
-  margin: 20px auto 0;
+  /* Keep horizontal auto-centering but honor the top/bottom margin controls. */
+  margin: var(--cp-margin-top, 20px) auto var(--cp-margin-bottom, 0);
 }
 
 .counterpulse-preview-promo--bar.counterpulse-preview-promo--full-width {

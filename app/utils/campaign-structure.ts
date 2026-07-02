@@ -1097,6 +1097,14 @@ function justifyContent(alignment: string | undefined): string {
   return "center";
 }
 
+// Grid `justify-items` value (start/center/end) so the alignment control also
+// moves grid items (timer/actions/etc.), not just inline text.
+function justifyItems(alignment: string | undefined): string {
+  if (alignment === "LEFT") return "start";
+  if (alignment === "RIGHT") return "end";
+  return "center";
+}
+
 // Builds the `--cp-*` declarations for a campaign. Returned as a record so it can
 // be applied inline (admin preview) or serialized to a scoped CSS string.
 export function buildStructureCssVars(design: StyleDesignInput): Record<string, string> {
@@ -1116,21 +1124,33 @@ export function buildStructureCssVars(design: StyleDesignInput): Record<string, 
     "--cp-border-color": design.borderColor ?? "",
     "--cp-align": textAlign(design.alignment),
     "--cp-justify": justifyContent(design.alignment),
+    "--cp-justify-items": justifyItems(design.alignment),
     "--cp-title-size": px(design.titleFontSize, 18),
     "--cp-title-color": design.titleColor ?? "",
     "--cp-subheading-size": px(design.subheadingFontSize, 14),
     "--cp-subheading-color": design.subheadingColor ?? "",
-    "--cp-timer-size": px(design.timerFontSize, 20),
+    // "Number size" (timerNumberFontSize) and "Label size" (timerLabelFontSize)
+    // are the single source of truth for timer digit/label sizing. The older
+    // --cp-timer-size / --cp-legend-size vars (still used by some storefront
+    // rules and the colon/inline/compact timer) are fed the same values so the
+    // editor preview and the stored/storefront CSS stay in sync.
+    "--cp-timer-size": px(
+      design.timerNumberFontSize ?? design.timerFontSize,
+      20,
+    ),
     "--cp-timer-color": design.timerColor ?? "",
-    "--cp-legend-size": px(design.legendFontSize, 11),
+    "--cp-legend-size": px(
+      design.timerLabelFontSize ?? design.legendFontSize,
+      11,
+    ),
     "--cp-legend-color": design.legendColor ?? "",
     "--cp-timer-number-size": px(
-      design.timerNumberFontSize,
-      design.timerFontSize ?? 20,
+      design.timerNumberFontSize ?? design.timerFontSize,
+      20,
     ),
     "--cp-timer-label-size": px(
-      design.timerLabelFontSize,
-      design.legendFontSize ?? 11,
+      design.timerLabelFontSize ?? design.legendFontSize,
+      11,
     ),
     "--cp-timer-gap": px(design.timerGap, 10),
     "--cp-timer-unit-gap": px(design.timerUnitGap, 3),

@@ -1300,7 +1300,7 @@ export function DesignControls({
           </DesignField>
           <NumberField
             error={errors.animationDurationMs}
-            label="Duration ms"
+            label="Entrance/Close duration ms"
             max={1500}
             min={0}
             name="animationDurationMs"
@@ -1326,6 +1326,15 @@ export function DesignControls({
               ))}
             </select>
           </DesignField>
+          <NumberField
+            error={errors.timerTickDurationMs}
+            label="Timer change duration ms"
+            max={1500}
+            min={0}
+            name="timerTickDurationMs"
+            value={values.timerTickDurationMs}
+            onChange={(value) => updateNumber("timerTickDurationMs", value)}
+          />
         </div>
       </DesignPanel>
 
@@ -3277,7 +3286,9 @@ function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
     return "radius";
   }
   if (name === "timerSurfaceBorderSize") return "borderSize";
-  if (name === "animationDurationMs") return "duration";
+  if (name === "animationDurationMs" || name === "timerTickDurationMs") {
+    return "duration";
+  }
   if (name === "iconSize") return "iconSize";
   if (name === "contentGap" || name === "offerCodeGap" || name === "timerGap" || name === "timerUnitGap") return "gap";
   if (name === "contentMaxWidth") return "maxWidth";
@@ -3292,7 +3303,9 @@ function getNumberFieldIcon(name: NumberDesignKey): CardControlIconKind {
 }
 
 function getNumberFieldUnit(name: NumberDesignKey) {
-  if (name === "animationDurationMs") return "ms";
+  if (name === "animationDurationMs" || name === "timerTickDurationMs") {
+    return "ms";
+  }
 
   return "px";
 }

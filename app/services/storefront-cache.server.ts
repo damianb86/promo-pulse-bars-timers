@@ -335,7 +335,14 @@ export function nextStorefrontCampaignBoundary(
 ) {
   const nowMs = now.getTime();
   const boundaries = campaigns
-    .flatMap((campaign) => [campaign.startsAt, campaign.endsAt])
+    .flatMap((campaign) => [
+      campaign.startsAt,
+      campaign.endsAt,
+      ...campaign.experiments.flatMap((experiment) => [
+        experiment.startsAt,
+        experiment.endsAt,
+      ]),
+    ])
     .map((value) => readDate(value))
     .filter((value): value is Date => Boolean(value))
     .filter((value) => value.getTime() > nowMs)
@@ -356,6 +363,19 @@ export function storefrontActiveSignature(
       placements: campaign.placements.map((placement) => ({
         placementType: placement.placementType,
         enabled: placement.enabled,
+      })),
+      experiments: campaign.experiments.map((experiment) => ({
+        id: experiment.id,
+        status: experiment.status,
+        startsAt: experiment.startsAt,
+        endsAt: experiment.endsAt,
+        updatedAt: experiment.updatedAt,
+        variants: experiment.variants.map((variant) => ({
+          id: variant.id,
+          status: variant.status,
+          weight: variant.weight,
+          updatedAt: variant.updatedAt,
+        })),
       })),
     })),
   );

@@ -92,6 +92,7 @@
     exitAnimation: "FADE",
     animationDurationMs: 220,
     timerTickAnimation: "NONE",
+    timerTickDurationMs: 220,
     separateMobileDesign: false,
     mobileEnabled: true,
     customCss: "",
@@ -287,6 +288,31 @@
     return lower(value).replace(/_/g, "-");
   }
 
+  function publicSurfaceClasses(variant, placement, design) {
+    var dashedPlacement = dash(placement);
+    var classes = [];
+
+    if (
+      variant === "bar" ||
+      placement === "TOP_BAR" ||
+      placement === "BOTTOM_BAR" ||
+      placement === "CUSTOM_SELECTOR"
+    ) {
+      classes.push("pp-bar");
+      if (dashedPlacement) classes.push("pp-bar--" + dashedPlacement);
+      if (design.fullWidth) classes.push("pp-bar--full-width");
+      if (design.positionMode === "OVERLAY") classes.push("pp-bar--overlay");
+      if (design.positionSticky) classes.push("pp-bar--sticky");
+    }
+
+    if (variant === "block") {
+      classes.push("pp-product-card");
+      if (dashedPlacement) classes.push("pp-product-card--" + dashedPlacement);
+    }
+
+    return classes;
+  }
+
   function num(value, fallback) {
     var parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -394,7 +420,7 @@
     }
 
     // Campaign-type-specific values (amount, quantity, delivery_*, ...) so any
-    // field — headline, body, CTA, badge — can use them, not just the body.
+    // field - headline, body, CTA, badge - can use them, not just the body.
     if (spec.variables && typeof spec.variables === "object") {
       Object.keys(spec.variables).forEach(function (key) {
         var value = spec.variables[key];
@@ -525,6 +551,7 @@
         num(design.offerCodePaddingInline, 10) + "px",
       "--cp-offer-gap": num(design.offerCodeGap, 8) + "px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
+      "--cp-tick-duration": num(design.timerTickDurationMs, 220) + "ms",
       "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
       "--cp-float-bottom": cssLength(design.floatOffsetBottom, "auto"),
       "--cp-float-left": cssLength(design.floatOffsetLeft, "0"),
@@ -648,7 +675,7 @@
           unit.appendChild(strong);
           colonBoxes.appendChild(unit);
         });
-        markTimer(colonBoxes);
+        markTimer(colonBoxes, parts, design, compact);
         return colonBoxes;
       }
 
@@ -665,7 +692,7 @@
           return part.value;
         })
         .join(":");
-      markTimer(colon);
+      markTimer(colon, parts, design, compact);
       return colon;
     }
 
@@ -683,7 +710,7 @@
             : part.value;
         })
         .join(" ");
-      markTimer(inline);
+      markTimer(inline, parts, design, compact);
       return inline;
     }
 
@@ -709,12 +736,52 @@
       }
       timer.appendChild(unit);
     });
-    markTimer(timer);
+    markTimer(timer, parts, design, compact);
     return timer;
   }
 
-  function markTimer(node) {
+  function markTimer(node, parts, design, compact) {
     node.setAttribute("data-cp-timer", "true");
+    publicTimerClasses(design, compact).forEach(function (className) {
+      node.classList.add(className);
+    });
+    setTimerPublicValue(node, parts, design);
+  }
+
+  function publicTimerClasses(design, compact) {
+    return [
+      "pp-countdown",
+      "pp-countdown--" + lower(design.timerStyle),
+      design.timerFormat === "COLON"
+        ? "pp-countdown--colon"
+        : "pp-countdown--units",
+      design.timerNumberLayout === "STACKED" ? "pp-countdown--stacked" : "",
+      compact ? "pp-countdown--compact" : "",
+      "pp-countdown--tick-" + lower(design.timerTickAnimation),
+    ].filter(Boolean);
+  }
+
+  function setTimerPublicValue(node, parts, design) {
+    if (!node || !parts || !parts.length) return;
+    node.setAttribute("data-value", formatTimerPublicValue(parts, design));
+  }
+
+  function formatTimerPublicValue(parts, design) {
+    if (design.timerFormat === "COLON") {
+      return parts
+        .map(function (part) {
+          return part.value;
+        })
+        .join(":");
+    }
+
+    return parts
+      .map(function (part) {
+        return design.timerShowLabels
+          ? part.value + " " + part.shortLabel
+          : part.value;
+      })
+      .join(" ");
   }
 
   // The tick animations (fade/flip/pulse) are CSS animations that run on mount.
@@ -760,6 +827,7 @@
 
     var parts = visibleTimerParts(buildTimerParts(remainingMs, design), design);
     var animate = hasTickAnimation(node);
+    setTimerPublicValue(node, parts, design);
 
     // Per-box timers (units present, e.g. boxes + colon) update each box.
     if (node.querySelector(".counterpulse-preview-timer-unit strong")) {
@@ -820,6 +888,7 @@
     var parts = visibleTimerParts(buildTimerPartsFromText(text), design);
     if (!parts.length) return;
     var animate = hasTickAnimation(node);
+    setTimerPublicValue(node, parts, design);
 
     // Per-box timers (units present, e.g. boxes + colon) update each box.
     if (node.querySelector(".counterpulse-preview-timer-unit strong")) {
@@ -1346,6 +1415,7 @@
       "section",
       [
         "counterpulse-preview-promo",
+        publicSurfaceClasses(variant, spec.placement, design).join(" "),
         "counterpulse-preview-promo--" + variant,
         "counterpulse-preview-promo--layout-" + lower(design.layout),
         "counterpulse-preview-promo--placement-" + dash(spec.placement),
@@ -1724,7 +1794,7 @@
     return fallback;
   }
 
-  function fixRootClasses(root, variant, placement) {
+  function fixRootClasses(root, variant, placement, design) {
     // Only normalize the auto-generated default surface. Fully custom merchant
     // HTML is rendered exactly as written.
     if (
@@ -1737,10 +1807,13 @@
     var keep = [];
     (root.className || "").split(/\s+/).forEach(function (token) {
       if (!token) return;
+      if (token === "pp-bar" || token === "pp-product-card") return;
+      if (/pp-bar--/.test(token) || /pp-product-card--/.test(token)) return;
       if (/counterpulse-preview-promo--(bar|block|badge)$/.test(token)) return;
       if (/counterpulse-preview-promo--placement-/.test(token)) return;
       keep.push(token);
     });
+    keep = keep.concat(publicSurfaceClasses(variant, placement, design || {}));
     keep.push("counterpulse-preview-promo--" + variant);
     if (placement) {
       keep.push("counterpulse-preview-promo--placement-" + dash(placement));
@@ -1764,7 +1837,12 @@
     if (!root) return null;
 
     var design = spec.design || {};
-    fixRootClasses(root, spec.variant || "bar", spec.placement);
+    fixRootClasses(
+      root,
+      spec.variant || "bar",
+      spec.placement,
+      normalizeDesign(spec.design),
+    );
     applyStyle(root, design);
     if (spec.className) root.className += " " + spec.className;
     if (spec.dataTestId) root.setAttribute("data-testid", spec.dataTestId);
@@ -1993,7 +2071,7 @@
 
     var expired = endsAt ? endsAt.getTime() <= now : false;
     // Total span (for the TIMER progress target): evergreen uses the duration;
-    // fixed/recurring use startsAt → endsAt.
+    // fixed/recurring use startsAt -> endsAt.
     var totalMs = 0;
     if (mode === "EVERGREEN_SESSION" && timer.durationMinutes) {
       totalMs = Math.round(Number(timer.durationMinutes)) * 60000;

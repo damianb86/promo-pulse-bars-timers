@@ -575,7 +575,10 @@
       design.dismissBehavior === "HIDE_PERMANENTLY" &&
       isCampaignDismissed(campaign.id)
     ) {
-      updateDebug(root, "Campana cerrada por el visitante; no se vuelve a mostrar.");
+      updateDebug(
+        root,
+        "Campana cerrada por el visitante; no se vuelve a mostrar.",
+      );
       return null;
     }
 
@@ -612,7 +615,9 @@
 
     var variables = {};
     if (campaign.type === "FREE_SHIPPING_GOAL") {
-      var threshold = Number((campaign.freeShipping || {}).thresholdAmount || 0);
+      var threshold = Number(
+        (campaign.freeShipping || {}).thresholdAmount || 0,
+      );
       var subtotal = Number(config.cartSubtotal || 0);
       var remaining =
         threshold <= 0 || subtotal >= threshold
@@ -622,7 +627,11 @@
         Math.round(remaining * 100) / 100,
         (campaign.freeShipping || {}).currencyCode || config.currency,
       );
-      variables = { amount: amount, remaining: amount, remaining_amount: amount };
+      variables = {
+        amount: amount,
+        remaining: amount,
+        remaining_amount: amount,
+      };
     }
 
     var ctaLabel = texts.ctaText;
@@ -709,7 +718,11 @@
 
     if (countdowns.length && timerState.isActive) {
       Array.prototype.forEach.call(countdowns, function (node) {
-        window.CountPulseSurface.updateTimer(node, timerState.remainingMs, design);
+        window.CountPulseSurface.updateTimer(
+          node,
+          timerState.remainingMs,
+          design,
+        );
       });
     }
 
@@ -755,9 +768,7 @@
     if (!root || !root.querySelectorAll) return;
 
     [].slice
-      .call(
-        root.querySelectorAll(".pp-cart-card, .counterpulse-preview-promo"),
-      )
+      .call(root.querySelectorAll(".pp-cart-card, .counterpulse-preview-promo"))
       .forEach(function (card) {
         if (card.__promoPulseTimerInterval) {
           window.clearInterval(card.__promoPulseTimerInterval);
@@ -1050,9 +1061,7 @@
       timerStyle.toLowerCase() +
       " pp-countdown--" +
       timerFormat.toLowerCase() +
-      (design.timerNumberLayout === "STACKED"
-        ? " pp-countdown--stacked"
-        : "") +
+      (design.timerNumberLayout === "STACKED" ? " pp-countdown--stacked" : "") +
       (compact ? " pp-countdown--compact" : "") +
       timerTickClass(design);
 
@@ -1826,14 +1835,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

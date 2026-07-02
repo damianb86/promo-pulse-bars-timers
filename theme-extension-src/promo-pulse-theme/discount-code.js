@@ -167,100 +167,6 @@
     return campaign;
   };
 
-  function isAssignableExperimentVariant(variant) {
-    return (
-      variant &&
-      (variant.status === "ACTIVE" || variant.status === "WINNER") &&
-      Number(variant.weight) > 0
-    );
-  }
-
-  function findExperimentVariant(variants, variantId) {
-    if (!variantId) return null;
-
-    return (
-      variants.find(function (variant) {
-        return variant.id === variantId;
-      }) || null
-    );
-  }
-
-  function selectExperimentVariant(experimentId, visitorId, variants) {
-    var totalWeight = variants.reduce(function (total, variant) {
-      return total + Math.max(0, Math.trunc(Number(variant.weight) || 0));
-    }, 0);
-    var bucket;
-    var cumulativeWeight = 0;
-    var index;
-
-    if (!visitorId || totalWeight <= 0) return null;
-
-    bucket = hashAssignmentBucket(experimentId + ":" + visitorId) % totalWeight;
-
-    for (index = 0; index < variants.length; index += 1) {
-      cumulativeWeight += Math.max(
-        0,
-        Math.trunc(Number(variants[index].weight) || 0),
-      );
-      if (bucket < cumulativeWeight) return variants[index];
-    }
-
-    return variants[variants.length - 1] || null;
-  }
-
-  function hashAssignmentBucket(value) {
-    var hash = 2166136261;
-    var index;
-
-    for (index = 0; index < value.length; index += 1) {
-      hash ^= value.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-
-    return hash >>> 0;
-  }
-
-  function mergePlainObjects(base, override) {
-    var output =
-      base && typeof base === "object" && !Array.isArray(base)
-        ? Object.assign({}, base)
-        : {};
-
-    if (!override || typeof override !== "object" || Array.isArray(override)) {
-      return output;
-    }
-
-    Object.keys(override).forEach(function (key) {
-      output[key] = override[key];
-    });
-
-    return output;
-  }
-
-  function applyPlacementOverride(campaign, override) {
-    if (!override) return;
-
-    if (typeof override === "string") {
-      campaign.placement = override;
-      return;
-    }
-
-    if (typeof override !== "object" || Array.isArray(override)) return;
-
-    if (typeof override.placement === "string") {
-      campaign.placement = override.placement;
-    }
-    if (typeof override.placementType === "string") {
-      campaign.placement = override.placementType;
-    }
-    if (typeof override.placementSelector === "string") {
-      campaign.placementSelector = override.placementSelector;
-    }
-    if (typeof override.customSelector === "string") {
-      campaign.placementSelector = override.customSelector;
-    }
-  }
-
   function renderSharedDiscountWidget(code, campaign) {
     var design = getOfferDesign(campaign);
     var wrapper = createOfferWrapper(design, "pp-shared-code");
@@ -935,18 +841,11 @@
     window.PromoPulseFetchCampaigns = function (config, placement, options) {
       options = options || {};
 
-      return fetchStorefrontCampaignPayload(config || {}, {
-        onRevalidate:
-          typeof options.onRevalidate === "function"
-            ? function (payload) {
-                options.onRevalidate(
-                  buildStorefrontCampaignResult(payload, placement, options),
-                );
-              }
-            : null,
-      }).then(function (payload) {
-        return buildStorefrontCampaignResult(payload, placement, options);
-      });
+      return fetchStorefrontCampaignPayload(config || {}).then(
+        function (payload) {
+          return buildStorefrontCampaignResult(payload, placement, options);
+        },
+      );
     };
 
     window.PromoPulseClearCampaignCache = function () {
@@ -984,23 +883,6 @@
     }
 
     return requestStorefrontCampaignPayload(url, stored);
-  }
-
-  function revalidateStorefrontCampaignPayload(url, stored, options) {
-    if (!stored || !options || typeof options.onRevalidate !== "function") {
-      return;
-    }
-
-    window.setTimeout(function () {
-      requestStorefrontCampaignPayload(url, stored)
-        .then(function (payload) {
-          if (payload && payload.__promoPulseFetchFailed) return;
-          options.onRevalidate(clonePlainObject(payload));
-        })
-        .catch(function (error) {
-          debug(getRoot(), error);
-        });
-    }, 0);
   }
 
   function requestStorefrontCampaignPayload(url, stored) {
@@ -1902,23 +1784,11 @@
   }
 
   function readExperimentId(campaign) {
-    return (
-      (campaign &&
-        (campaign.experimentId ||
-          (campaign.experiment && campaign.experiment.id) ||
-          campaign.testId)) ||
-      null
-    );
+    return (campaign && campaign.experimentId) || null;
   }
 
   function readVariantId(campaign) {
-    return (
-      (campaign &&
-        (campaign.variantId ||
-          campaign.experimentVariantId ||
-          (campaign.variant && campaign.variant.id))) ||
-      null
-    );
+    return (campaign && campaign.variantId) || null;
   }
 
   function debug(root, error) {

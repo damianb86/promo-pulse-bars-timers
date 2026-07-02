@@ -723,6 +723,9 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  /* Default to hugging its content; only grows when a layout/width is set
+     explicitly (e.g. contentMaxWidth, full-width layouts). */
+  max-width: fit-content;
   color: var(--cp-timer-color);
   font-size: var(--cp-timer-size);
   font-variant-numeric: tabular-nums;
@@ -750,18 +753,18 @@
 }
 
 .counterpulse-preview-timer--tick-fade {
-  animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-fade var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-flip {
   transform-origin: 50% 60%;
-  animation: counterpulse-preview-timer-flip var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-flip var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-pulse {
-  animation: counterpulse-preview-timer-pulse var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-pulse var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
@@ -806,20 +809,20 @@
 }
 
 .counterpulse-preview-timer--tick-fade .counterpulse-preview-timer-unit strong {
-  animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-fade var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-flip .counterpulse-preview-timer-unit strong {
   transform-origin: 50% 60%;
-  animation: counterpulse-preview-timer-flip var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-flip var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-pulse
   .counterpulse-preview-timer-unit
   strong {
-  animation: counterpulse-preview-timer-pulse var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-pulse var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
@@ -979,12 +982,31 @@
 
 .counterpulse-preview-cta {
   flex: 0 0 auto;
+  /* Rendered as an <a> on the storefront when a CTA URL is set — reset the
+     theme's anchor styles so it matches the admin preview (a <span>). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 0;
   border-radius: max(4px, var(--cp-radius));
   padding: 6px 10px;
   background: var(--cp-button);
   color: var(--cp-button-text);
   font-size: 0.9em;
   font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.counterpulse-preview-cta:hover,
+.counterpulse-preview-cta:focus,
+.counterpulse-preview-cta:active,
+.counterpulse-preview-cta:visited {
+  background: var(--cp-button);
+  color: var(--cp-button-text);
+  text-decoration: none;
 }
 
 .counterpulse-preview-cta--offer {

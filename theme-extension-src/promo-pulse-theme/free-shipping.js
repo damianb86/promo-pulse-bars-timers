@@ -1431,14 +1431,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

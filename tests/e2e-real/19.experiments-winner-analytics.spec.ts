@@ -160,7 +160,6 @@ test.describe("real experiments, winner application, analytics, reports, and rec
         ctaText: "Shop winning offer",
       },
     });
-    );
     await page.addInitScript((nextVisitorId) => {
       window.localStorage.setItem("promo_pulse_visitor_id", nextVisitorId);
       window.sessionStorage.setItem(

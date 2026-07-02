@@ -546,6 +546,7 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-offer-code-padding-inline": `${design.offerCodePaddingInline}px`,
     "--cp-offer-gap": `${design.offerCodeGap}px`,
     "--cp-motion-duration": `${design.animationDurationMs}ms`,
+    "--cp-tick-duration": `${design.timerTickDurationMs}ms`,
   } as CSSProperties;
 }
 

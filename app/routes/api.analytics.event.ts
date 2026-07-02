@@ -34,19 +34,52 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const body = await readJsonBody(request);
-  const validation = validateAnalyticsEventPayload({
-    ...body,
-    userAgent: body.userAgent ?? request.headers.get("user-agent") ?? undefined,
-  });
+  const isBatch = Array.isArray((body as { events?: unknown }).events);
+  const rawEvents = isBatch
+    ? ((body as { events: unknown[] }).events ?? [])
+    : [body];
 
-  if (!validation.ok) {
+  if (rawEvents.length === 0 || rawEvents.length > MAX_ANALYTICS_BATCH_SIZE) {
     return analyticsJsonResponse(
-      { error: "Invalid analytics event.", details: validation.errors },
+      {
+        error: `Send between 1 and ${MAX_ANALYTICS_BATCH_SIZE} analytics events per request.`,
+      },
       { status: 400 },
     );
   }
 
-  const access = verifyStorefrontAccess(request, validation.payload.shop);
+  const validations = rawEvents.map((event) => {
+    const eventObject = readEventObject(event);
+
+    return validateAnalyticsEventPayload({
+      shop: body.shop,
+      doNotTrack: body.doNotTrack,
+      consentGranted: body.consentGranted,
+      ...eventObject,
+      userAgent:
+        eventObject.userAgent ??
+        body.userAgent ??
+        request.headers.get("user-agent") ??
+        undefined,
+    });
+  });
+  const validPayloads = validations.flatMap((validation) =>
+    validation.ok ? [validation.payload] : [],
+  );
+
+  if (validPayloads.length === 0) {
+    const firstError = validations.find((validation) => !validation.ok);
+
+    return analyticsJsonResponse(
+      {
+        error: "Invalid analytics event.",
+        details: firstError && !firstError.ok ? firstError.errors : undefined,
+      },
+      { status: 400 },
+    );
+  }
+
+  const access = verifyStorefrontAccess(request, validPayloads[0].shop);
 
   if (!access.ok) {
     return analyticsJsonResponse(
@@ -56,18 +89,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   try {
-    const result = await recordAnalyticsEvent(validation.payload);
+    const results = await Promise.all(
+      validPayloads.map((payload) => recordAnalyticsEvent(payload)),
+    );
+
+    if (!isBatch) {
+      const result = results[0];
+
+      return analyticsJsonResponse(
+        {
+          ok: true,
+          saved: result.saved,
+          deduped: result.deduped,
+          ignored: result.ignored ?? false,
+          reason: result.reason,
+          eventId: result.eventId,
+        },
+        { status: result.saved ? 201 : 202, access },
+      );
+    }
+
+    const savedCount = results.filter((result) => result.saved).length;
 
     return analyticsJsonResponse(
       {
         ok: true,
-        saved: result.saved,
-        deduped: result.deduped,
-        ignored: result.ignored ?? false,
-        reason: result.reason,
-        eventId: result.eventId,
+        received: rawEvents.length,
+        processed: results.length,
+        saved: savedCount,
+        deduped: results.filter((result) => result.deduped).length,
       },
-      { status: result.saved ? 201 : 202, access },
+      { status: savedCount > 0 ? 201 : 202, access },
     );
   } catch (error) {
     if (error instanceof AnalyticsIngestionError) {
@@ -86,6 +138,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 };
 
+const MAX_ANALYTICS_BATCH_SIZE = 50;
+
 async function readJsonBody(request: Request) {
   try {
     const body = await request.json();
@@ -96,6 +150,12 @@ async function readJsonBody(request: Request) {
   } catch {
     return {};
   }
+}
+
+function readEventObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function analyticsJsonResponse(

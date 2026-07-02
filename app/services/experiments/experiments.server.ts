@@ -1430,6 +1430,7 @@ async function applyDesignOverride(
       "contentGap",
       "contentMaxWidth",
       "animationDurationMs",
+      "timerTickDurationMs",
       "iconSize",
     ]),
     ...pickBooleanFields(override, [

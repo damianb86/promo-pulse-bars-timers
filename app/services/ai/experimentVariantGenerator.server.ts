@@ -178,6 +178,7 @@ const numberLimits: Partial<
   contentGap: { min: 4, max: 40 },
   contentMaxWidth: { min: 320, max: 1440 },
   animationDurationMs: { min: 80, max: 1200 },
+  timerTickDurationMs: { min: 80, max: 1200 },
   iconSize: { min: 12, max: 48 },
 };
 const booleanDesignKeys: Array<keyof CampaignDesignValues> = [

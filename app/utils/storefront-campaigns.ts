@@ -89,6 +89,12 @@ export type StorefrontCampaignSource = Omit<
   experiments: Array<Experiment & { variants: ExperimentVariant[] }>;
 };
 
+export type StorefrontCampaignPlacementDescriptor = {
+  placement: string;
+  placementSelector: string;
+  placementStyle: string;
+};
+
 export type StorefrontCampaignResponseItem = {
   id: string;
   type: string;
@@ -96,6 +102,12 @@ export type StorefrontCampaignResponseItem = {
   placement: string;
   placementSelector?: string;
   placementStyle?: string;
+  // Every placement this campaign renders in. The campaign payload is emitted
+  // once (not duplicated per placement); the storefront expands this list back
+  // into one render target per descriptor. `placement`/`placementSelector`/
+  // `placementStyle` above mirror the first (primary) descriptor for callers
+  // that only need one.
+  placements?: StorefrontCampaignPlacementDescriptor[];
   design: ReturnType<typeof serializeDesign>;
   timer: ReturnType<typeof serializeTimer>;
   cartRescue?: ReturnType<typeof serializeCartRescue>;
@@ -218,6 +230,8 @@ function serializeStorefrontCampaignForPlacement(
     context,
   );
 
+  if (!marketCampaign) return null;
+
   return applyAssignedExperimentVariant(marketCampaign, campaign, context);
 }
 
@@ -225,7 +239,7 @@ export function serializeStorefrontCampaigns(
   campaigns: StorefrontCampaignSource[],
   context: StorefrontCampaignContext,
 ) {
-  return campaigns
+  const perPlacementItems = campaigns
     .filter(
       (campaign) => !context.campaignId || campaign.id === context.campaignId,
     )
@@ -240,6 +254,46 @@ export function serializeStorefrontCampaigns(
       (campaign): campaign is StorefrontCampaignResponseItem =>
         campaign !== null,
     );
+
+  // A campaign enabled on several placements is serialized once per matching
+  // placement above (the payload is identical apart from the placement fields).
+  // Collapse those into a single entry that carries every placement in a
+  // `placements` array so the JSON never repeats the same campaign - the
+  // storefront expands the list back into one render target per descriptor.
+  return dedupeByCampaignPlacements(perPlacementItems);
+}
+
+function dedupeByCampaignPlacements(
+  items: StorefrontCampaignResponseItem[],
+): StorefrontCampaignResponseItem[] {
+  const byId = new Map<string, StorefrontCampaignResponseItem>();
+
+  for (const item of items) {
+    const descriptor: StorefrontCampaignPlacementDescriptor = {
+      placement: item.placement,
+      placementSelector: item.placementSelector ?? "",
+      placementStyle: item.placementStyle ?? "",
+    };
+    const existing = byId.get(item.id);
+
+    if (!existing) {
+      byId.set(item.id, { ...item, placements: [descriptor] });
+      continue;
+    }
+
+    const alreadyListed = existing.placements?.some(
+      (entry) =>
+        entry.placement === descriptor.placement &&
+        entry.placementSelector === descriptor.placementSelector &&
+        entry.placementStyle === descriptor.placementStyle,
+    );
+
+    if (!alreadyListed) {
+      existing.placements = [...(existing.placements ?? []), descriptor];
+    }
+  }
+
+  return Array.from(byId.values());
 }
 
 export function shouldBypassStorefrontCache(
@@ -436,7 +490,7 @@ function serializeStructure(
     packed,
     css: structureDesign.structureCss ?? "",
     // Custom reusable message snippets the merchant placed via
-    // data-cp-slot="custom-<id>" — shipped alongside the structure so the
+    // data-cp-slot="custom-<id>" - shipped alongside the structure so the
     // storefront can fill those slots (and interpolate the dynamic variables).
     messages: parseCustomMessages(structureDesign.structureMessages),
     version: structureDesign.structureVersion ?? 1,
@@ -899,8 +953,7 @@ function selectAssignedExperimentVariant(
   const variants = experiment.variants
     .filter(isAssignableExperimentVariant)
     .sort(
-      (first, second) =>
-        first.createdAt.getTime() - second.createdAt.getTime(),
+      (first, second) => first.createdAt.getTime() - second.createdAt.getTime(),
     );
 
   if (variants.length === 0) return null;
@@ -957,15 +1010,18 @@ function mergeDesignPayload(
   override: Record<string, unknown>,
 ) {
   if (Object.keys(override).length === 0) return design;
+  const currentDesign = design as {
+    structure?: ReturnType<typeof serializeStructure>;
+  };
+  const overrideStructure = override.structure as
+    | ReturnType<typeof serializeStructure>
+    | undefined;
 
   return compactDesignPayload({
     ...defaultCampaignDesignValues,
     ...design,
     ...override,
-    structure:
-      (override.structure as ReturnType<typeof serializeStructure>) ??
-      design.structure ??
-      null,
+    structure: overrideStructure ?? currentDesign.structure ?? null,
   });
 }
 
@@ -985,18 +1041,35 @@ function applyPlacementOverride(
   campaign: StorefrontCampaignResponseItem,
   override: Record<string, unknown>,
 ) {
+  const nextDescriptor: StorefrontCampaignPlacementDescriptor = {
+    placement: campaign.placement,
+    placementSelector: campaign.placementSelector ?? "",
+    placementStyle: campaign.placementStyle ?? "",
+  };
+
   if (typeof override.placement === "string") {
-    campaign.placement = override.placement;
+    nextDescriptor.placement = override.placement;
   }
   if (typeof override.placementType === "string") {
-    campaign.placement = override.placementType;
+    nextDescriptor.placement = override.placementType;
   }
   if (typeof override.placementSelector === "string") {
-    campaign.placementSelector = override.placementSelector;
+    nextDescriptor.placementSelector = override.placementSelector;
   }
   if (typeof override.customSelector === "string") {
-    campaign.placementSelector = override.customSelector;
+    nextDescriptor.placementSelector = override.customSelector;
   }
+  if (typeof override.placementStyle === "string") {
+    nextDescriptor.placementStyle = override.placementStyle;
+  }
+  if (typeof override.customStyle === "string") {
+    nextDescriptor.placementStyle = override.customStyle;
+  }
+
+  campaign.placement = nextDescriptor.placement;
+  campaign.placementSelector = nextDescriptor.placementSelector;
+  campaign.placementStyle = nextDescriptor.placementStyle;
+  campaign.placements = [nextDescriptor];
 }
 
 function readString(searchParams: URLSearchParams, key: string) {

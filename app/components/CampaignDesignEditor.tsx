@@ -1089,6 +1089,7 @@ const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
   "exitAnimation",
   "animationDurationMs",
   "timerTickAnimation",
+  "timerTickDurationMs",
   "customCss",
 ];
 

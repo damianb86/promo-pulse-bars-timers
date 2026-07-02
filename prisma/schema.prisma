@@ -286,6 +286,7 @@ model CampaignDesign {
   exitAnimation            DesignBannerAnimation    @default(FADE)
   animationDurationMs      Int                      @default(220)
   timerTickAnimation       DesignTimerTickAnimation @default(NONE)
+  timerTickDurationMs      Int                      @default(220)
   customCss                String?
   mobileEnabled            Boolean                  @default(true)
   alignment                DesignAlignment          @default(CENTER)

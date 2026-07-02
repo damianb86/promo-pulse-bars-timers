@@ -242,7 +242,10 @@
       design.dismissBehavior === "HIDE_PERMANENTLY" &&
       isCampaignDismissed(campaign.id)
     ) {
-      updateDebug(root, "Campana cerrada por el visitante; no se vuelve a mostrar.");
+      updateDebug(
+        root,
+        "Campana cerrada por el visitante; no se vuelve a mostrar.",
+      );
       return null;
     }
 
@@ -280,7 +283,11 @@
         fs.amountRemaining,
         (campaign.freeShipping || {}).currencyCode || config.currency,
       );
-      variables = { amount: amount, remaining: amount, remaining_amount: amount };
+      variables = {
+        amount: amount,
+        remaining: amount,
+        remaining_amount: amount,
+      };
       if (design.showProgressBar !== false) {
         progress = {
           percentage: fs.percentage,
@@ -365,9 +372,7 @@
 
     [].slice
       .call(
-        root.querySelectorAll(
-          ".pp-product-card, .counterpulse-preview-promo",
-        ),
+        root.querySelectorAll(".pp-product-card, .counterpulse-preview-promo"),
       )
       .forEach(function (card) {
         if (card.__promoPulseTimerInterval) {
@@ -579,9 +584,7 @@
       timerStyle.toLowerCase() +
       " pp-countdown--" +
       timerFormat.toLowerCase() +
-      (design.timerNumberLayout === "STACKED"
-        ? " pp-countdown--stacked"
-        : "") +
+      (design.timerNumberLayout === "STACKED" ? " pp-countdown--stacked" : "") +
       (compact ? " pp-countdown--compact" : "") +
       timerTickClass(design);
     countdown.dataset.testid = "promo-timer";
@@ -1268,14 +1271,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

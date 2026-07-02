@@ -193,10 +193,7 @@ export async function loadStorefrontCampaignsResponse(
   if (cachedPayload) {
     if (requestMatchesStorefrontEtag(request, cachedPayload)) {
       return notModifiedResponse({
-        cacheControl: getCacheControlHeader(
-          context,
-          behaviorLookbackDays > 0,
-        ),
+        cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
         rateLimit,
         access,
         headers: storefrontCacheHeaders(cachedPayload),
@@ -204,10 +201,7 @@ export async function loadStorefrontCampaignsResponse(
     }
 
     return jsonResponse(cachedPayload.body, {
-      cacheControl: getCacheControlHeader(
-        context,
-        behaviorLookbackDays > 0,
-      ),
+      cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
       rateLimit,
       access,
       headers: storefrontCacheHeaders(cachedPayload),
@@ -254,10 +248,7 @@ export async function loadStorefrontCampaignsResponse(
 
     if (requestMatchesStorefrontEtag(request, cacheEntry)) {
       return notModifiedResponse({
-        cacheControl: getCacheControlHeader(
-          context,
-          behaviorLookbackDays > 0,
-        ),
+        cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
         rateLimit,
         access,
         headers: storefrontCacheHeaders(cacheEntry),
@@ -266,10 +257,7 @@ export async function loadStorefrontCampaignsResponse(
   }
 
   return jsonResponse(payload, {
-    cacheControl: getCacheControlHeader(
-      context,
-      behaviorLookbackDays > 0,
-    ),
+    cacheControl: getCacheControlHeader(context, behaviorLookbackDays > 0),
     rateLimit,
     access,
     headers: cacheEntry ? storefrontCacheHeaders(cacheEntry) : undefined,
@@ -521,10 +509,22 @@ function buildStorefrontPayload(
   );
   const placements = compactCampaigns.reduce<Record<string, string[]>>(
     (groups, campaign) => {
-      const placement = campaign.placement || "UNKNOWN";
+      // A campaign is emitted once but can target several placements; index its
+      // id under every placement it renders in.
+      const descriptors =
+        Array.isArray(campaign.placements) && campaign.placements.length > 0
+          ? campaign.placements
+          : [{ placement: campaign.placement }];
 
-      groups[placement] ??= [];
-      groups[placement].push(campaign.id);
+      for (const descriptor of descriptors) {
+        const placement =
+          (descriptor as { placement?: string }).placement || "UNKNOWN";
+
+        groups[placement] ??= [];
+        if (!groups[placement].includes(campaign.id)) {
+          groups[placement].push(campaign.id);
+        }
+      }
 
       return groups;
     },

@@ -261,6 +261,11 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.animationDurationMs,
     ),
     timerTickAnimation: readTimerTickAnimation(formData),
+    timerTickDurationMs: readInteger(
+      formData,
+      "timerTickDurationMs",
+      defaultCampaignDesignValues.timerTickDurationMs,
+    ),
     separateMobileDesign: readBoolean(formData, "separateMobileDesign"),
     mobileEnabled: readBoolean(formData, "mobileEnabled"),
     customCss: sanitizeCustomCss(

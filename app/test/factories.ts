@@ -339,6 +339,7 @@ function createDesign(
     exitAnimation: DesignBannerAnimation.FADE,
     animationDurationMs: 220,
     timerTickAnimation: DesignTimerTickAnimation.NONE,
+    timerTickDurationMs: 220,
     customCss: null,
     mobileEnabled: true,
     alignment: DesignAlignment.CENTER,

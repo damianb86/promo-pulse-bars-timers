@@ -134,6 +134,7 @@ export type CampaignDesignValues = {
   exitAnimation: DesignBannerAnimationValue;
   animationDurationMs: number;
   timerTickAnimation: DesignTimerTickAnimationValue;
+  timerTickDurationMs: number;
   separateMobileDesign: boolean;
   mobileEnabled: boolean;
   customCss: string;
@@ -286,6 +287,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   exitAnimation: "FADE",
   animationDurationMs: 220,
   timerTickAnimation: "NONE",
+  timerTickDurationMs: 220,
   separateMobileDesign: false,
   mobileEnabled: true,
   customCss: "",

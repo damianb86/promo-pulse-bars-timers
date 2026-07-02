@@ -13,12 +13,36 @@ test("storefront assigns a stable experiment variant and tracks variant attribut
   await page.addInitScript(() => {
     window.localStorage.setItem("promo_pulse_visitor_id", "cpv_e2e_variant");
   });
+  const payloadResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === "/apps/promo-pulse" &&
+      url.searchParams.get("placement") === "ALL_FRONT_DEFAULT_PLACEMENTS"
+    );
+  });
   await page.goto("/__test/storefront");
+  const payload = await (await payloadResponse).json();
+  const campaignPayload = payload.campaigns?.[0];
+
+  expect(campaignPayload).not.toHaveProperty("experiment");
+  expect(campaignPayload).toMatchObject({
+    experimentId: "e2e-experiment-headline",
+    variantId: "e2e-variant-treatment",
+    design: { backgroundColor: "#064E3B" },
+    texts: {
+      headline: "Variant headline",
+      subheadline: "A/B treatment copy.",
+    },
+  });
 
   const bar = page.locator(".pp-bar").first();
   await expect(bar).toContainText("Variant headline");
   await expect(bar).toContainText("A/B treatment copy.");
-  await expect(bar.locator(".pp-code")).toHaveText("CONTROL10");
+  await expect(bar.locator(".pp-discount-code__value")).toHaveText("CONTROL10");
+  await expect(
+    bar.getByRole("button", { name: "Copy code CONTROL10" }),
+  ).toBeVisible();
 
   await expect
     .poll(async () =>

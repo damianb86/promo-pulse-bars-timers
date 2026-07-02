@@ -425,6 +425,7 @@ const designOverrideKeys: Array<keyof CampaignDesignValues> = [
   "exitAnimation",
   "animationDurationMs",
   "timerTickAnimation",
+  "timerTickDurationMs",
   "customCss",
   "alignment",
   "showCloseButton",
@@ -510,6 +511,7 @@ const motionDesignKeys: Array<keyof CampaignDesignValues> = [
   "exitAnimation",
   "animationDurationMs",
   "timerTickAnimation",
+  "timerTickDurationMs",
 ];
 
 const summarizedDesignKeys: Array<keyof CampaignDesignValues> = [

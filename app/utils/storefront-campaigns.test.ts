@@ -361,6 +361,32 @@ describe("storefront campaign serialization", () => {
     ).toEqual(["cart-drawer"]);
   });
 
+  it("emits a campaign once, listing every matching placement", () => {
+    const campaign = buildCampaign({
+      id: "multi",
+      placements: [
+        { placementType: "TOP_BAR", enabled: true },
+        { placementType: "BOTTOM_BAR", enabled: true },
+      ],
+    });
+
+    const serialized = serializeStorefrontCampaigns(
+      campaign ? [campaign] : [],
+      {
+        ...baseContext(),
+        placements: ["TOP_BAR", "BOTTOM_BAR"],
+      },
+    );
+
+    // The same campaign must not appear twice in the JSON.
+    expect(serialized.map((item) => item.id)).toEqual(["multi"]);
+    expect(serialized[0]?.placement).toBe("TOP_BAR");
+    expect(serialized[0]?.placements?.map((p) => p.placement)).toEqual([
+      "TOP_BAR",
+      "BOTTOM_BAR",
+    ]);
+  });
+
   it("serializes custom placement selectors for drawer insertion", () => {
     const campaign = buildCampaign({
       placements: [

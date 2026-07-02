@@ -156,7 +156,7 @@
       .then(function (payload) {
         applyStorefrontSettings(payload.settings);
         var campaigns = Array.isArray(payload.campaigns)
-          ? payload.campaigns.map(applyExperiment)
+          ? expandCampaignPlacements(payload.campaigns.map(applyExperiment))
           : [];
         campaignCache[url] = {
           campaigns: campaigns,
@@ -188,7 +188,7 @@
   function normalizeCampaignPayload(payload, placement, url) {
     applyStorefrontSettings(payload.settings);
     var campaigns = Array.isArray(payload.campaigns)
-      ? payload.campaigns.map(applyExperiment)
+      ? expandCampaignPlacements(payload.campaigns.map(applyExperiment))
       : [];
 
     updateDebug(
@@ -546,7 +546,10 @@
       dataTestId: "promo-badge",
     });
     badgeEl.dataset.campaignId = campaign.id;
-    badgeEl.setAttribute("aria-label", (badgeText || "Promo Pulse badge").trim());
+    badgeEl.setAttribute(
+      "aria-label",
+      (badgeText || "Promo Pulse badge").trim(),
+    );
 
     if (badgeHref) {
       var link = document.createElement("a");
@@ -578,6 +581,48 @@
     }
 
     return campaign;
+  }
+
+  // The API sends each campaign once, listing all its placements in a
+  // `placements` array. Expand it back into one render unit per placement so the
+  // per-placement renderer keeps working unchanged.
+  function expandCampaignPlacements(campaigns) {
+    var expanded = [];
+
+    campaigns.forEach(function (campaign) {
+      if (!campaign) return;
+
+      var placements =
+        campaign.placements &&
+        typeof campaign.placements.length === "number" &&
+        campaign.placements.length > 0
+          ? campaign.placements
+          : null;
+
+      if (!placements) {
+        expanded.push(campaign);
+        return;
+      }
+
+      placements.forEach(function (descriptor) {
+        var copy = {};
+        for (var key in campaign) {
+          if (Object.prototype.hasOwnProperty.call(campaign, key)) {
+            copy[key] = campaign[key];
+          }
+        }
+        copy.placement =
+          descriptor.placement ||
+          descriptor.placementType ||
+          campaign.placement;
+        copy.placementSelector = descriptor.placementSelector || "";
+        copy.placementStyle = descriptor.placementStyle || "";
+        delete copy.placements;
+        expanded.push(copy);
+      });
+    });
+
+    return expanded;
   }
 
   function updateDebug(element, message, url) {
@@ -990,9 +1035,7 @@
       timerStyle.toLowerCase() +
       " pp-countdown--" +
       timerFormat.toLowerCase() +
-      (design.timerNumberLayout === "STACKED"
-        ? " pp-countdown--stacked"
-        : "") +
+      (design.timerNumberLayout === "STACKED" ? " pp-countdown--stacked" : "") +
       (compact ? " pp-countdown--compact" : "") +
       tickClass;
     countdown.dataset.testid = "promo-timer";
@@ -1103,14 +1146,8 @@
       new CustomEvent("promo-pulse:click", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),
@@ -1800,14 +1837,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

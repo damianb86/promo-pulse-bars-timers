@@ -1048,6 +1048,7 @@ export type StyleDesignInput = {
   offerCodePaddingInline?: number;
   offerCodeGap?: number;
   animationDurationMs?: number;
+  timerTickDurationMs?: number;
   floatOffsetTop?: string;
   floatOffsetBottom?: string;
   floatOffsetLeft?: string;
@@ -1178,6 +1179,11 @@ export function buildStructureCssVars(design: StyleDesignInput): Record<string, 
     "--cp-motion-duration": `${
       typeof design.animationDurationMs === "number"
         ? design.animationDurationMs
+        : 220
+    }ms`,
+    "--cp-tick-duration": `${
+      typeof design.timerTickDurationMs === "number"
+        ? design.timerTickDurationMs
         : 220
     }ms`,
     "--cp-float-top": cssLength(design.floatOffsetTop, "0"),

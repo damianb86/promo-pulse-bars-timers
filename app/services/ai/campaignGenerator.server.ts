@@ -2699,6 +2699,15 @@ function sanitizePartialDesign(
     design.timerTickAnimation === "PULSE"
       ? { timerTickAnimation: design.timerTickAnimation }
       : {}),
+    ...(typeof design.timerTickDurationMs === "number"
+      ? {
+          timerTickDurationMs: clampInteger(
+            design.timerTickDurationMs,
+            0,
+            1500,
+          ),
+        }
+      : {}),
     ...(typeof design.mobileEnabled === "boolean"
       ? { mobileEnabled: design.mobileEnabled }
       : {}),

@@ -1027,6 +1027,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
     timerTickAnimation:
       readEnum(input.timerTickAnimation, ["NONE", "FADE", "FLIP", "PULSE"]) ??
       defaultCampaignDesignValues.timerTickAnimation,
+    timerTickDurationMs: readInteger(
+      input.timerTickDurationMs,
+      defaultCampaignDesignValues.timerTickDurationMs,
+    ),
     mobileEnabled: readBoolean(
       input.mobileEnabled,
       defaultCampaignDesignValues.mobileEnabled,

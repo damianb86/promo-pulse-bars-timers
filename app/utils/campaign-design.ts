@@ -655,6 +655,15 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     "Animation duration",
   );
 
+  validateIntegerRange(
+    values,
+    errors,
+    "timerTickDurationMs",
+    0,
+    1500,
+    "Timer change duration",
+  );
+
   if (
     !designTimerTickAnimationOptions.some(
       (option) => option.value === values.timerTickAnimation,

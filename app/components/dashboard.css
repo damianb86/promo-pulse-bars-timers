@@ -11486,6 +11486,9 @@ s-page::part(page) {
   align-items: center;
   justify-content: center;
   gap: var(--cp-timer-gap, 10px);
+  /* Default to hugging its content; only grows when a layout/width is set
+     explicitly (e.g. contentMaxWidth, full-width layouts). */
+  max-width: fit-content;
   color: var(--cp-timer-color);
   font-size: var(--cp-timer-size);
   font-variant-numeric: tabular-nums;
@@ -11514,18 +11517,18 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-timer--tick-fade {
-  animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-fade var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-flip {
   transform-origin: 50% 60%;
-  animation: counterpulse-preview-timer-flip var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-flip var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-pulse {
-  animation: counterpulse-preview-timer-pulse var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-pulse var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
@@ -11573,20 +11576,20 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-timer--tick-fade .counterpulse-preview-timer-unit strong {
-  animation: counterpulse-preview-timer-fade var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-fade var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-flip .counterpulse-preview-timer-unit strong {
   transform-origin: 50% 60%;
-  animation: counterpulse-preview-timer-flip var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-flip var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 
 .counterpulse-preview-timer--tick-pulse
   .counterpulse-preview-timer-unit
   strong {
-  animation: counterpulse-preview-timer-pulse var(--cp-motion-duration, 220ms)
+  animation: counterpulse-preview-timer-pulse var(--cp-tick-duration, var(--cp-motion-duration, 220ms))
     ease-out both;
 }
 

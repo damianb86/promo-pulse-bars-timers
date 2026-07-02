@@ -395,7 +395,9 @@
       variables: promise.vars,
       headline: texts.headline || "Delivery promise",
       body: deliveryMessage(campaign, promise),
-      deliveryTime: promise.beforeCutoff ? deliveryClock(promise.remainingMs) : null,
+      deliveryTime: promise.beforeCutoff
+        ? deliveryClock(promise.remainingMs)
+        : null,
       hasTimer: promise.beforeCutoff,
       couponNode: couponNode,
       cta: design.showButton !== false ? texts.ctaText || "" : "",
@@ -850,7 +852,11 @@
       return window.PromoPulseRenderCountdown(remainingMs, design || {}, false);
     }
 
-    var countdown = node("span", "pp-countdown", fmt(remainingMs, design || {}));
+    var countdown = node(
+      "span",
+      "pp-countdown",
+      fmt(remainingMs, design || {}),
+    );
 
     countdown.setAttribute("aria-live", "polite");
     countdown.setAttribute("aria-label", "Time remaining");
@@ -881,14 +887,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

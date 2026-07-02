@@ -235,7 +235,6 @@ function campaign(
       ...textOverrides,
     },
     discount: null,
-    experiment: null,
     startsAt: "2026-06-18T11:00:00.000Z",
     endsAt: "2026-06-18T13:00:00.000Z",
     timezone: "UTC",

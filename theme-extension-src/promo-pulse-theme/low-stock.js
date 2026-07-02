@@ -348,9 +348,7 @@
     // might use, and re-renders only when it actually changed. Low-stock copy
     // shows/hides based on the new variant's inventory.
     function syncSelectedVariant(nextId) {
-      var resolved = normalizeVariantId(
-        nextId || getSelectedVariantId(form),
-      );
+      var resolved = normalizeVariantId(nextId || getSelectedVariantId(form));
       if (!resolved || resolved === config.selectedVariantId) return;
       config.selectedVariantId = resolved;
       renderAll(root, campaigns, config);
@@ -507,14 +505,8 @@
       new CustomEvent("promo-pulse:impression", {
         detail: {
           campaignId: campaign.id,
-          experimentId:
-            campaign.experimentId ||
-            (campaign.experiment && campaign.experiment.id) ||
-            null,
-          variantId:
-            campaign.variantId ||
-            (campaign.variant && campaign.variant.id) ||
-            null,
+          experimentId: campaign.experimentId || null,
+          variantId: campaign.variantId || null,
           placement: campaign.placement,
         },
       }),

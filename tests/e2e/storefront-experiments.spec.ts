@@ -23,12 +23,12 @@ test("storefront assigns a stable experiment variant and tracks variant attribut
   await expect
     .poll(async () =>
       page.evaluate(() =>
-        window.localStorage.getItem(
-          "promo_pulse_experiment_assignment_e2e-experiment-headline",
+        Object.keys(window.localStorage).filter((key) =>
+          key.startsWith("promo_pulse_experiment_assignment_"),
         ),
       ),
     )
-    .toBe("e2e-variant-treatment");
+    .toEqual([]);
 
   await page.reload();
   await expect(page.locator(".pp-bar").first()).toContainText(

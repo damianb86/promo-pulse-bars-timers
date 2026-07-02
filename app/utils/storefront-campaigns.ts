@@ -105,7 +105,8 @@ export type StorefrontCampaignResponseItem = {
   badge: ReturnType<typeof serializeBadge>;
   texts: Record<CampaignTextField | "ctaUrl", string>;
   discount: ReturnType<typeof serializeDiscount>;
-  experiment: ReturnType<typeof serializeExperiment>;
+  experimentId?: string;
+  variantId?: string;
   startsAt: string | null;
   endsAt: string | null;
   timezone: string;
@@ -183,7 +184,7 @@ function serializeStorefrontCampaignForPlacement(
   context: StorefrontCampaignContext,
   placement: CampaignPlacement,
 ) {
-  const serializedCampaign = {
+  const serializedCampaign: StorefrontCampaignResponseItem = {
     id: campaign.id,
     type: campaign.type,
     goal: campaign.goal,
@@ -206,22 +207,18 @@ function serializeStorefrontCampaignForPlacement(
     badge: serializeBadge(campaign.badgeSettings),
     texts: serializeTexts(campaign, context.locale),
     discount: serializeDiscount(campaign.discountSync),
-    experiment: serializeExperiment(
-      campaign.experiments,
-      new Date(),
-      campaignShowsDiscountCode(campaign.discountSync),
-      context.device,
-    ),
     startsAt: campaign.startsAt ? campaign.startsAt.toISOString() : null,
     endsAt: campaign.endsAt ? campaign.endsAt.toISOString() : null,
     timezone: campaign.timezone,
   };
 
-  return applyMarketCampaignRule(
+  const marketCampaign = applyMarketCampaignRule(
     serializedCampaign,
     campaign.marketCampaignRules,
     context,
   );
+
+  return applyAssignedExperimentVariant(marketCampaign, campaign, context);
 }
 
 export function serializeStorefrontCampaigns(
@@ -751,19 +748,15 @@ function getCampaignCtaUrl(
   );
 }
 
-function sanitizeDiscountOverride<T>(
-  override: T,
+function sanitizeDiscountOverride(
+  override: Record<string, unknown>,
   showDiscountCode: boolean,
-): T {
-  if (!override || typeof override !== "object" || Array.isArray(override)) {
-    return override;
-  }
-
+): Record<string, unknown> {
   // Never expose the internal Shopify discount id to the storefront, and only
   // reveal an A/B variant's discount code when the campaign is configured to
-  // show codes — mirroring serializeDiscount so experiment overrides cannot
+  // show codes, mirroring serializeDiscount so experiment overrides cannot
   // bypass the showCodeOnStorefront gate and leak a restricted code.
-  const rest = { ...(override as Record<string, unknown>) };
+  const rest = { ...override };
 
   delete rest.shopifyDiscountId;
 
@@ -771,7 +764,7 @@ function sanitizeDiscountOverride<T>(
     delete rest.discountCode;
   }
 
-  return rest as T;
+  return rest;
 }
 
 function campaignShowsDiscountCode(discountSync: DiscountSync | null) {
@@ -847,12 +840,53 @@ function resolveVariantDesignOverride(
   return desktopOverride;
 }
 
-function serializeExperiment(
-  experiments: StorefrontCampaignSource["experiments"],
-  now = new Date(),
-  showDiscountCode = false,
-  device = "desktop",
+function applyAssignedExperimentVariant(
+  campaign: StorefrontCampaignResponseItem,
+  source: StorefrontCampaignSource,
+  context: StorefrontCampaignContext,
 ) {
+  const assignment = selectAssignedExperimentVariant(
+    source.experiments,
+    context.visitorId,
+  );
+
+  if (!assignment) return campaign;
+
+  const { experiment, variant } = assignment;
+  const designOverride = resolveVariantDesignOverride(
+    jsonObject(variant.designOverride),
+    context.device,
+  );
+  const textOverride = jsonObject(variant.textOverride);
+  const discountOverride = sanitizeDiscountOverride(
+    jsonObject(variant.discountOverride),
+    campaignShowsDiscountCode(source.discountSync),
+  );
+  const placementOverride = jsonObject(variant.placementOverride);
+  const nextCampaign: StorefrontCampaignResponseItem = {
+    ...campaign,
+    experimentId: experiment.id,
+    variantId: variant.id,
+    design: mergeDesignPayload(campaign.design, designOverride),
+    texts: {
+      ...campaign.texts,
+      ...textOverride,
+    },
+    discount: mergeNullablePayload(campaign.discount, discountOverride),
+  };
+
+  applyPlacementOverride(nextCampaign, placementOverride);
+
+  return nextCampaign;
+}
+
+function selectAssignedExperimentVariant(
+  experiments: StorefrontCampaignSource["experiments"],
+  visitorId: string,
+  now = new Date(),
+) {
+  if (!visitorId) return null;
+
   const experiment = experiments.find(
     (item) =>
       item.status === "RUNNING" &&
@@ -863,38 +897,106 @@ function serializeExperiment(
   if (!experiment) return null;
 
   const variants = experiment.variants
-    .filter(
-      (variant) =>
-        (variant.status === "ACTIVE" || variant.status === "WINNER") &&
-        Number(variant.weight) >= 0,
-    )
-    .map((variant) => ({
-      id: variant.id,
-      name: variant.name,
-      weight: variant.weight,
-      status: variant.status,
-      designOverride: resolveVariantDesignOverride(
-        jsonObject(variant.designOverride),
-        device,
-      ),
-      textOverride: jsonObject(variant.textOverride),
-      discountOverride: sanitizeDiscountOverride(
-        jsonObject(variant.discountOverride),
-        showDiscountCode,
-      ),
-      placementOverride: jsonObject(variant.placementOverride),
-    }));
+    .filter(isAssignableExperimentVariant)
+    .sort(
+      (first, second) =>
+        first.createdAt.getTime() - second.createdAt.getTime(),
+    );
 
   if (variants.length === 0) return null;
 
-  return {
-    id: experiment.id,
-    name: experiment.name,
-    status: experiment.status,
-    trafficSplitStrategy: experiment.trafficSplitStrategy,
-    primaryMetric: experiment.primaryMetric,
-    variants,
-  };
+  const variant = selectExperimentVariant(experiment.id, visitorId, variants);
+
+  return variant ? { experiment, variant } : null;
+}
+
+function isAssignableExperimentVariant(variant: ExperimentVariant) {
+  return (
+    (variant.status === "ACTIVE" || variant.status === "WINNER") &&
+    Number(variant.weight) > 0
+  );
+}
+
+function selectExperimentVariant(
+  experimentId: string,
+  visitorId: string,
+  variants: ExperimentVariant[],
+) {
+  const totalWeight = variants.reduce(
+    (total, variant) =>
+      total + Math.max(0, Math.trunc(Number(variant.weight) || 0)),
+    0,
+  );
+
+  if (!visitorId || totalWeight <= 0) return null;
+
+  let bucket =
+    hashAssignmentBucket(`${experimentId}:${visitorId}`) % totalWeight;
+
+  for (const variant of variants) {
+    bucket -= Math.max(0, Math.trunc(Number(variant.weight) || 0));
+    if (bucket < 0) return variant;
+  }
+
+  return variants[variants.length - 1] ?? null;
+}
+
+function hashAssignmentBucket(value: string) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function mergeDesignPayload(
+  design: StorefrontCampaignResponseItem["design"],
+  override: Record<string, unknown>,
+) {
+  if (Object.keys(override).length === 0) return design;
+
+  return compactDesignPayload({
+    ...defaultCampaignDesignValues,
+    ...design,
+    ...override,
+    structure:
+      (override.structure as ReturnType<typeof serializeStructure>) ??
+      design.structure ??
+      null,
+  });
+}
+
+function mergeNullablePayload<T extends Record<string, unknown> | null>(
+  base: T,
+  override: Record<string, unknown>,
+) {
+  if (Object.keys(override).length === 0) return base;
+
+  return compactObject({
+    ...(base ?? {}),
+    ...override,
+  }) as T;
+}
+
+function applyPlacementOverride(
+  campaign: StorefrontCampaignResponseItem,
+  override: Record<string, unknown>,
+) {
+  if (typeof override.placement === "string") {
+    campaign.placement = override.placement;
+  }
+  if (typeof override.placementType === "string") {
+    campaign.placement = override.placementType;
+  }
+  if (typeof override.placementSelector === "string") {
+    campaign.placementSelector = override.placementSelector;
+  }
+  if (typeof override.customSelector === "string") {
+    campaign.placementSelector = override.customSelector;
+  }
 }
 
 function readString(searchParams: URLSearchParams, key: string) {

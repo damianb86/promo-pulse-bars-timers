@@ -182,6 +182,7 @@ export async function loadStorefrontCampaignsResponse(
     ? buildStorefrontPayloadCacheKey({
         context,
         snapshotVersion: snapshot.version,
+        visitorScoped: hasActiveExperiment,
       })
     : "";
   const cachedPayload = payloadCacheKey
@@ -194,7 +195,7 @@ export async function loadStorefrontCampaignsResponse(
       return notModifiedResponse({
         cacheControl: getCacheControlHeader(
           context,
-          behaviorLookbackDays > 0 || hasActiveExperiment,
+          behaviorLookbackDays > 0,
         ),
         rateLimit,
         access,
@@ -205,7 +206,7 @@ export async function loadStorefrontCampaignsResponse(
     return jsonResponse(cachedPayload.body, {
       cacheControl: getCacheControlHeader(
         context,
-        behaviorLookbackDays > 0 || hasActiveExperiment,
+        behaviorLookbackDays > 0,
       ),
       rateLimit,
       access,
@@ -255,7 +256,7 @@ export async function loadStorefrontCampaignsResponse(
       return notModifiedResponse({
         cacheControl: getCacheControlHeader(
           context,
-          behaviorLookbackDays > 0 || hasActiveExperiment,
+          behaviorLookbackDays > 0,
         ),
         rateLimit,
         access,
@@ -267,7 +268,7 @@ export async function loadStorefrontCampaignsResponse(
   return jsonResponse(payload, {
     cacheControl: getCacheControlHeader(
       context,
-      behaviorLookbackDays > 0 || hasActiveExperiment,
+      behaviorLookbackDays > 0,
     ),
     rateLimit,
     access,

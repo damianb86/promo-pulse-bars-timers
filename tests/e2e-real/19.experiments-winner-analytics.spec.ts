@@ -139,23 +139,27 @@ test.describe("real experiments, winner application, analytics, reports, and rec
 
     await openStorefront(page, realE2ECacheBustPath("experiment_payload"));
     await expectStorefrontEmbedOrSkip(page, testInfo);
-    const payload = await fetchStorefrontCampaigns(page, {
-      campaignId: campaign.id,
-      placement: "TOP_BAR",
-      visitorId: "experiment-payload-reader",
-    });
-    const campaignPayload = expectCampaignPayload(payload.body, campaign.id);
-    expect(campaignPayload?.experiment).toMatchObject({
-      id: experiment.id,
-      variants: expect.arrayContaining([
-        expect.objectContaining({ name: "Winning treatment" }),
-      ]),
-    });
-
     const visitorId = findVisitorForVariant(
       experiment.id,
       winningVariant!.id,
-      campaignPayload?.experiment?.variants ?? [],
+      experiment.variants,
+    );
+    const payload = await fetchStorefrontCampaigns(page, {
+      campaignId: campaign.id,
+      placement: "TOP_BAR",
+      visitorId,
+    });
+    const campaignPayload = expectCampaignPayload(payload.body, campaign.id);
+    expect(campaignPayload).not.toHaveProperty("experiment");
+    expect(campaignPayload).toMatchObject({
+      experimentId: experiment.id,
+      variantId: winningVariant!.id,
+      texts: {
+        headline: winningHeadline,
+        subheadline: "Winning treatment copy.",
+        ctaText: "Shop winning offer",
+      },
+    });
     );
     await page.addInitScript((nextVisitorId) => {
       window.localStorage.setItem("promo_pulse_visitor_id", nextVisitorId);

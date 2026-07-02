@@ -105,10 +105,12 @@ describe("storefront campaign serialization", () => {
       },
     });
     expect(JSON.stringify(serialized)).not.toContain("shopifyDiscountId");
-    expect(serialized?.experiment).toBeNull();
+    expect(serialized).not.toHaveProperty("experiment");
+    expect(serialized).not.toHaveProperty("experimentId");
+    expect(serialized).not.toHaveProperty("variantId");
   });
 
-  it("serializes running experiment variants with storefront overrides", () => {
+  it("materializes the assigned experiment variant without exposing experiment context", () => {
     const serialized = serializeStorefrontCampaign(
       buildCampaign({
         discountSync: {
@@ -170,26 +172,19 @@ describe("storefront campaign serialization", () => {
           },
         ] as StorefrontCampaignSource["experiments"],
       }),
-      baseContext(),
+      baseContext({ visitorId: "visitor-a" }),
     );
 
-    expect(serialized?.experiment).toMatchObject({
-      id: "experiment-1",
-      status: "RUNNING",
-      primaryMetric: "CLICK_RATE",
-      variants: [
-        {
-          id: "variant-a",
-          textOverride: { headline: "Control headline" },
-        },
-        {
-          id: "variant-b",
-          designOverride: { backgroundColor: "#064E3B" },
-          discountOverride: { discountCode: "VARIANT20" },
-          placementOverride: { placement: "BOTTOM_BAR" },
-        },
-      ],
+    expect(serialized).toMatchObject({
+      experimentId: "experiment-1",
+      variantId: "variant-b",
+      placement: "BOTTOM_BAR",
+      design: { backgroundColor: "#064E3B" },
+      texts: { headline: "Variant headline" },
+      discount: { method: "CODE", discountCode: "VARIANT20" },
     });
+    expect(serialized).not.toHaveProperty("experiment");
+    expect(serialized).not.toHaveProperty("variant");
     expect(JSON.stringify(serialized)).not.toContain("winnerVariantId");
   });
 
@@ -259,7 +254,7 @@ describe("storefront campaign serialization", () => {
           },
         ] as StorefrontCampaignSource["experiments"],
       }),
-      baseContext(),
+      baseContext({ visitorId: "visitor-a" }),
     );
 
     const payload = JSON.stringify(serialized);
@@ -269,6 +264,7 @@ describe("storefront campaign serialization", () => {
     expect(payload).not.toContain("shopifyDiscountId");
     // Non-sensitive override fields are still delivered.
     expect(payload).toContain('"value":"20"');
+    expect(serialized).not.toHaveProperty("experiment");
   });
 
   it("serializes unique discount code availability without internal settings", () => {

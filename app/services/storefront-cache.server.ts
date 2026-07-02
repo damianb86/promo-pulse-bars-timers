@@ -235,9 +235,11 @@ export function setCachedStorefrontPayload(
 export function buildStorefrontPayloadCacheKey({
   context,
   snapshotVersion,
+  visitorScoped = false,
 }: {
   context: StorefrontCampaignContext;
   snapshotVersion: string;
+  visitorScoped?: boolean;
 }) {
   const shopKey = normalizeCacheKey(context.shop);
   const payloadKey = stableHash({
@@ -254,6 +256,7 @@ export function buildStorefrontPayloadCacheKey({
     currency: context.currency,
     placement: context.placement,
     placements: context.placements,
+    visitorId: visitorScoped ? context.visitorId : "",
   });
 
   return `${shopKey}:${payloadKey}`;

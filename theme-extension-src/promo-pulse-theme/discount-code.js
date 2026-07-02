@@ -17,7 +17,7 @@
   var attributionMaxAgeMs = 24 * 60 * 60 * 1000;
   var storefrontCampaignRequestCache = {};
   var storefrontCampaignPendingRequests = {};
-  var storefrontCampaignRequestTtlMs = 30000;
+  var storefrontCampaignRequestTtlMs = 5 * 60 * 1000;
   var storefrontCampaignPlacements = [
     "TOP_BAR",
     "BOTTOM_BAR",
@@ -164,62 +164,7 @@
   };
 
   window.PromoPulseApplyExperiment = function (campaign) {
-    var experiment = campaign && campaign.experiment;
-    var variants =
-      experiment && Array.isArray(experiment.variants)
-        ? experiment.variants.filter(isAssignableExperimentVariant)
-        : [];
-    var visitorId;
-    var assignmentKey;
-    var assignedVariantId;
-    var variant;
-    var nextCampaign;
-
-    if (!campaign || !experiment || experiment.status !== "RUNNING") {
-      return campaign;
-    }
-
-    if (!experiment.id || variants.length === 0) return campaign;
-    if (!analyticsAllowed()) return campaign;
-
-    visitorId = getVisitorId();
-    assignmentKey = "promo_pulse_experiment_assignment_" + experiment.id;
-    assignedVariantId = readStoredValue("localStorage", assignmentKey);
-    variant = findExperimentVariant(variants, assignedVariantId);
-
-    if (!variant) {
-      variant = selectExperimentVariant(experiment.id, visitorId, variants);
-      if (variant) {
-        writeStoredValue("localStorage", assignmentKey, variant.id);
-      }
-    }
-
-    if (!variant) return campaign;
-
-    nextCampaign = Object.assign({}, campaign, {
-      experimentId: experiment.id,
-      variantId: variant.id,
-      experiment: {
-        id: experiment.id,
-        name: experiment.name,
-        primaryMetric: experiment.primaryMetric,
-        trafficSplitStrategy: experiment.trafficSplitStrategy,
-        status: experiment.status,
-      },
-      variant: {
-        id: variant.id,
-        name: variant.name,
-      },
-      texts: mergePlainObjects(campaign.texts, variant.textOverride),
-      design: normalizeCampaignDesign(
-        mergePlainObjects(campaign.design, variant.designOverride),
-      ),
-      discount: mergePlainObjects(campaign.discount, variant.discountOverride),
-    });
-
-    applyPlacementOverride(nextCampaign, variant.placementOverride);
-
-    return nextCampaign;
+    return campaign;
   };
 
   function isAssignableExperimentVariant(variant) {
@@ -1035,8 +980,6 @@
         payload: clonePlainObject(stored.payload),
       };
 
-      revalidateStorefrontCampaignPayload(url, stored, options);
-
       return Promise.resolve(stored.payload).then(clonePlainObject);
     }
 
@@ -1153,6 +1096,10 @@
       return storedPayload;
     }
 
+    metadata.expiresAt = resolveStorefrontPayloadExpiresAt(
+      storedPayload,
+      metadata.expiresAt,
+    );
     storedPayload.__promoPulseClientExpiresAt = metadata.expiresAt;
     storedPayload.__promoPulseEtag = metadata.etag;
     writeStorefrontPayloadCache(url, {
@@ -1167,8 +1114,10 @@
   function refreshStoredStorefrontPayload(url, stored, response) {
     var metadata = readStorefrontCacheMetadata(response);
     var payload = clonePlainObject(stored.payload);
-    var expiresAt =
-      metadata.expiresAt || Date.now() + storefrontCampaignRequestTtlMs;
+    var expiresAt = resolveStorefrontPayloadExpiresAt(
+      payload,
+      metadata.expiresAt,
+    );
     var etag = metadata.etag || stored.etag || "";
 
     if (metadata.noStore) {
@@ -1249,6 +1198,36 @@
       expiresAt: expiresAt,
       noStore: noStore,
     };
+  }
+
+  function resolveStorefrontPayloadExpiresAt(payload, configuredExpiresAt) {
+    var now = Date.now();
+    var minimumExpiresAt = now + storefrontCampaignRequestTtlMs;
+    var expiresAt = Number.isFinite(configuredExpiresAt)
+      ? Math.max(configuredExpiresAt, minimumExpiresAt)
+      : minimumExpiresAt;
+    var timerExpiresAt = readEarliestCampaignTimerExpiresAt(payload, now);
+
+    return timerExpiresAt ? Math.min(expiresAt, timerExpiresAt) : expiresAt;
+  }
+
+  function readEarliestCampaignTimerExpiresAt(payload, now) {
+    var campaigns =
+      payload && Array.isArray(payload.campaigns) ? payload.campaigns : [];
+    var earliest = Infinity;
+
+    campaigns.forEach(function (campaign) {
+      var endsAt;
+
+      if (!campaign || !campaign.timer || !campaign.endsAt) return;
+
+      endsAt = Date.parse(campaign.endsAt);
+      if (Number.isFinite(endsAt) && endsAt > now && endsAt < earliest) {
+        earliest = endsAt;
+      }
+    });
+
+    return Number.isFinite(earliest) ? earliest : 0;
   }
 
   function readPayloadExpiresAt(payload, fallbackNow) {

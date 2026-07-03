@@ -18,16 +18,6 @@
   var storefrontCampaignRequestCache = {};
   var storefrontCampaignPendingRequests = {};
   var storefrontCampaignRequestTtlMs = 5 * 60 * 1000;
-  var storefrontCampaignPlacements = [
-    "TOP_BAR",
-    "BOTTOM_BAR",
-    "CUSTOM_SELECTOR",
-    "PRODUCT_PAGE",
-    "PRODUCT_PAGE_BADGE",
-    "COLLECTION_CARD",
-    "CART_PAGE",
-    "CART_DRAWER",
-  ];
   var memoryVisitorId = "";
   var memorySessionId = "";
   // Analytics events are queued and flushed as one batched POST per page load.
@@ -863,7 +853,7 @@
     };
   }
 
-  function fetchStorefrontCampaignPayload(config, options) {
+  function fetchStorefrontCampaignPayload(config) {
     var url = buildStorefrontCampaignsUrl(config);
     var cached = storefrontCampaignRequestCache[url];
     var stored = readStorefrontPayloadCache(url);

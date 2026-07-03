@@ -392,8 +392,6 @@
 
     var design = campaign.design || {};
     var timerState = calculateTimerState(campaign, new Date());
-    var icon;
-
     if (design.mobileEnabled === false && config.device === "mobile") return;
     if (timerState.isExpired && shouldHideExpiredCampaign(campaign)) return;
     if (
@@ -511,8 +509,6 @@
     var badgeEl;
     var badgeText;
     var badgeHref;
-    var textEl;
-
     if (!container || renderedCampaigns[renderKey]) return;
     if (!window.CountPulseSurface) return;
 
@@ -638,185 +634,6 @@
     if (endpoint && url) endpoint.textContent = url;
   }
 
-  function setDesignProperties(bar, design) {
-    bar.style.setProperty("--pp-bg", getBackground(design));
-    bar.style.setProperty("--pp-text", safeColor(design.textColor, "#ffffff"));
-    bar.style.setProperty(
-      "--pp-accent",
-      safeColor(design.accentColor, "#22c55e"),
-    );
-    bar.style.setProperty(
-      "--pp-button",
-      safeColor(design.buttonColor, "#ffffff"),
-    );
-    bar.style.setProperty(
-      "--pp-button-text",
-      safeColor(design.buttonTextColor, "#111827"),
-    );
-    bar.style.setProperty(
-      "--pp-close",
-      safeColor(
-        design.closeButtonColor,
-        safeColor(design.textColor, "#ffffff"),
-      ),
-    );
-    bar.style.setProperty(
-      "--pp-font-size",
-      clamp(design.fontSize, 10, 24, 14) + "px",
-    );
-    bar.style.setProperty("--pp-font-family", fontFamily(design.fontFamily));
-    bar.style.setProperty(
-      "--pp-radius",
-      clamp(design.borderRadius, 0, 999, 0) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-border-size",
-      clamp(design.borderSize, 0, 8, 0) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-border-color",
-      safeColor(design.borderColor, "transparent"),
-    );
-    bar.style.setProperty(
-      "--pp-title-size",
-      clamp(design.titleFontSize, 12, 48, 18) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-title-color",
-      safeColor(design.titleColor, safeColor(design.textColor, "#ffffff")),
-    );
-    bar.style.setProperty(
-      "--pp-subheading-size",
-      clamp(design.subheadingFontSize, 10, 32, 14) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-subheading-color",
-      safeColor(design.subheadingColor, safeColor(design.textColor, "#ffffff")),
-    );
-    bar.style.setProperty(
-      "--pp-timer-size",
-      clamp(design.timerFontSize, 12, 72, 24) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-timer-color",
-      safeColor(design.timerColor, safeColor(design.textColor, "#ffffff")),
-    );
-    bar.style.setProperty(
-      "--pp-legend-size",
-      clamp(design.legendFontSize, 10, 24, 12) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-legend-color",
-      safeColor(design.legendColor, safeColor(design.textColor, "#ffffff")),
-    );
-    bar.style.setProperty(
-      "--pp-timer-surface",
-      safeColor(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
-    );
-    bar.style.setProperty(
-      "--pp-timer-border",
-      safeColor(design.timerSurfaceBorderColor, "transparent"),
-    );
-    bar.style.setProperty(
-      "--pp-timer-border-size",
-      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-timer-radius",
-      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-content-max-width",
-      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-padding-block",
-      clamp(design.paddingBlock, 4, 48, 11) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-padding-inline",
-      clamp(design.paddingInline, 8, 64, 16) + "px",
-    );
-    bar.style.setProperty("--pp-justify", getJustifyContent(design.alignment));
-    bar.style.setProperty("--pp-align", getTextAlign(design.alignment));
-    bar.style.setProperty(
-      "--pp-gap",
-      clamp(design.contentGap, 4, 48, 10) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-icon-size",
-      clamp(design.iconSize, 12, 64, 20) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-text",
-      safeColor(design.offerCodeTextColor, "#111827"),
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-bg",
-      safeColor(design.offerCodeBackgroundColor, "#ffffff"),
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-border",
-      safeColor(design.offerCodeBorderColor, "#d1d5db"),
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-size",
-      clamp(design.offerCodeFontSize, 10, 24, 13) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-radius",
-      clamp(design.offerCodeBorderRadius, 0, 40, 4) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-padding-block",
-      clamp(design.offerCodePaddingBlock, 2, 24, 5) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-offer-code-padding-inline",
-      clamp(design.offerCodePaddingInline, 4, 32, 8) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-offer-gap",
-      clamp(design.offerCodeGap, 0, 24, 6) + "px",
-    );
-    bar.style.setProperty(
-      "--pp-motion-duration",
-      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
-    );
-  }
-
-  function getBackground(design) {
-    if (
-      design &&
-      design.backgroundType === "IMAGE" &&
-      isSafeImageUrl(design.backgroundImageUrl)
-    ) {
-      return (
-        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
-        escapeCssUrl(design.backgroundImageUrl) +
-        '") center / cover no-repeat'
-      );
-    }
-
-    if (design && design.backgroundType === "GRADIENT") {
-      return (
-        "linear-gradient(" +
-        clamp(design.gradientAngle, 0, 360, 90) +
-        "deg, " +
-        safeColor(design.gradientStartColor, "#252237") +
-        ", " +
-        safeColor(design.gradientEndColor, "#4c4861") +
-        ")"
-      );
-    }
-
-    return safeColor(design.backgroundColor, "#111827");
-  }
-
-  function escapeCssUrl(value) {
-    return String(value || "").replace(/["\\\n\r]/g, "");
-  }
-
   function getPlacementContainer(placement, selector, customStyle) {
     var target;
     var customContainer;
@@ -939,85 +756,6 @@
     return null;
   }
 
-  function renderIcon(design) {
-    var icon = document.createElement("span");
-    var svg;
-    var image;
-
-    if (design.icon === "NONE") return null;
-
-    icon.className = "pp-icon";
-
-    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
-      image = document.createElement("img");
-      image.alt = "";
-      image.loading = "lazy";
-      image.decoding = "async";
-      image.src = design.customIconUrl;
-      icon.appendChild(image);
-      return icon;
-    }
-
-    svg = getIconSvg(design.icon);
-    if (!svg) return null;
-
-    icon.innerHTML = svg;
-
-    return icon;
-  }
-
-  function fontFamily(value) {
-    if (value === "SERIF") return "Georgia, Times New Roman, serif";
-    if (value === "MONO")
-      return "ui-monospace, SFMono-Regular, Menlo, monospace";
-    if (value === "ROUNDED")
-      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
-    if (value === "GEOMETRIC")
-      return "Avenir Next, Montserrat, system-ui, sans-serif";
-    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
-    if (value === "CONDENSED")
-      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
-    if (value === "CASUAL")
-      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
-    if (value === "SYSTEM")
-      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-
-    return "inherit";
-  }
-
-  function renderMessage(campaign, timerState, icon) {
-    var texts = campaign.texts || {};
-    var message = document.createElement("div");
-    var copy = document.createElement("div");
-    var headline = document.createElement("strong");
-    var subheadline = document.createElement("span");
-    var design = campaign.design || {};
-    var isInline = String(design.layout || "").toUpperCase() === "INLINE";
-
-    message.className = "pp-message";
-    copy.className = "pp-message-copy";
-    if (icon) message.appendChild(icon);
-
-    headline.textContent = texts.headline || campaign.name || "Ad";
-    copy.appendChild(headline);
-
-    if (timerState.isExpired && texts.expiredText) {
-      subheadline.textContent = texts.expiredText;
-      copy.appendChild(subheadline);
-    } else if (texts.subheadline) {
-      subheadline.textContent = texts.subheadline;
-      copy.appendChild(subheadline);
-    }
-
-    if (timerState.isActive && isInline) {
-      copy.appendChild(renderCountdown(timerState, design, true));
-    }
-
-    message.appendChild(copy);
-
-    return message;
-  }
-
   function renderCountdown(timerState, design, compact) {
     var timerStyle = safeTimerStyle(design.timerStyle);
     var timerFormat = safeTimerFormat(design.timerFormat);
@@ -1127,20 +865,6 @@
     });
   }
 
-  function renderCta(text, url, campaign) {
-    var cta = document.createElement("a");
-
-    cta.className = "pp-cta";
-    cta.href = isSafeUrl(url) ? url : "#";
-    cta.textContent = text;
-    cta.setAttribute("aria-label", text);
-    cta.addEventListener("click", function () {
-      emitClick(campaign);
-    });
-
-    return cta;
-  }
-
   function emitClick(campaign) {
     document.dispatchEvent(
       new CustomEvent("promo-pulse:click", {
@@ -1170,61 +894,6 @@
     var href = ((campaign.texts || {}).ctaUrl || "").trim();
 
     return isSafeUrl(href) ? href : "";
-  }
-
-  function getBadgeShape(badgeSettings) {
-    var shape = String(badgeSettings.badgeShape || "PILL").toLowerCase();
-
-    if (shape === "rounded" || shape === "square") return shape;
-    return "pill";
-  }
-
-  function getBadgePosition(badgeSettings) {
-    var position = String(badgeSettings.badgePosition || "TOP_RIGHT")
-      .toLowerCase()
-      .replace(/_/g, "-");
-
-    if (
-      position === "top-left" ||
-      position === "bottom-left" ||
-      position === "bottom-right"
-    ) {
-      return position;
-    }
-
-    return "top-right";
-  }
-
-  function renderCloseButton(bar, design) {
-    var button = document.createElement("button");
-    var size = clamp((design || {}).closeButtonSize, 10, 48, 20);
-
-    button.className = "pp-close";
-    button.type = "button";
-    button.setAttribute("aria-label", "Close");
-    button.style.setProperty("--pp-close-size", size + "px");
-    button.innerHTML = closeIconSvg(size);
-    button.addEventListener("click", function () {
-      if ((design || {}).dismissBehavior === "HIDE_PERMANENTLY") {
-        rememberCampaignDismissed(bar.dataset.campaignId);
-      }
-      removeBar(bar, design);
-    });
-
-    return button;
-  }
-
-  function closeIconSvg(size) {
-    return (
-      '<svg class="pp-close__icon" viewBox="0 0 24 24" width="' +
-      size +
-      '" height="' +
-      size +
-      '" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-      'stroke-linecap="round" aria-hidden="true" focusable="false">' +
-      '<line x1="6" y1="6" x2="18" y2="18"></line>' +
-      '<line x1="18" y1="6" x2="6" y2="18"></line></svg>'
-    );
   }
 
   function dismissStorageKey(campaignId) {
@@ -1267,18 +936,6 @@
     window.setTimeout(function () {
       bar.remove();
     }, duration);
-  }
-
-  function replayCountdownTick(countdown) {
-    if (!countdown) return;
-
-    [].slice
-      .call(countdown.querySelectorAll(".pp-countdown-tick-value"))
-      .forEach(function (value) {
-        value.classList.remove("pp-countdown-tick-value");
-        void value.offsetWidth;
-        value.classList.add("pp-countdown-tick-value");
-      });
   }
 
   function getCountdownTickAnimation(countdown) {
@@ -1906,52 +1563,6 @@
         return item.trim();
       })
       .filter(Boolean);
-  }
-
-  function isSafeIconUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" ||
-        /^https?:\/\//i.test(value) ||
-        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
-    );
-  }
-
-  function isSafeImageUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
-    );
-  }
-
-  function getIconSvg(icon) {
-    return (
-      {
-        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
-        CLOCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
-        TRUCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
-        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
-      }[icon] || ""
-    );
-  }
-
-  function getJustifyContent(alignment) {
-    if (alignment === "LEFT") return "flex-start";
-    if (alignment === "RIGHT") return "flex-end";
-    return "center";
-  }
-
-  function getTextAlign(alignment) {
-    if (alignment === "LEFT") return "left";
-    if (alignment === "RIGHT") return "right";
-    return "center";
-  }
-
-  function safeColor(value, fallback) {
-    return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
   }
 
   function clamp(value, min, max, fallback) {

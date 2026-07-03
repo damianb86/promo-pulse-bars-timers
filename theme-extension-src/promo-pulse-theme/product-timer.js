@@ -298,6 +298,12 @@
     }
 
     var card = window.CountPulseSurface.build({
+      tracking: {
+        campaignId: campaign.id,
+        experimentId: campaign.experimentId || null,
+        variantId: campaign.variantId || null,
+        placement: campaign.placement,
+      },
       variant: "block",
       placement: campaign.placement || "PRODUCT_PAGE",
       design: design,

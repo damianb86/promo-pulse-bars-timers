@@ -372,6 +372,12 @@
         : "block";
 
     var bar = window.CountPulseSurface.build({
+      tracking: {
+        campaignId: campaign.id,
+        experimentId: campaign.experimentId || null,
+        variantId: campaign.variantId || null,
+        placement: campaign.placement,
+      },
       variant: variant,
       placement: campaign.placement,
       design: design,

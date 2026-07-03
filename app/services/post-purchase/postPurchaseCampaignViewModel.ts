@@ -1,4 +1,16 @@
 import type { StorefrontCampaignResponseItem } from "../../utils/storefront-campaigns";
+import {
+  buildTimer,
+  campaignSurfaceModes,
+  formatCutoffTime,
+  normalizeCampaignSurfaceMode,
+  readDiscountCode,
+  readText,
+  readTextWithoutPlaceholders,
+  selectTopViewModel,
+  type CampaignSurfaceMode,
+  type CampaignSurfaceTimer,
+} from "../campaign-message-view-model";
 
 export const postPurchaseSurfaces = [
   "THANK_YOU_PAGE",
@@ -7,13 +19,9 @@ export const postPurchaseSurfaces = [
 
 export type PostPurchaseSurface = (typeof postPurchaseSurfaces)[number];
 
-export const postPurchaseCampaignModes = [
-  "AUTO_ELIGIBLE",
-  "SPECIFIC_CAMPAIGN",
-] as const;
+export const postPurchaseCampaignModes = campaignSurfaceModes;
 
-export type PostPurchaseCampaignMode =
-  (typeof postPurchaseCampaignModes)[number];
+export type PostPurchaseCampaignMode = CampaignSurfaceMode;
 
 export type PostPurchaseMessageKind =
   | "OFFER_USED_SUCCESSFULLY"
@@ -27,10 +35,7 @@ export type PostPurchaseCampaignAction = {
   url: string;
 };
 
-export type PostPurchaseCampaignTimer = {
-  endsAt: string;
-  remainingSeconds: number;
-};
+export type PostPurchaseCampaignTimer = CampaignSurfaceTimer;
 
 export type PostPurchaseCampaignViewModel = {
   campaignId: string;
@@ -177,29 +182,11 @@ export function buildPostPurchaseCampaignViewModel({
 export function selectPostPurchaseCampaignViewModel(
   input: SelectPostPurchaseCampaignInput,
 ) {
-  const ranked = input.campaigns
-    .map((campaign, index) => ({
-      index,
-      viewModel: buildPostPurchaseCampaignViewModel({
-        ...input,
-        campaign,
-      }),
-    }))
-    .filter(
-      (
-        item,
-      ): item is { index: number; viewModel: PostPurchaseCampaignViewModel } =>
-        item.viewModel !== null,
-    )
-    .sort((left, right) => {
-      const priority =
-        postPurchaseKindPriority(left.viewModel.kind) -
-        postPurchaseKindPriority(right.viewModel.kind);
-
-      return priority || left.index - right.index;
-    });
-
-  return ranked[0]?.viewModel ?? null;
+  return selectTopViewModel(
+    input.campaigns,
+    (campaign) => buildPostPurchaseCampaignViewModel({ ...input, campaign }),
+    (viewModel) => postPurchaseKindPriority(viewModel.kind),
+  );
 }
 
 export function normalizePostPurchaseSurface(
@@ -211,7 +198,7 @@ export function normalizePostPurchaseSurface(
 export function normalizePostPurchaseCampaignMode(
   value: string | null | undefined,
 ): PostPurchaseCampaignMode {
-  return value === "SPECIFIC_CAMPAIGN" ? "SPECIFIC_CAMPAIGN" : "AUTO_ELIGIBLE";
+  return normalizeCampaignSurfaceMode(value);
 }
 
 function buildDeliveryPromise({
@@ -246,36 +233,6 @@ function buildDeliveryPromise({
   };
 }
 
-function buildTimer(
-  endsAt: string | null,
-  now: Date,
-  showTimer: boolean | undefined,
-): PostPurchaseCampaignTimer | null {
-  const endDate = getFutureDate(endsAt, now);
-  if (!showTimer || !endDate) return null;
-
-  return {
-    endsAt: endDate.toISOString(),
-    remainingSeconds: Math.max(
-      0,
-      Math.floor((endDate.getTime() - now.getTime()) / 1000),
-    ),
-  };
-}
-
-function getFutureDate(value: string | null, now: Date) {
-  if (!value) return null;
-
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime()) || date <= now) return null;
-
-  return date;
-}
-
-function readDiscountCode(campaign: StorefrontCampaignResponseItem) {
-  return readText(campaign.discount?.discountCode);
-}
-
 function findAppliedDiscountCode(
   expectedCode: string,
   appliedDiscountCodes: string[],
@@ -301,50 +258,6 @@ function buildAction(
     label: readText(campaign.texts.ctaText) || fallbackLabel,
     url,
   };
-}
-
-function readText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function readTextWithoutPlaceholders(text: string) {
-  const normalized = readText(text);
-
-  return /\{\{\s*[^}]+\s*\}\}/.test(normalized) ? "" : normalized;
-}
-
-function formatCutoffTime(
-  hour: unknown,
-  minute: unknown,
-  locale: string,
-) {
-  const parsedHour = Number(hour);
-  const parsedMinute = Number(minute);
-
-  if (
-    !Number.isInteger(parsedHour) ||
-    !Number.isInteger(parsedMinute) ||
-    parsedHour < 0 ||
-    parsedHour > 23 ||
-    parsedMinute < 0 ||
-    parsedMinute > 59
-  ) {
-    return "";
-  }
-
-  try {
-    const date = new Date(Date.UTC(2026, 0, 1, parsedHour, parsedMinute, 0));
-
-    return new Intl.DateTimeFormat(locale || "en", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }).format(date);
-  } catch {
-    return `${String(parsedHour).padStart(2, "0")}:${String(
-      parsedMinute,
-    ).padStart(2, "0")}`;
-  }
 }
 
 function postPurchaseKindPriority(kind: PostPurchaseMessageKind) {

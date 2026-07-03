@@ -459,7 +459,11 @@ Structural HTML (structureHtml) — reshape the layout when needed:
   strong, small, p, a, button, ul, li, img, br. Anything else is stripped.
 - The dynamic parts are NOT written as literal text; they are empty placeholder
   elements marked with data-cp-slot, which the app fills at render time. Include
-  the slots the campaign needs, each at most once:
+  the slots the campaign needs, each at most once. REQUIRED slots — a structure
+  missing them (or repeating one) is discarded and replaced with the standard
+  layout: every structure needs "headline" and/or "body"; countdown campaigns
+  (COUNTDOWN_BAR, PRODUCT_TIMER, CART_TIMER) need a timer slot ("timer",
+  "timer-inline", or the timer-part slots); FREE_SHIPPING_GOAL needs "progress".
   - data-cp-slot="headline" (use on a <strong>) — the headline text
   - data-cp-slot="body" (a <span>) — the supporting line
   - data-cp-slot="cta" (a <span>, or <a> for a link) — the action button
@@ -509,7 +513,9 @@ Structural HTML (structureHtml) — reshape the layout when needed:
 Structural CSS (structureCss) — style the structure and add effects:
 - Put ALL styles for a custom structure here (and any extra effects/animations you
   want). Plain CSS only: no <style> tags, no @import, no JavaScript, no
-  javascript:/data: URLs.
+  javascript:/data: URLs. The campaign must stay inside its own box: never use
+  position fixed/sticky, viewport units (vw/vh) for sizes, or z-index above 999 —
+  those declarations are stripped.
 - Do not use structureCss to recreate settings the app already supports. Surface
   backgrounds should usually be design.backgroundType/backgroundImageUrl,
   gradients should be design.gradient*, buttons should be design.button*, and

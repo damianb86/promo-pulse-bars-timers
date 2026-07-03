@@ -6,9 +6,9 @@ import {
 } from "../../types/campaign-design";
 import type { CampaignDesignValues } from "../../types/campaign-design";
 import {
-  sanitizeStructureCss,
-  sanitizeStructureHtml,
-} from "../../utils/structure-html";
+  enforceAiStructureQuality,
+  enforceReadableAiColors,
+} from "./structureGuardrails.server";
 import {
   campaignGoalOptions,
   getDefaultPlacementForCampaignType,
@@ -1513,6 +1513,16 @@ function sanitizeCampaignSuggestion(
     );
   }
 
+  // Beyond security sanitization, the AI structure must contain the slots the
+  // campaign type needs to render completely (timer, progress, headline);
+  // otherwise it is discarded and the standard generated layout takes over.
+  const structure = enforceAiStructureQuality(
+    suggestion.structureHtml,
+    suggestion.structureCss,
+    campaign.type,
+  );
+  warnings.push(...structure.warnings);
+
   return {
     ...suggestion,
     campaign,
@@ -1523,12 +1533,8 @@ function sanitizeCampaignSuggestion(
       Boolean(suggestion.referenceImageUsed) ||
         suggestion.input.generateVisualAssets,
     ),
-    // Sanitize any AI-authored structural HTML / CSS to the safe allowlist so a
-    // generated override can never inject unsafe markup or styles.
-    structureHtml: sanitizeStructureHtml(suggestion.structureHtml),
-    structureCss: suggestion.structureCss
-      ? sanitizeStructureCss(suggestion.structureCss)
-      : "",
+    structureHtml: structure.structureHtml,
+    structureCss: structure.structureCss,
     assets: sanitizeAiAssetSpecs(
       suggestion.assets,
       suggestion.input.generateVisualAssets,
@@ -2480,11 +2486,16 @@ function sanitizeAiDesign(
     ? sanitizedDesign
     : omitPresetVisualOverrides(sanitizedDesign);
 
-  return sanitizeDesign({
+  const merged = sanitizeDesign({
     ...template,
     ...appliedDesign,
     templateKey: template.templateKey,
   });
+
+  // AI-picked colors must stay readable; unreadable foregrounds are swapped to
+  // black/white so the palette survives but the copy is always legible (and the
+  // design passes validateCampaignDesign at save time).
+  return allowVisualOverrides ? enforceReadableAiColors(merged) : merged;
 }
 
 function sanitizePartialDesign(

@@ -1,11 +1,21 @@
 import type { StorefrontCampaignResponseItem } from "../../utils/storefront-campaigns";
+import {
+  buildTimer,
+  campaignSurfaceModes,
+  formatCutoffTime,
+  getFutureDate,
+  normalizeCampaignSurfaceMode,
+  readDiscountCode,
+  readText,
+  readTextWithoutPlaceholders,
+  selectTopViewModel,
+  type CampaignSurfaceMode,
+  type CampaignSurfaceTimer,
+} from "../campaign-message-view-model";
 
-export const checkoutCampaignModes = [
-  "AUTO_ELIGIBLE",
-  "SPECIFIC_CAMPAIGN",
-] as const;
+export const checkoutCampaignModes = campaignSurfaceModes;
 
-export type CheckoutCampaignMode = (typeof checkoutCampaignModes)[number];
+export type CheckoutCampaignMode = CampaignSurfaceMode;
 
 export type CheckoutCampaignMessageKind =
   | "FREE_SHIPPING_REMINDER"
@@ -22,10 +32,7 @@ export type CheckoutCampaignProgress = {
   currencyCode: string;
 };
 
-export type CheckoutCampaignTimer = {
-  endsAt: string;
-  remainingSeconds: number;
-};
+export type CheckoutCampaignTimer = CampaignSurfaceTimer;
 
 export type CheckoutCampaignViewModel = {
   campaignId: string;
@@ -128,35 +135,17 @@ export function buildCheckoutCampaignViewModel({
 export function selectCheckoutCampaignViewModel(
   input: SelectCheckoutCampaignInput,
 ) {
-  const ranked = input.campaigns
-    .map((campaign, index) => ({
-      index,
-      viewModel: buildCheckoutCampaignViewModel({
-        ...input,
-        campaign,
-      }),
-    }))
-    .filter(
-      (
-        item,
-      ): item is { index: number; viewModel: CheckoutCampaignViewModel } =>
-        item.viewModel !== null,
-    )
-    .sort((left, right) => {
-      const priority =
-        checkoutKindPriority(left.viewModel.kind) -
-        checkoutKindPriority(right.viewModel.kind);
-
-      return priority || left.index - right.index;
-    });
-
-  return ranked[0]?.viewModel ?? null;
+  return selectTopViewModel(
+    input.campaigns,
+    (campaign) => buildCheckoutCampaignViewModel({ ...input, campaign }),
+    (viewModel) => checkoutKindPriority(viewModel.kind),
+  );
 }
 
 export function normalizeCheckoutCampaignMode(
   value: string | null | undefined,
 ): CheckoutCampaignMode {
-  return value === "SPECIFIC_CAMPAIGN" ? "SPECIFIC_CAMPAIGN" : "AUTO_ELIGIBLE";
+  return normalizeCampaignSurfaceMode(value);
 }
 
 function buildFreeShippingViewModel(
@@ -238,9 +227,8 @@ function buildDeliveryCutoffViewModel({
     cutoff.cutoffMinute,
     locale,
   );
-  const merchantText = readText(campaign.texts.deliveryBeforeCutoffText);
   const body =
-    readTextWithoutPlaceholders(merchantText) ||
+    readTextWithoutPlaceholders(campaign.texts.deliveryBeforeCutoffText) ||
     readText(campaign.texts.subheadline) ||
     (cutoffTime
       ? `Delivery cutoff: ${cutoffTime}.`
@@ -286,54 +274,16 @@ function buildCartGoalViewModel({
   };
 }
 
-function buildTimer(
-  endsAt: string | null,
-  now: Date,
-  showTimer: boolean | undefined,
-): CheckoutCampaignTimer | null {
-  const endDate = getFutureDate(endsAt, now);
-  if (!showTimer || !endDate) return null;
-
-  return {
-    endsAt: endDate.toISOString(),
-    remainingSeconds: Math.max(
-      0,
-      Math.floor((endDate.getTime() - now.getTime()) / 1000),
-    ),
-  };
-}
-
-function getFutureDate(value: string | null, now: Date) {
-  if (!value) return null;
-
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime()) || date <= now) return null;
-
-  return date;
-}
-
-function readDiscountCode(campaign: StorefrontCampaignResponseItem) {
-  return readText(campaign.discount?.discountCode);
-}
-
 function readPositiveNumber(value: unknown) {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function readText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 function replaceAmountPlaceholders(text: string, amount: string) {
   return text
     .replace(/\{\{\s*amount\s*\}\}/gi, amount)
     .replace(/\{\{\s*remaining_amount\s*\}\}/gi, amount);
-}
-
-function readTextWithoutPlaceholders(text: string) {
-  return /\{\{\s*[^}]+\s*\}\}/.test(text) ? "" : text;
 }
 
 function formatMoney(amount: number, currencyCode: string, locale: string) {
@@ -344,40 +294,6 @@ function formatMoney(amount: number, currencyCode: string, locale: string) {
     }).format(amount);
   } catch {
     return `${amount.toFixed(2)} ${currencyCode}`;
-  }
-}
-
-function formatCutoffTime(
-  hour: unknown,
-  minute: unknown,
-  locale: string,
-) {
-  const parsedHour = Number(hour);
-  const parsedMinute = Number(minute);
-
-  if (
-    !Number.isInteger(parsedHour) ||
-    !Number.isInteger(parsedMinute) ||
-    parsedHour < 0 ||
-    parsedHour > 23 ||
-    parsedMinute < 0 ||
-    parsedMinute > 59
-  ) {
-    return "";
-  }
-
-  try {
-    const date = new Date(Date.UTC(2026, 0, 1, parsedHour, parsedMinute, 0));
-
-    return new Intl.DateTimeFormat(locale || "en", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }).format(date);
-  } catch {
-    return `${String(parsedHour).padStart(2, "0")}:${String(
-      parsedMinute,
-    ).padStart(2, "0")}`;
   }
 }
 

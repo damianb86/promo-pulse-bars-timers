@@ -445,7 +445,7 @@ describe("AI campaign reference image", () => {
     expect(suggestion.design.titleColor).toBe("#102030");
   });
 
-  it("strips visual overrides for the text-only flow", async () => {
+  it("strips visual overrides for the text-only flow without explicit style direction", async () => {
     const colorfulProvider: CampaignAiProvider = {
       source: "provider",
       async generateCampaignSuggestion() {
@@ -467,6 +467,45 @@ describe("AI campaign reference image", () => {
     expect(suggestion.design.backgroundColor).not.toBe("#FF00AA");
   });
 
+  it("keeps text-only visual overrides when merchant notes request a palette", async () => {
+    const argentinaProvider: CampaignAiProvider = {
+      source: "provider",
+      async generateCampaignSuggestion() {
+        return {
+          design: {
+            backgroundType: "GRADIENT",
+            gradientStartColor: "#74ACDF",
+            gradientEndColor: "#FFFFFF",
+            titleColor: "#0B1F5E",
+            textColor: "#0B1F5E",
+            buttonColor: "#0B1F5E",
+            buttonTextColor: "#FFFFFF",
+            accentColor: "#F6C453",
+            timerSurfaceColor: "#0B1F5E",
+            timerColor: "#FFFFFF",
+          },
+        };
+      },
+    };
+
+    const suggestion = await generateCampaignSuggestion(
+      buildDefaultCampaignAiInput({
+        productContext: "football jerseys",
+        merchantNotes:
+          "Campaña de la selección Argentina de Futbol. Usa los colores de Argentina.",
+      }),
+      { provider: argentinaProvider },
+    );
+
+    expect(suggestion.referenceImageUsed).toBe(false);
+    expect(suggestion.design.backgroundType).toBe("GRADIENT");
+    expect(suggestion.design.gradientStartColor).toBe("#74ACDF");
+    expect(suggestion.design.gradientEndColor).toBe("#FFFFFF");
+    expect(suggestion.design.titleColor).toBe("#0B1F5E");
+    expect(suggestion.design.buttonColor).toBe("#0B1F5E");
+    expect(suggestion.design.accentColor).toBe("#F6C453");
+  });
+
   it("keeps the base prompt preset-first when no visual assets are requested", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
       "Preset-first design workflow",
@@ -475,6 +514,8 @@ describe("AI campaign reference image", () => {
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("flash-sale (Flash Sale)");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Design quality");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Contrast");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Merchant visual notes");
+    expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain("Argentina-inspired campaign");
     expect(AI_CAMPAIGN_SYSTEM_PROMPT).toContain(
       "Prefer first-class design settings",
     );
@@ -585,6 +626,22 @@ describe("AI campaign reference image", () => {
 
     expect(prompt).toContain("Visual asset generation is requested");
     expect(prompt).toContain('"generateVisualAssets": true');
+  });
+
+  it("marks merchant notes as high-priority visual direction in the prompt", () => {
+    const prompt = buildCampaignAiUserPrompt(
+      buildDefaultCampaignAiInput({
+        merchantNotes:
+          "Campaña de la selección Argentina de Futbol. Usa los colores de Argentina.",
+        productContext: "football jerseys",
+      }),
+    );
+
+    expect(prompt).toContain(
+      "Merchant notes may include palette, style, theme",
+    );
+    expect(prompt).toContain("colores de Argentina");
+    expect(prompt).toContain('"merchantNotes"');
   });
 
   it("includes image dimensions and the no-inflate rule when provided", () => {

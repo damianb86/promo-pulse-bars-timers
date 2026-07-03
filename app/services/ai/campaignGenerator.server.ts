@@ -587,8 +587,10 @@ export async function generateCampaignSuggestion(
     provider.source,
     {
       referenceImageUsed: Boolean(referenceImage),
-      allowVisualOverrides:
-        Boolean(referenceImage) || normalizedInput.generateVisualAssets,
+      allowVisualOverrides: shouldAllowAiVisualOverrides(
+        normalizedInput,
+        Boolean(referenceImage),
+      ),
     },
   );
 
@@ -667,8 +669,10 @@ export function parseAppliedCampaignSuggestion(
       parsed.source === "provider" ? "provider" : "mock",
       {
         referenceImageUsed: Boolean(parsed.referenceImageUsed),
-        allowVisualOverrides:
-          Boolean(parsed.referenceImageUsed) || input.generateVisualAssets,
+        allowVisualOverrides: shouldAllowAiVisualOverrides(
+          input,
+          Boolean(parsed.referenceImageUsed),
+        ),
       },
     );
 
@@ -1582,8 +1586,10 @@ function sanitizeCampaignSuggestion(
     design: sanitizeAiDesign(
       suggestion.design,
       buildDesign(suggestion.input),
-      Boolean(suggestion.referenceImageUsed) ||
-        suggestion.input.generateVisualAssets,
+      shouldAllowAiVisualOverrides(
+        suggestion.input,
+        Boolean(suggestion.referenceImageUsed),
+      ),
     ),
     structureHtml: structure.structureHtml,
     structureCss: structure.structureCss,
@@ -2241,6 +2247,30 @@ function normalizeCountry(value: unknown) {
   return country === "" || /^[A-Z]{2}$/.test(country) ? country : "";
 }
 
+const explicitVisualDirectionPattern =
+  /\b(?:colou?rs?|colores?|palette|palettes|paleta|paletas|style|styles|estilo|estilos|estetica|estética|visual|look|mood|tema|theme|themed|inspirad[ao]|inspired|branding|marca|fuente|font|typography|tipografia|tipografía|icono|iconos|icons?|ilustraci[oó]n|illustration|imagen|image|background|fondo|gradient|gradiente|celeste|albiceleste|azul|blanco|negro|dorado|oro|amarillo|rojo|verde|violeta|morado|rosa|naranja|blue|white|black|gold|yellow|red|green|pink|orange|purple|navy|sky\s*blue|light\s*blue|argentina|world\s*cup|mundial|selecci[oó]n|equipo|team|f[uú]tbol|football|soccer)\b/i;
+
+function hasExplicitMerchantVisualDirection(input: CampaignAiInput) {
+  const source = [
+    input.campaignNameHint,
+    input.eventName,
+    input.merchantNotes,
+  ].join(" ");
+
+  return explicitVisualDirectionPattern.test(source);
+}
+
+function shouldAllowAiVisualOverrides(
+  input: CampaignAiInput,
+  referenceImageUsed = false,
+) {
+  return (
+    referenceImageUsed ||
+    input.generateVisualAssets ||
+    hasExplicitMerchantVisualDirection(input)
+  );
+}
+
 function getCampaignTypeForObjective(
   objective: CampaignGoalValue,
 ): CampaignTypeValue {
@@ -2522,10 +2552,9 @@ function sanitizeDesign(
 function sanitizeAiDesign(
   design: Partial<CampaignDesignValues> | undefined,
   fallback: CampaignDesignValues,
-  // When true (reference-image flow), keep the AI's visual overrides (colors,
-  // gradients, etc.) layered on top of the chosen preset so the campaign matches
-  // the uploaded image. The text-only flow keeps stripping them to the preset
-  // palette for safety/consistency.
+  // When true, keep the AI's visual overrides (colors, gradients, etc.) layered
+  // on top of the chosen preset. Reference images, generated visuals, and
+  // explicit merchant style/color directions all opt into this path.
   allowVisualOverrides = false,
 ): CampaignDesignValues {
   const sanitizedDesign = sanitizePartialDesign(design);

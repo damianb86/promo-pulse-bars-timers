@@ -88,7 +88,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v21";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v22";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -178,7 +178,8 @@ input.generateVisualAssets is false/absent):
 1. Read ALL merchant context before choosing a preset: objective, campaignShape,
    goalAnswers, followUpAnswers, knownOffer, discount/free-shipping/delivery
    implications, timer need/duration/window, placement, tone, country/locale,
-   product context, event/season, CTA URL, and notes.
+   product context, event/season, CTA URL, and notes. Merchant notes may contain
+   visual/style direction; treat those signals as high priority.
 2. Choose exactly one built-in preset/templateKey from the catalog below as the
    visual foundation. The preset is not cosmetic; it encodes mood, hierarchy,
    default layout, timer treatment, icon style, and where attention goes.
@@ -188,7 +189,8 @@ input.generateVisualAssets is false/absent):
 4. Keep the selected preset's visual system unless there is a concrete reason to
    tweak it. Safe tweaks include layout, fullWidth, radius, padding/gap,
    typography sizes, timer style/format/spacing, icon choice, button visibility,
-   progress settings, and small color adjustments for contrast or goal fit.
+   progress settings, and color adjustments for merchant-requested style,
+   contrast, brand/event fit, or goal fit.
 5. Do NOT generate visual assets, do NOT invent image URLs, keep assets as [],
    and leave backgroundImageUrl/customIconUrl empty unless the merchant supplied
    an existing URL in text.
@@ -198,6 +200,26 @@ input.generateVisualAssets is false/absent):
    spacing effect, or a slight reorder). Prefer empty structureHtml/structureCss.
 7. The output should look like a polished customized preset, not a raw custom
    webpage. First-class Promo Pulse settings should carry the design.
+`.trim();
+
+const MERCHANT_STYLE_GUIDANCE = `
+Merchant visual notes (REQUIRED):
+- Treat merchantNotes, eventName, and campaignNameHint as creative direction,
+  not only copy context. If they mention colors, palette, team/country/club,
+  sport, season, brand mood, typography, icons, imagery, or visual style, reflect
+  that in the chosen preset plus supported design.* settings.
+- Merchant-requested palette/style beats preset default colors. Start from the
+  best preset for the goal, then override background, gradient, text, button,
+  accent, timer, border, icon, and typography settings as needed while preserving
+  readability and polish.
+- Example: "Campaña de la selección Argentina de Futbol. Usa los colores de
+  Argentina." should produce an Argentina-inspired campaign: light blue and
+  white as the main palette, controlled navy/deep blue for readable text or
+  timer surfaces, and a small gold/yellow accent only if it improves hierarchy.
+  It should not look like the untouched default preset.
+- Do not copy unsupported claims from the note. A style/theme reference may guide
+  colors, icons, layout mood, and typography without inventing discounts,
+  inventory, dates, endorsements, or legal claims.
 `.trim();
 
 const TONE_AND_RICHNESS_GUIDANCE = `
@@ -589,6 +611,8 @@ ${DESIGN_QUALITY_GUIDANCE}
 
 ${PRESET_FIRST_GUIDANCE}
 
+${MERCHANT_STYLE_GUIDANCE}
+
 ${TONE_AND_RICHNESS_GUIDANCE}
 
 ${PRESET_FIRST_DESIGN_FIELDS}
@@ -633,9 +657,13 @@ export function buildCampaignAiUserPrompt(
   const modeLine = input.generateVisualAssets
     ? "Visual asset generation is requested. Start from the best preset, then add the minimal generated assets and supported visual overrides needed for a polished result."
     : "No reference image is attached and visual asset generation is not requested. Use the preset-first workflow: choose the best templateKey, tune settings, and keep assets empty.";
+  const notesLine = input.merchantNotes
+    ? "Merchant notes may include palette, style, theme, typography, icon, or visual mood instructions. Treat those as high-priority creative direction while keeping the campaign readable and professional."
+    : "";
 
   return [
     modeLine,
+    notesLine,
     "",
     "Merchant input JSON:",
     JSON.stringify(payload, null, 2),

@@ -1513,7 +1513,7 @@ export function AiCampaignBuilder({
                     value={formValues.merchantNotes}
                     rows={3}
                     disabled={isFieldIgnored("merchantNotes")}
-                    placeholder="Optional. Add brand constraints, audience notes, exclusions, merchandising rules, or anything the AI should respect."
+                    placeholder="Optional. Add style or color direction, brand constraints, audience notes, exclusions, merchandising rules, or anything the AI should respect. Example: Argentina football colors, premium black and gold."
                     onChange={(event) =>
                       updateValue("merchantNotes", event.currentTarget.value)
                     }

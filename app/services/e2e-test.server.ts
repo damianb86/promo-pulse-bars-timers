@@ -79,7 +79,10 @@ export type E2ETestScenario =
   | "recommendations"
   | "agency"
   | "template-library"
-  | "post-purchase";
+  | "post-purchase"
+  // Free shipping + a discount countdown active at once, to exercise the
+  // checkout view-model priority selection end to end.
+  | "checkout-priority";
 
 export function isE2ETestMode() {
   return (
@@ -488,6 +491,14 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
   }
 
   if (scenario === "post-purchase") {
+    await createPostPurchaseCampaigns(shopId);
+  }
+
+  if (scenario === "checkout-priority") {
+    await createFreeShippingCampaign(shopId, [
+      PlacementType.CART_PAGE,
+      PlacementType.CART_DRAWER,
+    ]);
     await createPostPurchaseCampaigns(shopId);
   }
 }

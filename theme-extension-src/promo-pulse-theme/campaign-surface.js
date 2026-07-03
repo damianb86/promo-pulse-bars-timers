@@ -496,35 +496,35 @@
     var vars = {
       "--cp-surface-bg": getSurfaceBackground(design),
       "--cp-bg": design.backgroundColor,
-      "--cp-content-max-width": num(design.contentMaxWidth, 420) + "px",
+      "--cp-content-max-width": num(design.contentMaxWidth, 960) + "px",
       "--cp-text": design.textColor,
       "--cp-accent": design.accentColor,
       "--cp-button": design.buttonColor,
       "--cp-button-text": design.buttonTextColor,
       "--cp-close": design.closeButtonColor,
-      "--cp-font-size": num(design.fontSize, 15) + "px",
+      "--cp-font-size": num(design.fontSize, 14) + "px",
       "--cp-font-family": FONT_FAMILIES[design.fontFamily] || "inherit",
-      "--cp-radius": num(design.borderRadius, 0) + "px",
-      "--cp-border-size": num(design.borderSize, 0) + "px",
+      "--cp-radius": num(design.borderRadius, 4) + "px",
+      "--cp-border-size": num(design.borderSize, 1) + "px",
       "--cp-border-color": design.borderColor,
       "--cp-align": getTextAlign(design.alignment),
       "--cp-justify": getJustifyContent(design.alignment),
       "--cp-justify-items": getJustifyItems(design.alignment),
-      "--cp-title-size": num(design.titleFontSize, 18) + "px",
+      "--cp-title-size": num(design.titleFontSize, 22) + "px",
       "--cp-title-color": design.titleColor,
       "--cp-subheading-size": num(design.subheadingFontSize, 14) + "px",
       "--cp-subheading-color": design.subheadingColor,
       // Number/Label size drive all timer sizing (see buildStructureCssVars).
       "--cp-timer-size":
-        num(design.timerNumberFontSize, num(design.timerFontSize, 20)) + "px",
+        num(design.timerNumberFontSize, num(design.timerFontSize, 38)) + "px",
       "--cp-timer-color": design.timerColor,
       "--cp-legend-size":
-        num(design.timerLabelFontSize, num(design.legendFontSize, 11)) + "px",
+        num(design.timerLabelFontSize, num(design.legendFontSize, 12)) + "px",
       "--cp-legend-color": design.legendColor,
       "--cp-timer-number-size":
-        num(design.timerNumberFontSize, num(design.timerFontSize, 20)) + "px",
+        num(design.timerNumberFontSize, num(design.timerFontSize, 38)) + "px",
       "--cp-timer-label-size":
-        num(design.timerLabelFontSize, num(design.legendFontSize, 11)) + "px",
+        num(design.timerLabelFontSize, num(design.legendFontSize, 12)) + "px",
       "--cp-timer-gap": num(design.timerGap, 10) + "px",
       "--cp-timer-unit-gap": num(design.timerUnitGap, 3) + "px",
       "--cp-timer-padding-block": num(design.timerPaddingBlock, 8) + "px",
@@ -532,24 +532,24 @@
       "--cp-timer-surface": design.timerSurfaceColor,
       "--cp-timer-border": design.timerSurfaceBorderColor,
       "--cp-timer-border-size": num(design.timerSurfaceBorderSize, 0) + "px",
-      "--cp-timer-radius": num(design.timerSurfaceRadius, 0) + "px",
-      "--cp-padding-block": num(design.paddingBlock, 16) + "px",
-      "--cp-padding-inline": num(design.paddingInline, 20) + "px",
+      "--cp-timer-radius": num(design.timerSurfaceRadius, 8) + "px",
+      "--cp-padding-block": num(design.paddingBlock, 20) + "px",
+      "--cp-padding-inline": num(design.paddingInline, 24) + "px",
       "--cp-margin-top": num(design.marginTop, 0) + "px",
       "--cp-margin-bottom": num(design.marginBottom, 0) + "px",
       "--cp-margin-left": num(design.marginLeft, 0) + "px",
       "--cp-margin-right": num(design.marginRight, 0) + "px",
-      "--cp-gap": num(design.contentGap, 12) + "px",
+      "--cp-gap": num(design.contentGap, 8) + "px",
       "--cp-offer-code-text": design.offerCodeTextColor,
       "--cp-offer-code-bg": design.offerCodeBackgroundColor,
       "--cp-offer-code-border": design.offerCodeBorderColor,
-      "--cp-offer-code-size": num(design.offerCodeFontSize, 14) + "px",
-      "--cp-offer-code-radius": num(design.offerCodeBorderRadius, 0) + "px",
+      "--cp-offer-code-size": num(design.offerCodeFontSize, 13) + "px",
+      "--cp-offer-code-radius": num(design.offerCodeBorderRadius, 4) + "px",
       "--cp-offer-code-padding-block":
-        num(design.offerCodePaddingBlock, 6) + "px",
+        num(design.offerCodePaddingBlock, 5) + "px",
       "--cp-offer-code-padding-inline":
-        num(design.offerCodePaddingInline, 10) + "px",
-      "--cp-offer-gap": num(design.offerCodeGap, 8) + "px",
+        num(design.offerCodePaddingInline, 8) + "px",
+      "--cp-offer-gap": num(design.offerCodeGap, 6) + "px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
       "--cp-tick-duration": num(design.timerTickDurationMs, 220) + "ms",
       "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
@@ -1199,6 +1199,19 @@
     return wrap;
   }
 
+  // Emits the standard click analytics event when the CTA is activated. The
+  // consumer passes spec.tracking ({campaignId, experimentId, variantId,
+  // placement}); without it the CTA stays untracked (e.g. admin preview).
+  function attachCtaTracking(node, spec) {
+    var detail = spec && spec.tracking;
+    if (!detail || !detail.campaignId) return;
+    node.addEventListener("click", function () {
+      document.dispatchEvent(
+        new CustomEvent("promo-pulse:click", { detail: detail }),
+      );
+    });
+  }
+
   function bindActivate(node, handler) {
     node.addEventListener("click", function (event) {
       event.preventDefault();
@@ -1213,7 +1226,7 @@
 
   function buildClose(design, onClose) {
     if (!design.showCloseButton) return null;
-    var size = num(design.closeButtonSize, 18);
+    var size = num(design.closeButtonSize, 20);
     var span = el("span", "counterpulse-preview-close");
     span.setAttribute("aria-hidden", "true");
     span.style.width = size + "px";
@@ -1475,15 +1488,17 @@
       if (offerNode) actions.appendChild(offerNode);
       if (hasCta) {
         var ctaText = interpolateMessage(spec.cta, spec);
-        var cta = el("span", "counterpulse-preview-cta");
+        var cta = el("span", "counterpulse-preview-cta pp-cta");
         cta.textContent = ctaText;
         if (spec.ctaUrl) {
           var link = document.createElement("a");
-          link.className = "counterpulse-preview-cta";
+          link.className = "counterpulse-preview-cta pp-cta";
           link.href = spec.ctaUrl;
           link.textContent = ctaText;
+          attachCtaTracking(link, spec);
           actions.appendChild(link);
         } else {
+          attachCtaTracking(cta, spec);
           actions.appendChild(cta);
         }
       }
@@ -1947,6 +1962,7 @@
           if (spec.ctaUrl && slotEl.tagName === "A") {
             slotEl.setAttribute("href", spec.ctaUrl);
           }
+          attachCtaTracking(slotEl, spec);
           break;
         }
         case "icon":

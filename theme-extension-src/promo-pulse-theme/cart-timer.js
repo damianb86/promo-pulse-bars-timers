@@ -541,8 +541,6 @@
     var texts = campaign.texts || {};
     var design = campaign.design || {};
     var isFullWidth = !isDrawer && design.fullWidth === true;
-    var layout = normalizeLayout(design.layout);
-    var isInline = layout === "inline";
     var card;
 
     if (shouldHideUntilTrigger(campaign, config)) {
@@ -647,6 +645,12 @@
       Boolean(ctaLabel);
 
     card = window.CountPulseSurface.build({
+      tracking: {
+        campaignId: campaign.id,
+        experimentId: campaign.experimentId || null,
+        variantId: campaign.variantId || null,
+        placement: campaign.placement,
+      },
       variant: "block",
       placement: campaign.placement || (isDrawer ? "CART_DRAWER" : "CART_PAGE"),
       design: design,
@@ -823,66 +827,6 @@
     );
   }
 
-  function renderMessage(campaign, timerState, config, icon) {
-    var texts = campaign.texts || {};
-    var message = document.createElement("div");
-    var copy = document.createElement("div");
-    var subheadline = document.createElement("span");
-    var headline = texts.headline || defaultHeadline(campaign);
-    var detail = buildCartCampaignDetail(campaign, timerState, config);
-    var design = campaign.design || {};
-    var isInline = normalizeLayout(design.layout) === "inline";
-
-    message.className = "pp-message";
-    copy.className = "pp-message-copy";
-    if (icon) message.appendChild(icon);
-
-    copy.appendChild(node("strong", "", headline));
-    if (detail) {
-      subheadline.textContent = detail;
-      copy.appendChild(subheadline);
-    }
-    if (isTimerEnabled(campaign) && timerState.isActive && isInline) {
-      copy.appendChild(renderCountdown(timerState.remainingMs, design, true));
-    }
-
-    message.appendChild(copy);
-
-    return message;
-  }
-
-  function renderFreeShippingProgress(campaign, config) {
-    var state = calculateFreeShippingProgress(campaign, config);
-    var wrapper = document.createElement("div");
-    var label = document.createElement("span");
-    var track = document.createElement("span");
-    var fill = document.createElement("span");
-
-    wrapper.className = progressClassName("pp-cart-progress", campaign);
-    if (state.unlocked) wrapper.classList.add("is-unlocked");
-    wrapper.style.setProperty("--pp-progress", state.progress + "%");
-    label.className = "pp-cart-progress__label";
-    label.textContent = state.label;
-    track.className = "pp-progress__track";
-    track.dataset.testid = "free-shipping-progress";
-    track.setAttribute("role", "progressbar");
-    track.setAttribute(
-      "aria-label",
-      label.textContent || "Free shipping progress",
-    );
-    track.setAttribute("aria-valuemin", "0");
-    track.setAttribute("aria-valuemax", "100");
-    track.setAttribute("aria-valuenow", String(Math.round(state.progress)));
-    fill.className = "pp-progress__fill";
-    fill.style.width = Math.max(0, state.progress) + "%";
-
-    track.appendChild(fill);
-    if (label.textContent) wrapper.appendChild(label);
-    wrapper.appendChild(track);
-
-    return wrapper;
-  }
-
   function updateFreeShippingProgress(card, campaign, config) {
     var progress = card.querySelector(".counterpulse-preview-progress");
     var fill = progress && progress.querySelector("span > span");
@@ -932,70 +876,12 @@
     return detail;
   }
 
-  function progressClassName(baseClass, campaign) {
-    var style = readProgressStyle(campaign);
-
-    return style === "BAR"
-      ? baseClass
-      : baseClass + " " + baseClass + "--" + style.toLowerCase();
-  }
-
   function readProgressStyle(campaign) {
     var style = String(
       (campaign.freeShipping || {}).progressStyle || "BAR",
     ).toUpperCase();
 
     return style === "COMPACT" || style === "CIRCULAR" ? style : "BAR";
-  }
-
-  function renderCta(campaign) {
-    var texts = campaign.texts || {};
-    var label = texts.ctaText;
-    var url = texts.ctaUrl;
-    var ctas = [];
-
-    if (!label && campaign.type === "CART_TIMER") {
-      label = "Checkout";
-      url = "/checkout";
-    }
-
-    if (label) {
-      ctas.push(link("pp-cta", label, isSafeUrl(url) ? url : "#"));
-    }
-
-    return ctas;
-  }
-
-  function renderCloseButton(card, design) {
-    var button = document.createElement("button");
-    var size = clamp((design || {}).closeButtonSize, 10, 48, 20);
-
-    button.className = "pp-close";
-    button.type = "button";
-    button.setAttribute("aria-label", "Close");
-    button.style.setProperty("--pp-close-size", size + "px");
-    button.innerHTML = closeIconSvg(size);
-    button.addEventListener("click", function () {
-      if ((design || {}).dismissBehavior === "HIDE_PERMANENTLY") {
-        rememberCampaignDismissed(card.dataset.campaignId);
-      }
-      removeCartCard(card, design);
-    });
-
-    return button;
-  }
-
-  function closeIconSvg(size) {
-    return (
-      '<svg class="pp-close__icon" viewBox="0 0 24 24" width="' +
-      size +
-      '" height="' +
-      size +
-      '" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-      'stroke-linecap="round" aria-hidden="true" focusable="false">' +
-      '<line x1="6" y1="6" x2="18" y2="18"></line>' +
-      '<line x1="18" y1="6" x2="6" y2="18"></line></svg>'
-    );
   }
 
   function dismissStorageKey(campaignId) {
@@ -1047,113 +933,6 @@
       window.clearInterval(card.__promoPulseTimerInterval);
       card.__promoPulseTimerInterval = null;
     }
-  }
-
-  function renderCountdown(ms, design, compact) {
-    var timerStyle = safeTimerStyle(design.timerStyle);
-    var timerFormat = safeTimerFormat(design.timerFormat);
-    var countdown = document.createElement(
-      compact && timerStyle === "PLAIN" ? "span" : "div",
-    );
-
-    countdown.className =
-      "pp-countdown pp-countdown--" +
-      timerStyle.toLowerCase() +
-      " pp-countdown--" +
-      timerFormat.toLowerCase() +
-      (design.timerNumberLayout === "STACKED" ? " pp-countdown--stacked" : "") +
-      (compact ? " pp-countdown--compact" : "") +
-      timerTickClass(design);
-
-    countdown.dataset.testid = "promo-timer";
-    updateCountdownElement(countdown, ms, design, compact);
-    countdown.setAttribute("aria-live", "polite");
-    countdown.setAttribute("aria-label", "Time remaining");
-
-    return countdown;
-  }
-
-  function updateCountdownElement(countdown, ms, design, compact) {
-    var timerStyle = safeTimerStyle(design.timerStyle);
-    var timerFormat = safeTimerFormat(design.timerFormat);
-    var parts = buildTimerParts(ms, design);
-    var visibleParts =
-      design.timerShowSeconds === false
-        ? parts.filter(function (part) {
-            return part.key !== "seconds";
-          })
-        : parts;
-    var nextText;
-    var previousUnitValues;
-    var tickAnimation;
-
-    if (!visibleParts.length) {
-      visibleParts = [parts[parts.length - 1]];
-    }
-
-    if (timerFormat === "COLON") {
-      nextText = formatTimerPartsAsColon(visibleParts);
-      if (countdown.dataset.value === nextText) return;
-
-      countdown.dataset.value = nextText;
-      countdown.textContent = nextText;
-      return;
-    }
-
-    nextText = visibleParts
-      .map(function (part) {
-        return design.timerShowLabels === false
-          ? part.value
-          : part.value + " " + part.shortLabel;
-      })
-      .join(" ");
-
-    if (timerStyle === "PLAIN" && compact) {
-      if (countdown.dataset.value === nextText) return;
-
-      countdown.dataset.value = nextText;
-      countdown.textContent = nextText;
-      return;
-    }
-
-    if (countdown.dataset.value === nextText) return;
-
-    previousUnitValues = readCountdownUnitValues(countdown);
-    tickAnimation = getCountdownTickAnimation(countdown);
-    countdown.dataset.value = nextText;
-    countdown.dataset.unitValues = JSON.stringify(
-      visibleParts.reduce(function (values, part) {
-        values[part.key] = part.value;
-        return values;
-      }, {}),
-    );
-    countdown.replaceChildren();
-    visibleParts.forEach(function (part) {
-      var unit = document.createElement("span");
-      var value = document.createElement("strong");
-      var label = document.createElement("small");
-
-      unit.className = "pp-countdown-unit";
-      value.textContent = part.value;
-      if (
-        tickAnimation &&
-        previousUnitValues[part.key] &&
-        previousUnitValues[part.key] !== part.value
-      ) {
-        value.classList.add(
-          "pp-countdown-tick-value",
-          "pp-countdown-tick-value--" + tickAnimation,
-        );
-      }
-      unit.appendChild(value);
-
-      if (design.timerShowLabels !== false) {
-        label.textContent = part.label;
-        unit.appendChild(label);
-      }
-
-      countdown.appendChild(unit);
-    });
   }
 
   function getExpiredBehavior(campaign) {
@@ -1510,212 +1289,6 @@
       .replace(/\{\{\s*remaining_amount\s*\}\}/g, amount);
   }
 
-  function setDesign(element, design, alignment) {
-    element.style.setProperty("--pp-bg", getBackground(design));
-    element.style.setProperty(
-      "--pp-text",
-      safeColor(design.textColor, "#ffffff"),
-    );
-    element.style.setProperty(
-      "--pp-accent",
-      safeColor(design.accentColor, "#22c55e"),
-    );
-    element.style.setProperty(
-      "--pp-button",
-      safeColor(design.buttonColor, "#ffffff"),
-    );
-    element.style.setProperty(
-      "--pp-button-text",
-      safeColor(design.buttonTextColor, "#111827"),
-    );
-    element.style.setProperty(
-      "--pp-close",
-      safeColor(
-        design.closeButtonColor,
-        safeColor(design.textColor, "#ffffff"),
-      ),
-    );
-    element.style.setProperty(
-      "--pp-font-size",
-      clamp(design.fontSize, 10, 24, 14) + "px",
-    );
-    element.style.setProperty(
-      "--pp-font-family",
-      fontFamily(design.fontFamily),
-    );
-    element.style.setProperty(
-      "--pp-radius",
-      clamp(design.borderRadius, 0, 999, 0) + "px",
-    );
-    element.style.setProperty(
-      "--pp-border-size",
-      clamp(design.borderSize, 0, 8, 0) + "px",
-    );
-    element.style.setProperty(
-      "--pp-border-color",
-      safeColor(design.borderColor, "transparent"),
-    );
-    element.style.setProperty(
-      "--pp-title-size",
-      clamp(design.titleFontSize, 12, 48, 18) + "px",
-    );
-    element.style.setProperty(
-      "--pp-title-color",
-      safeColor(design.titleColor, safeColor(design.textColor, "#ffffff")),
-    );
-    element.style.setProperty(
-      "--pp-subheading-size",
-      clamp(design.subheadingFontSize, 10, 32, 14) + "px",
-    );
-    element.style.setProperty(
-      "--pp-subheading-color",
-      safeColor(design.subheadingColor, safeColor(design.textColor, "#ffffff")),
-    );
-    element.style.setProperty(
-      "--pp-timer-size",
-      clamp(design.timerFontSize, 12, 72, 24) + "px",
-    );
-    element.style.setProperty(
-      "--pp-timer-color",
-      safeColor(design.timerColor, safeColor(design.textColor, "#ffffff")),
-    );
-    element.style.setProperty(
-      "--pp-legend-size",
-      clamp(design.legendFontSize, 10, 24, 12) + "px",
-    );
-    element.style.setProperty(
-      "--pp-legend-color",
-      safeColor(design.legendColor, safeColor(design.textColor, "#ffffff")),
-    );
-    element.style.setProperty(
-      "--pp-timer-surface",
-      safeColor(design.timerSurfaceColor, "rgba(255,255,255,.12)"),
-    );
-    element.style.setProperty(
-      "--pp-timer-border",
-      safeColor(design.timerSurfaceBorderColor, "transparent"),
-    );
-    element.style.setProperty(
-      "--pp-timer-border-size",
-      clamp(design.timerSurfaceBorderSize, 0, 6, 0) + "px",
-    );
-    element.style.setProperty(
-      "--pp-timer-radius",
-      clamp(design.timerSurfaceRadius, 0, 40, 8) + "px",
-    );
-    element.style.setProperty(
-      "--pp-content-max-width",
-      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
-    );
-    element.style.setProperty(
-      "--pp-padding-block",
-      clamp(design.paddingBlock, 4, 48, 12) + "px",
-    );
-    element.style.setProperty(
-      "--pp-padding-inline",
-      clamp(design.paddingInline, 8, 64, 14) + "px",
-    );
-    element.style.setProperty(
-      "--pp-justify",
-      justify(alignment || design.alignment),
-    );
-    element.style.setProperty(
-      "--pp-align",
-      align(alignment || design.alignment),
-    );
-    element.style.setProperty(
-      "--pp-gap",
-      clamp(design.contentGap, 4, 48, 10) + "px",
-    );
-    element.style.setProperty(
-      "--pp-icon-size",
-      clamp(design.iconSize, 12, 64, 20) + "px",
-    );
-    element.style.setProperty(
-      "--pp-motion-duration",
-      clamp(design.animationDurationMs, 0, 1500, 220) + "ms",
-    );
-  }
-
-  function normalizeLayout(value) {
-    var layout = String(value || "STANDARD")
-      .toLowerCase()
-      .replace(/_/g, "-");
-
-    if (
-      layout === "balanced" ||
-      layout === "inline" ||
-      layout === "cta-right" ||
-      layout === "cta-left" ||
-      layout === "cta-top"
-    ) {
-      return layout;
-    }
-
-    return "standard";
-  }
-
-  function fontFamily(value) {
-    if (value === "SERIF") return "Georgia, Times New Roman, serif";
-    if (value === "MONO")
-      return "ui-monospace, SFMono-Regular, Menlo, monospace";
-    if (value === "ROUNDED")
-      return "ui-rounded, Arial Rounded MT Bold, system-ui, sans-serif";
-    if (value === "GEOMETRIC")
-      return "Avenir Next, Montserrat, system-ui, sans-serif";
-    if (value === "HUMANIST") return "Optima, Gill Sans, system-ui, sans-serif";
-    if (value === "CONDENSED")
-      return "Arial Narrow, Roboto Condensed, system-ui, sans-serif";
-    if (value === "CASUAL")
-      return "Trebuchet MS, Comic Sans MS, system-ui, sans-serif";
-    if (value === "SYSTEM")
-      return "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
-
-    return "inherit";
-  }
-
-  function applyMotionClasses(element, design) {
-    if (design.entranceAnimation && design.entranceAnimation !== "NONE") {
-      element.classList.add(
-        "pp-surface--enter-" + String(design.entranceAnimation).toLowerCase(),
-      );
-    }
-  }
-
-  function timerTickClass(design) {
-    return design.timerTickAnimation && design.timerTickAnimation !== "NONE"
-      ? " pp-countdown--tick-" + String(design.timerTickAnimation).toLowerCase()
-      : "";
-  }
-
-  function replayCountdownTick(countdown) {
-    if (!countdown) return;
-
-    [].slice
-      .call(countdown.querySelectorAll(".pp-countdown-tick-value"))
-      .forEach(function (value) {
-        value.classList.remove("pp-countdown-tick-value");
-        void value.offsetWidth;
-        value.classList.add("pp-countdown-tick-value");
-      });
-  }
-
-  function getCountdownTickAnimation(countdown) {
-    var match = String(countdown.className || "").match(
-      /\bpp-countdown--tick-(fade|flip|pulse)\b/,
-    );
-
-    return match ? match[1] : "";
-  }
-
-  function readCountdownUnitValues(countdown) {
-    try {
-      return JSON.parse(countdown.dataset.unitValues || "{}");
-    } catch {
-      return {};
-    }
-  }
-
   function detectShop() {
     return (window.Shopify && window.Shopify.shop) || window.location.hostname;
   }
@@ -1778,58 +1351,6 @@
     return campaign.name || "Cart offer";
   }
 
-  function renderCampaignIcon(campaign) {
-    var design = campaign.design || {};
-    var icon = document.createElement("span");
-    var image;
-    var svg;
-    var fallbackIcon =
-      campaign.type === "FREE_SHIPPING_GOAL" ? "TRUCK" : "CLOCK";
-
-    if (design.icon === "NONE") return null;
-
-    icon.className = "pp-icon";
-
-    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
-      image = document.createElement("img");
-      image.alt = "";
-      image.loading = "lazy";
-      image.decoding = "async";
-      image.src = design.customIconUrl;
-      icon.appendChild(image);
-      return icon;
-    }
-
-    svg = getIconSvg(design.icon || fallbackIcon);
-    if (!svg) return null;
-
-    icon.innerHTML = svg;
-    return icon;
-  }
-
-  function isSafeIconUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" ||
-        /^https?:\/\//i.test(value) ||
-        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
-    );
-  }
-
-  function getIconSvg(icon) {
-    return (
-      {
-        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
-        CLOCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
-        TRUCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
-        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
-      }[icon] || ""
-    );
-  }
-
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("promo-pulse:impression", {
@@ -1875,88 +1396,9 @@
     return !(campaign.cartRescue && campaign.cartRescue.showButton === false);
   }
 
-  function node(tag, className, text) {
-    var element = document.createElement(tag);
-    if (className) element.className = className;
-    element.textContent = text;
-    return element;
-  }
-
-  function link(className, text, href) {
-    var anchor = node("a", className, text);
-    anchor.href = href;
-    anchor.setAttribute("aria-label", text);
-    return anchor;
-  }
-
   function parseDate(value) {
     var date = value ? new Date(value) : null;
     return date && !Number.isNaN(date.getTime()) ? date : null;
-  }
-
-  function buildTimerParts(ms, design) {
-    var total = Math.max(0, Math.floor(ms / 1000));
-    var days = Math.floor(total / 86400);
-    var showDays = !design || design.timerHideZeroDays === false || days > 0;
-    var hours = Math.floor((total % 86400) / 3600);
-    var minutes = Math.floor((total % 3600) / 60);
-    var seconds = total % 60;
-    var parts = [];
-
-    if (showDays) {
-      parts.push(
-        timerPart("days", days, timerUnitLabel(design, "days"), "Days"),
-      );
-    }
-
-    parts.push(
-      timerPart(
-        "hours",
-        showDays ? hours : Math.floor(total / 3600),
-        timerUnitLabel(design, "hours"),
-        "Hrs",
-      ),
-    );
-    parts.push(
-      timerPart("minutes", minutes, timerUnitLabel(design, "minutes"), "Mins"),
-    );
-    parts.push(
-      timerPart("seconds", seconds, timerUnitLabel(design, "seconds"), "Secs"),
-    );
-
-    return parts;
-  }
-
-  function timerPart(key, value, label, shortLabel) {
-    return {
-      key: key,
-      value: pad(value),
-      label: label,
-      shortLabel: shortLabel,
-    };
-  }
-
-  function formatTimerPartsAsColon(parts) {
-    return parts
-      .map(function (part) {
-        return part.value;
-      })
-      .join(":");
-  }
-
-  function safeTimerStyle(value) {
-    return value === "GROUPED" || value === "BOXES" ? value : "PLAIN";
-  }
-
-  function safeTimerFormat(value) {
-    return value === "COLON" ? "COLON" : "UNITS";
-  }
-
-  function timerUnitLabel(design, unit) {
-    if (unit === "days") return design.timerDaysLabel || "Days";
-    if (unit === "hours") return design.timerHoursLabel || "Hrs";
-    if (unit === "minutes") return design.timerMinutesLabel || "Mins";
-    return design.timerSecondsLabel || "Secs";
   }
 
   function safeQuerySelector(selector) {
@@ -1975,74 +1417,11 @@
     window[key] = Math.max(Number(window[key] || 0), Date.now() + ms);
   }
 
-  function safeColor(value, fallback) {
-    return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
-  }
-
-  function getBackground(design) {
-    if (
-      design &&
-      design.backgroundType === "IMAGE" &&
-      isSafeImageUrl(design.backgroundImageUrl)
-    ) {
-      return (
-        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
-        escapeCssUrl(design.backgroundImageUrl) +
-        '") center / cover no-repeat'
-      );
-    }
-
-    if (design && design.backgroundType === "GRADIENT") {
-      return (
-        "linear-gradient(" +
-        clamp(design.gradientAngle, 0, 360, 90) +
-        "deg, " +
-        safeColor(design.gradientStartColor, "#252237") +
-        ", " +
-        safeColor(design.gradientEndColor, "#4c4861") +
-        ")"
-      );
-    }
-
-    return safeColor(design.backgroundColor, "#111827");
-  }
-
-  function isSafeImageUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
-    );
-  }
-
-  function escapeCssUrl(value) {
-    return String(value || "").replace(/["\\\n\r]/g, "");
-  }
-
   function clamp(value, min, max, fallback) {
     var number = Number(value);
     return Number.isFinite(number)
       ? Math.min(max, Math.max(min, Math.round(number)))
       : fallback;
-  }
-
-  function justify(value) {
-    if (value === "LEFT") return "flex-start";
-    if (value === "RIGHT") return "flex-end";
-    return "center";
-  }
-
-  function align(value) {
-    if (value === "LEFT") return "left";
-    if (value === "RIGHT") return "right";
-    return "center";
-  }
-
-  function isSafeUrl(url) {
-    return url ? url.charAt(0) === "/" || /^https?:\/\//i.test(url) : false;
-  }
-
-  function pad(value) {
-    return String(value).padStart(2, "0");
   }
 
   function debug(config) {

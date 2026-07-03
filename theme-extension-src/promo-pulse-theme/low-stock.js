@@ -255,6 +255,12 @@
     }
 
     card = window.CountPulseSurface.build({
+      tracking: {
+        campaignId: campaign.id,
+        experimentId: campaign.experimentId || null,
+        variantId: campaign.variantId || null,
+        placement: campaign.placement,
+      },
       variant: "block",
       placement: campaign.placement || "PRODUCT_PAGE",
       design: design,
@@ -329,13 +335,6 @@
 
     if (status) status.textContent = message;
     if (endpoint && url) endpoint.textContent = url;
-  }
-
-  function renderMessage(campaign, detail) {
-    var wrapper = document.createElement("div");
-    wrapper.className = "pp-message";
-    wrapper.appendChild(node("strong", "", detail));
-    return wrapper;
   }
 
   function bindVariantChanges(root, campaigns, config) {
@@ -463,43 +462,6 @@
     return field ? field.value : "";
   }
 
-  function setDesign(element, design, alignment) {
-    element.style.setProperty("--pp-bg", getBackground(design));
-    element.style.setProperty("--pp-text", color(design.textColor, "#ffffff"));
-    element.style.setProperty(
-      "--pp-accent",
-      color(design.accentColor, "#22c55e"),
-    );
-    element.style.setProperty(
-      "--pp-font-size",
-      clamp(design.fontSize, 10, 24, 14) + "px",
-    );
-    element.style.setProperty(
-      "--pp-radius",
-      clamp(design.borderRadius, 0, 24, 4) + "px",
-    );
-    element.style.setProperty(
-      "--pp-content-max-width",
-      clamp(design.contentMaxWidth, 280, 1440, 960) + "px",
-    );
-    element.style.setProperty(
-      "--pp-padding-block",
-      clamp(design.paddingBlock, 4, 48, 12) + "px",
-    );
-    element.style.setProperty(
-      "--pp-padding-inline",
-      clamp(design.paddingInline, 8, 64, 14) + "px",
-    );
-    element.style.setProperty(
-      "--pp-justify",
-      justify(alignment || design.alignment),
-    );
-    element.style.setProperty(
-      "--pp-align",
-      textAlign(alignment || design.alignment),
-    );
-  }
-
   function emitImpression(campaign) {
     document.dispatchEvent(
       new CustomEvent("promo-pulse:impression", {
@@ -511,13 +473,6 @@
         },
       }),
     );
-  }
-
-  function node(tag, className, text) {
-    var element = document.createElement(tag);
-    if (className) element.className = className;
-    element.textContent = text;
-    return element;
   }
 
   function split(value) {
@@ -545,117 +500,6 @@
 
   function trim(value) {
     return typeof value === "string" ? value.trim() : "";
-  }
-
-  function renderDesignIcon(design) {
-    var icon = document.createElement("span");
-    var image;
-    var svg;
-
-    if (!design || design.icon === "NONE") return null;
-
-    icon.className = "pp-icon";
-
-    if (design.icon === "CUSTOM" && isSafeIconUrl(design.customIconUrl)) {
-      image = document.createElement("img");
-      image.alt = "";
-      image.loading = "lazy";
-      image.decoding = "async";
-      image.src = design.customIconUrl;
-      icon.appendChild(image);
-      return icon;
-    }
-
-    svg = getIconSvg(design.icon);
-    if (!svg) return null;
-
-    icon.innerHTML = svg;
-    return icon;
-  }
-
-  function isSafeIconUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" ||
-        /^https?:\/\//i.test(value) ||
-        /^data:image\/(?:svg\+xml|png|jpe?g);base64,/i.test(value))
-    );
-  }
-
-  function getIconSvg(icon) {
-    return (
-      {
-        FIRE: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 21c-4.1 0-7-2.7-7-6.6 0-2.6 1.4-4.8 3.6-6.9.2 1.7 1 3 2.1 3.8 1.8-2.7 1.4-5.6.3-8.3 4.5 2.2 7 5.9 7 10.5 0 4.4-2.5 7.5-6 7.5Z" fill="currentColor"/></svg>',
-        CLOCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7.5v5l3.4 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"/></svg>',
-        TRUCK:
-          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 7h10v8h-10zM13.5 10h3.4l2.6 2.6V15h-6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></svg>',
-        GIFT: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4.5 10h15v10h-15zM3.5 7h17v3h-17zM12 7v13" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><path d="M12 7c-2.4 0-4-1-4-2.4C8 3.7 8.7 3 9.6 3c1.2 0 2 1.4 2.4 4Zm0 0c2.4 0 4-1 4-2.4 0-.9-.7-1.6-1.6-1.6-1.2 0-2 1.4-2.4 4Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
-        TAG: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12.2 12.2 4H20v7.8L11.8 20 4 12.2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.3" fill="currentColor"/></svg>',
-      }[icon] || ""
-    );
-  }
-
-  function color(value, fallback) {
-    return /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
-  }
-
-  function getBackground(design) {
-    if (
-      design &&
-      design.backgroundType === "IMAGE" &&
-      isSafeImageUrl(design.backgroundImageUrl)
-    ) {
-      return (
-        'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
-        escapeCssUrl(design.backgroundImageUrl) +
-        '") center / cover no-repeat'
-      );
-    }
-
-    if (design && design.backgroundType === "GRADIENT") {
-      return (
-        "linear-gradient(" +
-        clamp(design.gradientAngle, 0, 360, 90) +
-        "deg, " +
-        color(design.gradientStartColor, "#252237") +
-        ", " +
-        color(design.gradientEndColor, "#4c4861") +
-        ")"
-      );
-    }
-
-    return color(design.backgroundColor, "#111827");
-  }
-
-  function isSafeImageUrl(value) {
-    return (
-      typeof value === "string" &&
-      (value.charAt(0) === "/" || /^https?:\/\//i.test(value))
-    );
-  }
-
-  function escapeCssUrl(value) {
-    return String(value || "").replace(/["\\\n\r]/g, "");
-  }
-
-  function clamp(value, min, max, fallback) {
-    var number = Number(value);
-    return Number.isFinite(number)
-      ? Math.min(max, Math.max(min, Math.round(number)))
-      : fallback;
-  }
-
-  function justify(value) {
-    if (value === "LEFT") return "flex-start";
-    if (value === "RIGHT") return "flex-end";
-    return "center";
-  }
-
-  function textAlign(value) {
-    if (value === "LEFT") return "left";
-    if (value === "RIGHT") return "right";
-    return "center";
   }
 
   function detectMarket() {

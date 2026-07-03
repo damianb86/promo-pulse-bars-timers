@@ -70,7 +70,8 @@ function readScenario(value: string | null): E2ETestScenario {
     value === "recommendations" ||
     value === "agency" ||
     value === "template-library" ||
-    value === "post-purchase"
+    value === "post-purchase" ||
+    value === "checkout-priority"
   ) {
     return value;
   }

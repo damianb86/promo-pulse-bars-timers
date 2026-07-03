@@ -69,7 +69,8 @@ describe("AI campaign generator", () => {
       source: "provider",
       structureHtml:
         '<section class="cp-promo"><script>alert(1)</script>' +
-        '<strong data-cp-slot="headline"></strong></section>',
+        '<strong data-cp-slot="headline"></strong>' +
+        '<div data-cp-slot="timer"></div></section>',
       structureCss:
         "__CP_SCOPE__ .cp-promo{color:red}</style><script>bad()</script>",
     });

@@ -50,6 +50,9 @@ module.exports = {
       },
       rules: {
         "react/no-unknown-property": ["error", { ignore: ["variant"] }],
+        // Field labels nest their text two spans deep (see DesignField);
+        // the default depth of 2 misses it even though the accessible name is fine.
+        "jsx-a11y/label-has-associated-control": ["error", { depth: 3 }],
       },
     },
 

@@ -63,7 +63,6 @@ import {
   campaignEditableStatusOptions,
   campaignGoalOptions,
   campaignTypeOptions,
-  formatCampaignOption,
   placementTypeOptions,
   type CampaignGoalValue,
   type CampaignTypeValue,

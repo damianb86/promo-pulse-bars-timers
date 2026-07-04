@@ -53,8 +53,6 @@ import {
   emptyCampaignDesignMediaOptions,
 } from "../types/campaign-design";
 import {
-  campaignGoalOptions,
-  formatCampaignOption,
   } from "../types/campaign-options";
 import {
   emptyCampaignTargetingOptions,

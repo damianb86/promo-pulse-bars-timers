@@ -20,7 +20,7 @@ test("storefront embed renders countdown and records CTA click", async ({
   );
 
   await page
-    .locator(".pp-cta")
+    .locator(".counterpulse-preview-cta")
     .first()
     .evaluate((element) => {
       element.addEventListener("click", (event) => event.preventDefault(), {

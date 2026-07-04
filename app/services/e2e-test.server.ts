@@ -2257,8 +2257,8 @@ async function createDeliveryCutoffCampaign(
           {
             ...englishTranslation("Fast delivery"),
             deliveryBeforeCutoffText:
-              "Order within {{timeRemaining}} to get it by {{minDeliveryDate}}",
-            deliveryAfterCutoffText: "Orders placed now ship {{shipsDate}}",
+              "Order within {{time_left}} to get it by {{min_delivery_date}}",
+            deliveryAfterCutoffText: "Orders placed now ship {{ships_date}}",
           },
         ],
       },

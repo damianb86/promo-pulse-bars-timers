@@ -53,6 +53,7 @@ export function parseCampaignDesignFormData(
 ): ParsedCampaignDesignForm {
   const customCssGate = canUseFeature({ plan }, "custom_css");
   const canUseCustomCss = customCssGate.allowed;
+  const icon = readIcon(formData);
   const values: CampaignDesignValues = {
     templateKey: readString(formData, "templateKey") || "clean-minimal",
     layout: readLayout(formData),
@@ -64,6 +65,10 @@ export function parseCampaignDesignFormData(
       0,
       1000,
     ),
+    backgroundImageSize: readBackgroundImageSize(formData),
+    backgroundImagePosition: readBackgroundImagePosition(formData),
+    backgroundImageRepeat: readBackgroundImageRepeat(formData),
+    backgroundImageAttachment: readBackgroundImageAttachment(formData),
     gradientStartColor:
       readString(formData, "gradientStartColor") ||
       defaultCampaignDesignValues.gradientStartColor,
@@ -313,8 +318,8 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.progressTextColor,
     progressEffect: readProgressEffect(formData),
     progressShowLabel: readBoolean(formData, "progressShowLabel"),
-    showIcon: readBoolean(formData, "showIcon"),
-    icon: readIcon(formData),
+    showIcon: icon !== "NONE",
+    icon,
     iconSize: readInteger(
       formData,
       "iconSize",
@@ -460,8 +465,9 @@ export function parseCampaignStructureForm(
       ? sanitizeStructureCss(readFormString(formData, "structureCss")) || null
       : null,
     editedMobileHtml: mobileEdited
-      ? sanitizeStructureHtml(readFormString(formData, "mobileStructureHtml")) ||
-        null
+      ? sanitizeStructureHtml(
+          readFormString(formData, "mobileStructureHtml"),
+        ) || null
       : null,
     editedMobileCss: mobileEdited
       ? sanitizeStructureCss(readFormString(formData, "mobileStructureCss")) ||
@@ -574,6 +580,58 @@ function readBackgroundType(formData: FormData): DesignBackgroundTypeValue {
   }
 
   return defaultCampaignDesignValues.backgroundType;
+}
+
+function readBackgroundImageSize(formData: FormData) {
+  const value = readString(formData, "backgroundImageSize");
+
+  if (["COVER", "CONTAIN", "AUTO", "STRETCH"].includes(value)) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.backgroundImageSize;
+}
+
+function readBackgroundImagePosition(formData: FormData) {
+  const value = readString(formData, "backgroundImagePosition");
+
+  if (
+    [
+      "CENTER",
+      "TOP",
+      "BOTTOM",
+      "LEFT",
+      "RIGHT",
+      "TOP_LEFT",
+      "TOP_RIGHT",
+      "BOTTOM_LEFT",
+      "BOTTOM_RIGHT",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.backgroundImagePosition;
+}
+
+function readBackgroundImageRepeat(formData: FormData) {
+  const value = readString(formData, "backgroundImageRepeat");
+
+  if (["NO_REPEAT", "REPEAT", "REPEAT_X", "REPEAT_Y"].includes(value)) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.backgroundImageRepeat;
+}
+
+function readBackgroundImageAttachment(formData: FormData) {
+  const value = readString(formData, "backgroundImageAttachment");
+
+  if (["SCROLL", "FIXED", "LOCAL"].includes(value)) {
+    return value;
+  }
+
+  return defaultCampaignDesignValues.backgroundImageAttachment;
 }
 
 function readFontFamily(formData: FormData): DesignFontFamilyValue {

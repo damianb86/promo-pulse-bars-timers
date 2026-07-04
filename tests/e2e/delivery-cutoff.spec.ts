@@ -40,6 +40,41 @@ test("delivery cutoff renders after cutoff window", async ({
   expectNoFailedRequests(page);
 });
 
+test("delivery cutoff localizes delivery dates from the storefront locale", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("delivery-cutoff");
+  await mockNow(page, "2026-06-16T20:00:00.000Z");
+  await page.goto("/__test/storefront-product?locale=es");
+
+  const card = page.locator(".pp-product-card").first();
+  // Merchant copy stays as authored...
+  await expect(card).toContainText("Order within");
+  // ...but the interpolated {{minDeliveryDate}} follows the storefront locale:
+  // Spanish formats day-first with a lowercase month ("19 jun"), never "Jun 19".
+  await expect(card).toContainText(/\d{1,2} jun/);
+  await expect(card).not.toContainText(/Jun \d{1,2}/);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("delivery cutoff renders the English date format for the default locale", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("delivery-cutoff");
+  await mockNow(page, "2026-06-16T20:00:00.000Z");
+  await page.goto("/__test/storefront-product");
+
+  const card = page.locator(".pp-product-card").first();
+  await expect(card).toContainText(/Jun \d{1,2}/);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 async function mockNow(page: import("@playwright/test").Page, isoDate: string) {
   await page.addInitScript((value) => {
     const fixedTime = new Date(value).getTime();

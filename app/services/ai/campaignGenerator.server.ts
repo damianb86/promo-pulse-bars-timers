@@ -209,9 +209,7 @@ export function buildDefaultCampaignAiInput(
   return normalizeCampaignAiInput({ ...defaultInput, ...overrides });
 }
 
-export function parseCampaignAiFormData(
-  formData: FormData,
-): {
+export function parseCampaignAiFormData(formData: FormData): {
   values: CampaignAiInput;
   errors: CampaignAiFormErrors;
 } {
@@ -790,7 +788,8 @@ async function requestOpenAiJson(
       mimeType: referenceImage.mimeType,
     });
   }
-  const usesVisualPrompt = Boolean(referenceImage) || input.generateVisualAssets;
+  const usesVisualPrompt =
+    Boolean(referenceImage) || input.generateVisualAssets;
 
   const userContent = referenceImage
     ? [
@@ -2607,6 +2606,34 @@ function sanitizePartialDesign(
       isAssetPlaceholder(design.backgroundImageUrl))
       ? { backgroundImageUrl: design.backgroundImageUrl.slice(0, 1000) }
       : {}),
+    ...(design.backgroundImageSize === "COVER" ||
+    design.backgroundImageSize === "CONTAIN" ||
+    design.backgroundImageSize === "AUTO" ||
+    design.backgroundImageSize === "STRETCH"
+      ? { backgroundImageSize: design.backgroundImageSize }
+      : {}),
+    ...(design.backgroundImagePosition === "CENTER" ||
+    design.backgroundImagePosition === "TOP" ||
+    design.backgroundImagePosition === "BOTTOM" ||
+    design.backgroundImagePosition === "LEFT" ||
+    design.backgroundImagePosition === "RIGHT" ||
+    design.backgroundImagePosition === "TOP_LEFT" ||
+    design.backgroundImagePosition === "TOP_RIGHT" ||
+    design.backgroundImagePosition === "BOTTOM_LEFT" ||
+    design.backgroundImagePosition === "BOTTOM_RIGHT"
+      ? { backgroundImagePosition: design.backgroundImagePosition }
+      : {}),
+    ...(design.backgroundImageRepeat === "NO_REPEAT" ||
+    design.backgroundImageRepeat === "REPEAT" ||
+    design.backgroundImageRepeat === "REPEAT_X" ||
+    design.backgroundImageRepeat === "REPEAT_Y"
+      ? { backgroundImageRepeat: design.backgroundImageRepeat }
+      : {}),
+    ...(design.backgroundImageAttachment === "SCROLL" ||
+    design.backgroundImageAttachment === "FIXED" ||
+    design.backgroundImageAttachment === "LOCAL"
+      ? { backgroundImageAttachment: design.backgroundImageAttachment }
+      : {}),
     ...(isHexColor(design.gradientStartColor)
       ? { gradientStartColor: design.gradientStartColor }
       : {}),
@@ -2673,7 +2700,9 @@ function sanitizePartialDesign(
       ? { legendColor: design.legendColor }
       : {}),
     ...(typeof design.timerNumberFontSize === "number"
-      ? { timerNumberFontSize: clampInteger(design.timerNumberFontSize, 12, 72) }
+      ? {
+          timerNumberFontSize: clampInteger(design.timerNumberFontSize, 12, 72),
+        }
       : {}),
     ...(typeof design.timerLabelFontSize === "number"
       ? { timerLabelFontSize: clampInteger(design.timerLabelFontSize, 8, 28) }
@@ -2857,6 +2886,10 @@ function omitPresetVisualOverrides(
   delete rest.backgroundType;
   delete rest.backgroundColor;
   delete rest.backgroundImageUrl;
+  delete rest.backgroundImageSize;
+  delete rest.backgroundImagePosition;
+  delete rest.backgroundImageRepeat;
+  delete rest.backgroundImageAttachment;
   delete rest.gradientStartColor;
   delete rest.gradientEndColor;
   delete rest.gradientAngle;

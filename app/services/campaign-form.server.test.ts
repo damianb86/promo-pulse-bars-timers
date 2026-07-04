@@ -136,6 +136,26 @@ describe("campaign form parsing and validation", () => {
     expect(parsed.values.iconSize).toBe(36);
   });
 
+  it("treats a selected icon as visible even if the hidden visibility flag is stale", () => {
+    const parsed = parseCampaignDesignFormData(
+      formData({
+        accentColor: "#2563EB",
+        backgroundColor: "#FFFFFF",
+        buttonColor: "#111827",
+        buttonTextColor: "#FFFFFF",
+        fontSize: "14",
+        icon: "FIRE",
+        showIcon: "false",
+        templateKey: "clean-minimal",
+        textColor: "#111827",
+      }),
+      ShopPlan.PRO,
+    );
+
+    expect(parsed.values.icon).toBe("FIRE");
+    expect(parsed.values.showIcon).toBe(true);
+  });
+
   it("parses the configurable progress-bar fields and target", () => {
     const parsed = parseCampaignDesignFormData(
       formData({
@@ -171,6 +191,10 @@ describe("campaign form parsing and validation", () => {
         layout: "CTA_TOP",
         backgroundType: "IMAGE",
         backgroundImageUrl: "https://cdn.shopify.com/s/files/background.png",
+        backgroundImageSize: "CONTAIN",
+        backgroundImagePosition: "TOP_LEFT",
+        backgroundImageRepeat: "REPEAT_X",
+        backgroundImageAttachment: "FIXED",
         gradientStartColor: "#123456",
         gradientEndColor: "#ABCDEF",
         gradientAngle: "271",
@@ -255,6 +279,10 @@ describe("campaign form parsing and validation", () => {
       layout: "CTA_TOP",
       backgroundType: "IMAGE",
       backgroundImageUrl: "https://cdn.shopify.com/s/files/background.png",
+      backgroundImageSize: "CONTAIN",
+      backgroundImagePosition: "TOP_LEFT",
+      backgroundImageRepeat: "REPEAT_X",
+      backgroundImageAttachment: "FIXED",
       gradientAngle: 271,
       fontFamily: "CASUAL",
       timerStyle: "BOXES",

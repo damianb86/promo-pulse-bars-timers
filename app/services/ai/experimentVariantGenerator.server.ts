@@ -1,6 +1,10 @@
 import {
   campaignDesignTemplates,
   defaultCampaignDesignValues,
+  designBackgroundImageAttachmentOptions,
+  designBackgroundImagePositionOptions,
+  designBackgroundImageRepeatOptions,
+  designBackgroundImageSizeOptions,
   designBackgroundTypeOptions,
   designBannerAnimationOptions,
   designFontFamilyOptions,
@@ -210,6 +214,18 @@ const placementValues = placementTypeOptions.map((option) => option.value);
 const designEnums = {
   layout: designLayoutOptions.map((option) => option.value),
   backgroundType: designBackgroundTypeOptions.map((option) => option.value),
+  backgroundImageSize: designBackgroundImageSizeOptions.map(
+    (option) => option.value,
+  ),
+  backgroundImagePosition: designBackgroundImagePositionOptions.map(
+    (option) => option.value,
+  ),
+  backgroundImageRepeat: designBackgroundImageRepeatOptions.map(
+    (option) => option.value,
+  ),
+  backgroundImageAttachment: designBackgroundImageAttachmentOptions.map(
+    (option) => option.value,
+  ),
   fontFamily: designFontFamilyOptions.map((option) => option.value),
   timerStyle: designTimerStyleOptions.map((option) => option.value),
   timerFormat: designTimerFormatOptions.map((option) => option.value),
@@ -234,11 +250,7 @@ export function parseExperimentVariantAiFormData(
     defaultCampaignDesignValues,
   );
   const input: ExperimentVariantAiInput = {
-    strategy: readEnum(
-      formData.get("strategy"),
-      strategyValues,
-      "benefit",
-    ),
+    strategy: readEnum(formData.get("strategy"), strategyValues, "benefit"),
     designIntensity: readEnum(
       formData.get("designIntensity"),
       designIntensityValues,
@@ -814,7 +826,11 @@ function sanitizeTextRecord(
     const nextValue =
       key === "ctaUrl"
         ? sanitizeCtaUrl(record[key], fallback[key])
-        : sanitizeText(record[key], fallback[key], key === "ctaText" ? 40 : 160);
+        : sanitizeText(
+            record[key],
+            fallback[key],
+            key === "ctaText" ? 40 : 160,
+          );
 
     if (nextValue !== fallback[key]) {
       text[key] = nextValue;
@@ -833,7 +849,9 @@ function readTextRecord(value: unknown): ExperimentVariantAiText {
   }, {} as ExperimentVariantAiText);
 }
 
-function readPartialTextRecord(value: unknown): Partial<ExperimentVariantAiText> {
+function readPartialTextRecord(
+  value: unknown,
+): Partial<ExperimentVariantAiText> {
   const record = readRecord(value);
   const text: Partial<ExperimentVariantAiText> = {};
 
@@ -966,8 +984,7 @@ function sanitizePlacementRecord(
 
   return {
     placementType: placementType as PlacementTypeValue,
-    customSelector:
-      placementType === "CUSTOM_SELECTOR" ? customSelector : "",
+    customSelector: placementType === "CUSTOM_SELECTOR" ? customSelector : "",
   };
 }
 
@@ -1010,10 +1027,7 @@ function sanitizeDesignString(key: keyof CampaignDesignValues, value: string) {
   const text = value.trim();
   const maxLength = key === "customCss" ? 2000 : 500;
 
-  if (
-    key === "backgroundImageUrl" ||
-    key === "customIconUrl"
-  ) {
+  if (key === "backgroundImageUrl" || key === "customIconUrl") {
     if (!text) return "";
     if (text.startsWith("https://") || text.startsWith("/")) {
       return text.slice(0, maxLength);
@@ -1054,9 +1068,7 @@ function readRecord(value: unknown): Record<string, unknown> {
 function readStringArray(value: unknown) {
   if (!Array.isArray(value)) return [];
 
-  return value
-    .map((item) => readString(item).slice(0, 100))
-    .filter(Boolean);
+  return value.map((item) => readString(item).slice(0, 100)).filter(Boolean);
 }
 
 function readString(value: unknown) {

@@ -1357,6 +1357,36 @@ async function applyDesignOverride(
   const override = jsonObject(variant.designOverride);
   const alignment = readDesignAlignment(override.alignment);
   const backgroundType = readDesignBackgroundType(override.backgroundType);
+  const backgroundImageSize = readEnumString(override.backgroundImageSize, [
+    "COVER",
+    "CONTAIN",
+    "AUTO",
+    "STRETCH",
+  ]);
+  const backgroundImagePosition = readEnumString(
+    override.backgroundImagePosition,
+    [
+      "CENTER",
+      "TOP",
+      "BOTTOM",
+      "LEFT",
+      "RIGHT",
+      "TOP_LEFT",
+      "TOP_RIGHT",
+      "BOTTOM_LEFT",
+      "BOTTOM_RIGHT",
+    ],
+  );
+  const backgroundImageRepeat = readEnumString(override.backgroundImageRepeat, [
+    "NO_REPEAT",
+    "REPEAT",
+    "REPEAT_X",
+    "REPEAT_Y",
+  ]);
+  const backgroundImageAttachment = readEnumString(
+    override.backgroundImageAttachment,
+    ["SCROLL", "FIXED", "LOCAL"],
+  );
   const entranceAnimation = readDesignBannerAnimation(
     override.entranceAnimation,
   );
@@ -1448,6 +1478,10 @@ async function applyDesignOverride(
     ]),
     ...(alignment ? { alignment } : {}),
     ...(backgroundType ? { backgroundType } : {}),
+    ...(backgroundImageSize ? { backgroundImageSize } : {}),
+    ...(backgroundImagePosition ? { backgroundImagePosition } : {}),
+    ...(backgroundImageRepeat ? { backgroundImageRepeat } : {}),
+    ...(backgroundImageAttachment ? { backgroundImageAttachment } : {}),
     ...(entranceAnimation ? { entranceAnimation } : {}),
     ...(exitAnimation ? { exitAnimation } : {}),
     ...(fontFamily ? { fontFamily } : {}),
@@ -1581,6 +1615,16 @@ function jsonObject(value: unknown): Record<string, unknown> {
 
 function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readEnumString<Value extends string>(
+  value: unknown,
+  allowedValues: readonly Value[],
+) {
+  return typeof value === "string" &&
+    allowedValues.includes(value.trim() as Value)
+    ? (value.trim() as Value)
+    : null;
 }
 
 function readDecimal(value: unknown) {

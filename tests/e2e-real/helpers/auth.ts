@@ -23,7 +23,34 @@ export async function openShopifyAdmin(page: Page) {
   const config = requireRealE2E();
   ensureStorageStateExists();
   await page.goto(config.adminUrl, { waitUntil: "domcontentloaded" });
-  await page.waitForLoadState("networkidle", { timeout: config.timeoutMs });
+  await resolveShopifyAccountPicker(page);
+  // The admin is a SPA with continuous background requests; "networkidle"
+  // may never fire. Reaching the admin origin is the real readiness signal.
+  await page.waitForURL(/admin\.shopify\.com/, { timeout: config.timeoutMs });
+  await page.waitForLoadState("domcontentloaded");
+}
+
+// Shopify sometimes interposes the accounts.shopify.com account picker even
+// when the stored session is still valid (fresh browser contexts trigger a
+// device re-check). The session only needs the account to be picked, so click
+// the single stored account and continue instead of failing the run.
+export async function resolveShopifyAccountPicker(page: Page) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!/accounts\.shopify\.com\/select/.test(page.url())) return;
+
+    const account = page.locator('a[href*="sid="]').first();
+    if (!(await account.isVisible().catch(() => false))) return;
+
+    await Promise.all([
+      page
+        .waitForURL(/admin\.shopify\.com|accounts\.shopify\.com/, {
+          timeout: 30_000,
+        })
+        .catch(() => undefined),
+      account.click(),
+    ]);
+    await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+  }
 }
 
 export async function openPromoPulseApp(page: Page, appPath = "/app") {
@@ -46,6 +73,7 @@ export async function openPromoPulseApp(page: Page, appPath = "/app") {
   }
 
   await page.waitForLoadState("domcontentloaded");
+  await resolveShopifyAccountPicker(page);
   await completeDirectAppLoginIfNeeded(page);
   await waitForAppReady(page, appPath);
   rememberAdminAppBaseUrl(page.url());
@@ -80,6 +108,7 @@ export async function openPromoPulseAppDirect(page: Page, appPath = "/app") {
 
   await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("domcontentloaded");
+  await resolveShopifyAccountPicker(page);
   await completeDirectAppLoginIfNeeded(page);
 
   const currentPath = safeUrl(page.url())?.pathname.replace(/\/+$/, "") ?? "";

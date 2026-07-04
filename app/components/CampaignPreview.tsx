@@ -33,6 +33,12 @@ import {
   calculateFreeShippingProgress,
   interpolateFreeShippingText,
 } from "../lib/free-shipping";
+import {
+  getBackgroundImageAttachmentCssValue,
+  getBackgroundImagePositionCssValue,
+  getBackgroundImageRepeatCssValue,
+  getBackgroundImageSizeCssValue,
+} from "../utils/campaign-design";
 import { buildLowStockMessage } from "../lib/low-stock";
 import {
   calculateDeliveryPromise,
@@ -554,7 +560,15 @@ function getSurfaceBackground(design: CampaignDesignValues) {
   if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
     return `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("${escapeCssUrl(
       design.backgroundImageUrl,
-    )}") center / cover no-repeat`;
+    )}") ${getBackgroundImagePositionCssValue(
+      design.backgroundImagePosition,
+    )} / ${getBackgroundImageSizeCssValue(
+      design.backgroundImageSize,
+    )} ${getBackgroundImageRepeatCssValue(
+      design.backgroundImageRepeat,
+    )} ${getBackgroundImageAttachmentCssValue(
+      design.backgroundImageAttachment,
+    )}`;
   }
 
   if (design.backgroundType === "GRADIENT") {
@@ -993,7 +1007,11 @@ function PreviewProgress({
     const steps = clampNumber(design.progressSteps, 2, 12, 4);
     const filled = Math.round((pct / 100) * steps);
     return (
-      <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
+      <div
+        {...rootProps}
+        className={className}
+        style={{ ...vars, ...incomingStyle }}
+      >
         <span className="counterpulse-preview-progress-steps">
           {Array.from({ length: steps }).map((_, index) => (
             <span key={index} className={index < filled ? "is-filled" : ""} />
@@ -1008,7 +1026,11 @@ function PreviewProgress({
 
   if (style === "circle") {
     return (
-      <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
+      <div
+        {...rootProps}
+        className={className}
+        style={{ ...vars, ...incomingStyle }}
+      >
         <span
           className="counterpulse-preview-progress-circle"
           style={
@@ -1022,7 +1044,11 @@ function PreviewProgress({
   }
 
   return (
-    <div {...rootProps} className={className} style={{ ...vars, ...incomingStyle }}>
+    <div
+      {...rootProps}
+      className={className}
+      style={{ ...vars, ...incomingStyle }}
+    >
       <span>
         <span style={{ width: `${pct}%` }} />
       </span>
@@ -1187,7 +1213,11 @@ function StructurePromoSurface({
           : null;
       case "close":
         return design.showCloseButton
-          ? mergeSlotProps(<PreviewCloseButton design={design} />, attrProps, key)
+          ? mergeSlotProps(
+              <PreviewCloseButton design={design} />,
+              attrProps,
+              key,
+            )
           : null;
       case "progress": {
         const pct = resolveProgressPercent(

@@ -13,6 +13,46 @@
 .counterpulse-preview-promo,
 .counterpulse-preview-badge {
   /* Break inherited typography/box context coming from the theme. */
+  --pp-bg: var(--cp-surface-bg);
+  --pp-text: var(--cp-text);
+  --pp-accent: var(--cp-accent);
+  --pp-button: var(--cp-button);
+  --pp-button-text: var(--cp-button-text);
+  --pp-close: var(--cp-close);
+  --pp-font-size: var(--cp-font-size);
+  --pp-font-family: var(--cp-font-family);
+  --pp-radius: var(--cp-radius);
+  --pp-border-size: var(--cp-border-size);
+  --pp-border-color: var(--cp-border-color);
+  --pp-align: var(--cp-align);
+  --pp-content-max-width: var(--cp-content-max-width);
+  --pp-padding-block: var(--cp-padding-block);
+  --pp-padding-inline: var(--cp-padding-inline);
+  --pp-gap: var(--cp-gap);
+  --pp-title-size: var(--cp-title-size);
+  --pp-title-color: var(--cp-title-color);
+  --pp-subheading-size: var(--cp-subheading-size);
+  --pp-subheading-color: var(--cp-subheading-color);
+  --pp-timer-size: var(--cp-timer-size);
+  --pp-timer-color: var(--cp-timer-color);
+  --pp-legend-size: var(--cp-legend-size);
+  --pp-legend-color: var(--cp-legend-color);
+  --pp-timer-surface: var(--cp-timer-surface);
+  --pp-timer-border: var(--cp-timer-border);
+  --pp-timer-border-size: var(--cp-timer-border-size);
+  --pp-timer-radius: var(--cp-timer-radius);
+  --pp-icon-size: var(--cp-icon-size);
+  --pp-close-size: var(--cp-close-size);
+  --pp-offer-code-text: var(--cp-offer-code-text);
+  --pp-offer-code-bg: var(--cp-offer-code-bg);
+  --pp-offer-code-border: var(--cp-offer-code-border);
+  --pp-offer-code-size: var(--cp-offer-code-size);
+  --pp-offer-code-radius: var(--cp-offer-code-radius);
+  --pp-offer-code-padding-block: var(--cp-offer-code-padding-block);
+  --pp-offer-code-padding-inline: var(--cp-offer-code-padding-inline);
+  --pp-offer-gap: var(--cp-offer-gap);
+  --pp-motion-duration: var(--cp-motion-duration);
+  --pp-tick-duration: var(--cp-tick-duration);
   box-sizing: border-box;
   color: var(--cp-text);
   font-family: var(--cp-font-family);
@@ -998,6 +1038,10 @@
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
+}
+
+.counterpulse-preview-cta.pp-cta {
+  font-size: 0.9em;
 }
 
 .counterpulse-preview-cta:hover,

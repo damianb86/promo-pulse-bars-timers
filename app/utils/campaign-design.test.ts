@@ -248,9 +248,17 @@ describe("campaign design validation", () => {
         ...defaultCampaignDesignValues,
         backgroundType: "IMAGE",
         backgroundImageUrl: "javascript:alert(1)",
+        backgroundImageSize: "ZOOM" as never,
+        backgroundImagePosition: "MIDDLE" as never,
+        backgroundImageRepeat: "DIAGONAL" as never,
+        backgroundImageAttachment: "PINNED" as never,
       }),
     ).toMatchObject({
       backgroundImageUrl: "Use a valid image URL.",
+      backgroundImageSize: "Choose a valid image size mode.",
+      backgroundImagePosition: "Choose a valid image position.",
+      backgroundImageRepeat: "Choose a valid image repeat mode.",
+      backgroundImageAttachment: "Choose a valid image attachment mode.",
     });
 
     expect(

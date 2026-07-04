@@ -183,7 +183,10 @@ test("campaign builder tabs preview and layout are interactive", async ({
   ).toBeVisible();
 
   await page.goto("/app/campaigns/new");
-  await expect(page.getByRole("tab", { name: "Campaign" })).not.toBeVisible();
+  // The create page intentionally exposes the same Campaign/Design section
+  // tabs as the editor ("Add Design tab to the create campaign page").
+  await expect(page.getByRole("tab", { name: "Campaign" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Design" })).toBeVisible();
 
   await page.goto("/app/campaigns/new");
   await form.getByLabel("Campaign name").fill("E2E Editor Tabs");

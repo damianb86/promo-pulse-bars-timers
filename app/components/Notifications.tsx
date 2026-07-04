@@ -32,6 +32,7 @@ type ConfirmModalProps = {
 };
 
 type InfoModalProps = {
+  action?: ReactNode;
   children?: ReactNode;
   className?: string;
   closeLabel?: string;
@@ -204,6 +205,7 @@ export function FieldInfoButton({
 }
 
 export function InfoModal({
+  action,
   children,
   className = "",
   closeLabel = "Close",
@@ -268,6 +270,7 @@ export function InfoModal({
           </div>
         </div>
         <div className="counterpulse-modal__actions">
+          {action}
           <button
             className="counterpulse-button"
             ref={closeButtonRef}

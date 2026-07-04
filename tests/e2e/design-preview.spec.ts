@@ -2,6 +2,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   selectOnlyCampaignPlacement,
   test,
 } from "./fixtures";
@@ -324,7 +325,9 @@ test("advanced layouts keep content aligned across desktop and mobile", async ({
   await editor.getByLabel("Full width").check();
   await editor.getByRole("button", { name: "Layout options" }).click();
   await editor.getByRole("option", { name: /^Spread row\b/ }).click();
-  await expect(preview).toHaveClass(/counterpulse-preview-promo--layout-spread/);
+  await expect(preview).toHaveClass(
+    /counterpulse-preview-promo--layout-spread/,
+  );
   const spreadPadding = await preview.evaluate((element) =>
     Number.parseFloat(window.getComputedStyle(element).paddingLeft),
   );
@@ -334,7 +337,9 @@ test("advanced layouts keep content aligned across desktop and mobile", async ({
     .getByLabel("Preview device")
     .getByRole("button", { name: "Mobile" })
     .click();
-  await expect(preview).toHaveClass(/counterpulse-preview-promo--layout-spread/);
+  await expect(preview).toHaveClass(
+    /counterpulse-preview-promo--layout-spread/,
+  );
   const mobileSpread = await preview.evaluate((element) => {
     const promo = element.getBoundingClientRect();
     const message = element
@@ -347,7 +352,9 @@ test("advanced layouts keep content aligned across desktop and mobile", async ({
       .querySelector(".counterpulse-preview-actions")
       ?.getBoundingClientRect();
     return {
-      actionBelowTimer: Boolean(timer && actions && actions.top >= timer.bottom),
+      actionBelowTimer: Boolean(
+        timer && actions && actions.top >= timer.bottom,
+      ),
       messageInside: Boolean(
         message && message.left >= promo.left && message.right <= promo.right,
       ),
@@ -371,9 +378,10 @@ test("advanced layouts keep content aligned across desktop and mobile", async ({
   await expect(preview).toHaveClass(
     /counterpulse-preview-promo--layout-cta_left/,
   );
-  await expect(
-    preview.locator(".counterpulse-preview-message-copy"),
-  ).toHaveCSS("text-align", "right");
+  await expect(preview.locator(".counterpulse-preview-message-copy")).toHaveCSS(
+    "text-align",
+    "right",
+  );
   await expect(preview.locator(".counterpulse-preview-timer")).toHaveCSS(
     "justify-content",
     "flex-end",
@@ -404,13 +412,15 @@ test("advanced layouts keep content aligned across desktop and mobile", async ({
     const within = (rect: DOMRect | undefined) =>
       Boolean(
         rect &&
-          rect.left >= promo.left &&
-          rect.right <= promo.right &&
-          rect.top >= promo.top &&
-          rect.bottom <= promo.bottom,
+        rect.left >= promo.left &&
+        rect.right <= promo.right &&
+        rect.top >= promo.top &&
+        rect.bottom <= promo.bottom,
       );
     return {
-      timerBeforeMessage: Boolean(timer && message && timer.bottom <= message.top),
+      timerBeforeMessage: Boolean(
+        timer && message && timer.bottom <= message.top,
+      ),
       messageInside: within(message),
       timerInside: within(timer),
       actionsInside: within(actions),
@@ -516,6 +526,16 @@ test("separate desktop and mobile design uses distinct editable previews", async
     "love",
   );
   await expect(reloadedPreview).toHaveCSS(
+    "background-image",
+    /linear-gradient.*rgb\(230, 57, 70\).*rgb\(255, 53, 162\)/,
+  );
+
+  await publishCurrentCampaign(page);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/__test/storefront");
+  const storefrontPromo = page.locator(".counterpulse-preview-promo").first();
+  await expect(storefrontPromo).toBeVisible();
+  await expect(storefrontPromo).toHaveCSS(
     "background-image",
     /linear-gradient.*rgb\(230, 57, 70\).*rgb\(255, 53, 162\)/,
   );

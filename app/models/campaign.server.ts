@@ -658,6 +658,10 @@ export function toCampaignDesignWriteData(
     backgroundType: input.backgroundType,
     backgroundColor: input.backgroundColor,
     backgroundImageUrl: input.backgroundImageUrl,
+    backgroundImageSize: input.backgroundImageSize,
+    backgroundImagePosition: input.backgroundImagePosition,
+    backgroundImageRepeat: input.backgroundImageRepeat,
+    backgroundImageAttachment: input.backgroundImageAttachment,
     gradientStartColor: input.gradientStartColor,
     gradientEndColor: input.gradientEndColor,
     gradientAngle: input.gradientAngle,
@@ -834,18 +838,26 @@ function buildCampaignStructureWriteData(
       : {}),
   };
 
-  // Mobile override: only keep it when the merchant edited a separate mobile
-  // HTML AND it actually differs from the desktop structure.
+  // Mobile override: keep a separate mobile structure whenever the merchant
+  // enabled separate mobile design and the generated/edited mobile surface
+  // differs from desktop. This preserves mobile-only settings such as image
+  // backgrounds, colors, spacing, and typography even when the HTML was not
+  // manually edited.
   const editedMobileHtml = options.editedMobileHtml?.trim();
-  const mobileStructure = editedMobileHtml
-    ? generateStructureFromHtml(
-        editedMobileHtml,
-        mobileDesign,
-        options.editedMobileCss,
-      )
+  const shouldGenerateMobileStructure = mobileDesign.separateMobileDesign;
+  const mobileStructure = shouldGenerateMobileStructure
+    ? editedMobileHtml
+      ? (generateStructureFromHtml(
+          editedMobileHtml,
+          mobileDesign,
+          options.editedMobileCss,
+        ) ?? generateStructureFromSettings(viewModel, mobileDesign))
+      : generateStructureFromSettings(viewModel, mobileDesign)
     : null;
   const mobile =
-    mobileStructure && mobileStructure.compact !== desktop.compact
+    mobileStructure &&
+    (mobileStructure.compact !== desktop.compact ||
+      mobileStructure.css !== desktop.css)
       ? {
           mobileStructureCompact: mobileStructure.compact,
           mobileStructureCss: mobileStructure.css,
@@ -1195,6 +1207,12 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 backgroundType: campaign.design.backgroundType,
                 backgroundColor: campaign.design.backgroundColor,
                 backgroundImageUrl: campaign.design.backgroundImageUrl,
+                backgroundImageSize: campaign.design.backgroundImageSize,
+                backgroundImagePosition:
+                  campaign.design.backgroundImagePosition,
+                backgroundImageRepeat: campaign.design.backgroundImageRepeat,
+                backgroundImageAttachment:
+                  campaign.design.backgroundImageAttachment,
                 gradientStartColor: campaign.design.gradientStartColor,
                 gradientEndColor: campaign.design.gradientEndColor,
                 gradientAngle: campaign.design.gradientAngle,

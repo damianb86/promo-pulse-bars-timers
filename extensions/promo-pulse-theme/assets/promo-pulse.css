@@ -22,25 +22,11 @@
   z-index: auto;
 }
 
+/* The bar's look (background, spacing, type, radius, layout) is owned entirely
+   by campaign-surface.css via the .counterpulse-preview-* classes on the same
+   element; this file only keeps storefront positioning concerns. */
 .pp-container .pp-bar {
   position: relative;
-  width: min(100%, 960px);
-  box-sizing: border-box;
-  display: grid;
-  align-items: center;
-  justify-items: center;
-  gap: var(--pp-gap, 10px);
-  padding: var(--pp-padding-block, 11px) var(--pp-padding-inline, 16px);
-  border: var(--pp-border-size, 0) solid var(--pp-border-color, transparent);
-  border-radius: var(--pp-radius, 0);
-  background: var(--pp-bg, #111827);
-  color: var(--pp-text, #ffffff);
-  font-size: var(--pp-font-size, 14px);
-  font-family: var(--pp-font-family, inherit);
-  line-height: 1.35;
-  text-align: var(--pp-align, center);
-  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.08);
-  margin-inline: auto;
 }
 
 /* Match both .pp-bar and the modifier so Full Width beats the per-layout width
@@ -326,84 +312,6 @@
   height: auto;
   max-width: 100%;
   max-height: 100%;
-}
-
-.pp-container .pp-bar .pp-countdown {
-  max-width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0;
-  color: var(--pp-timer-color, var(--pp-text, #ffffff));
-  font: inherit;
-  font-size: var(--pp-timer-size, 24px);
-  font-variant-numeric: tabular-nums;
-  font-weight: 850;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.pp-container .pp-bar .pp-countdown--compact {
-  font-size: max(13px, calc(var(--pp-timer-size, 24px) * 0.68));
-}
-
-/* Stacked layout: timer numbers run one below the other. */
-.pp-container .pp-bar .pp-countdown--stacked,
-.pp-product-card .pp-countdown--stacked,
-.pp-cart-card .pp-countdown--stacked {
-  flex-direction: column;
-  flex-wrap: nowrap;
-}
-
-.pp-container .pp-bar .pp-countdown--grouped,
-.pp-container .pp-bar .pp-countdown--colon.pp-countdown--boxes {
-  padding: 8px 12px;
-  border: var(--pp-timer-border-size, 0) solid
-    var(--pp-timer-border, transparent);
-  border-radius: var(--pp-timer-radius, 8px);
-  background: var(--pp-timer-surface, rgba(255, 255, 255, 0.12));
-}
-
-.pp-container .pp-bar .pp-countdown--boxes {
-  gap: 8px;
-}
-
-.pp-container .pp-bar .pp-countdown-unit {
-  min-width: 42px;
-  box-sizing: border-box;
-  display: grid;
-  justify-items: center;
-  gap: 3px;
-}
-
-.pp-container .pp-bar .pp-countdown--boxes .pp-countdown-unit {
-  min-width: 56px;
-  padding: 8px 10px;
-  border: var(--pp-timer-border-size, 0) solid
-    var(--pp-timer-border, transparent);
-  border-radius: var(--pp-timer-radius, 8px);
-  background: var(--pp-timer-surface, rgba(255, 255, 255, 0.12));
-}
-
-.pp-container .pp-bar .pp-countdown-unit strong {
-  margin: 0;
-  color: var(--pp-timer-color, var(--pp-text, #ffffff));
-  font: inherit;
-  font-size: 1em;
-  font-weight: 850;
-  line-height: 0.95;
-}
-
-.pp-container .pp-bar .pp-countdown-unit small {
-  margin: 0;
-  color: var(--pp-legend-color, var(--pp-text, #ffffff));
-  font: inherit;
-  font-size: var(--pp-legend-size, 12px);
-  font-weight: 500;
-  line-height: 1;
 }
 
 .pp-cta {
@@ -842,26 +750,10 @@
   margin-right: calc(50% - 50vw);
 }
 
+/* Card visuals are owned by campaign-surface.css (same element carries the
+   .counterpulse-preview-* classes); keep positioning/stacking context only. */
 .pp-product-card {
   position: relative;
-  width: 100%;
-  box-sizing: border-box;
-  display: grid;
-  align-items: center;
-  justify-items: center;
-  gap: var(--pp-gap, 10px);
-  margin: 12px 0;
-  padding: var(--pp-padding-block, 12px) var(--pp-padding-inline, 14px);
-  border: var(--pp-border-size, 1px) solid
-    var(--pp-border-color, var(--pp-accent, #22c55e));
-  border-radius: var(--pp-radius, 4px);
-  background: var(--pp-bg, #111827);
-  color: var(--pp-text, #ffffff);
-  font-size: var(--pp-font-size, 14px);
-  font-family: var(--pp-font-family, inherit);
-  line-height: 1.35;
-  text-align: var(--pp-align, center);
-  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.08);
   isolation: isolate;
 }
 

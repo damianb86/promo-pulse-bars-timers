@@ -268,6 +268,10 @@ export function CampaignDesignEditor({
     setOpenErrorModalKey("");
     window.setTimeout(() => focusDesignErrorField(targetField), 0);
   };
+  const saveAnyway = () => {
+    setOpenErrorModalKey("");
+    requestForcedDesignSave();
+  };
 
   useEffect(() => {
     if (!designErrorSummary) return;
@@ -315,6 +319,15 @@ export function CampaignDesignEditor({
   return (
     <s-section heading="Design & Preview">
       <InfoModal
+        action={
+          <button
+            className="counterpulse-button-secondary"
+            type="button"
+            onClick={saveAnyway}
+          >
+            Save anyway
+          </button>
+        }
         closeLabel="Review field"
         open={Boolean(designErrorSummary && openErrorModalKey)}
         title="Design could not be saved"
@@ -607,7 +620,11 @@ function StructureCodeModal({
           >
             Reset from design
           </button>
-          <button className="counterpulse-button" type="button" onClick={onClose}>
+          <button
+            className="counterpulse-button"
+            type="button"
+            onClick={onClose}
+          >
             Done
           </button>
         </div>
@@ -618,7 +635,13 @@ function StructureCodeModal({
 
 function InfoCircleIcon() {
   return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18">
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
       <circle
         cx="12"
         cy="12"
@@ -663,7 +686,8 @@ const STRUCTURE_ELEMENT_DOCS: Array<{
     example: '<span data-cp-slot="cta"></span>  (or <a data-cp-slot="cta">)',
     renders:
       "The call-to-action button text. Use <a> to render a link (the storefront sets href automatically); <span> for a plain button. Hidden when the CTA is turned off.",
-    attributes: "class, id, style, data-*. Tag <a> vs <span> controls link vs button.",
+    attributes:
+      "class, id, style, data-*. Tag <a> vs <span> controls link vs button.",
   },
   {
     example: '<span data-cp-slot="badge-text"></span>',
@@ -762,26 +786,31 @@ function StructureHelpModal({
             <h2>Element reference</h2>
             <p className="counterpulse-design-note">
               The HTML carries only the structure. Dynamic parts are empty{" "}
-              <code>data-cp-slot</code> placeholders that the app fills at render
-              time from your Design settings. Any other safe HTML (divs,
-              headings, images, lists, classes, ids, data attributes) is rendered
-              exactly as written. The message texts (headline, body, CTA, badge)
-              render through their slots below; the supporting <code>body</code>
+              <code>data-cp-slot</code> placeholders that the app fills at
+              render time from your Design settings. Any other safe HTML (divs,
+              headings, images, lists, classes, ids, data attributes) is
+              rendered exactly as written. The message texts (headline, body,
+              CTA, badge) render through their slots below; the supporting{" "}
+              <code>body</code>
               slot automatically shows the message that matches the campaign and
               its state (subheadline, free-shipping, low-stock, or delivery). To
               place an extra text anywhere, create it in the Message tab and use
               its <code>custom-&lt;id&gt;</code> slot. You can also type dynamic
               variables like <code>{`{{remaining_amount}}`}</code> or{" "}
-              <code>{`{{time_left}}`}</code> directly into any text in the HTML —
-              see the Message tab for the full list — and they are replaced live.
-              Below: each slot, how it renders, and the attributes it supports.
+              <code>{`{{time_left}}`}</code> directly into any text in the HTML
+              — see the Message tab for the full list — and they are replaced
+              live. Below: each slot, how it renders, and the attributes it
+              supports.
             </p>
           </div>
         </div>
         <div className="counterpulse-modal__body">
           <div className="counterpulse-structure-help">
             {STRUCTURE_ELEMENT_DOCS.map((doc) => (
-              <div key={doc.example} className="counterpulse-structure-help__row">
+              <div
+                key={doc.example}
+                className="counterpulse-structure-help__row"
+              >
                 <code>{doc.example}</code>
                 <p>
                   <strong>Renders:</strong> {doc.renders}
@@ -794,7 +823,11 @@ function StructureHelpModal({
           </div>
         </div>
         <div className="counterpulse-modal__actions">
-          <button className="counterpulse-button" type="button" onClick={onClose}>
+          <button
+            className="counterpulse-button"
+            type="button"
+            onClick={onClose}
+          >
             Done
           </button>
         </div>
@@ -1031,6 +1064,10 @@ const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
   "templateKey",
   "backgroundType",
   "backgroundImageUrl",
+  "backgroundImageSize",
+  "backgroundImagePosition",
+  "backgroundImageRepeat",
+  "backgroundImageAttachment",
   "backgroundColor",
   "gradientStartColor",
   "gradientEndColor",
@@ -1126,6 +1163,37 @@ function focusDesignErrorField(field?: keyof CampaignDesignErrors) {
   ) {
     target.focus({ preventScroll: true });
   }
+}
+
+function requestForcedDesignSave() {
+  const form =
+    document.querySelector<HTMLFormElement>(
+      ".counterpulse-editor-panel:not([hidden]) form[data-campaign-form]",
+    ) ?? document.querySelector<HTMLFormElement>("form[data-campaign-form]");
+
+  if (!form) return;
+
+  const forceInput = ensureHiddenInput(form, "forceDesignSave");
+  forceInput.value = "true";
+
+  const actionInput = form.elements.namedItem("_action");
+  if (actionInput instanceof HTMLInputElement && !actionInput.value) {
+    actionInput.value = "saveDraft";
+  }
+
+  form.requestSubmit();
+}
+
+function ensureHiddenInput(form: HTMLFormElement, name: string) {
+  const existing = form.elements.namedItem(name);
+
+  if (existing instanceof HTMLInputElement) return existing;
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = name;
+  form.appendChild(input);
+  return input;
 }
 
 function isTimerShown(timer: CampaignViewModel["timer"]) {

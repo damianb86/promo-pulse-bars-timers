@@ -31,6 +31,10 @@
     backgroundType: "SOLID",
     backgroundColor: "#FFFFFF",
     backgroundImageUrl: "",
+    backgroundImageSize: "COVER",
+    backgroundImagePosition: "CENTER",
+    backgroundImageRepeat: "NO_REPEAT",
+    backgroundImageAttachment: "SCROLL",
     gradientStartColor: "#252237",
     gradientEndColor: "#4C4861",
     gradientAngle: 90,
@@ -467,12 +471,51 @@
     return "center";
   }
 
+  function getBackgroundImageSizeCssValue(value) {
+    if (value === "CONTAIN") return "contain";
+    if (value === "AUTO") return "auto";
+    if (value === "STRETCH") return "100% 100%";
+    return "cover";
+  }
+
+  function getBackgroundImagePositionCssValue(value) {
+    if (value === "TOP") return "top";
+    if (value === "BOTTOM") return "bottom";
+    if (value === "LEFT") return "left";
+    if (value === "RIGHT") return "right";
+    if (value === "TOP_LEFT") return "top left";
+    if (value === "TOP_RIGHT") return "top right";
+    if (value === "BOTTOM_LEFT") return "bottom left";
+    if (value === "BOTTOM_RIGHT") return "bottom right";
+    return "center";
+  }
+
+  function getBackgroundImageRepeatCssValue(value) {
+    if (value === "REPEAT") return "repeat";
+    if (value === "REPEAT_X") return "repeat-x";
+    if (value === "REPEAT_Y") return "repeat-y";
+    return "no-repeat";
+  }
+
+  function getBackgroundImageAttachmentCssValue(value) {
+    if (value === "FIXED") return "fixed";
+    if (value === "LOCAL") return "local";
+    return "scroll";
+  }
+
   function getSurfaceBackground(design) {
     if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
       return (
         'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("' +
         escapeCssUrl(design.backgroundImageUrl) +
-        '") center / cover no-repeat'
+        '") ' +
+        getBackgroundImagePositionCssValue(design.backgroundImagePosition) +
+        " / " +
+        getBackgroundImageSizeCssValue(design.backgroundImageSize) +
+        " " +
+        getBackgroundImageRepeatCssValue(design.backgroundImageRepeat) +
+        " " +
+        getBackgroundImageAttachmentCssValue(design.backgroundImageAttachment)
       );
     }
     if (design.backgroundType === "GRADIENT") {
@@ -1488,11 +1531,11 @@
       if (offerNode) actions.appendChild(offerNode);
       if (hasCta) {
         var ctaText = interpolateMessage(spec.cta, spec);
-        var cta = el("span", "counterpulse-preview-cta pp-cta");
+        var cta = el("span", "counterpulse-preview-cta");
         cta.textContent = ctaText;
         if (spec.ctaUrl) {
           var link = document.createElement("a");
-          link.className = "counterpulse-preview-cta pp-cta";
+          link.className = "counterpulse-preview-cta";
           link.href = spec.ctaUrl;
           link.textContent = ctaText;
           attachCtaTracking(link, spec);

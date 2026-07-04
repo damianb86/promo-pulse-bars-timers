@@ -380,6 +380,10 @@ const designOverrideKeys: Array<keyof CampaignDesignValues> = [
   "backgroundType",
   "backgroundColor",
   "backgroundImageUrl",
+  "backgroundImageSize",
+  "backgroundImagePosition",
+  "backgroundImageRepeat",
+  "backgroundImageAttachment",
   "gradientStartColor",
   "gradientEndColor",
   "gradientAngle",
@@ -442,6 +446,10 @@ const backgroundDesignKeys: Array<keyof CampaignDesignValues> = [
   "backgroundType",
   "backgroundColor",
   "backgroundImageUrl",
+  "backgroundImageSize",
+  "backgroundImagePosition",
+  "backgroundImageRepeat",
+  "backgroundImageAttachment",
   "gradientStartColor",
   "gradientEndColor",
   "gradientAngle",
@@ -1829,7 +1837,10 @@ function VariantDrawer({
                 : formatBasePlacement(baseViewModel)}
             </span>
           </div>
-          <VariantMiniPreview design={activeVariantDesign} viewModel={preview} />
+          <VariantMiniPreview
+            design={activeVariantDesign}
+            viewModel={preview}
+          />
         </section>
         <aside
           className="counterpulse-variant-drawer"
@@ -3443,7 +3454,13 @@ function getLifecycleConfirmationCopy(
 // thumbnail renders as a badge for badge placements, a bar for top/bottom bars,
 // and a card/block for everything else.
 function resolveVariantPreviewSurface(placement: string | undefined): {
-  placement: "TOP_BAR" | "BOTTOM_BAR" | "PRODUCT_PAGE" | "CART_PAGE" | "CART_DRAWER" | "PRODUCT_BADGE";
+  placement:
+    | "TOP_BAR"
+    | "BOTTOM_BAR"
+    | "PRODUCT_PAGE"
+    | "CART_PAGE"
+    | "CART_DRAWER"
+    | "PRODUCT_BADGE";
   variant: "bar" | "block" | "badge";
 } {
   if (placement === "PRODUCT_PAGE_BADGE" || placement === "COLLECTION_CARD") {
@@ -3574,7 +3591,8 @@ function toVariantDraft(
   const placementOverride = readJsonRecord(variant.placementOverrideJson);
   // The variant design override can carry a nested mobile override so a variant
   // can configure desktop and mobile separately (mirrors the campaign design).
-  const { mobileDesign: mobileOverrideRaw, ...desktopOverride } = designOverride;
+  const { mobileDesign: mobileOverrideRaw, ...desktopOverride } =
+    designOverride;
   const mobileOverride = readRecordValue(mobileOverrideRaw);
   const separate = Boolean(desktopOverride.separateMobileDesign);
   const baseMobileDesign = deriveMobileDesignFromDesktop(baseDesign);
@@ -3661,7 +3679,10 @@ function applyAiVariantSuggestion(
   const { mobileDesign: mobileSuggestion, ...desktopSuggestion } =
     suggestion.design ?? {};
   // A mobile layout never belongs on the desktop design.
-  if (desktopSuggestion.layout && isMobileDesignLayout(desktopSuggestion.layout)) {
+  if (
+    desktopSuggestion.layout &&
+    isMobileDesignLayout(desktopSuggestion.layout)
+  ) {
     delete desktopSuggestion.layout;
   }
   const separate = Boolean(desktopSuggestion.separateMobileDesign);

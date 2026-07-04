@@ -113,9 +113,7 @@ describe("pack <-> unpack is fully reversible", () => {
   });
 
   it("dictionary-packs repeated tag and attribute names once", () => {
-    const tree = htmlToTree(
-      "<ul><li>a</li><li>b</li><li>c</li></ul>",
-    )!;
+    const tree = htmlToTree("<ul><li>a</li><li>b</li><li>c</li></ul>")!;
     const packed = packTree(tree);
     expect(packed.t).toContain("li");
     expect(new Set(packed.t).size).toBe(packed.t.length);
@@ -150,6 +148,21 @@ describe("buildStructureCss", () => {
     expect(css).toContain("--cp-content-max-width: 600px;");
     expect(css).toContain(".x { color: red; }");
     expect(css).not.toContain("</style>");
+  });
+
+  it("emits configured CSS background image properties", () => {
+    const css = buildStructureCss({
+      backgroundType: "IMAGE",
+      backgroundImageUrl: "https://cdn.shopify.com/s/files/bg.png",
+      backgroundImageSize: "CONTAIN",
+      backgroundImagePosition: "TOP_LEFT",
+      backgroundImageRepeat: "REPEAT_X",
+      backgroundImageAttachment: "FIXED",
+    });
+
+    expect(css).toContain(
+      'url("https://cdn.shopify.com/s/files/bg.png") top left / contain repeat-x fixed',
+    );
   });
 
   it("auto-scopes appended custom css to the campaign token", () => {
@@ -192,9 +205,9 @@ describe("scopeCustomCss", () => {
   });
 
   it("accepts a concrete scope selector", () => {
-    expect(scopeCustomCss(".cp-promo { color: red; }", '[data-cp-uid="x"]')).toBe(
-      '[data-cp-uid="x"] .cp-promo { color: red; }',
-    );
+    expect(
+      scopeCustomCss(".cp-promo { color: red; }", '[data-cp-uid="x"]'),
+    ).toBe('[data-cp-uid="x"] .cp-promo { color: red; }');
   });
 });
 
@@ -208,7 +221,9 @@ describe("node addressing + inline style helpers", () => {
     const tree = htmlToTree(html)!;
     expect(getNodeAtPath(tree, "")?.tag).toBe("section");
     expect(getNodeAtPath(tree, "0")?.attrs?.class).toBe("cp-left");
-    expect(getNodeAtPath(tree, "0-0")?.attrs?.["data-cp-slot"]).toBe("headline");
+    expect(getNodeAtPath(tree, "0-0")?.attrs?.["data-cp-slot"]).toBe(
+      "headline",
+    );
     expect(getNodeAtPath(tree, "1")?.tag).toBe("img");
     expect(getNodeAtPath(tree, "9")).toBeNull();
   });

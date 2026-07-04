@@ -88,7 +88,7 @@ import {
 } from "../../types/campaign-design";
 import { describeMessageVariablesForAi } from "../../utils/message-variables";
 
-export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v22";
+export const AI_CAMPAIGN_PROMPT_VERSION = "promo-pulse-ai-campaign-builder-v23";
 
 // Shared design-quality bar applied to EVERY generation (image or not). The
 // model must police its own output for legibility and polish, and FIX problems
@@ -135,9 +135,10 @@ Visual assets (only when input.generateVisualAssets is true):
   when the supported layout + settings can render the campaign professionally.
 - Use structureHtml/structureCss only for a genuinely custom arrangement or an
   effect that settings cannot express. Do not duplicate a background in CSS when
-  design.backgroundImageUrl already applies it. If a tileable pattern needs a
-  repeat-specific treatment that settings cannot express, use short structureCss
-  for the repeat behavior and keep everything else in settings.
+  design.backgroundImageUrl already applies it. Use backgroundImageSize,
+  backgroundImagePosition, backgroundImageRepeat, and backgroundImageAttachment
+  for CSS background-size/position/repeat/attachment behavior instead of writing
+  background CSS by hand.
 - RESPONSIVE backgrounds: photos/illustrations use background-size: cover +
   background-position: center so they fill any width without distortion; patterns
   tile. The background must look right from ~100px up to full width. Let copy and
@@ -262,6 +263,10 @@ Preset-first supported design fields (use these to customize the chosen preset):
   no-assets workflow applies. In that no-assets workflow, do not use IMAGE
   unless the merchant explicitly supplied an existing image URL in the text
   input. Visual asset mode has its own IMAGE/backgroundImageUrl rules.
+- design.backgroundImageSize, backgroundImagePosition, backgroundImageRepeat,
+  backgroundImageAttachment: use when backgroundType is IMAGE. Prefer COVER /
+  CENTER / NO_REPEAT / SCROLL for generated or uploaded banner art, CONTAIN when
+  the full image must remain visible, and AUTO + REPEAT for tileable patterns.
 - Safe color fields: backgroundColor, gradientStartColor, gradientEndColor,
   gradientAngle, textColor, titleColor, subheadingColor, accentColor,
   buttonColor, buttonTextColor, borderColor, closeButtonColor, timerColor,

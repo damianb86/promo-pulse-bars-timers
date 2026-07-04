@@ -27,6 +27,13 @@
  * sees/edits is clean and small.
  */
 
+import {
+  getBackgroundImageAttachmentCssValue,
+  getBackgroundImagePositionCssValue,
+  getBackgroundImageRepeatCssValue,
+  getBackgroundImageSizeCssValue,
+} from "./campaign-design";
+
 export const CAMPAIGN_STRUCTURE_VERSION = 2;
 
 // The structural HTML the merchant writes is the single source of truth. The AST
@@ -190,7 +197,8 @@ function node(
   const result: StructureNode = { tag };
   const classValue = (cls ?? []).filter(Boolean).join(" ");
   if (classValue) result.attrs = { class: classValue };
-  if (extra?.children && extra.children.length) result.children = extra.children;
+  if (extra?.children && extra.children.length)
+    result.children = extra.children;
   return result;
 }
 
@@ -310,14 +318,14 @@ export function deriveCampaignStructureSpec(
   const offer = viewModel.offer ?? null;
   const hasOffer = Boolean(
     offer &&
-      (design.showDiscountCode ||
-        design.showCopyCodeButton ||
-        (design.showApplyDiscountButton && offer.canApply !== false)),
+    (design.showDiscountCode ||
+      design.showCopyCodeButton ||
+      (design.showApplyDiscountButton && offer.canApply !== false)),
   );
   const hasCta = Boolean(
     design.showButton &&
-      viewModel.cartRescue?.showButton !== false &&
-      viewModel.ctaText,
+    viewModel.cartRescue?.showButton !== false &&
+    viewModel.ctaText,
   );
 
   return {
@@ -395,9 +403,7 @@ export function treeToHtml(
 function serializeAttrs(attrs: Record<string, string> | undefined): string {
   if (!attrs) return "";
   const parts = Object.keys(attrs).map((name) =>
-    attrs[name] === ""
-      ? name
-      : `${name}="${escapeAttr(attrs[name])}"`,
+    attrs[name] === "" ? name : `${name}="${escapeAttr(attrs[name])}"`,
   );
   return parts.length ? " " + parts.join(" ") : "";
 }
@@ -405,8 +411,8 @@ function serializeAttrs(attrs: Record<string, string> | undefined): string {
 function isTextOnly(node: StructureNode): boolean {
   return Boolean(
     node.children &&
-      node.children.length > 0 &&
-      node.children.every((child) => child.tag === TEXT_TAG),
+    node.children.length > 0 &&
+    node.children.every((child) => child.tag === TEXT_TAG),
   );
 }
 
@@ -999,6 +1005,10 @@ export type StyleDesignInput = {
   backgroundType?: string;
   backgroundColor?: string;
   backgroundImageUrl?: string;
+  backgroundImageSize?: string;
+  backgroundImagePosition?: string;
+  backgroundImageRepeat?: string;
+  backgroundImageAttachment?: string;
   gradientAngle?: number;
   gradientStartColor?: string;
   gradientEndColor?: string;
@@ -1057,7 +1067,8 @@ export type StyleDesignInput = {
 };
 
 function px(value: number | undefined, fallback: number): string {
-  const num = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  const num =
+    typeof value === "number" && Number.isFinite(value) ? value : fallback;
   return `${num}px`;
 }
 
@@ -1078,7 +1089,15 @@ function surfaceBackground(design: StyleDesignInput): string {
   if (design.backgroundType === "IMAGE" && design.backgroundImageUrl) {
     return `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url("${escapeCssUrl(
       design.backgroundImageUrl,
-    )}") center / cover no-repeat`;
+    )}") ${getBackgroundImagePositionCssValue(
+      design.backgroundImagePosition,
+    )} / ${getBackgroundImageSizeCssValue(
+      design.backgroundImageSize,
+    )} ${getBackgroundImageRepeatCssValue(
+      design.backgroundImageRepeat,
+    )} ${getBackgroundImageAttachmentCssValue(
+      design.backgroundImageAttachment,
+    )}`;
   }
   if (design.backgroundType === "GRADIENT") {
     return `linear-gradient(${design.gradientAngle ?? 90}deg, ${design.gradientStartColor}, ${design.gradientEndColor})`;
@@ -1108,7 +1127,9 @@ function justifyItems(alignment: string | undefined): string {
 
 // Builds the `--cp-*` declarations for a campaign. Returned as a record so it can
 // be applied inline (admin preview) or serialized to a scoped CSS string.
-export function buildStructureCssVars(design: StyleDesignInput): Record<string, string> {
+export function buildStructureCssVars(
+  design: StyleDesignInput,
+): Record<string, string> {
   return {
     "--cp-surface-bg": surfaceBackground(design),
     "--cp-bg": design.backgroundColor ?? "",
@@ -1119,7 +1140,8 @@ export function buildStructureCssVars(design: StyleDesignInput): Record<string, 
     "--cp-button-text": design.buttonTextColor ?? "",
     "--cp-close": design.closeButtonColor ?? "",
     "--cp-font-size": px(design.fontSize, 15),
-    "--cp-font-family": FONT_FAMILIES[design.fontFamily ?? "THEME"] || "inherit",
+    "--cp-font-family":
+      FONT_FAMILIES[design.fontFamily ?? "THEME"] || "inherit",
     "--cp-radius": px(design.borderRadius, 0),
     "--cp-border-size": px(design.borderSize, 0),
     "--cp-border-color": design.borderColor ?? "",
@@ -1199,7 +1221,9 @@ export function buildStructureCssVars(design: StyleDesignInput): Record<string, 
 export function buildStructureCss(design: StyleDesignInput): string {
   const vars = buildStructureCssVars(design);
   const declarations = Object.entries(vars)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .filter(
+      ([, value]) => value !== undefined && value !== null && value !== "",
+    )
     .map(([key, value]) => `  ${key}: ${value};`)
     .join("\n");
 

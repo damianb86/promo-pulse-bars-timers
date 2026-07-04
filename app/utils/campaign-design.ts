@@ -2,6 +2,10 @@ import {
   campaignDesignTemplates,
   defaultCampaignDesignValues,
   designAlignmentOptions,
+  designBackgroundImageAttachmentOptions,
+  designBackgroundImagePositionOptions,
+  designBackgroundImageRepeatOptions,
+  designBackgroundImageSizeOptions,
   designBackgroundTypeOptions,
   designBannerAnimationOptions,
   designDismissBehaviorOptions,
@@ -66,6 +70,40 @@ export function hasReadableContrast(
   minimumRatio = 4.5,
 ) {
   return getContrastRatio(foregroundColor, backgroundColor) >= minimumRatio;
+}
+
+export function getBackgroundImageSizeCssValue(value: string | undefined) {
+  if (value === "CONTAIN") return "contain";
+  if (value === "AUTO") return "auto";
+  if (value === "STRETCH") return "100% 100%";
+  return "cover";
+}
+
+export function getBackgroundImagePositionCssValue(value: string | undefined) {
+  if (value === "TOP") return "top";
+  if (value === "BOTTOM") return "bottom";
+  if (value === "LEFT") return "left";
+  if (value === "RIGHT") return "right";
+  if (value === "TOP_LEFT") return "top left";
+  if (value === "TOP_RIGHT") return "top right";
+  if (value === "BOTTOM_LEFT") return "bottom left";
+  if (value === "BOTTOM_RIGHT") return "bottom right";
+  return "center";
+}
+
+export function getBackgroundImageRepeatCssValue(value: string | undefined) {
+  if (value === "REPEAT") return "repeat";
+  if (value === "REPEAT_X") return "repeat-x";
+  if (value === "REPEAT_Y") return "repeat-y";
+  return "no-repeat";
+}
+
+export function getBackgroundImageAttachmentCssValue(
+  value: string | undefined,
+) {
+  if (value === "FIXED") return "fixed";
+  if (value === "LOCAL") return "local";
+  return "scroll";
 }
 
 export function applyCampaignDesignTemplate(
@@ -444,6 +482,38 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     !isSafeBackgroundImageUrl(values.backgroundImageUrl)
   ) {
     errors.backgroundImageUrl = "Use a valid image URL.";
+  }
+
+  if (
+    !designBackgroundImageSizeOptions.some(
+      (option) => option.value === values.backgroundImageSize,
+    )
+  ) {
+    errors.backgroundImageSize = "Choose a valid image size mode.";
+  }
+
+  if (
+    !designBackgroundImagePositionOptions.some(
+      (option) => option.value === values.backgroundImagePosition,
+    )
+  ) {
+    errors.backgroundImagePosition = "Choose a valid image position.";
+  }
+
+  if (
+    !designBackgroundImageRepeatOptions.some(
+      (option) => option.value === values.backgroundImageRepeat,
+    )
+  ) {
+    errors.backgroundImageRepeat = "Choose a valid image repeat mode.";
+  }
+
+  if (
+    !designBackgroundImageAttachmentOptions.some(
+      (option) => option.value === values.backgroundImageAttachment,
+    )
+  ) {
+    errors.backgroundImageAttachment = "Choose a valid image attachment mode.";
   }
 
   if (

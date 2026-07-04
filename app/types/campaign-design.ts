@@ -20,6 +20,27 @@ export type DesignLayoutValue =
 
 export type DesignLayoutDeviceValue = "DESKTOP" | "MOBILE";
 export type DesignBackgroundTypeValue = "SOLID" | "GRADIENT" | "IMAGE";
+export type DesignBackgroundImageSizeValue =
+  | "COVER"
+  | "CONTAIN"
+  | "AUTO"
+  | "STRETCH";
+export type DesignBackgroundImagePositionValue =
+  | "CENTER"
+  | "TOP"
+  | "BOTTOM"
+  | "LEFT"
+  | "RIGHT"
+  | "TOP_LEFT"
+  | "TOP_RIGHT"
+  | "BOTTOM_LEFT"
+  | "BOTTOM_RIGHT";
+export type DesignBackgroundImageRepeatValue =
+  | "NO_REPEAT"
+  | "REPEAT"
+  | "REPEAT_X"
+  | "REPEAT_Y";
+export type DesignBackgroundImageAttachmentValue = "SCROLL" | "FIXED" | "LOCAL";
 export type DesignFontFamilyValue =
   | "THEME"
   | "SYSTEM"
@@ -73,6 +94,10 @@ export type CampaignDesignValues = {
   backgroundType: DesignBackgroundTypeValue;
   backgroundColor: string;
   backgroundImageUrl: string;
+  backgroundImageSize: string;
+  backgroundImagePosition: string;
+  backgroundImageRepeat: string;
+  backgroundImageAttachment: string;
   gradientStartColor: string;
   gradientEndColor: string;
   gradientAngle: number;
@@ -226,6 +251,10 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   backgroundType: "SOLID",
   backgroundColor: "#FFFFFF",
   backgroundImageUrl: "",
+  backgroundImageSize: "COVER",
+  backgroundImagePosition: "CENTER",
+  backgroundImageRepeat: "NO_REPEAT",
+  backgroundImageAttachment: "SCROLL",
   gradientStartColor: "#252237",
   gradientEndColor: "#4C4861",
   gradientAngle: 90,
@@ -460,8 +489,7 @@ const campaignDesignTemplateMeta = {
       "Full-width light gray surface, teal CTA/accent, zero radius, broad content max-width, grouped timer.",
     emphasizes:
       "Scanning across a wide bar, clear hierarchy, and a professional storefront-native feel.",
-    avoids:
-      "Tiny badges, narrow cart drawers, or image-led hero compositions.",
+    avoids: "Tiny badges, narrow cart drawers, or image-led hero compositions.",
   },
   "cart-compact": {
     label: "Cart Compact",
@@ -473,8 +501,7 @@ const campaignDesignTemplateMeta = {
       "White compact card, dark CTA, amber timer, boxed timer surface, COMPACT_STACK layout.",
     emphasizes:
       "Checkout action, timer clarity, and efficient use of narrow drawer space.",
-    avoids:
-      "Wide top bars, decorative launches, or long brand storytelling.",
+    avoids: "Wide top bars, decorative launches, or long brand storytelling.",
   },
   "premium-dark": {
     label: "Premium Dark",
@@ -1015,6 +1042,97 @@ export const designBackgroundTypeOptions: Array<{
   { value: "IMAGE", label: "Image background" },
 ];
 
+export const designBackgroundImageSizeOptions: Array<{
+  value: DesignBackgroundImageSizeValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "COVER",
+    label: "Cover",
+    description: "Fill the campaign surface and crop any overflow.",
+  },
+  {
+    value: "CONTAIN",
+    label: "Contain",
+    description: "Show the full image inside the surface.",
+  },
+  {
+    value: "AUTO",
+    label: "Original",
+    description: "Use the image's natural size.",
+  },
+  {
+    value: "STRETCH",
+    label: "Stretch",
+    description: "Stretch the image to the full surface.",
+  },
+];
+
+export const designBackgroundImagePositionOptions: Array<{
+  value: DesignBackgroundImagePositionValue;
+  label: string;
+}> = [
+  { value: "CENTER", label: "Center" },
+  { value: "TOP", label: "Top" },
+  { value: "BOTTOM", label: "Bottom" },
+  { value: "LEFT", label: "Left" },
+  { value: "RIGHT", label: "Right" },
+  { value: "TOP_LEFT", label: "Top left" },
+  { value: "TOP_RIGHT", label: "Top right" },
+  { value: "BOTTOM_LEFT", label: "Bottom left" },
+  { value: "BOTTOM_RIGHT", label: "Bottom right" },
+];
+
+export const designBackgroundImageRepeatOptions: Array<{
+  value: DesignBackgroundImageRepeatValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "NO_REPEAT",
+    label: "No repeat",
+    description: "Render the image once.",
+  },
+  {
+    value: "REPEAT",
+    label: "Tile",
+    description: "Repeat the image in both directions.",
+  },
+  {
+    value: "REPEAT_X",
+    label: "Repeat X",
+    description: "Repeat horizontally.",
+  },
+  {
+    value: "REPEAT_Y",
+    label: "Repeat Y",
+    description: "Repeat vertically.",
+  },
+];
+
+export const designBackgroundImageAttachmentOptions: Array<{
+  value: DesignBackgroundImageAttachmentValue;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "SCROLL",
+    label: "Scroll",
+    description: "Move with the campaign surface.",
+  },
+  {
+    value: "FIXED",
+    label: "Fixed",
+    description: "Stay pinned to the viewport while the page scrolls.",
+  },
+  {
+    value: "LOCAL",
+    label: "Local",
+    description: "Scroll with the element's own content.",
+  },
+];
+
 export const designBannerAnimationOptions: Array<{
   value: DesignBannerAnimationValue;
   label: string;
@@ -1266,6 +1384,10 @@ export function describeDesignSettingsForAi() {
     `- backgroundType: ${enumValues(designBackgroundTypeOptions)}. Use IMAGE when a generated/uploaded background should be applied through backgroundImageUrl, GRADIENT when the visual is a color transition, and SOLID for a single fill.`,
     "- backgroundColor (hex): the solid fill color of the bar/banner background.",
     '- backgroundImageUrl (URL or "{{asset:key}}" placeholder): the campaign surface background image. For generated campaign backgrounds, prefer backgroundType IMAGE + backgroundImageUrl over CSS background rules.',
+    `- backgroundImageSize: ${enumValues(designBackgroundImageSizeOptions)}. Maps to CSS background-size for IMAGE backgrounds; COVER is best for photos/banners, CONTAIN preserves the full image, AUTO is useful for patterns, STRETCH fills exactly.`,
+    `- backgroundImagePosition: ${enumValues(designBackgroundImagePositionOptions)}. Maps to CSS background-position for IMAGE backgrounds.`,
+    `- backgroundImageRepeat: ${enumValues(designBackgroundImageRepeatOptions)}. Use REPEAT/AUTO-size for tileable patterns; use NO_REPEAT for photos and generated banners.`,
+    `- backgroundImageAttachment: ${enumValues(designBackgroundImageAttachmentOptions)}. Usually SCROLL; use FIXED only when a pinned parallax-like background is intentional and still readable.`,
     "- gradientStartColor / gradientEndColor (hex) and gradientAngle (number, 0-360 deg): used when backgroundType is GRADIENT.",
     "- borderColor (hex), borderSize (number, 0-8 px), borderRadius (number, 0-999 px): outer border and corner rounding. Use borderRadius 0 for flush full-width bars, higher for pill/rounded cards.",
     "",

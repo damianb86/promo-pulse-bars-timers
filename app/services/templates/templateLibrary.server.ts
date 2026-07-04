@@ -708,9 +708,7 @@ const behaviorSegmentLabels: Record<BehaviorSegmentKey, string> =
  * the bundled targeting on the template card. Returns an empty array when the
  * template has no behavior targeting.
  */
-export function summarizeBehaviorSegments(
-  behaviorRules: unknown,
-): string[] {
+export function summarizeBehaviorSegments(behaviorRules: unknown): string[] {
   if (!hasBehaviorTargetingRules(behaviorRules)) return [];
 
   return normalizeBehaviorTargetingRules(behaviorRules).segments.map(
@@ -852,6 +850,35 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       readString(input.backgroundColor) ||
       defaultCampaignDesignValues.backgroundColor,
     backgroundImageUrl: readString(input.backgroundImageUrl),
+    backgroundImageSize:
+      readEnum(input.backgroundImageSize, [
+        "COVER",
+        "CONTAIN",
+        "AUTO",
+        "STRETCH",
+      ]) ?? defaultCampaignDesignValues.backgroundImageSize,
+    backgroundImagePosition:
+      readEnum(input.backgroundImagePosition, [
+        "CENTER",
+        "TOP",
+        "BOTTOM",
+        "LEFT",
+        "RIGHT",
+        "TOP_LEFT",
+        "TOP_RIGHT",
+        "BOTTOM_LEFT",
+        "BOTTOM_RIGHT",
+      ]) ?? defaultCampaignDesignValues.backgroundImagePosition,
+    backgroundImageRepeat:
+      readEnum(input.backgroundImageRepeat, [
+        "NO_REPEAT",
+        "REPEAT",
+        "REPEAT_X",
+        "REPEAT_Y",
+      ]) ?? defaultCampaignDesignValues.backgroundImageRepeat,
+    backgroundImageAttachment:
+      readEnum(input.backgroundImageAttachment, ["SCROLL", "FIXED", "LOCAL"]) ??
+      defaultCampaignDesignValues.backgroundImageAttachment,
     gradientStartColor:
       readString(input.gradientStartColor) ||
       defaultCampaignDesignValues.gradientStartColor,

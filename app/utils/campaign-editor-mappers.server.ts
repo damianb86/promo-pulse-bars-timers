@@ -545,16 +545,25 @@ export function readMobileStructure(value: unknown): {
 export function toCampaignDesignValues(
   design: CampaignDesignRecord,
 ): CampaignDesignValues {
-  const baseDesign = { ...(design ?? {}) } as Partial<CampaignDesignValues> & {
-    mobileDesign?: unknown;
-  };
+  const record = (design ?? {}) as Record<string, unknown>;
   const mobileDesign =
     design && readCampaignDesignJsonObject(design.mobileDesign);
-  delete baseDesign.mobileDesign;
+
+  // Pick ONLY the known design-form fields. The Prisma CampaignDesign row also
+  // carries non-form columns (structureCompact/structureCss/structureMessages/
+  // structureVersion/structureEdited/campaignId/mobileDesign) that regenerate on
+  // every save; spreading the whole row into the form values leaked those into
+  // the editor's "unsaved changes" comparison and could keep the save bar
+  // showing "Unsaved changes" after a successful save.
+  const values = { ...defaultCampaignDesignValues } as Record<string, unknown>;
+  for (const key of Object.keys(defaultCampaignDesignValues)) {
+    if (record[key] !== undefined && record[key] !== null) {
+      values[key] = record[key];
+    }
+  }
 
   return {
-    ...defaultCampaignDesignValues,
-    ...baseDesign,
+    ...(values as CampaignDesignValues),
     customCss: design?.customCss ?? "",
     separateMobileDesign: isSeparateMobileDesignEnabled(mobileDesign),
   };

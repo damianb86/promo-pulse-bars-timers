@@ -89,9 +89,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   try {
-    const results = await Promise.all(
-      validPayloads.map((payload) => recordAnalyticsEvent(payload)),
-    );
+    // Process sequentially, NOT in parallel: the per-event dedup checks the DB
+    // for an already-recorded duplicate, so two identical events in the same
+    // batch (e.g. an add-to-cart fired by both a click and a form submit) would
+    // both pass the check under Promise.all and get double-counted. Awaiting in
+    // order lets each event's dedup see the ones inserted earlier in the batch.
+    const results: Awaited<ReturnType<typeof recordAnalyticsEvent>>[] = [];
+    for (const payload of validPayloads) {
+      results.push(await recordAnalyticsEvent(payload));
+    }
 
     if (!isBatch) {
       const result = results[0];

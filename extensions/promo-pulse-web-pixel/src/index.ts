@@ -24,14 +24,19 @@ type AttributionState = {
   seenAt?: number;
 };
 
+// Commerce events (product_added_to_cart, checkout_started, checkout_completed)
+// are intentionally NOT subscribed here. The web pixel runs in a sandbox whose
+// storage is isolated from the storefront, so it cannot read which campaign the
+// buyer saw — every commerce event it emitted was either dropped for missing
+// attribution or, when attribution happened to resolve, DOUBLE-COUNTED against
+// the theme's own add-to-cart / checkout tracking. Add-to-cart and checkout are
+// now tracked once by the theme (which has the attribution), and orders/revenue
+// are attributed server-side from the orders/create webhook.
 const subscribedEvents: PromoPulsePixelEventName[] = [
   "page_viewed",
   "product_viewed",
   "collection_viewed",
   "cart_viewed",
-  "product_added_to_cart",
-  "checkout_started",
-  "checkout_completed",
 ];
 
 const visitorIdStorageKey = "promo_pulse_visitor_id";

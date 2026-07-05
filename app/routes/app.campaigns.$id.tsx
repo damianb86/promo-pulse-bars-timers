@@ -1793,6 +1793,12 @@ export default function EditCampaignPage() {
     () => parseCustomMessages(structureMessages),
     [structureMessages],
   );
+  // Live custom messages, mirrored from the CampaignForm's Message tab so the
+  // separately rendered Design/structure preview fills data-cp-slot="custom-<id>"
+  // slots with the text the merchant is currently editing (not just the last
+  // saved value).
+  const [liveCustomMessages, setLiveCustomMessages] =
+    useState(savedCustomMessages);
   const hasFreeShippingGoal =
     draftCampaignValues.type === "FREE_SHIPPING_GOAL" ||
     draftCampaignValues.goal === "FREE_SHIPPING";
@@ -1854,6 +1860,7 @@ export default function EditCampaignPage() {
     setDraftCampaignValues(activeCampaignValues);
     setDraftDesignValues(activeDesignValues);
     setDraftMobileDesignValues(activeMobileDesignValues);
+    setLiveCustomMessages(savedCustomMessages);
     setStructureDirty(false);
     setDiscardVersion((version) => version + 1);
     window.dispatchEvent(new CustomEvent("promo-pulse:campaign-discard"));
@@ -1870,6 +1877,7 @@ export default function EditCampaignPage() {
       setDraftCampaignValues(activeCampaignValues);
       setDraftDesignValues(activeDesignValues);
       setDraftMobileDesignValues(activeMobileDesignValues);
+      setLiveCustomMessages(savedCustomMessages);
     }, 0);
 
     return () => window.clearTimeout(syncDraft);
@@ -1878,6 +1886,7 @@ export default function EditCampaignPage() {
     activeDesignValues,
     activeMobileDesignValues,
     persistedDraftKey,
+    savedCustomMessages,
   ]);
 
   useShopifySaveBar({
@@ -2056,6 +2065,7 @@ export default function EditCampaignPage() {
                   structureCss={campaignPreviewStructureCss}
                   mobileStructureCss={campaignPreviewMobileStructureCss}
                   structureMessages={structureMessages}
+                  onCustomMessagesChange={setLiveCustomMessages}
                   designHiddenInputs={
                     <>
                       <CampaignDesignDraftHiddenInputs
@@ -2305,7 +2315,7 @@ export default function EditCampaignPage() {
                   errors={actionData?.designErrors}
                   design={draftDesignValues}
                   mobileDesign={draftMobileDesignValues}
-                  customMessages={savedCustomMessages}
+                  customMessages={liveCustomMessages}
                   isProPlan={isProPlan}
                   lockedCustomCssReason={lockedFeatures.customCss}
                   progressStyle={

@@ -126,6 +126,11 @@ type CampaignFormProps = {
   // Saved custom-message snippets (JSON array of {id, text}) placed in the custom
   // HTML via data-cp-slot="custom-<id>". Edited in the Message tab.
   structureMessages?: string;
+  // Fires whenever the merchant edits the custom messages, so a separately
+  // rendered design/structure preview (campaign editor route) can fill the
+  // data-cp-slot="custom-<id>" slots with the live text instead of the last
+  // saved value.
+  onCustomMessagesChange?: (messages: CustomMessage[]) => void;
   values: CampaignFormValues;
   errors?: CampaignFormErrors;
   formId?: string;
@@ -181,6 +186,7 @@ export function CampaignForm({
   mobileStructureEdited = false,
   mobileStructureHtml = "",
   structureMessages: initialStructureMessages = "",
+  onCustomMessagesChange,
   values,
   errors = {},
   formId,
@@ -284,6 +290,13 @@ export function CampaignForm({
   // Custom reusable message snippets (Message tab), placed in the custom HTML.
   const [customMessages, setCustomMessages] = useState<CustomMessage[]>(() =>
     parseCustomMessages(initialStructureMessages),
+  );
+  const handleCustomMessagesChange = useCallback(
+    (next: CustomMessage[]) => {
+      setCustomMessages(next);
+      onCustomMessagesChange?.(next);
+    },
+    [onCustomMessagesChange],
   );
   const [showProductExclusions, setShowProductExclusions] = useState(
     () => values.excludeProductIds.trim().length > 0,
@@ -2873,7 +2886,7 @@ export function CampaignForm({
                 )}
                 <CustomMessagesEditor
                   value={customMessages}
-                  onChange={setCustomMessages}
+                  onChange={handleCustomMessagesChange}
                 />
                 <input
                   type="hidden"

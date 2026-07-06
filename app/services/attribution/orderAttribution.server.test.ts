@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { attributeOrderRevenue } from "./orderAttribution.server";
+import {
+  attributeCheckoutStarted,
+  attributeOrderRevenue,
+} from "./orderAttribution.server";
 
 const prismaMock = vi.hoisted(() => ({
   shop: { findUnique: vi.fn() },
@@ -97,6 +100,56 @@ describe("attributeOrderRevenue", () => {
     });
 
     expect(result).toEqual({ attributed: false, reason: "no_campaign_touch" });
+    expect(analyticsMock.recordAnalyticsEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("attributeCheckoutStarted", () => {
+  const checkout = { cart_token: "cart-token-abc", currency: "USD" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.shop.findUnique.mockResolvedValue({ id: "shop-1" });
+    analyticsMock.validateAnalyticsEventPayload.mockImplementation(
+      (payload: unknown) => ({ ok: true, payload }),
+    );
+    analyticsMock.recordAnalyticsEvent.mockResolvedValue({ saved: true });
+  });
+
+  it("records CHECKOUT_STARTED for the cart token's campaign", async () => {
+    prismaMock.analyticsEvent.findFirst
+      .mockResolvedValueOnce(null) // no existing checkout for this cart
+      .mockResolvedValueOnce({
+        campaignId: "campaign-3",
+        sessionId: "cps-9",
+        placementType: "CART_PAGE",
+        country: "US",
+        locale: "en",
+      });
+
+    const result = await attributeCheckoutStarted({
+      shopDomain: "demo-shop.myshopify.com",
+      checkout,
+    });
+
+    expect(result.attributed).toBe(true);
+    expect(result.campaignId).toBe("campaign-3");
+    expect(analyticsMock.recordAnalyticsEvent.mock.calls[0][0]).toMatchObject({
+      campaignId: "campaign-3",
+      eventType: "CHECKOUT_STARTED",
+      cartToken: "cart-token-abc",
+    });
+  });
+
+  it("does not double-count a checkout already recorded for the cart", async () => {
+    prismaMock.analyticsEvent.findFirst.mockResolvedValueOnce({ id: "e1" });
+
+    const result = await attributeCheckoutStarted({
+      shopDomain: "demo-shop.myshopify.com",
+      checkout,
+    });
+
+    expect(result).toEqual({ attributed: false, reason: "already_attributed" });
     expect(analyticsMock.recordAnalyticsEvent).not.toHaveBeenCalled();
   });
 });

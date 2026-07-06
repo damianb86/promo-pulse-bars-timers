@@ -2022,6 +2022,7 @@ export default function EditCampaignPage() {
           actionBar={{
             campaignSectionKey: "campaign",
             campaignTypeLabel,
+            campaignTypeValue: activeCampaignValues.type,
             formId: "campaign-basics-form",
             isSubmitting: navigation.state === "submitting",
             isPublishing,

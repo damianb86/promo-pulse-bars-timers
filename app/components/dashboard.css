@@ -5419,21 +5419,37 @@ s-page::part(page) {
   line-height: 16px;
 }
 
-.counterpulse-create-status span {
+/* Distinct pill styles so the merchant can tell the two control badges apart at
+   a glance: the campaign TYPE badge carries its type icon, the PLACEMENT badge a
+   location pin. Each has its own accent color. */
+.counterpulse-control-badge {
   display: inline-flex;
-  min-height: 24px;
+  min-height: 26px;
   align-items: center;
+  gap: 6px;
   border: 1px solid #dfe3e8;
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 3px 10px 3px 8px;
   background: #f8faf9;
+  font-weight: 600;
 }
 
-.counterpulse-create-status span:first-child {
-  border-color: #b7dbc9;
-  background: #effaf4;
-  color: #006f4e;
-  font-weight: 650;
+.counterpulse-control-badge svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.counterpulse-control-badge--type {
+  border-color: #c3d4f7;
+  background: #eef3fe;
+  color: #1f4fbf;
+}
+
+.counterpulse-control-badge--placement {
+  border-color: #e2cff2;
+  background: #f6eefc;
+  color: #7a3ca8;
 }
 
 .counterpulse-create-actions {
@@ -6687,6 +6703,88 @@ s-page::part(page) {
   color: #6d7175;
   font-size: 12px;
   line-height: 16px;
+}
+
+/* "Review before saving" — grouped, type-aware summary cards. */
+.counterpulse-review-subtitle {
+  margin: -4px 0 14px;
+  font-size: 12px;
+  color: #6d7175;
+}
+
+.counterpulse-review-issues {
+  margin-bottom: 16px;
+  border: 1px solid #f1b0b7;
+  border-left: 3px solid #d82c0d;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #fef3f2;
+  color: #8a1c0a;
+}
+
+.counterpulse-review-issues strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.counterpulse-review-issues ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+
+.counterpulse-review-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.counterpulse-review-card {
+  border: 1px solid #e3e5e8;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.counterpulse-review-card__title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5c5f62;
+}
+
+.counterpulse-review-card__list {
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.counterpulse-review-row {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.counterpulse-review-row dt {
+  font-size: 12px;
+  color: #6d7175;
+}
+
+.counterpulse-review-row dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: #1a1a1a;
+  overflow-wrap: anywhere;
+}
+
+.counterpulse-review-row dd.is-muted {
+  font-weight: 450;
+  color: #44474a;
 }
 
 .counterpulse-validation-strip {

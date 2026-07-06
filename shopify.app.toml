@@ -13,6 +13,10 @@ topics = [ "orders/create" ]
 uri = "/webhooks/orders/create"
 
 [[webhooks.subscriptions]]
+topics = [ "checkouts/create" ]
+uri = "/webhooks/checkouts/create"
+
+[[webhooks.subscriptions]]
 topics = [ "app/uninstalled" ]
 uri = "/webhooks/app/uninstalled"
 

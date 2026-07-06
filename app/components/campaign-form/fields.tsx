@@ -10,6 +10,7 @@ import {
 import type {} from "../DevicePreviewToggle";
 import {
   campaignTypeOptions,
+  formatCampaignOption,
   placementTypeOptions,
   type CampaignTypeValue,
   type PlacementTypeValue,
@@ -42,7 +43,7 @@ import {
   messageVariableScopeLabel,
   variableScopesForType,
 } from "../../utils/message-variables";
-import { BuilderTabKey, CampaignSetupPreset, ResourceChip, ResourceFieldName, ShopifyResourcePickerResult, ShopifyResourcePickerType, UrlEligibilityMode, UrlPageTargetingToken, goalIconLabels, urlPageTargetingOptions, urlPageTargetingTokenSet } from "./constants";
+import { BuilderTabKey, CampaignSetupPreset, ResourceChip, ResourceFieldName, ShopifyResourcePickerResult, ShopifyResourcePickerType, UrlEligibilityMode, UrlPageTargetingToken, cartTimerResetBehaviorOptions, goalIconLabels, timerExpiredBehaviorOptions, timerModeOptions, urlPageTargetingOptions, urlPageTargetingTokenSet } from "./constants";
 
 export function applySetupPreset(
   values: CampaignFormValues,
@@ -198,6 +199,235 @@ export function BuilderPanel({
       tabIndex={0}
     >
       {children}
+    </div>
+  );
+}
+
+export type ReviewRow = {
+  label: string;
+  value: string;
+  muted?: boolean;
+};
+
+export type ReviewSection = {
+  title: string;
+  rows: ReviewRow[];
+};
+
+// Builds the grouped "Review before saving" summary. Only the sections and rows
+// that are relevant to the chosen campaign type/goal are returned, and rows with
+// no meaningful value are dropped, so the merchant sees exactly what will be
+// saved for THIS campaign — nothing more.
+export function buildReviewSections(
+  values: CampaignFormValues,
+  labels: {
+    typeLabel: string;
+    placementLabel: string;
+    statusLabel: string;
+  },
+): ReviewSection[] {
+  const sections: ReviewSection[] = [];
+  const text = (value: string | undefined) => (value ?? "").trim();
+  const push = (title: string, rows: (ReviewRow | null)[]) => {
+    const kept = rows.filter((row): row is ReviewRow => row !== null);
+    if (kept.length) sections.push({ title, rows: kept });
+  };
+  const row = (
+    label: string,
+    value: string | undefined,
+    options: { muted?: boolean; fallback?: string } = {},
+  ): ReviewRow | null => {
+    const resolved = text(value) || options.fallback || "";
+    if (!resolved) return null;
+    return { label, value: resolved, muted: options.muted };
+  };
+  const optionLabel = <T extends string>(
+    optionsList: ReadonlyArray<{ value: T; label: string }>,
+    value: T,
+  ) => optionsList.find((option) => option.value === value)?.label ?? value;
+
+  const isTimer =
+    values.type === "COUNTDOWN_BAR" || values.type === "PRODUCT_TIMER";
+  const isCartTimer =
+    values.type === "CART_TIMER" || values.goal === "CART_RESCUE";
+
+  push("Overview", [
+    { label: "Type", value: labels.typeLabel },
+    { label: "Goal", value: formatCampaignOption(values.goal), muted: true },
+    { label: "Placement", value: labels.placementLabel },
+    { label: "Status", value: labels.statusLabel },
+    {
+      label: "Schedule",
+      value:
+        `${formatDateTimeLabel(values.startsAt, "Starts immediately")} → ` +
+        `${formatDateTimeLabel(values.endsAt, "No fixed end")}`,
+    },
+    row("Timezone", values.timezone, { fallback: "UTC", muted: true }),
+  ]);
+
+  push("Message", [
+    row("Headline", values.headline),
+    row("Subheadline", values.subheadline, { muted: true }),
+    values.ctaText.trim()
+      ? {
+          label: "Call to action",
+          value:
+            `${text(values.ctaText)}` +
+            (text(values.ctaUrl) ? ` → ${text(values.ctaUrl)}` : ""),
+        }
+      : null,
+  ]);
+
+  if (isTimer) {
+    push("Countdown", [
+      { label: "Mode", value: optionLabel(timerModeOptions, values.timerMode) },
+      values.timerMode === "EVERGREEN_SESSION"
+        ? row("Duration", `${text(values.timerDurationMinutes)} min`)
+        : null,
+      values.timerMode === "RECURRING_DAILY"
+        ? row(
+            "Resets daily at",
+            `${values.timerRecurringHour || "00"}:${(
+              values.timerRecurringMinute || "00"
+            ).padStart(2, "0")}`,
+          )
+        : null,
+      {
+        label: "When it expires",
+        value: optionLabel(
+          timerExpiredBehaviorOptions,
+          values.timerExpiredBehavior,
+        ),
+      },
+      row("Expired text", values.expiredText, { muted: true }),
+    ]);
+  }
+
+  if (isCartTimer) {
+    push("Cart timer", [
+      row("Urgency reason", formatCampaignOption(values.cartRescueReason)),
+      row("Duration", `${text(values.cartTimerDurationMinutes)} min`),
+      {
+        label: "Resets",
+        value: optionLabel(
+          cartTimerResetBehaviorOptions,
+          values.cartTimerResetBehavior,
+        ),
+      },
+      {
+        label: "Shows",
+        value: [
+          values.cartRescueShowTimer ? "timer" : null,
+          values.cartRescueShowButton ? "button" : null,
+        ]
+          .filter(Boolean)
+          .join(" + ") || "message only",
+        muted: true,
+      },
+    ]);
+  }
+
+  if (values.type === "FREE_SHIPPING_GOAL") {
+    push("Free shipping goal", [
+      row(
+        "Threshold",
+        `${text(values.freeShippingThresholdAmount)} ${text(
+          values.freeShippingCurrencyCode,
+        )}`.trim(),
+      ),
+      row("Progress style", formatCampaignOption(values.freeShippingProgressStyle)),
+      {
+        label: "Auto-discount",
+        value: values.freeShippingAutoDiscount ? "On" : "Off",
+        muted: true,
+      },
+      row("Success message", values.freeShippingSuccessMessage, { muted: true }),
+    ]);
+  }
+
+  if (values.type === "DELIVERY_CUTOFF") {
+    push("Delivery cutoff", [
+      row(
+        "Cutoff time",
+        `${(values.deliveryCutoffHour || "0").padStart(2, "0")}:${(
+          values.deliveryCutoffMinute || "00"
+        ).padStart(2, "0")}`,
+      ),
+      row(
+        "Delivery window",
+        `${text(values.deliveryMinDays)}–${text(values.deliveryMaxDays)} days`,
+      ),
+      row("Processing days", values.deliveryProcessingDays, { muted: true }),
+      row(
+        "After cutoff",
+        formatCampaignOption(values.deliveryAfterCutoffBehavior),
+        { muted: true },
+      ),
+    ]);
+  }
+
+  if (values.type === "LOW_STOCK") {
+    push("Low stock", [
+      row("Shows when stock ≤", values.lowStockThreshold),
+      {
+        label: "Exact quantity",
+        value: values.lowStockShowExactQuantity ? "Shown" : "Hidden",
+        muted: true,
+      },
+      row("Fallback message", values.lowStockFallbackMessage, { muted: true }),
+    ]);
+  }
+
+  if (values.type === "PRODUCT_BADGE") {
+    push("Badge", [
+      row("Text", values.badgeText),
+      row("Shape", formatCampaignOption(values.badgeShape), { muted: true }),
+      row("Position", formatCampaignOption(values.badgePosition), {
+        muted: true,
+      }),
+    ]);
+  }
+
+  const targetingRows: (ReviewRow | null)[] = [
+    values.productSelection !== "ALL_PRODUCTS"
+      ? row("Products", formatCampaignOption(values.productSelection))
+      : null,
+    values.countrySelection !== "ALL_WORLD"
+      ? row(
+          "Countries",
+          text(values.countries).split(/\s+/).filter(Boolean).join(", ") ||
+            formatCampaignOption(values.countrySelection),
+        )
+      : null,
+    row("URL contains", values.urlContains),
+    row("URL excludes", values.excludedUrlContains, { muted: true }),
+    values.placementTypes.includes("CUSTOM_SELECTOR")
+      ? row("Custom selector", values.customSelector, { muted: true })
+      : null,
+  ];
+  push("Targeting", targetingRows);
+
+  return sections;
+}
+
+export function ReviewSummary({ sections }: { sections: ReviewSection[] }) {
+  return (
+    <div className="counterpulse-review-summary">
+      {sections.map((section) => (
+        <section className="counterpulse-review-card" key={section.title}>
+          <h4 className="counterpulse-review-card__title">{section.title}</h4>
+          <dl className="counterpulse-review-card__list">
+            {section.rows.map((row) => (
+              <div className="counterpulse-review-row" key={row.label}>
+                <dt>{row.label}</dt>
+                <dd className={row.muted ? "is-muted" : undefined}>
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
     </div>
   );
 }

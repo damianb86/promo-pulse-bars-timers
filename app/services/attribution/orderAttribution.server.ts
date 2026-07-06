@@ -13,6 +13,12 @@ export type AttributeOrderInput = {
   now?: Date;
 };
 
+export type AttributeCheckoutInput = {
+  shopDomain: string;
+  checkout: Record<string, unknown>;
+  now?: Date;
+};
+
 export type AttributeOrderResult = {
   attributed: boolean;
   reason?:
@@ -24,6 +30,17 @@ export type AttributeOrderResult = {
     | "gated";
   campaignId?: string;
   revenueAmount?: string | null;
+};
+
+export type AttributeCheckoutResult = {
+  attributed: boolean;
+  reason?:
+    | "shop_not_found"
+    | "missing_cart_token"
+    | "already_attributed"
+    | "no_campaign_touch"
+    | "gated";
+  campaignId?: string;
 };
 
 // Attributes a completed order to the campaign the buyer interacted with, using
@@ -65,21 +82,7 @@ export async function attributeOrderRevenue({
   }
 
   // The most recent campaign touch that shared this cart token owns the order.
-  const touch = await prisma.analyticsEvent.findFirst({
-    where: {
-      shopId: shop.id,
-      cartToken,
-      campaignId: { not: null },
-    },
-    orderBy: { occurredAt: "desc" },
-    select: {
-      campaignId: true,
-      sessionId: true,
-      placementType: true,
-      country: true,
-      locale: true,
-    },
-  });
+  const touch = await findCartTokenTouch(shop.id, cartToken);
   if (!touch?.campaignId) {
     return { attributed: false, reason: "no_campaign_touch" };
   }
@@ -125,6 +128,90 @@ export async function attributeOrderRevenue({
     campaignId: touch.campaignId,
     revenueAmount,
   };
+}
+
+// Records a CHECKOUT_STARTED event for the campaign the buyer engaged with when
+// Shopify creates a checkout. This is the reliable server-side checkout signal
+// (the storefront theme can only guess at "checkout" button clicks, and the web
+// pixel cannot attribute from its sandbox). Idempotent per cart token, so it
+// never double-counts against a checkout already recorded for the same cart.
+export async function attributeCheckoutStarted({
+  shopDomain,
+  checkout,
+  now = new Date(),
+}: AttributeCheckoutInput): Promise<AttributeCheckoutResult> {
+  const shopifyDomain = normalizeShopDomain(shopDomain);
+  if (!shopifyDomain) return { attributed: false, reason: "shop_not_found" };
+
+  const shop = await prisma.shop.findUnique({
+    where: { shopifyDomain },
+    select: { id: true },
+  });
+  if (!shop) return { attributed: false, reason: "shop_not_found" };
+
+  const cartToken = readCartToken(checkout);
+  if (!cartToken) return { attributed: false, reason: "missing_cart_token" };
+
+  // Skip if a checkout was already recorded for this cart — whether by a prior
+  // webhook delivery or by the storefront theme's own checkout tracking.
+  const existing = await prisma.analyticsEvent.findFirst({
+    where: {
+      shopId: shop.id,
+      cartToken,
+      eventType: AnalyticsEventType.CHECKOUT_STARTED,
+    },
+    select: { id: true },
+  });
+  if (existing) return { attributed: false, reason: "already_attributed" };
+
+  const touch = await findCartTokenTouch(shop.id, cartToken);
+  if (!touch?.campaignId) {
+    return { attributed: false, reason: "no_campaign_touch" };
+  }
+
+  const validation = validateAnalyticsEventPayload({
+    shop: shopifyDomain,
+    campaignId: touch.campaignId,
+    experimentId: null,
+    variantId: null,
+    visitorId: null,
+    eventType: "CHECKOUT_STARTED",
+    placementType: touch.placementType,
+    sessionId: touch.sessionId,
+    cartToken,
+    orderId: null,
+    revenueAmount: null,
+    currencyCode: readCurrency(checkout),
+    country: touch.country,
+    locale: touch.locale,
+    path: null,
+    userAgent: null,
+    doNotTrack: false,
+    consentGranted: true,
+  });
+
+  if (!validation.ok) return { attributed: false, reason: "no_campaign_touch" };
+
+  const result = await recordAnalyticsEvent(validation.payload, now);
+  if (!result.saved) return { attributed: false, reason: "gated" };
+
+  return { attributed: true, campaignId: touch.campaignId };
+}
+
+// The most recent campaign touch (impression/click/add-to-cart) that shared a
+// cart token owns the checkout/order for that cart.
+async function findCartTokenTouch(shopId: string, cartToken: string) {
+  return prisma.analyticsEvent.findFirst({
+    where: { shopId, cartToken, campaignId: { not: null } },
+    orderBy: { occurredAt: "desc" },
+    select: {
+      campaignId: true,
+      sessionId: true,
+      placementType: true,
+      country: true,
+      locale: true,
+    },
+  });
 }
 
 function readOrderId(order: Record<string, unknown>): string | null {

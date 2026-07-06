@@ -91,7 +91,7 @@ import {
   type CustomMessage,
 } from "../utils/custom-messages";
 import { AiApplyValuesEventDetail, BuilderTabKey, CampaignTypeChoice, ResourceChip, ResourceFieldName, ShopifyResourcePickerType, TextListFieldName, UrlEligibilityMode, UrlPageTargetingToken, UrlTargetingFieldName, campaignGoalSetupPresets, campaignTypeChoiceOptions, campaignTypeSetupPresets, cartTimerResetBehaviorOptions, deliveryWeekdayOptions, timerExpiredBehaviorOptions, timerModeOptions, builderTabs } from "./campaign-form/constants";
-import { BuilderPanel, CampaignInfoContent, CampaignMessageHiddenInputs, CampaignTypeIcon, CartRescueReasonIcon, CopyIcon, CountrySelectorField, FieldError, FormField, FormGroup, GoalIcon, MessageVariablesInfo, ResourcePickerField, TabSummaryGrid, TagSelectorField, TargetingRadioOption, UpgradeText, UrlPageTargetingPicker, applySetupPreset, buildCampaignErrorSummary, buildCampaignTypeDefaultTranslations, buildResourceChips, formatDateTimeLabel, formatPlacementSelectionLabel, getCampaignTypeChoiceKey, getIncompatiblePlacementWarning, getInitialUrlEligibilityMode, getShopifyBridge, getUrlEligibilityModeFromValues, getVisibleFreeShippingDiscountCode, isFreeShippingCodeReference, isSelectableResourceId, manualUrlTargetingItems, manualUrlTargetingText, mergeUrlTargetingValue, normalizeSelectableResourceId, placementInitial, resolveCampaignTranslationValues, selectedUrlPageTargetingTokens, shortResourceId, toDateTimeLocalInputValue, toPreviewPlacement, toggleUrlPageTargetingToken, getTranslationValuesSignature } from "./campaign-form/fields";
+import { BuilderPanel, CampaignInfoContent, CampaignMessageHiddenInputs, CampaignTypeIcon, CartRescueReasonIcon, CopyIcon, CountrySelectorField, FieldError, FormField, FormGroup, GoalIcon, MessageVariablesInfo, ResourcePickerField, ReviewSummary, buildReviewSections, TagSelectorField, TargetingRadioOption, UpgradeText, UrlPageTargetingPicker, applySetupPreset, buildCampaignErrorSummary, buildCampaignTypeDefaultTranslations, buildResourceChips, formatPlacementSelectionLabel, getCampaignTypeChoiceKey, getIncompatiblePlacementWarning, getInitialUrlEligibilityMode, getShopifyBridge, getUrlEligibilityModeFromValues, getVisibleFreeShippingDiscountCode, isFreeShippingCodeReference, isSelectableResourceId, manualUrlTargetingItems, manualUrlTargetingText, mergeUrlTargetingValue, normalizeSelectableResourceId, placementInitial, resolveCampaignTranslationValues, selectedUrlPageTargetingTokens, shortResourceId, toDateTimeLocalInputValue, toPreviewPlacement, toggleUrlPageTargetingToken, getTranslationValuesSignature } from "./campaign-form/fields";
 
 type CampaignFormProps = {
   campaignId?: string;
@@ -683,27 +683,18 @@ export function CampaignForm({
         mobileStructureCss ||
         generatedMobileStructureCss
       : "";
-  const summaryRows = useMemo(
-    () => [
-      ["Campaign type", activeCampaignTypeLabel],
-      ["Placement", activePlacementLabel],
-      ["Status", statusLabel],
-      ["Starts", formatDateTimeLabel(formValues.startsAt, "Immediately")],
-      ["Ends", formatDateTimeLabel(formValues.endsAt, "No fixed end")],
-      ["Timezone", formValues.timezone || "UTC"],
-    ],
-    [
-      activeCampaignTypeLabel,
-      activePlacementLabel,
-      formValues.endsAt,
-      formValues.startsAt,
-      formValues.timezone,
-      statusLabel,
-    ],
-  );
   const errorSummaryMessages = useMemo(
     () => buildCampaignErrorSummary(errors, messageTranslationErrors),
     [errors, messageTranslationErrors],
+  );
+  const reviewSections = useMemo(
+    () =>
+      buildReviewSections(formValues, {
+        typeLabel: activeCampaignTypeLabel,
+        placementLabel: activePlacementLabel,
+        statusLabel,
+      }),
+    [formValues, activeCampaignTypeLabel, activePlacementLabel, statusLabel],
   );
 
   const updateField =
@@ -3764,7 +3755,27 @@ export function CampaignForm({
                 tabId={builderTabId("review")}
                 tabKey="review"
               >
-                <TabSummaryGrid rows={summaryRows} />
+                <p className="counterpulse-review-subtitle">
+                  Everything below is what Promo Pulse will save and render for
+                  this campaign.
+                </p>
+
+                {errorSummaryMessages.length > 0 && (
+                  <div
+                    className="counterpulse-review-issues"
+                    role="alert"
+                  >
+                    <strong>Resolve before publishing</strong>
+                    <ul>
+                      {errorSummaryMessages.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <ReviewSummary sections={reviewSections} />
+
                 <div className="counterpulse-validation-strip">
                   {[
                     ["No fake scarcity", "Copy must match real offer data."],

@@ -4,7 +4,11 @@ import {
   CampaignPublicationStatusBadge,
   type CampaignPublicationState,
 } from "./CampaignControlStatusBadge";
-import type { EditableCampaignStatusValue } from "../types/campaign-options";
+import { CampaignTypeIcon } from "./campaign-form/fields";
+import type {
+  CampaignTypeValue,
+  EditableCampaignStatusValue,
+} from "../types/campaign-options";
 
 export type CampaignEditorSection = {
   key: string;
@@ -17,6 +21,7 @@ type CampaignEditorLayoutProps = {
   actionBar?: {
     campaignSectionKey?: string;
     campaignTypeLabel: string;
+    campaignTypeValue?: CampaignTypeValue;
     formId: string;
     isPublishing?: boolean;
     placementLabel: string;
@@ -69,8 +74,36 @@ export function CampaignEditorLayout({
           <div>
             <p className="counterpulse-kicker">Campaign controls</p>
             <div className="counterpulse-create-status">
-              <span>{actionBar.campaignTypeLabel}</span>
-              <span>{actionBar.placementLabel}</span>
+              <span className="counterpulse-control-badge counterpulse-control-badge--type">
+                {actionBar.campaignTypeValue && (
+                  <CampaignTypeIcon type={actionBar.campaignTypeValue} />
+                )}
+                <span>{actionBar.campaignTypeLabel}</span>
+              </span>
+              <span className="counterpulse-control-badge counterpulse-control-badge--placement">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M12 21s-6.5-5.6-6.5-10a6.5 6.5 0 1 1 13 0c0 4.4-6.5 10-6.5 10Z"
+                    stroke="currentColor"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx="12"
+                    cy="11"
+                    r="2.2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+                <span>{actionBar.placementLabel}</span>
+              </span>
             </div>
           </div>
           <div className="counterpulse-create-actions">

@@ -86,6 +86,57 @@ test("storefront embed handles unavailable browser storage", async ({
   expectNoFailedRequests(page);
 });
 
+test("storefront embed renders from embedded campaign configs without API fetch", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("countdown");
+  const payloadResponse = await page.request.get(
+    "/apps/promo-pulse?shop=demo-shop.myshopify.com&path=/__test/storefront&locale=en&device=desktop&placement=ALL_FRONT_DEFAULT_PLACEMENTS&country=US&currency=USD",
+  );
+  expect(payloadResponse.ok()).toBe(true);
+  const embeddedPayload = await payloadResponse.json();
+  const embeddedBundle = {
+    __promoPulseBundle: true,
+    __promoPulseDefaultDevice: "desktop",
+    __promoPulseDefaultLocale: "en",
+    context: { shop: "demo-shop.myshopify.com" },
+    payloads: {
+      "en:desktop": embeddedPayload,
+    },
+  };
+  let storefrontApiRequests = 0;
+
+  await page.addInitScript((payload) => {
+    (
+      window as typeof window & { PromoPulseCampaignConfigs?: unknown }
+    ).PromoPulseCampaignConfigs = payload;
+  }, embeddedBundle);
+  await page.route("**/apps/promo-pulse**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() !== "GET" || !url.searchParams.has("placement")) {
+      await route.continue();
+      return;
+    }
+
+    storefrontApiRequests += 1;
+    await route.fulfill({
+      body: JSON.stringify({ error: "Storefront API should not be required." }),
+      contentType: "application/json",
+      status: 503,
+    });
+  });
+
+  await page.goto("/__test/storefront");
+
+  await expect(page.locator(".pp-bar").first()).toContainText("Sale ends soon");
+  expect(storefrontApiRequests).toBe(0);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("storefront embed fails closed when campaign API fails", async ({
   page,
   resetDb,

@@ -41,7 +41,14 @@ export function buildE2EStorefrontHtml(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>${title}</title>
-    <link rel="stylesheet" href="/__test/theme-asset/campaign-surface.css" />
+    <link rel="stylesheet" href="/__test/theme-asset/campaign-surface-critical.css" />
+    <link
+      rel="stylesheet"
+      href="/__test/theme-asset/campaign-surface.css"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript><link rel="stylesheet" href="/__test/theme-asset/campaign-surface.css" /></noscript>
     <link rel="stylesheet" href="/__test/theme-asset/promo-pulse.css" />
     <style>
       body { margin: 0; font-family: Inter, system-ui, sans-serif; color: #202223; }
@@ -392,11 +399,11 @@ function scriptsForKind(kind: StorefrontPageKind) {
   }
 
   return `${common}
+    <script src="/__test/theme-asset/promo-pulse.js" defer></script>
     <script src="/__test/theme-asset/product-badge.js" defer></script>
     <script src="/__test/theme-asset/free-shipping.js" defer></script>
     <script src="/__test/theme-asset/delivery-cutoff.js" defer></script>
-    <script src="/__test/theme-asset/cart-timer.js" defer></script>
-    <script src="/__test/theme-asset/promo-pulse.js" defer></script>`;
+    <script src="/__test/theme-asset/cart-timer.js" defer></script>`;
 }
 
 function escapeHtml(value: string) {

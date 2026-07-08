@@ -124,6 +124,27 @@ export type StorefrontCampaignResponseItem = {
   timezone: string;
 };
 
+export type StorefrontEmbeddedCampaignResponseItem =
+  StorefrontCampaignResponseItem & {
+    targeting?: StorefrontEmbeddedCampaignTargeting;
+  };
+
+export type StorefrontEmbeddedCampaignTargeting = {
+  countries?: string[];
+  markets?: string[];
+  locales?: string[];
+  productIds?: string[];
+  collectionIds?: string[];
+  productTags?: string[];
+  customerTags?: string[];
+  urlContains?: string[];
+  excludedUrlContains?: string[];
+  utmSources?: string[];
+  devices?: string[];
+  excludeProductIds?: string[];
+  excludeCollectionIds?: string[];
+};
+
 export function parseStorefrontCampaignContext(
   url: URL,
 ): StorefrontCampaignContext {
@@ -263,6 +284,33 @@ export function serializeStorefrontCampaigns(
   return dedupeByCampaignPlacements(perPlacementItems);
 }
 
+export function serializeStorefrontCampaignsForEmbedding(
+  campaigns: StorefrontCampaignSource[],
+  context: StorefrontCampaignContext,
+): StorefrontEmbeddedCampaignResponseItem[] {
+  const perPlacementItems = campaigns
+    .flatMap((campaign) =>
+      getMatchingPlacements(campaign, context).map((placement) =>
+        serializeStorefrontCampaignForPlacement(campaign, context, placement),
+      ),
+    )
+    .filter(
+      (campaign): campaign is StorefrontCampaignResponseItem =>
+        campaign !== null,
+    );
+  const byId = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+
+  return dedupeByCampaignPlacements(perPlacementItems).map((campaign) => {
+    const source = byId.get(campaign.id);
+    const targeting = serializeEmbeddedTargeting(source?.targeting ?? null);
+
+    return {
+      ...campaign,
+      ...(targeting ? { targeting } : {}),
+    };
+  });
+}
+
 function dedupeByCampaignPlacements(
   items: StorefrontCampaignResponseItem[],
 ): StorefrontCampaignResponseItem[] {
@@ -294,6 +342,35 @@ function dedupeByCampaignPlacements(
   }
 
   return Array.from(byId.values());
+}
+
+function serializeEmbeddedTargeting(
+  targeting: CampaignTargeting | null,
+): StorefrontEmbeddedCampaignTargeting | null {
+  if (!targeting) return null;
+
+  const payload = compactObject({
+    countries: jsonStringList(targeting.countries),
+    markets: jsonStringList(targeting.markets),
+    locales: jsonStringList(targeting.locales),
+    productIds: jsonStringList(targeting.productIds),
+    collectionIds: jsonStringList(targeting.collectionIds),
+    productTags: jsonStringList(targeting.productTags),
+    customerTags: jsonStringList(targeting.customerTags),
+    urlContains: jsonStringList(targeting.urlContains),
+    excludedUrlContains: jsonStringList(
+      (targeting as CampaignTargeting & { excludedUrlContains?: unknown })
+        .excludedUrlContains,
+    ),
+    utmSources: jsonStringList(targeting.utmSources),
+    devices: jsonStringList(targeting.devices),
+    excludeProductIds: jsonStringList(targeting.excludeProductIds),
+    excludeCollectionIds: jsonStringList(targeting.excludeCollectionIds),
+  });
+
+  return Object.keys(payload).length > 0
+    ? (payload as StorefrontEmbeddedCampaignTargeting)
+    : null;
 }
 
 export function shouldBypassStorefrontCache(

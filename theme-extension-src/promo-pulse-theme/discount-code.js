@@ -831,9 +831,14 @@
     window.PromoPulseFetchCampaigns = function (config, placement, options) {
       options = options || {};
 
-      return fetchStorefrontCampaignPayload(config || {}).then(
+      return fetchStorefrontCampaignPayload(config || {}, options).then(
         function (payload) {
-          return buildStorefrontCampaignResult(payload, placement, options);
+          return buildStorefrontCampaignResult(
+            payload,
+            placement,
+            options,
+            config || {},
+          );
         },
       );
     };
@@ -844,20 +849,32 @@
     };
   }
 
-  function buildStorefrontCampaignResult(payload, placement, options) {
+  function buildStorefrontCampaignResult(payload, placement, options, config) {
     return {
-      campaigns: selectStorefrontCampaigns(payload, placement, options),
+      campaigns: selectStorefrontCampaigns(payload, placement, options, config),
       settings: payload.settings || null,
       badgesEnabled: payload && payload.badges === true,
       url: payload.__promoPulseUrl || "",
     };
   }
 
-  function fetchStorefrontCampaignPayload(config) {
+  function fetchStorefrontCampaignPayload(config, options) {
     var url = buildStorefrontCampaignsUrl(config);
+    var embedded = readEmbeddedStorefrontPayload(config, url);
     var cached = storefrontCampaignRequestCache[url];
     var stored = readStorefrontPayloadCache(url);
     var now = Date.now();
+
+    if (embedded) {
+      storefrontCampaignRequestCache[url] = {
+        expiresAt: readPayloadExpiresAt(embedded, now),
+        payload: clonePlainObject(embedded),
+      };
+
+      revalidateEmbeddedStorefrontPayload(embedded, url, stored, options);
+
+      return Promise.resolve(embedded).then(clonePlainObject);
+    }
 
     if (cached && cached.expiresAt > now) {
       return Promise.resolve(cached.payload).then(clonePlainObject);
@@ -873,6 +890,179 @@
     }
 
     return requestStorefrontCampaignPayload(url, stored);
+  }
+
+  function readEmbeddedStorefrontPayload(config, url) {
+    var raw =
+      window.PromoPulseStorefrontPayload ||
+      window.PromoPulseCampaignPayload ||
+      window.PromoPulseCampaignConfigs ||
+      window.PromoPulseStorefrontCampaigns ||
+      null;
+    var payload = normalizeEmbeddedStorefrontPayload(raw, config);
+    var expiresAt;
+
+    if (!payload || !embeddedPayloadMatchesConfig(payload, config)) {
+      return null;
+    }
+
+    payload.__promoPulseUrl = "embedded:" + url;
+    payload.__promoPulseEmbedded = true;
+    expiresAt = Number(payload.__promoPulseClientExpiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      payload.__promoPulseClientExpiresAt =
+        Date.now() + storefrontCampaignRequestTtlMs;
+    }
+    if (payload.settings && typeof payload.settings === "object") {
+      window.PromoPulseSettings = payload.settings;
+    }
+
+    return payload;
+  }
+
+  function normalizeEmbeddedStorefrontPayload(raw, config) {
+    var payload;
+
+    if (
+      raw &&
+      typeof raw === "object" &&
+      (raw.__promoPulseBundle === true ||
+        raw.payloads ||
+        raw.__promoPulsePayloads)
+    ) {
+      return selectEmbeddedStorefrontPayload(raw, config);
+    }
+
+    if (Array.isArray(raw)) {
+      payload = { campaigns: raw };
+    } else if (raw && typeof raw === "object") {
+      payload = Object.assign({}, raw);
+      if (!Array.isArray(payload.campaigns) && Array.isArray(payload.configs)) {
+        payload.campaigns = payload.configs;
+      }
+    } else {
+      return null;
+    }
+
+    if (!Array.isArray(payload.campaigns)) {
+      payload.campaigns = [];
+    }
+
+    return payload;
+  }
+
+  function selectEmbeddedStorefrontPayload(bundle, config) {
+    var payloads = bundle.payloads || bundle.__promoPulsePayloads || {};
+    var locale =
+      readStorefrontConfigValue(config, "locale") ||
+      readStorefrontConfigValue(config, "defaultLocale") ||
+      document.documentElement.lang ||
+      "en";
+    var device = readStorefrontConfigValue(config, "device") || detectDevice();
+    var defaultLocale = bundle.__promoPulseDefaultLocale || locale || "en";
+    var defaultDevice = bundle.__promoPulseDefaultDevice || "desktop";
+    var keys = [
+      locale + ":" + device,
+      defaultLocale + ":" + device,
+      locale + ":" + defaultDevice,
+      defaultLocale + ":" + defaultDevice,
+    ];
+    var selected = null;
+    var key;
+    var index;
+
+    for (index = 0; index < keys.length; index += 1) {
+      key = keys[index];
+      if (payloads[key]) {
+        selected = clonePlainObject(payloads[key]);
+        break;
+      }
+    }
+
+    if (!selected) {
+      key = Object.keys(payloads)[0];
+      selected = key ? clonePlainObject(payloads[key]) : { campaigns: [] };
+    }
+
+    if (!Array.isArray(selected.campaigns)) {
+      selected.campaigns = [];
+    }
+    if (!selected.settings && bundle.settings) {
+      selected.settings = bundle.settings;
+    }
+    selected.context = bundle.context || selected.context || {};
+    selected.__promoPulseBundle = true;
+    selected.__promoPulseGeneratedAt = bundle.__promoPulseGeneratedAt || "";
+    selected.__promoPulseRequiresRuntimeFetch =
+      bundle.__promoPulseRequiresRuntimeFetch === true ||
+      selected.__promoPulseRequiresRuntimeFetch === true;
+
+    return selected;
+  }
+
+  function revalidateEmbeddedStorefrontPayload(embedded, url, stored, options) {
+    if (
+      !embedded ||
+      embedded.__promoPulseRequiresRuntimeFetch !== true ||
+      !options ||
+      typeof options.onRevalidate !== "function"
+    ) {
+      return;
+    }
+
+    requestStorefrontCampaignPayload(url, stored).then(function (payload) {
+      if (payload && payload.__promoPulseFetchFailed !== true) {
+        options.onRevalidate(payload);
+      }
+    });
+  }
+
+  function embeddedPayloadMatchesConfig(payload, config) {
+    var context =
+      (payload && payload.context) ||
+      (payload && payload.__promoPulseContext) ||
+      payload ||
+      {};
+
+    return (
+      matchesOptionalContextValue(
+        context.shop,
+        readStorefrontConfigValue(config, "shop") || detectShop(getRoot()),
+      ) &&
+      matchesOptionalContextValue(
+        context.path,
+        window.location.pathname || "/",
+      ) &&
+      matchesOptionalContextValue(
+        context.locale,
+        readStorefrontConfigValue(config, "locale") ||
+          readStorefrontConfigValue(config, "defaultLocale") ||
+          document.documentElement.lang ||
+          "en",
+      ) &&
+      matchesOptionalContextValue(
+        context.device,
+        readStorefrontConfigValue(config, "device") || detectDevice(),
+      ) &&
+      matchesOptionalContextValue(
+        context.country,
+        readStorefrontConfigValue(config, "country"),
+      ) &&
+      matchesOptionalContextValue(
+        context.market,
+        readStorefrontConfigValue(config, "market") || detectMarket(),
+      )
+    );
+  }
+
+  function matchesOptionalContextValue(expected, actual) {
+    if (expected === undefined || expected === null || expected === "") {
+      return true;
+    }
+
+    return (
+      String(expected).toLowerCase() === String(actual || "").toLowerCase()
+    );
   }
 
   function requestStorefrontCampaignPayload(url, stored) {
@@ -1202,12 +1392,18 @@
     return value + "/api/storefront/campaigns";
   }
 
-  function selectStorefrontCampaigns(payload, placement, options) {
+  function selectStorefrontCampaigns(payload, placement, options, config) {
     var requestedPlacements = readPlacementList(placement);
     var campaignId = String((options && options.campaignId) || "");
     var campaigns = Array.isArray(payload && payload.campaigns)
       ? payload.campaigns
       : [];
+    campaigns = campaigns.filter(function (campaign) {
+      return (
+        campaignIsVisibleForCurrentTime(campaign) &&
+        campaignMatchesEmbeddedTargeting(campaign, config || {})
+      );
+    });
     var matching = requestedPlacements.length
       ? campaigns.filter(function (campaign) {
           return requestedPlacements.indexOf(campaign.placement) !== -1;
@@ -1234,6 +1430,262 @@
     });
 
     return normalizeCampaigns(anyById.length ? anyById : matchingById);
+  }
+
+  function campaignIsVisibleForCurrentTime(campaign) {
+    var now = Date.now();
+    var startsAt = Date.parse(campaign && campaign.startsAt);
+    var endsAt = Date.parse(campaign && campaign.endsAt);
+    var expiredBehavior =
+      campaign &&
+      campaign.timer &&
+      (campaign.timer.expiredBehavior || "UNPUBLISH_TIMER");
+
+    if (Number.isFinite(startsAt) && startsAt > now) return false;
+    if (
+      Number.isFinite(endsAt) &&
+      endsAt < now &&
+      expiredBehavior === "UNPUBLISH_TIMER"
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function campaignMatchesEmbeddedTargeting(campaign, config) {
+    var targeting =
+      (campaign && campaign.targeting) ||
+      (campaign && campaign.__promoPulseTargeting) ||
+      null;
+    var path = window.location.pathname || "/";
+    var productId = readStorefrontConfigValue(config, "productId");
+    var collectionIds = readStorefrontConfigList(config, "collectionIds");
+    var productTags = readStorefrontConfigList(config, "productTags");
+    var customerTags = readStorefrontConfigList(config, "customerTags");
+
+    if (!targeting || typeof targeting !== "object") return true;
+
+    if (
+      matchesAny(readTargetingList(targeting.excludeProductIds), [productId])
+    ) {
+      return false;
+    }
+
+    if (
+      matchesAny(
+        readTargetingList(targeting.excludeCollectionIds),
+        collectionIds,
+      )
+    ) {
+      return false;
+    }
+
+    if (
+      matchesPathContains(
+        readTargetingList(targeting.excludedUrlContains),
+        path,
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      matchesOptionalExactList(
+        readTargetingList(targeting.countries),
+        readStorefrontConfigValue(config, "country"),
+      ) &&
+      matchesOptionalExactList(
+        readTargetingList(targeting.markets),
+        readStorefrontConfigValue(config, "market") || detectMarket(),
+      ) &&
+      matchesOptionalLocaleList(
+        readTargetingList(targeting.locales),
+        readStorefrontConfigValue(config, "locale") ||
+          readStorefrontConfigValue(config, "defaultLocale") ||
+          document.documentElement.lang ||
+          "en",
+      ) &&
+      matchesOptionalExactList(
+        readTargetingList(targeting.productIds),
+        productId,
+      ) &&
+      matchesOptionalIntersection(
+        readTargetingList(targeting.collectionIds),
+        collectionIds,
+      ) &&
+      matchesOptionalIntersection(
+        readTargetingList(targeting.productTags),
+        productTags,
+      ) &&
+      matchesOptionalIntersection(
+        readTargetingList(targeting.customerTags),
+        customerTags,
+      ) &&
+      matchesOptionalPathContains(
+        readTargetingList(targeting.urlContains),
+        path,
+      ) &&
+      matchesOptionalExactList(
+        readTargetingList(targeting.utmSources),
+        new URLSearchParams(window.location.search).get("utm_source") || "",
+      ) &&
+      matchesOptionalExactList(
+        readTargetingList(targeting.devices),
+        readStorefrontConfigValue(config, "device") || detectDevice(),
+      )
+    );
+  }
+
+  function readTargetingList(value) {
+    if (Array.isArray(value)) {
+      return value
+        .map(function (item) {
+          return String(item || "").trim();
+        })
+        .filter(Boolean);
+    }
+
+    return String(value || "")
+      .split(",")
+      .map(function (item) {
+        return item.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function readStorefrontConfigList(config, key) {
+    var value = config && config[key];
+
+    if (Array.isArray(value)) {
+      return value
+        .map(function (item) {
+          return String(item || "").trim();
+        })
+        .filter(Boolean);
+    }
+
+    return String(value || "")
+      .split(",")
+      .map(function (item) {
+        return item.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function matchesOptionalExactList(allowedValues, actualValue) {
+    if (!allowedValues.length) return true;
+
+    return allowedValues.some(function (allowedValue) {
+      return (
+        String(allowedValue).toLowerCase() ===
+        String(actualValue || "").toLowerCase()
+      );
+    });
+  }
+
+  function matchesOptionalLocaleList(allowedValues, actualValue) {
+    if (!allowedValues.length) return true;
+
+    return allowedValues.some(function (allowedValue) {
+      return normalizeLocale(allowedValue) === normalizeLocale(actualValue);
+    });
+  }
+
+  function normalizeLocale(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace("_", "-");
+  }
+
+  function matchesOptionalIntersection(allowedValues, actualValues) {
+    if (!allowedValues.length) return true;
+
+    return matchesAny(allowedValues, actualValues);
+  }
+
+  function matchesAny(allowedValues, actualValues) {
+    var actualSet = actualValues.reduce(function (set, actualValue) {
+      var value = String(actualValue || "")
+        .trim()
+        .toLowerCase();
+      if (value) set[value] = true;
+      return set;
+    }, {});
+
+    return allowedValues.some(function (allowedValue) {
+      return (
+        actualSet[
+          String(allowedValue || "")
+            .trim()
+            .toLowerCase()
+        ] === true
+      );
+    });
+  }
+
+  function matchesOptionalPathContains(allowedValues, path) {
+    if (!allowedValues.length) return true;
+
+    return matchesPathContains(allowedValues, path);
+  }
+
+  function matchesPathContains(allowedValues, path) {
+    var normalizedPath;
+
+    if (!allowedValues.length || !path) return false;
+
+    normalizedPath = normalizePathTarget(path);
+
+    return allowedValues.some(function (allowedValue) {
+      var normalizedTarget = normalizePathTarget(allowedValue);
+
+      if (normalizedTarget.indexOf("page:") === 0) {
+        return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
+      }
+
+      return normalizedPath.indexOf(normalizedTarget) !== -1;
+    });
+  }
+
+  function normalizePathTarget(value) {
+    var trimmedValue = String(value || "").trim();
+    var url;
+
+    if (!trimmedValue) return "";
+    if (/^page:[a-z]+$/i.test(trimmedValue)) {
+      return trimmedValue.toLowerCase();
+    }
+
+    try {
+      url = new URL(trimmedValue);
+      return (url.pathname + url.search).toLowerCase();
+    } catch {
+      return trimmedValue.toLowerCase();
+    }
+  }
+
+  function matchesStorefrontPageTarget(target, normalizedPath) {
+    var pathname = normalizedPath.split("?")[0].replace(/\/+$/, "") || "/";
+
+    if (target === "page:home") return pathname === "/";
+    if (target === "page:product") {
+      return (
+        pathname.indexOf("/products/") === 0 ||
+        /^\/collections\/[^/]+\/products\//.test(pathname)
+      );
+    }
+    if (target === "page:collection") {
+      return /^\/collections\/[^/]+$/.test(pathname);
+    }
+    if (target === "page:collections") return pathname === "/collections";
+    if (target === "page:page") return pathname.indexOf("/pages/") === 0;
+    if (target === "page:cart") return pathname === "/cart";
+    if (target === "page:search") return pathname === "/search";
+    if (target === "page:blog") return pathname.indexOf("/blogs/") === 0;
+
+    return false;
   }
 
   function normalizeCampaigns(campaigns) {

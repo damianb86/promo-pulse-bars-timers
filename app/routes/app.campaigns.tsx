@@ -26,6 +26,7 @@ import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
 import { CampaignRuleError } from "../services/campaign-rules";
 import { canActivateCampaign } from "../services/planLimits.server";
+import { syncStorefrontInlineConfig } from "../services/storefront-inline-config.server";
 import {
   campaignListStatusOptions,
   campaignTypeOptions,
@@ -127,11 +128,12 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData | Response> => {
-  const { session, redirect } = await authenticateAdmin(request);
+  const { admin, session, redirect } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const intent = String(formData.get("_action") ?? "");
   const campaignId = String(formData.get("campaignId") ?? "");
+  let shouldSyncInlineConfig = false;
 
   if (!campaignId) {
     return { error: "Campaign id is required." };
@@ -142,6 +144,7 @@ export const action = async ({
       await duplicateCampaign(campaignId, shop.id);
     } else if (intent === "pause") {
       await pauseCampaign(campaignId, shop.id);
+      shouldSyncInlineConfig = true;
     } else if (intent === "activate") {
       const activationGate = await canActivateCampaign(shop, { campaignId });
 
@@ -150,10 +153,16 @@ export const action = async ({
       }
 
       await activateCampaign(campaignId, shop.id);
+      shouldSyncInlineConfig = true;
     } else if (intent === "delete") {
       await deleteCampaignForShop(campaignId, shop.id);
+      shouldSyncInlineConfig = true;
     } else {
       return { error: "Unsupported campaign action." };
+    }
+
+    if (shouldSyncInlineConfig) {
+      await syncStorefrontInlineConfig({ admin, shop });
     }
   } catch (error) {
     if (error instanceof CampaignRuleError) {

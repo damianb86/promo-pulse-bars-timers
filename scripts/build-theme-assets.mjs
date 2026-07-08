@@ -15,7 +15,7 @@ const assets = [
 ];
 
 // Plain CSS assets are copied verbatim (the build only minifies JS).
-const cssAssets = ["campaign-surface"];
+const cssAssets = ["campaign-surface", "campaign-surface-critical"];
 
 for (const name of assets) {
   const source = await readFile(

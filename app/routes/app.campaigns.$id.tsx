@@ -7,9 +7,7 @@ import {
   useRouteError,
 } from "react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Prisma,
-} from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import {
   AdvancedDiscountRulesEditor,
@@ -70,6 +68,7 @@ import {
 } from "../models/campaign.server";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
+import { syncStorefrontInlineConfig } from "../services/storefront-inline-config.server";
 import {
   generateCampaignTranslationSuggestions,
   parseCampaignTranslationAiFormData,
@@ -83,9 +82,7 @@ import {
   parseCampaignStructureForm,
   parseResponsiveCampaignDesignFormData,
 } from "../services/campaign-design-form.server";
-import {
-  loadCampaignDesignFileOption,
-  } from "../services/campaign-design-media.server";
+import { loadCampaignDesignFileOption } from "../services/campaign-design-media.server";
 import {
   hasCampaignFormErrors,
   parseCampaignFormData,
@@ -107,7 +104,7 @@ import {
   deleteAppDiscount,
   listAdvancedDiscountRulesForCampaign,
   updateAppDiscount,
-  } from "../services/discounts/advancedDiscounts.server";
+} from "../services/discounts/advancedDiscounts.server";
 import {
   createDiscountCodePool,
   generateCodeBatch,
@@ -130,20 +127,20 @@ import {
   stopExperiment,
   updateExperiment,
   updateExperimentAutoWinner,
-  } from "../services/experiments";
+} from "../services/experiments";
 import {
   createEmailTimerForCampaign,
   listEmailTimersForCampaign,
-  } from "../services/email-timers/emailTimers.server";
+} from "../services/email-timers/emailTimers.server";
 import {
   deleteMarketRule,
   listMarketRulesForCampaign,
   saveMarketRule,
-  } from "../services/markets/markets.server";
+} from "../services/markets/markets.server";
 import {
   createBasicCodeDiscount,
   createFreeShippingCodeDiscount,
-  } from "../services/shopifyDiscounts.server";
+} from "../services/shopifyDiscounts.server";
 import {
   canUseFeature,
   getEffectiveShopPlan,
@@ -163,7 +160,7 @@ import type {
 import {
   formatCampaignOption,
   getDefaultPlacementForCampaignType,
-  } from "../types/campaign-options";
+} from "../types/campaign-options";
 import {
   buildCampaignBadgeSettingsValues,
   buildCampaignCartRescueSettingsValues,
@@ -176,7 +173,7 @@ import {
   type CampaignFormErrors,
   type CampaignFormValues,
   type CampaignTargetingOptions,
-  } from "../types/campaign-form";
+} from "../types/campaign-form";
 import {
   type DiscountOption,
   type DiscountSettingsErrors,
@@ -196,12 +193,57 @@ import {
   buildCampaignViewModel,
   type CampaignViewModel,
 } from "../utils/campaign-view-model";
-import {
-  htmlToTree,
-  } from "../utils/campaign-structure";
+import { htmlToTree } from "../utils/campaign-structure";
 import { parseCustomMessages } from "../utils/custom-messages";
-import { createOrLinkFreeShippingDiscountForCampaign, emptyExperimentResults, linkExistingDiscount, loadDiscountOptions, loadMarketOptions, saveDiscountForCampaign, targetingListText, toAdvancedDiscountRuleRow, toCampaignBadgeFormValues, toCampaignDeliveryCutoffFormValues, toCampaignFreeShippingFormValues, toCampaignGoal, toCampaignLowStockFormValues, toCampaignMobileDesignValues, toCampaignStatus, toCampaignType, toDiscountSettingsValues, toEmailTimerRow, toExperimentRow, toMarketOptionRow, toMarketRuleRow, toPlacementType, toUniqueCodePoolRow, toUniqueCodeRow, toCampaignDesignValues, decodeStructureHtml, readMobileStructure, inferProductSelection, inferCountrySelection } from "../utils/campaign-editor-mappers.server";
-import { hasTranslationInputs, isFormCheckboxChecked, loadDesignMediaOptions, loadTargetingOptions, parseAdvancedDiscountRuleFormData, parseAutoWinnerSettingsFormData, parseBehaviorTargetingFormData, parseEmailTimerFormData, parseExperimentFormData, parseMarketRuleFormData, parseTotalCodesToGenerate, readFormString, shouldClearDiscountSyncForCampaignType, toCampaignCartRescueFormValues, toCampaignTimerFormValues, toDateTimeLocalValue } from "../utils/campaign-editor-form.server";
+import {
+  createOrLinkFreeShippingDiscountForCampaign,
+  emptyExperimentResults,
+  linkExistingDiscount,
+  loadDiscountOptions,
+  loadMarketOptions,
+  saveDiscountForCampaign,
+  targetingListText,
+  toAdvancedDiscountRuleRow,
+  toCampaignBadgeFormValues,
+  toCampaignDeliveryCutoffFormValues,
+  toCampaignFreeShippingFormValues,
+  toCampaignGoal,
+  toCampaignLowStockFormValues,
+  toCampaignMobileDesignValues,
+  toCampaignStatus,
+  toCampaignType,
+  toDiscountSettingsValues,
+  toEmailTimerRow,
+  toExperimentRow,
+  toMarketOptionRow,
+  toMarketRuleRow,
+  toPlacementType,
+  toUniqueCodePoolRow,
+  toUniqueCodeRow,
+  toCampaignDesignValues,
+  decodeStructureHtml,
+  readMobileStructure,
+  inferProductSelection,
+  inferCountrySelection,
+} from "../utils/campaign-editor-mappers.server";
+import {
+  hasTranslationInputs,
+  isFormCheckboxChecked,
+  loadDesignMediaOptions,
+  loadTargetingOptions,
+  parseAdvancedDiscountRuleFormData,
+  parseAutoWinnerSettingsFormData,
+  parseBehaviorTargetingFormData,
+  parseEmailTimerFormData,
+  parseExperimentFormData,
+  parseMarketRuleFormData,
+  parseTotalCodesToGenerate,
+  readFormString,
+  shouldClearDiscountSyncForCampaignType,
+  toCampaignCartRescueFormValues,
+  toCampaignTimerFormValues,
+  toDateTimeLocalValue,
+} from "../utils/campaign-editor-form.server";
 import {
   formatPlacementSelectionLabel,
   formatUnifiedCampaignTypeLabel,
@@ -565,6 +607,18 @@ export const action = async ({
     return { errors: { form: "Campaign id is required." } };
   }
 
+  const syncInlineConfigIfPublished = async () => {
+    const campaign = await getCampaignForShop(id, shop.id);
+
+    if (campaign?.publishedAt) {
+      await syncStorefrontInlineConfig({ admin, shop });
+    }
+  };
+  const redirectAfterInlineConfigSync = async () => {
+    await syncInlineConfigIfPublished();
+    return redirect(`/app/campaigns/${id}`);
+  };
+
   const formData = await request.formData();
   const intent = String(formData.get("_action") ?? "saveBasics");
   const forceDesignSave =
@@ -703,7 +757,7 @@ export const action = async ({
         parsed.mobileValues,
         parseCampaignStructureForm(formData),
       );
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to update campaign design", error);
 
@@ -742,7 +796,7 @@ export const action = async ({
 
     try {
       await updateCampaignTranslationsForShop(id, shop.id, parsed.translations);
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to update campaign translations", error);
 
@@ -794,7 +848,7 @@ export const action = async ({
     try {
       if (parsed.values.mode === "NONE") {
         await clearDiscountSyncForShop(id, shop.id);
-        return redirect(`/app/campaigns/${id}`);
+        return redirectAfterInlineConfigSync();
       }
 
       if (parsed.values.mode === "LINK_EXISTING") {
@@ -807,6 +861,8 @@ export const action = async ({
         });
 
         if (saved.notice) {
+          await syncInlineConfigIfPublished();
+
           return {
             discountNotice: saved.notice,
             discountValues: {
@@ -818,7 +874,7 @@ export const action = async ({
           };
         }
 
-        return redirect(`/app/campaigns/${id}`);
+        return redirectAfterInlineConfigSync();
       }
 
       if (parsed.values.mode === "UNIQUE_CODES") {
@@ -849,7 +905,7 @@ export const action = async ({
           uniqueCodeEndsAt: parsed.endsAt,
         });
 
-        return redirect(`/app/campaigns/${id}`);
+        return redirectAfterInlineConfigSync();
       }
 
       const discount =
@@ -879,7 +935,7 @@ export const action = async ({
         syncStartEnd: parsed.values.syncStartEnd,
       });
 
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to update discount sync", error);
 
@@ -921,6 +977,7 @@ export const action = async ({
         shop.id,
         parsed.values as Prisma.InputJsonValue,
       );
+      await syncInlineConfigIfPublished();
 
       return {
         behaviorTargetingNotice: "Behavior targeting saved.",
@@ -957,7 +1014,7 @@ export const action = async ({
 
     if (!enabled) {
       await clearDiscountSyncForShop(id, shop.id);
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     }
 
     if (hasDiscountSettingsErrors(parsed.errors)) {
@@ -1027,6 +1084,7 @@ export const action = async ({
 
       if (campaign?.status === "ACTIVE") {
         await publishCampaignForShop(id, shop.id);
+        await syncStorefrontInlineConfig({ admin, shop });
       }
 
       return {
@@ -1075,7 +1133,7 @@ export const action = async ({
         expiredBehavior: parsed.expiredBehavior,
       });
 
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to create email timer", error);
 
@@ -1119,7 +1177,7 @@ export const action = async ({
           shopId: shop.id,
         });
 
-        return redirect(`/app/campaigns/${id}`);
+        return redirectAfterInlineConfigSync();
       }
 
       const parsed = parseMarketRuleFormData(formData);
@@ -1137,7 +1195,7 @@ export const action = async ({
         shopId: shop.id,
       });
 
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to save market rule", error);
 
@@ -1187,7 +1245,7 @@ export const action = async ({
           shopId: shop.id,
         });
 
-        return redirect(`/app/campaigns/${id}`);
+        return redirectAfterInlineConfigSync();
       }
 
       const parsed = parseAdvancedDiscountRuleFormData(formData);
@@ -1214,12 +1272,14 @@ export const action = async ({
           });
 
       if (result.warning) {
+        await syncInlineConfigIfPublished();
+
         return {
           advancedDiscountNotice: result.warning,
         };
       }
 
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to update advanced discount rule", error);
 
@@ -1273,6 +1333,7 @@ export const action = async ({
           primaryMetric: parsed.primaryMetric,
           variants: parsed.variants,
         });
+        await syncInlineConfigIfPublished();
 
         return {
           experimentNotice:
@@ -1388,7 +1449,7 @@ export const action = async ({
         await stopExperiment({ shopId: shop.id, experimentId });
       }
 
-      return redirect(`/app/campaigns/${id}`);
+      return redirectAfterInlineConfigSync();
     } catch (error) {
       console.error("Failed to update experiment", error);
 
@@ -1630,6 +1691,9 @@ export const action = async ({
 
     if (isPublishRequest) {
       await publishCampaignForShop(id, shop.id);
+      await syncStorefrontInlineConfig({ admin, shop });
+    } else {
+      await syncInlineConfigIfPublished();
     }
 
     return redirect(`/app/campaigns/${id}`);
@@ -2697,4 +2761,3 @@ function buildPublicationStatus(
     state: "live" as const,
   };
 }
-

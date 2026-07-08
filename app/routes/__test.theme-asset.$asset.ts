@@ -6,6 +6,7 @@ import { requireE2ETestMode } from "../services/e2e-test.server";
 
 const allowedAssets = new Set([
   "campaign-surface.css",
+  "campaign-surface-critical.css",
   "campaign-surface.js",
   "cart-timer.js",
   "delivery-cutoff.js",

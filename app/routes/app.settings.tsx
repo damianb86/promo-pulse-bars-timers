@@ -12,6 +12,7 @@ import { DevicePreviewToggle } from "../components/DevicePreviewToggle";
 import { TimezoneCombobox } from "../components/TimezoneCombobox";
 import { getOrCreateShopByDomain } from "../models/shop.server";
 import { authenticateAdmin } from "../services/admin-auth.server";
+import { syncStorefrontInlineConfig } from "../services/storefront-inline-config.server";
 import {
   getOrCreateShopSettings,
   hasShopSettingsErrors,
@@ -281,7 +282,7 @@ export const loader = async ({
 export const action = async ({
   request,
 }: ActionFunctionArgs): Promise<ActionData> => {
-  const { session } = await authenticateAdmin(request);
+  const { admin, session } = await authenticateAdmin(request);
   const shop = await getOrCreateShopByDomain(session.shop);
   const formData = await request.formData();
   const parsed = parseShopSettingsFormData(formData);
@@ -294,6 +295,7 @@ export const action = async ({
   }
 
   const values = await updateShopSettings(shop.id, parsed.values);
+  await syncStorefrontInlineConfig({ admin, shop });
 
   return {
     notice: "Settings saved.",

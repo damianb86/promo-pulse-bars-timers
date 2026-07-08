@@ -283,6 +283,7 @@ model CampaignDesign {
   fullWidth                 Boolean                  @default(false)
   positionMode              DesignPositionMode       @default(FLOW)
   positionSticky            Boolean                  @default(true)
+  positionStickyZIndex      Int                      @default(50)
   floatPosition             DesignFloatPosition      @default(FIXED)
   floatOffsetTop            String                   @default("0")
   floatOffsetBottom         String                   @default("auto")

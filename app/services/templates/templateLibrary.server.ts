@@ -1041,6 +1041,10 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.positionSticky,
       defaultCampaignDesignValues.positionSticky,
     ),
+    positionStickyZIndex: readInteger(
+      input.positionStickyZIndex,
+      defaultCampaignDesignValues.positionStickyZIndex,
+    ),
     entranceAnimation:
       readEnum(input.entranceAnimation, ["NONE", "FADE", "SLIDE", "POP"]) ??
       defaultCampaignDesignValues.entranceAnimation,

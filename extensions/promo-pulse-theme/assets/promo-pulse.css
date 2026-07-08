@@ -17,6 +17,10 @@
   position: relative;
 }
 
+.pp-container.pp-container--sticky {
+  z-index: var(--pp-sticky-z-index, 50);
+}
+
 .pp-container--custom-selector {
   position: relative;
   z-index: auto;
@@ -70,11 +74,13 @@
 .pp-container .pp-bar--top-bar.pp-bar--sticky {
   position: sticky;
   top: 0;
+  z-index: var(--pp-sticky-z-index, var(--cp-sticky-z-index, 50));
 }
 
 .pp-container .pp-bar--bottom-bar.pp-bar--sticky {
   position: sticky;
   bottom: 0;
+  z-index: var(--pp-sticky-z-index, var(--cp-sticky-z-index, 50));
 }
 
 .pp-container .pp-bar--layout-balanced {

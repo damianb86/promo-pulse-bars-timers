@@ -649,8 +649,19 @@ test("top and bottom bar placement defaults to full width without rounded corner
   await expect(
     updatedEditor.getByLabel("Stick to bottom while scrolling"),
   ).toBeVisible();
+  await updatedEditor.getByLabel("Float over page").check();
+  await expect(updatedEditor.locator('input[name="positionMode"]')).toHaveValue(
+    "OVERLAY",
+  );
   await updatedEditor.getByLabel("Stick to bottom while scrolling").check();
+  await expect(updatedEditor.locator('input[name="positionMode"]')).toHaveValue(
+    "FLOW",
+  );
+  await expect(updatedEditor.getByLabel("Float over page")).not.toBeChecked();
+  await expect(updatedEditor.getByLabel("Sticky z-index")).toBeVisible();
+  await updatedEditor.getByLabel("Sticky z-index").fill("37");
   await expect(preview).toHaveClass(/counterpulse-preview-promo--sticky/);
+  await expect(preview).toHaveCSS("z-index", "37");
   await expect(updatedEditor.locator('input[name="borderRadius"]')).toHaveValue(
     "0",
   );

@@ -21,6 +21,7 @@ const design = {
   layout: "STANDARD",
   fullWidth: false,
   positionMode: "FLOW",
+  positionSticky: false,
   floatPosition: "FIXED",
   entranceAnimation: "FADE",
   exitAnimation: "FADE",
@@ -64,7 +65,9 @@ describe("generateStructureFromHtml", () => {
     );
     expect(result).not.toBeNull();
 
-    const html = treeToHtml(unpackTree(decodePackedStructure(result!.compact)!));
+    const html = treeToHtml(
+      unpackTree(decodePackedStructure(result!.compact)!),
+    );
     expect(html).not.toContain("script");
     expect(html).toContain('data-cp-slot="headline"');
   });
@@ -90,8 +93,6 @@ describe("generateStructureFromHtml", () => {
       "__CP_SCOPE__ .cp-promo { display: flex; }",
     );
     expect(result!.css).toContain("__CP_SCOPE__ .cp-promo { display: flex; }");
-    expect(result!.css).not.toContain(
-      "__CP_SCOPE__ __CP_SCOPE__",
-    );
+    expect(result!.css).not.toContain("__CP_SCOPE__ __CP_SCOPE__");
   });
 });

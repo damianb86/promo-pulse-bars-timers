@@ -1293,13 +1293,13 @@
 .counterpulse-preview-promo--placement-top-bar.counterpulse-preview-promo--sticky {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--cp-sticky-z-index, 50);
 }
 
 .counterpulse-preview-promo--placement-bottom-bar.counterpulse-preview-promo--sticky {
   position: sticky;
   bottom: 0;
-  z-index: 50;
+  z-index: var(--cp-sticky-z-index, 50);
 }
 
 /* The badge link wrapper keeps the badge clickable without changing layout. */

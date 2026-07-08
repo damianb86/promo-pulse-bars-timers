@@ -89,6 +89,7 @@
     fullWidth: false,
     positionMode: "FLOW",
     positionSticky: false,
+    positionStickyZIndex: 50,
     floatPosition: "FIXED",
     floatOffsetTop: "0",
     floatOffsetBottom: "auto",
@@ -317,7 +318,13 @@
       if (dashedPlacement) classes.push("pp-bar--" + dashedPlacement);
       if (design.fullWidth) classes.push("pp-bar--full-width");
       if (design.positionMode === "OVERLAY") classes.push("pp-bar--overlay");
-      if (design.positionSticky) classes.push("pp-bar--sticky");
+      if (
+        (placement === "TOP_BAR" || placement === "BOTTOM_BAR") &&
+        design.positionMode !== "OVERLAY" &&
+        design.positionSticky
+      ) {
+        classes.push("pp-bar--sticky");
+      }
     }
 
     if (variant === "block") {
@@ -612,6 +619,12 @@
       "--cp-float-bottom": cssLength(design.floatOffsetBottom, "auto"),
       "--cp-float-left": cssLength(design.floatOffsetLeft, "0"),
       "--cp-float-right": cssLength(design.floatOffsetRight, "0"),
+      "--cp-sticky-z-index": clampNumber(
+        design.positionStickyZIndex,
+        0,
+        2147483647,
+        50,
+      ),
     };
     Object.keys(vars).forEach(function (key) {
       if (vars[key] !== undefined && vars[key] !== null) {
@@ -1489,6 +1502,12 @@
         "counterpulse-preview-promo--layout-" + lower(design.layout),
         "counterpulse-preview-promo--placement-" + dash(spec.placement),
         design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
+        variant === "bar" &&
+        (spec.placement === "TOP_BAR" || spec.placement === "BOTTOM_BAR") &&
+        design.positionMode !== "OVERLAY" &&
+        design.positionSticky
+          ? "counterpulse-preview-promo--sticky"
+          : "",
         "counterpulse-preview-promo--position-" + lower(design.positionMode),
         design.positionMode === "OVERLAY"
           ? "counterpulse-preview-promo--float-" +
@@ -1896,12 +1915,22 @@
       if (/pp-bar--/.test(token) || /pp-product-card--/.test(token)) return;
       if (/counterpulse-preview-promo--(bar|block|badge)$/.test(token)) return;
       if (/counterpulse-preview-promo--placement-/.test(token)) return;
+      if (token === "counterpulse-preview-promo--sticky") return;
       keep.push(token);
     });
     keep = keep.concat(publicSurfaceClasses(variant, placement, design || {}));
     keep.push("counterpulse-preview-promo--" + variant);
     if (placement) {
       keep.push("counterpulse-preview-promo--placement-" + dash(placement));
+    }
+    if (
+      variant === "bar" &&
+      (placement === "TOP_BAR" || placement === "BOTTOM_BAR") &&
+      design &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
+    ) {
+      keep.push("counterpulse-preview-promo--sticky");
     }
     root.className = keep.join(" ");
   }

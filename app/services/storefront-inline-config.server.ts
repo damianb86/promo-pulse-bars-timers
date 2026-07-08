@@ -8,7 +8,6 @@ import {
   type StorefrontCampaignContext,
   type StorefrontCampaignSource,
 } from "../utils/storefront-campaigns";
-import { hasBehaviorTargetingRules } from "../types/behavior-targeting";
 import { isE2ETestMode } from "./e2e-test.server";
 import { isCampaignAllowedByPlan } from "./planLimits.server";
 import {
@@ -243,19 +242,15 @@ function normalizeInlineLocales(settings: ShopSettingsValues) {
 }
 
 function requiresServerResolvedPayload(campaign: StorefrontCampaignSource) {
-  return (
-    hasBehaviorTargetingRules(campaign.targeting?.behaviorRules) ||
-    campaign.marketCampaignRules.length > 0 ||
-    campaign.experiments.some((experiment) => {
-      if (experiment.status !== "RUNNING") return false;
+  return campaign.experiments.some((experiment) => {
+    if (experiment.status !== "RUNNING") return false;
 
-      const now = new Date();
-      return (
-        (!experiment.startsAt || experiment.startsAt <= now) &&
-        (!experiment.endsAt || experiment.endsAt >= now)
-      );
-    })
-  );
+    const now = new Date();
+    return (
+      (!experiment.startsAt || experiment.startsAt <= now) &&
+      (!experiment.endsAt || experiment.endsAt >= now)
+    );
+  });
 }
 
 function hasStorefrontBadgeCampaigns(campaigns: StorefrontCampaignSource[]) {

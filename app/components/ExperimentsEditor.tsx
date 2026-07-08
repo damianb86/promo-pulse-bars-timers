@@ -425,6 +425,7 @@ const designOverrideKeys: Array<keyof CampaignDesignValues> = [
   "fullWidth",
   "positionMode",
   "positionSticky",
+  "positionStickyZIndex",
   "entranceAnimation",
   "exitAnimation",
   "animationDurationMs",
@@ -467,6 +468,7 @@ const cardDesignKeys: Array<keyof CampaignDesignValues> = [
   "fullWidth",
   "positionMode",
   "positionSticky",
+  "positionStickyZIndex",
 ];
 
 const typographyDesignKeys: Array<keyof CampaignDesignValues> = [
@@ -4193,7 +4195,8 @@ function formatCardDesignChange(
 
   if (
     isDesignValueChanged("positionMode", design, baseDesign) ||
-    isDesignValueChanged("positionSticky", design, baseDesign)
+    isDesignValueChanged("positionSticky", design, baseDesign) ||
+    isDesignValueChanged("positionStickyZIndex", design, baseDesign)
   ) {
     return "Card: Positioning updated";
   }

@@ -259,6 +259,11 @@ export function parseCampaignDesignFormData(
     fullWidth: readBoolean(formData, "fullWidth"),
     positionMode: readPositionMode(formData),
     positionSticky: readBoolean(formData, "positionSticky"),
+    positionStickyZIndex: readInteger(
+      formData,
+      "positionStickyZIndex",
+      defaultCampaignDesignValues.positionStickyZIndex,
+    ),
     floatPosition: readFloatPosition(formData),
     floatOffsetTop: readOffset(formData, "floatOffsetTop", "0"),
     floatOffsetBottom: readOffset(formData, "floatOffsetBottom", "auto"),

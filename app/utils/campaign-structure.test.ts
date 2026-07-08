@@ -28,6 +28,7 @@ const baseSpec: StructureBuildSpec = {
   layout: "STANDARD",
   fullWidth: false,
   positionMode: "FLOW",
+  positionSticky: false,
   floatPosition: "FIXED",
   entranceAnimation: "FADE",
   exitAnimation: "FADE",
@@ -57,6 +58,15 @@ describe("buildCampaignStructureTree", () => {
     expect(html).toContain('data-cp-slot="cta"');
     expect(html).toContain('data-cp-slot="close"');
     expect(html).not.toContain("style=");
+  });
+
+  it("marks sticky top/bottom bars in flow mode", () => {
+    const tree = buildCampaignStructureTree({
+      ...baseSpec,
+      positionSticky: true,
+    });
+
+    expect(tree.attrs?.class).toContain("counterpulse-preview-promo--sticky");
   });
 });
 

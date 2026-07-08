@@ -181,6 +181,7 @@ const numberLimits: Partial<
   paddingInline: { min: 8, max: 64 },
   contentGap: { min: 4, max: 40 },
   contentMaxWidth: { min: 320, max: 1440 },
+  positionStickyZIndex: { min: 0, max: 2147483647 },
   animationDurationMs: { min: 80, max: 1200 },
   timerTickDurationMs: { min: 80, max: 1200 },
   iconSize: { min: 12, max: 48 },

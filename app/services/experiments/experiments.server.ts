@@ -1459,6 +1459,7 @@ async function applyDesignOverride(
       "marginRight",
       "contentGap",
       "contentMaxWidth",
+      "positionStickyZIndex",
       "animationDurationMs",
       "timerTickDurationMs",
       "iconSize",

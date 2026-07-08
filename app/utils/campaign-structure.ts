@@ -156,6 +156,7 @@ export type StructureBuildSpec = {
   layout: string;
   fullWidth: boolean;
   positionMode: string;
+  positionSticky: boolean;
   floatPosition: string;
   entranceAnimation: string;
   exitAnimation: string;
@@ -222,6 +223,12 @@ export function buildCampaignStructureTree(
     cpClass("promo--placement-" + dash(spec.placement)),
     spec.fullWidth ? cpClass("promo--full-width") : "",
     cpClass("promo--position-" + lower(spec.positionMode)),
+    spec.variant === "bar" &&
+    (spec.placement === "TOP_BAR" || spec.placement === "BOTTOM_BAR") &&
+    spec.positionMode !== "OVERLAY" &&
+    spec.positionSticky
+      ? cpClass("promo--sticky")
+      : "",
     spec.positionMode === "OVERLAY"
       ? cpClass("promo--float-" + lower(spec.floatPosition || "FIXED"))
       : "",
@@ -294,6 +301,7 @@ export type StructureSpecDesign = {
   layout: string;
   fullWidth: boolean;
   positionMode: string;
+  positionSticky: boolean;
   floatPosition: string;
   entranceAnimation: string;
   exitAnimation: string;
@@ -334,6 +342,7 @@ export function deriveCampaignStructureSpec(
     layout: design.layout,
     fullWidth: design.fullWidth,
     positionMode: design.positionMode,
+    positionSticky: design.positionSticky,
     floatPosition: design.floatPosition,
     entranceAnimation: design.entranceAnimation,
     exitAnimation: design.exitAnimation,
@@ -1070,6 +1079,7 @@ export type StyleDesignInput = {
   marginLeft?: number;
   marginRight?: number;
   contentGap?: number;
+  positionStickyZIndex?: number;
   offerCodeTextColor?: string;
   offerCodeBackgroundColor?: string;
   offerCodeBorderColor?: string;
@@ -1213,6 +1223,11 @@ export function buildStructureCssVars(
     "--cp-margin-left": px(design.marginLeft, 0),
     "--cp-margin-right": px(design.marginRight, 0),
     "--cp-gap": px(design.contentGap, 12),
+    "--cp-sticky-z-index": String(
+      typeof design.positionStickyZIndex === "number"
+        ? Math.max(0, Math.round(design.positionStickyZIndex))
+        : 50,
+    ),
     "--cp-offer-code-text": design.offerCodeTextColor ?? "",
     "--cp-offer-code-bg": design.offerCodeBackgroundColor ?? "",
     "--cp-offer-code-border": design.offerCodeBorderColor ?? "",

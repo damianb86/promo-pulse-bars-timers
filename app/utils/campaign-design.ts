@@ -710,6 +710,14 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   ) {
     errors.positionMode = "Choose a valid position mode.";
   }
+  validateIntegerRange(
+    values,
+    errors,
+    "positionStickyZIndex",
+    0,
+    2147483647,
+    "Sticky z-index",
+  );
 
   if (
     !designBannerAnimationOptions.some(

@@ -1,0 +1,1 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "positionStickyZIndex" INTEGER NOT NULL DEFAULT 50;

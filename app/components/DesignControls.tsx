@@ -247,6 +247,22 @@ export function DesignControls({
     onChange({ ...values, ...updates });
   };
 
+  const updatePositionOverlay = (checked: boolean) => {
+    updateValues(
+      checked
+        ? { positionMode: "OVERLAY", positionSticky: false }
+        : { positionMode: "FLOW" },
+    );
+  };
+
+  const updatePositionSticky = (checked: boolean) => {
+    updateValues(
+      checked
+        ? { positionMode: "FLOW", positionSticky: true }
+        : { positionSticky: false },
+    );
+  };
+
   const updateNumber = (key: NumberDesignKey, value: string) => {
     updateValue(key, Number(value) as CampaignDesignValues[typeof key]);
   };
@@ -1319,9 +1335,7 @@ export function DesignControls({
               checked={values.positionMode === "OVERLAY"}
               label="Float over page"
               name="positionOverlay"
-              onChange={(checked) =>
-                updateValue("positionMode", checked ? "OVERLAY" : "FLOW")
-              }
+              onChange={updatePositionOverlay}
             />
             <input
               name="positionSticky"
@@ -1333,7 +1347,7 @@ export function DesignControls({
                 checked={values.positionSticky}
                 label={stickyLabel}
                 name="positionStickyToggle"
-                onChange={(checked) => updateValue("positionSticky", checked)}
+                onChange={updatePositionSticky}
               />
             )}
             <ToggleField
@@ -1343,6 +1357,27 @@ export function DesignControls({
               onChange={updateFullWidth}
             />
           </div>
+          {showStickyToggle && values.positionSticky ? (
+            <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+              <NumberField
+                label="Sticky z-index"
+                name="positionStickyZIndex"
+                value={values.positionStickyZIndex}
+                min={0}
+                max={2147483647}
+                error={errors.positionStickyZIndex}
+                onChange={(value) =>
+                  updateNumber("positionStickyZIndex", value)
+                }
+              />
+            </div>
+          ) : (
+            <input
+              name="positionStickyZIndex"
+              type="hidden"
+              value={values.positionStickyZIndex}
+            />
+          )}
           {values.positionMode === "OVERLAY" ? (
             <div className="counterpulse-float-config">
               <DesignField

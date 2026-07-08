@@ -127,6 +127,7 @@ export type StorefrontCampaignResponseItem = {
 export type StorefrontEmbeddedCampaignResponseItem =
   StorefrontCampaignResponseItem & {
     targeting?: StorefrontEmbeddedCampaignTargeting;
+    marketRules?: StorefrontEmbeddedMarketRule[];
   };
 
 export type StorefrontEmbeddedCampaignTargeting = {
@@ -143,6 +144,19 @@ export type StorefrontEmbeddedCampaignTargeting = {
   devices?: string[];
   excludeProductIds?: string[];
   excludeCollectionIds?: string[];
+  behaviorRules?: unknown;
+};
+
+export type StorefrontEmbeddedMarketRule = {
+  id?: string;
+  enabled?: boolean;
+  marketId?: string;
+  countryCode?: string;
+  locale?: string;
+  currencyCode?: string;
+  thresholdAmount?: string;
+  deliverySettings?: Record<string, unknown>;
+  textOverrides?: Record<string, unknown>;
 };
 
 export function parseStorefrontCampaignContext(
@@ -303,10 +317,14 @@ export function serializeStorefrontCampaignsForEmbedding(
   return dedupeByCampaignPlacements(perPlacementItems).map((campaign) => {
     const source = byId.get(campaign.id);
     const targeting = serializeEmbeddedTargeting(source?.targeting ?? null);
+    const marketRules = serializeEmbeddedMarketRules(
+      source?.marketCampaignRules ?? [],
+    );
 
     return {
       ...campaign,
       ...(targeting ? { targeting } : {}),
+      ...(marketRules.length > 0 ? { marketRules } : {}),
     };
   });
 }
@@ -366,11 +384,35 @@ function serializeEmbeddedTargeting(
     devices: jsonStringList(targeting.devices),
     excludeProductIds: jsonStringList(targeting.excludeProductIds),
     excludeCollectionIds: jsonStringList(targeting.excludeCollectionIds),
+    behaviorRules: jsonObjectOrNull(targeting.behaviorRules),
   });
 
   return Object.keys(payload).length > 0
     ? (payload as StorefrontEmbeddedCampaignTargeting)
     : null;
+}
+
+function serializeEmbeddedMarketRules(
+  rules: MarketCampaignRule[],
+): StorefrontEmbeddedMarketRule[] {
+  return rules
+    .map((rule) =>
+      compactObject({
+        id: rule.id,
+        enabled: rule.enabled,
+        marketId: rule.marketId ?? "",
+        countryCode: rule.countryCode ?? "",
+        locale: rule.locale ?? "",
+        currencyCode: rule.currencyCode ?? "",
+        thresholdAmount: rule.thresholdAmount?.toString() ?? "",
+        deliverySettings: jsonObjectOrNull(rule.deliverySettings),
+        textOverrides: jsonObjectOrNull(rule.textOverrides),
+      }),
+    )
+    .filter(
+      (rule): rule is StorefrontEmbeddedMarketRule =>
+        Object.keys(rule).length > 0,
+    );
 }
 
 export function shouldBypassStorefrontCache(
@@ -1242,6 +1284,12 @@ function jsonObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function jsonObjectOrNull(value: unknown): Record<string, unknown> | null {
+  const object = jsonObject(value);
+
+  return Object.keys(object).length > 0 ? object : null;
 }
 
 function readRuleObject(value: unknown) {

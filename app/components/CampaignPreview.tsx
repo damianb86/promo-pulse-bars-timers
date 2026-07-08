@@ -545,6 +545,7 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-margin-left": `${design.marginLeft}px`,
     "--cp-margin-right": `${design.marginRight}px`,
     "--cp-gap": `${design.contentGap}px`,
+    "--cp-sticky-z-index": `${design.positionStickyZIndex}`,
     "--cp-offer-code-text": design.offerCodeTextColor,
     "--cp-offer-code-bg": design.offerCodeBackgroundColor,
     "--cp-offer-code-border": design.offerCodeBorderColor,
@@ -772,7 +773,9 @@ function PromoSurface({
           .toLowerCase()
           .replace("_", "-")}`,
         design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
-        variant === "bar" && design.positionSticky
+        variant === "bar" &&
+        design.positionMode !== "OVERLAY" &&
+        design.positionSticky
           ? "counterpulse-preview-promo--sticky"
           : "",
         `counterpulse-preview-promo--position-${design.positionMode.toLowerCase()}`,
@@ -891,7 +894,7 @@ function fixStructureRootClasses(
   classValue: string | undefined,
   variant: "bar" | "block",
   placement: PreviewPlacement,
-  design: Pick<CampaignDesignValues, "positionSticky">,
+  design: Pick<CampaignDesignValues, "positionMode" | "positionSticky">,
 ) {
   // Only normalize the auto-generated default surface; render custom HTML as-is.
   if (!(classValue ?? "").includes("counterpulse-preview-promo")) {
@@ -903,7 +906,8 @@ function fixStructureRootClasses(
     .filter(
       (token) =>
         !/counterpulse-preview-promo--(bar|block|badge)$/.test(token) &&
-        !/counterpulse-preview-promo--placement-/.test(token),
+        !/counterpulse-preview-promo--placement-/.test(token) &&
+        token !== "counterpulse-preview-promo--sticky",
     );
   keep.push(`counterpulse-preview-promo--${variant}`);
   keep.push(
@@ -911,7 +915,11 @@ function fixStructureRootClasses(
       .toLowerCase()
       .replace(/_/g, "-")}`,
   );
-  if (variant === "bar" && design.positionSticky) {
+  if (
+    variant === "bar" &&
+    design.positionMode !== "OVERLAY" &&
+    design.positionSticky
+  ) {
     keep.push("counterpulse-preview-promo--sticky");
   }
   return keep.join(" ");

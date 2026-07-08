@@ -45,11 +45,13 @@ describe("campaign design validation", () => {
         backgroundColor: "black",
         fontSize: 42,
         iconSize: 99,
+        positionStickyZIndex: -1,
       }),
     ).toMatchObject({
       backgroundColor: "Enter a valid 6-digit hex color.",
       fontSize: "Font size must be between 10 and 24.",
       iconSize: "Icon size must be between 12 and 64.",
+      positionStickyZIndex: "Sticky z-index must be between 0 and 2147483647.",
     });
 
     expect(
@@ -317,6 +319,7 @@ describe("describeDesignSettingsForAi", () => {
       "showButton",
       "showIcon",
       "fullWidth",
+      "positionStickyZIndex",
       "alignment",
     ]) {
       expect(catalog).toContain(field);

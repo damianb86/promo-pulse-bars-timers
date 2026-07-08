@@ -5,6 +5,7 @@ import {
   serializeDesign,
   serializeStorefrontCampaign,
   serializeStorefrontCampaigns,
+  serializeStorefrontCampaignsForEmbedding,
   type StorefrontCampaignContext,
   type StorefrontCampaignSource,
 } from "./storefront-campaigns";
@@ -21,6 +22,7 @@ describe("serializeDesign structure payload", () => {
     layout: "STANDARD",
     fullWidth: false,
     positionMode: "FLOW",
+    positionSticky: false,
     floatPosition: "FIXED",
     entranceAnimation: "FADE",
     exitAnimation: "FADE",
@@ -959,6 +961,51 @@ describe("storefront campaign serialization", () => {
       ctaText: "Shop sale",
       ctaUrl: "/collections/sale",
     });
+  });
+
+  it("embeds behavior targeting and market rules for client-side storefront selection", () => {
+    const behaviorRules = {
+      enabled: true,
+      segments: ["SAW_CAMPAIGN"],
+      campaignIds: ["campaign-seed"],
+      lookbackDays: 30,
+      inactiveCartMinutes: 60,
+      highIntentMinEvents: 3,
+      highIntentWindowMinutes: 60,
+    };
+    const [embedded] = serializeStorefrontCampaignsForEmbedding(
+      [
+        buildCampaign({
+          targeting: { behaviorRules },
+          marketCampaignRules: [
+            marketRule({
+              id: "rule-us",
+              countryCode: "US",
+              currencyCode: "USD",
+              thresholdAmount: "75",
+              deliverySettings: { deliveryText: "Ships today" },
+              textOverrides: { headline: "US sale" },
+            }),
+          ],
+        }),
+      ],
+      baseContext({
+        placement: "TOP_BAR",
+        placements: ["TOP_BAR"],
+      }),
+    );
+
+    expect(embedded.targeting?.behaviorRules).toEqual(behaviorRules);
+    expect(embedded.marketRules).toEqual([
+      expect.objectContaining({
+        id: "rule-us",
+        countryCode: "US",
+        currencyCode: "USD",
+        thresholdAmount: "75",
+        deliverySettings: { deliveryText: "Ships today" },
+        textOverrides: { headline: "US sale" },
+      }),
+    ]);
   });
 
   it("parses comma-separated storefront context values", () => {

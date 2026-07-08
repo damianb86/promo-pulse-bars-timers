@@ -307,7 +307,11 @@
     var bar;
 
     if (!shouldRender(campaign, promise)) {
-      if (existing) existing.remove();
+      if (existing) {
+        var parent = existing.parentNode;
+        existing.remove();
+        syncStickyContainer(parent);
+      }
       updateDebug(
         embed,
         "Delivery cutoff recibido, pero oculto por mobileEnabled=false o afterCutoffBehavior=HIDE.",
@@ -329,15 +333,18 @@
     bar.id = "promo-pulse-delivery-" + campaign.placement;
 
     if (
-      campaign.placement === "TOP_BAR" &&
+      (campaign.placement === "TOP_BAR" ||
+        campaign.placement === "BOTTOM_BAR") &&
       (campaign.design || {}).positionMode !== "OVERLAY" &&
       (campaign.design || {}).positionSticky
     ) {
       bar.classList.add("counterpulse-preview-promo--sticky");
+      bar.dataset.ppStickyZIndex = String(readStickyZIndex(campaign.design));
     }
 
     if (existing) existing.replaceWith(bar);
     else container.appendChild(bar);
+    syncStickyContainer(container);
     tick(bar, campaign, config, function () {
       renderGlobal(campaign, config);
     });
@@ -411,7 +418,9 @@
       ctaUrl: texts.ctaUrl || "",
       dataTestId: "delivery-cutoff-widget",
       onClose: function () {
+        var parent = surface.parentNode;
         surface.remove();
+        syncStickyContainer(parent);
       },
     });
 
@@ -784,6 +793,44 @@
         },
       }),
     );
+  }
+
+  function readStickyZIndex(design) {
+    var value = Number((design || {}).positionStickyZIndex);
+    if (!Number.isFinite(value)) return 50;
+    return Math.min(2147483647, Math.max(0, Math.round(value)));
+  }
+
+  function syncStickyContainer(container) {
+    var stickyBars;
+    var zIndex = null;
+
+    if (!container || !container.classList) return;
+    if (!container.classList.contains("pp-container")) return;
+
+    stickyBars = container.querySelectorAll(
+      ".counterpulse-preview-promo--sticky",
+    );
+    Array.prototype.forEach.call(stickyBars, function (bar) {
+      var value = Number(bar.dataset.ppStickyZIndex);
+      if (!Number.isFinite(value)) {
+        value = Number(
+          window.getComputedStyle(bar).getPropertyValue("--cp-sticky-z-index"),
+        );
+      }
+      if (!Number.isFinite(value)) value = 50;
+      value = Math.max(0, Math.round(value));
+      zIndex = zIndex === null ? value : Math.max(zIndex, value);
+    });
+
+    if (zIndex === null) {
+      container.classList.remove("pp-container--sticky");
+      container.style.removeProperty("--pp-sticky-z-index");
+      return;
+    }
+
+    container.classList.add("pp-container--sticky");
+    container.style.setProperty("--pp-sticky-z-index", String(zIndex));
   }
 
   function num(value, fallback) {

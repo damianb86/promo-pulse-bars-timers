@@ -314,6 +314,7 @@
       bar = buildBar(campaign);
       bar.id = slotId;
       existing.replaceWith(bar);
+      syncStickyContainer(container);
       startCountdown(bar, campaign);
       emitImpressionOnce(campaign);
       return;
@@ -322,6 +323,7 @@
     bar = buildBar(campaign);
     bar.id = slotId;
     container.appendChild(bar);
+    syncStickyContainer(container);
     startCountdown(bar, campaign);
     emitImpressionOnce(campaign);
   }
@@ -405,11 +407,13 @@
 
     bar.dataset.campaignId = campaign.id;
     if (
-      campaign.placement === "TOP_BAR" &&
+      (campaign.placement === "TOP_BAR" ||
+        campaign.placement === "BOTTOM_BAR") &&
       design.positionMode !== "OVERLAY" &&
       design.positionSticky
     ) {
       bar.classList.add("counterpulse-preview-promo--sticky");
+      bar.dataset.ppStickyZIndex = String(readStickyZIndex(design));
     }
 
     return bar;
@@ -941,20 +945,61 @@
 
   function removeBar(bar, design) {
     var duration = clamp((design || {}).animationDurationMs, 0, 1500, 220);
+    var parent;
 
     if (
       !(design || {}).exitAnimation ||
       (design || {}).exitAnimation === "NONE" ||
       duration === 0
     ) {
+      parent = bar.parentNode;
       bar.remove();
+      syncStickyContainer(parent);
       return;
     }
 
     bar.classList.add("pp-bar--closing");
     window.setTimeout(function () {
+      parent = bar.parentNode;
       bar.remove();
+      syncStickyContainer(parent);
     }, duration);
+  }
+
+  function readStickyZIndex(design) {
+    return clamp((design || {}).positionStickyZIndex, 0, 2147483647, 50);
+  }
+
+  function syncStickyContainer(container) {
+    var stickyBars;
+    var zIndex = null;
+
+    if (!container || !container.classList) return;
+    if (!container.classList.contains("pp-container")) return;
+
+    stickyBars = container.querySelectorAll(
+      ".counterpulse-preview-promo--sticky",
+    );
+    Array.prototype.forEach.call(stickyBars, function (bar) {
+      var value = Number(bar.dataset.ppStickyZIndex);
+      if (!Number.isFinite(value)) {
+        value = Number(
+          window.getComputedStyle(bar).getPropertyValue("--cp-sticky-z-index"),
+        );
+      }
+      if (!Number.isFinite(value)) value = 50;
+      value = Math.max(0, Math.round(value));
+      zIndex = zIndex === null ? value : Math.max(zIndex, value);
+    });
+
+    if (zIndex === null) {
+      container.classList.remove("pp-container--sticky");
+      container.style.removeProperty("--pp-sticky-z-index");
+      return;
+    }
+
+    container.classList.add("pp-container--sticky");
+    container.style.setProperty("--pp-sticky-z-index", String(zIndex));
   }
 
   function emitImpression(campaign) {

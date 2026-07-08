@@ -4,6 +4,7 @@ import { transformWithEsbuild } from "vite";
 
 const assets = [
   "campaign-surface",
+  "campaign-loader",
   "promo-pulse",
   "product-timer",
   "cart-timer",

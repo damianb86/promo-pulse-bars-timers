@@ -382,6 +382,7 @@ function productCard({
 function scriptsForKind(kind: StorefrontPageKind) {
   const common = `
     <script src="/__test/theme-asset/campaign-surface.js" defer></script>
+    <script src="/__test/theme-asset/campaign-loader.js" defer></script>
     <script src="/__test/theme-asset/discount-code.js" defer></script>`;
 
   if (kind === "product") {

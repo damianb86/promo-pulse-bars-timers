@@ -336,6 +336,7 @@ function createDesign(
     fullWidth: false,
     positionMode: DesignPositionMode.FLOW,
     positionSticky: false,
+    positionStickyZIndex: 50,
     floatPosition: DesignFloatPosition.FIXED,
     floatOffsetTop: "0",
     floatOffsetBottom: "auto",

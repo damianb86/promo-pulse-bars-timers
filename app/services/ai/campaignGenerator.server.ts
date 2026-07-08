@@ -2799,6 +2799,15 @@ function sanitizePartialDesign(
     ...(typeof design.positionSticky === "boolean"
       ? { positionSticky: design.positionSticky }
       : {}),
+    ...(typeof design.positionStickyZIndex === "number"
+      ? {
+          positionStickyZIndex: clampInteger(
+            design.positionStickyZIndex,
+            0,
+            2147483647,
+          ),
+        }
+      : {}),
     ...(design.entranceAnimation === "NONE" ||
     design.entranceAnimation === "FADE" ||
     design.entranceAnimation === "SLIDE" ||

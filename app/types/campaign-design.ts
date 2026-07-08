@@ -152,6 +152,7 @@ export type CampaignDesignValues = {
   fullWidth: boolean;
   positionMode: DesignPositionModeValue;
   positionSticky: boolean;
+  positionStickyZIndex: number;
   floatPosition: DesignFloatPositionValue;
   floatOffsetTop: string;
   floatOffsetBottom: string;
@@ -313,6 +314,7 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   fullWidth: false,
   positionMode: "FLOW",
   positionSticky: false,
+  positionStickyZIndex: 50,
   floatPosition: "FIXED",
   floatOffsetTop: "0",
   floatOffsetBottom: "auto",
@@ -1384,6 +1386,8 @@ export function describeDesignSettingsForAi() {
     )}. Controls how message, timer, and action are arranged. Match the reading order seen in the image.`,
     "- fullWidth (boolean): true for edge-to-edge bars; false for a centered, contained card.",
     "- contentMaxWidth (number, 280-1440 px): max width of the inner content when not full width.",
+    "- positionSticky (boolean): for top/bottom bars, true keeps the bar sticky in normal document flow while scrolling.",
+    "- positionStickyZIndex (number, 0-2147483647): z-index used by sticky top/bottom bars and their storefront container.",
     `- alignment: ${enumValues(designAlignmentOptions)}. Horizontal alignment of the content.`,
     "",
     "Background & surface:",

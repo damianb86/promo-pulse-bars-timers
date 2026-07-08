@@ -1834,6 +1834,20 @@
     }
   }
 
+  // Adds a class to a node without duplicating it, preserving any classes the
+  // merchant already authored on the element.
+  function ensureClass(node, className) {
+    if (!node || !className) return;
+    if (node.classList) {
+      node.classList.add(className);
+      return;
+    }
+    var current = node.className || "";
+    if ((" " + current + " ").indexOf(" " + className + " ") === -1) {
+      node.className = current ? current + " " + className : className;
+    }
+  }
+
   function fillReplaceSlot(slotEl, builtNode) {
     if (!slotEl || !slotEl.parentNode) return;
     if (builtNode) {
@@ -2010,6 +2024,13 @@
             fillReplaceSlot(slotEl, null);
             break;
           }
+          // The cta slot is filled in place (not replaced), so unlike the timer/
+          // offer/close slots it keeps whatever element the merchant authored. A
+          // generated/AI cta placeholder carries no class, so add the shared cta
+          // class here — matching the standard builder and the admin preview —
+          // so the button keeps its base look (background, color, padding) even
+          // when the merchant only overrode a few properties via Custom CSS.
+          ensureClass(slotEl, "counterpulse-preview-cta");
           slotEl.textContent = interpolateMessage(spec.cta, spec);
           if (spec.ctaUrl && slotEl.tagName === "A") {
             slotEl.setAttribute("href", spec.ctaUrl);

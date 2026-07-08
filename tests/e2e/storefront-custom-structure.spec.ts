@@ -36,6 +36,12 @@ test("storefront renders custom structure elements and inline styles verbatim", 
   await expect(cta).toHaveCSS("padding", "0px 30px");
   await expect(cta).toHaveCSS("font-size", "25px");
 
+  // The button must keep its base look: even though the merchant only overrode a
+  // few properties via Custom CSS, the shared cta class still supplies the design
+  // background/text color (a slot placeholder carries no class of its own).
+  await expect(cta).toHaveClass(/counterpulse-preview-cta/);
+  await expect(cta).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });

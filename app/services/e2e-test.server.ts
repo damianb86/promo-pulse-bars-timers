@@ -37,6 +37,11 @@ import {
 import prisma from "../db.server";
 import { publishCampaignForShop } from "../models/campaign.server";
 import {
+  encodePackedStructure,
+  htmlToTree,
+  packTree,
+} from "../utils/campaign-structure";
+import {
   clearStorefrontCacheForTests,
   invalidateStorefrontCacheForShop,
 } from "./storefront-cache.server";
@@ -61,6 +66,7 @@ export type E2ETestScenario =
   | "campaign-targeting-filters"
   | "campaign-custom-selector"
   | "countdown"
+  | "countdown-custom-structure"
   | "countdown-consent-strict"
   | "targeting"
   | "behavior-targeting"
@@ -251,6 +257,27 @@ async function seedScenario(shopId: string, scenario: E2ETestScenario) {
 
   if (scenario === "countdown") {
     await createCountdownCampaign(shopId, {});
+    return;
+  }
+
+  if (scenario === "countdown-custom-structure") {
+    // A merchant/AI custom structure with a plain (non-slot) <h3> and an inline
+    // style on the CTA slot — the storefront must render both verbatim.
+    const customHtml =
+      '<section class="counterpulse-preview-promo counterpulse-preview-promo--block">' +
+      '<div class="counterpulse-preview-message"><div class="counterpulse-preview-message-copy">' +
+      '<strong data-cp-slot="headline"></strong><span data-cp-slot="body"></span></div></div>' +
+      '<div data-cp-slot="timer"></div>' +
+      '<div class="counterpulse-preview-actions">' +
+      '<a data-cp-slot="cta" style="height:200px;display:flex;align-items:center;padding:0 30px;font-size:25px"></a></div>' +
+      '<h3 style="color:white;text-align:right">ARGENTINA BEY</h3>' +
+      '<span data-cp-slot="close"></span></section>';
+    const tree = htmlToTree(customHtml);
+    await createCountdownCampaign(shopId, {
+      structureCompact: tree
+        ? encodePackedStructure(packTree(tree))
+        : undefined,
+    });
     return;
   }
 
@@ -523,6 +550,8 @@ async function createCountdownCampaign(
       expiredText?: string;
     }>;
     placements?: PlacementType[];
+    structureCompact?: string;
+    structureCss?: string;
   },
 ) {
   const now = new Date();
@@ -567,7 +596,16 @@ async function createCountdownCampaign(
           }
         : undefined,
       design: {
-        create: flashSaleDesign(),
+        create: {
+          ...flashSaleDesign(),
+          ...(options.structureCompact
+            ? {
+                structureCompact: options.structureCompact,
+                structureEdited: true,
+                structureCss: options.structureCss ?? "",
+              }
+            : {}),
+        },
       },
       timerSettings: {
         create: {

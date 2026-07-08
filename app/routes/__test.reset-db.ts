@@ -40,6 +40,7 @@ async function reset(request: Request) {
 function readScenario(value: string | null): E2ETestScenario {
   if (
     value === "countdown" ||
+    value === "countdown-custom-structure" ||
     value === "campaign-type-countdown" ||
     value === "campaign-type-product-timer" ||
     value === "campaign-type-cart-timer" ||

@@ -260,6 +260,36 @@ describe("node addressing + inline style helpers", () => {
     const next = setNodeStyleAtPath(tree, "1", { "max-width": "100%" });
     expect(treeToHtml(next)).toContain('style="max-width: 100%"');
   });
+
+  it("accumulates the inspector's Custom CSS on a slot element (one declaration at a time)", () => {
+    // Mirrors the component inspector: each Custom CSS chip is applied through a
+    // separate setNodeStyleAtPath call, so they must merge onto the same node
+    // (here a data-cp-slot="cta" button) rather than overwrite each other.
+    const cta =
+      '<section class="cp-promo"><div class="cp-actions">' +
+      '<a data-cp-slot="cta"></a></div></section>';
+    let tree = htmlToTree(cta)!;
+    const declarations: Array<[string, string]> = [
+      ["height", "200px"],
+      ["display", "flex"],
+      ["align-items", "center"],
+      ["padding", "0 30px"],
+      ["font-size", "25px"],
+    ];
+    for (const [prop, value] of declarations) {
+      tree = setNodeStyleAtPath(tree, "0-0", { [prop]: value });
+    }
+
+    const node = getNodeAtPath(tree, "0-0");
+    expect(node?.attrs?.["data-cp-slot"]).toBe("cta");
+    expect(parseStyle(node?.attrs?.style)).toEqual({
+      height: "200px",
+      display: "flex",
+      "align-items": "center",
+      padding: "0 30px",
+      "font-size": "25px",
+    });
+  });
 });
 
 describe("timerPartValue", () => {

@@ -181,6 +181,15 @@
   }
 
   function decodePackedStructure(value) {
+    // Idempotent: normalizeDesign() can run more than once on the same design
+    // (e.g. a payload normalized before render, then again inside build()). On
+    // the first pass the packed AST string is parsed into an object and stored
+    // back as structure.packed, so later passes receive the already-decoded
+    // object. Accept it as-is instead of dropping the whole structure (which
+    // silently fell back to the generated layout, losing custom HTML/CSS).
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value;
+    }
     if (typeof value !== "string" || !value.trim()) return null;
 
     try {

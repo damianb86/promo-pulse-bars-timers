@@ -11124,6 +11124,18 @@ s-page::part(page) {
   bottom: 0;
 }
 
+.counterpulse-preview-promo--placement-top-bar.counterpulse-preview-promo--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.counterpulse-preview-promo--placement-bottom-bar.counterpulse-preview-promo--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+}
+
 .counterpulse-preview-promo--position-overlay:not(
   .counterpulse-preview-promo--bar
 ) {

@@ -129,6 +129,10 @@ test("design changes update live preview and persist", async ({
     "gap",
     "4px",
   );
+  const addIconButton = editor.getByRole("button", { name: "Add icon" });
+  if (await addIconButton.isVisible()) {
+    await addIconButton.click();
+  }
   await editor.locator('select[name="icon"]').selectOption("FIRE");
   await editor.locator('input[name="iconSize"]').fill("36");
   await editor.locator('input[name="gradientStartColor"]').fill("#123456");
@@ -624,6 +628,10 @@ test("top and bottom bar placement defaults to full width without rounded corner
   await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
   await page.getByRole("tab", { name: "Design" }).click();
   const editor = page.getByRole("tabpanel", { name: "Design" });
+  await expect(editor.getByLabel("Stick to top while scrolling")).toBeVisible();
+  await expect(
+    editor.getByLabel("Stick to bottom while scrolling"),
+  ).toHaveCount(0);
   await editor.locator('input[name="borderRadius"]').fill("14");
 
   await page.getByRole("tab", { name: "Campaign" }).click();
@@ -632,6 +640,17 @@ test("top and bottom bar placement defaults to full width without rounded corner
   await page.getByRole("tab", { name: "Design" }).click();
 
   const updatedEditor = page.getByRole("tabpanel", { name: "Design" });
+  const preview = updatedEditor
+    .locator(".counterpulse-design-editor__preview .counterpulse-preview-promo")
+    .first();
+  await expect(
+    updatedEditor.getByLabel("Stick to top while scrolling"),
+  ).toHaveCount(0);
+  await expect(
+    updatedEditor.getByLabel("Stick to bottom while scrolling"),
+  ).toBeVisible();
+  await updatedEditor.getByLabel("Stick to bottom while scrolling").check();
+  await expect(preview).toHaveClass(/counterpulse-preview-promo--sticky/);
   await expect(updatedEditor.locator('input[name="borderRadius"]')).toHaveValue(
     "0",
   );

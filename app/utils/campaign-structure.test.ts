@@ -12,6 +12,7 @@ import {
   htmlToTree,
   packTree,
   parseStyle,
+  removeNodeBySlot,
   serializeStyle,
   setNodeStyleAtPath,
   TIMER_PART_SLOTS,
@@ -259,6 +260,21 @@ describe("node addressing + inline style helpers", () => {
     const tree = htmlToTree(html)!;
     const next = setNodeStyleAtPath(tree, "1", { "max-width": "100%" });
     expect(treeToHtml(next)).toContain('style="max-width: 100%"');
+  });
+
+  it("removeNodeBySlot drops the matching slot element at any depth", () => {
+    const tree = htmlToTree(
+      '<section><div class="cp-actions">' +
+        '<a data-cp-slot="cta"></a></div>' +
+        '<span data-cp-slot="close"></span></section>',
+    )!;
+    const withoutCta = removeNodeBySlot(tree, "cta");
+    expect(treeToHtml(withoutCta)).not.toContain('data-cp-slot="cta"');
+    // Other slots and wrappers are preserved.
+    expect(treeToHtml(withoutCta)).toContain('data-cp-slot="close"');
+    expect(treeToHtml(withoutCta)).toContain('class="cp-actions"');
+    // Original tree is untouched (immutability).
+    expect(treeToHtml(tree)).toContain('data-cp-slot="cta"');
   });
 
   it("accumulates the inspector's Custom CSS on a slot element (one declaration at a time)", () => {

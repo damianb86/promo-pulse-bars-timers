@@ -471,6 +471,76 @@ export function DesignPanel({
   );
 }
 
+// A single structural element (Icon, Button, Close button). When present it
+// shows its settings plus a "remove" action; when absent it shows an empty
+// state that adds it back. Replaces per-element show/hide checkboxes with the
+// same "add/remove the HTML" model used across the editor. `canManage` is false
+// inside the visual inspector (no add/remove there — just the settings).
+export function ElementPanel({
+  title,
+  present,
+  canManage,
+  emptyText,
+  addLabel,
+  removeLabel,
+  onAdd,
+  onRemove,
+  children,
+}: {
+  title: string;
+  present: boolean;
+  canManage: boolean;
+  emptyText: string;
+  addLabel: string;
+  removeLabel: string;
+  onAdd: () => void;
+  onRemove: () => void;
+  children: ReactNode;
+}) {
+  const panelFilter = useContext(DesignPanelFilterContext);
+  if (panelFilter && !panelFilter.has(title)) return null;
+
+  const showSettings = present || !canManage;
+
+  return (
+    <section className="counterpulse-design-card">
+      <h3>
+        <DesignSectionIcon title={title} />
+        <span>{title}</span>
+      </h3>
+      <div className="counterpulse-design-card__body">
+        {showSettings ? (
+          <>
+            {children}
+            {canManage && (
+              <div className="counterpulse-element-panel__actions">
+                <button
+                  className="counterpulse-button-secondary counterpulse-element-panel__remove"
+                  type="button"
+                  onClick={onRemove}
+                >
+                  {removeLabel}
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="counterpulse-element-panel__empty" role="note">
+            <p>{emptyText}</p>
+            <button
+              className="counterpulse-button-secondary"
+              type="button"
+              onClick={onAdd}
+            >
+              {addLabel}
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export const designSectionIconPaths: Record<string, ReactNode> = {
   Template: (
     <>

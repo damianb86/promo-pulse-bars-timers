@@ -67,9 +67,14 @@
   bottom: 24px;
 }
 
-.pp-container .pp-bar--sticky {
+.pp-container .pp-bar--top-bar.pp-bar--sticky {
   position: sticky;
   top: 0;
+}
+
+.pp-container .pp-bar--bottom-bar.pp-bar--sticky {
+  position: sticky;
+  bottom: 0;
 }
 
 .pp-container .pp-bar--layout-balanced {

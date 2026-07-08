@@ -793,6 +793,25 @@ export function setNodeAttrAtPath(
   return clone;
 }
 
+// Removes every element carrying `data-cp-slot="<slot>"` from the tree, at any
+// depth. Used by the design editor to "remove an element's HTML" (button, icon,
+// close, ...). Returns a deep-cloned tree; the root is never removed.
+export function removeNodeBySlot(
+  tree: StructureNode,
+  slot: string,
+): StructureNode {
+  const clone = cloneNode(tree);
+  const prune = (node: StructureNode) => {
+    if (!node.children) return;
+    node.children = node.children.filter(
+      (child) => getNodeSlot(child) !== slot,
+    );
+    node.children.forEach(prune);
+  };
+  prune(clone);
+  return clone;
+}
+
 function cloneNode(node: StructureNode): StructureNode {
   const next: StructureNode = { tag: node.tag };
   if (node.text != null) next.text = node.text;

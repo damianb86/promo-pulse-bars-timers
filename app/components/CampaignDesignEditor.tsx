@@ -27,6 +27,7 @@ import {
   getNodeAtPath,
   getNodeSlot,
   htmlToTree,
+  removeNodeBySlot,
   setNodeAttrAtPath,
   setNodeStyleAtPath,
   treeToHtml,
@@ -294,12 +295,14 @@ export function CampaignDesignEditor({
     device: (device === "mobile" && design.separateMobileDesign
       ? "mobile"
       : "desktop") as "mobile" | "desktop",
+    placement,
     progressStyle,
     structureEdited: activeSurface.edited,
     values: activeDesign,
     presentSlots: activeSurface.presentSlots,
     onChange: updateActiveDesign,
     onAddSlot: activeSurface.addSlot,
+    onRemoveSlot: activeSurface.removeSlot,
     onGoToSchedule,
     onEditStructureCss: () => setCssModalOpen(true),
     onEditStructureHtml: () => setHtmlModalOpen(true),
@@ -848,6 +851,7 @@ type StructureSurface = {
   changeHtml: (value: string) => void;
   changeCss: (value: string) => void;
   addSlot: (slot: string) => void;
+  removeSlot: (slot: string) => void;
   updateNodeStyle: (path: string, declarations: Record<string, string>) => void;
   updateNodeAttr: (path: string, name: string, value: string) => void;
 };
@@ -1020,6 +1024,17 @@ function useStructureSurface(
     setEdited(true);
   };
 
+  // Removes an element's slot from the HTML (button, icon, close, ...). When the
+  // structure was still auto-generated this first materializes it as an edited
+  // override so the removal sticks; the show* flags the caller also lowers keep
+  // the storefront/preview in sync.
+  const removeSlot = (slot: string) => {
+    const current = htmlToTree(displayedHtml);
+    if (!current) return;
+    setHtml(treeToHtml(removeNodeBySlot(current, slot)));
+    setEdited(true);
+  };
+
   return {
     edited,
     dirty,
@@ -1032,6 +1047,7 @@ function useStructureSurface(
     changeHtml,
     changeCss,
     addSlot,
+    removeSlot,
     updateNodeStyle,
     updateNodeAttr,
   };

@@ -483,7 +483,8 @@
 
     bar.dataset.campaignId = campaign.id;
     if (
-      campaign.placement === "TOP_BAR" &&
+      (campaign.placement === "TOP_BAR" ||
+        campaign.placement === "BOTTOM_BAR") &&
       design.positionMode !== "OVERLAY" &&
       design.positionSticky
     ) {

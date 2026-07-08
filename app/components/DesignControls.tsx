@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState } from "react";
 
 import { FieldInfoButton } from "./Notifications";
 import {
@@ -28,8 +28,35 @@ import {
 } from "../utils/campaign-design";
 import { type FreeShippingProgressStyleValue } from "../types/free-shipping";
 import { CardDesignPanel } from "./design-controls/CardDesignPanel";
-import { ColorDesignKey, ColorField, DesignField, DesignGroup, DesignPanel, DesignPanelFilterContext, EditIcon, LayoutPreview, MissingElement, NumberDesignKey, NumberField, PreviewSelectDropdown, ProgressHiddenInputs, TemplatePreview, TimerStyleHiddenInputs, TimerStylePreview, ToggleField, ToggleSwitch, getPickerErrorMessage, pickAndResolveShopifyFile } from "./design-controls/shared";
-import { CustomCssInfoContent, OfferDesignHiddenInputs, OfferDesignPanel, ProPlanBadge } from "./design-controls/OfferDesignPanel";
+import {
+  ColorDesignKey,
+  ColorField,
+  DesignField,
+  DesignGroup,
+  DesignPanel,
+  DesignPanelFilterContext,
+  ElementPanel,
+  EditIcon,
+  LayoutPreview,
+  MissingElement,
+  NumberDesignKey,
+  NumberField,
+  PreviewSelectDropdown,
+  ProgressHiddenInputs,
+  TemplatePreview,
+  TimerStyleHiddenInputs,
+  TimerStylePreview,
+  ToggleField,
+  ToggleSwitch,
+  getPickerErrorMessage,
+  pickAndResolveShopifyFile,
+} from "./design-controls/shared";
+import {
+  CustomCssInfoContent,
+  OfferDesignHiddenInputs,
+  OfferDesignPanel,
+  ProPlanBadge,
+} from "./design-controls/OfferDesignPanel";
 
 export { pickAndResolveShopifyFile } from "./design-controls/shared";
 
@@ -39,6 +66,15 @@ type TimerTypeOption = {
   label: string;
   description: string;
 };
+
+type DesignControlsPlacement =
+  | "TOP_BAR"
+  | "BOTTOM_BAR"
+  | "PRODUCT_PAGE"
+  | "CART_PAGE"
+  | "CART_DRAWER"
+  | "PRODUCT_BADGE"
+  | string;
 
 // "Format" (Units/Colon) is folded into the "Type" picker as additional options
 // while keeping both fields independent, so every style + format combination
@@ -67,6 +103,7 @@ type DesignControlsProps = {
   mediaOptions?: CampaignDesignMediaOptions;
   isProPlan: boolean;
   device?: "desktop" | "mobile";
+  placement?: DesignControlsPlacement;
   progressStyle?: FreeShippingProgressStyleValue;
   structureEdited?: boolean;
   // Slots present in the hand-edited HTML. null = not overridden (don't disable
@@ -78,6 +115,7 @@ type DesignControlsProps = {
   onEditStructureCss?: () => void;
   onResetStructure?: () => void;
   onAddSlot?: (slot: string) => void;
+  onRemoveSlot?: (slot: string) => void;
   // Switches the editor to the Campaign → Schedule tab (timer progress target).
   onGoToSchedule?: () => void;
   // Only render these panels (by title). Undefined = all panels.
@@ -91,6 +129,7 @@ export function DesignControls({
   hasTimer = true,
   isProPlan,
   device = "desktop",
+  placement,
   progressStyle,
   structureEdited = false,
   presentSlots = null,
@@ -100,6 +139,7 @@ export function DesignControls({
   onEditStructureCss,
   onResetStructure,
   onAddSlot,
+  onRemoveSlot,
   onGoToSchedule,
   panelFilter,
 }: DesignControlsProps) {
@@ -119,6 +159,36 @@ export function DesignControls({
         onAdd: () => onAddSlot(slot),
       }));
   };
+  // Whether an element is currently part of the campaign. For a hand-edited
+  // structure the slot presence is authoritative; for a generated one the show*
+  // flag (or icon !== NONE) is. This lets each element panel offer "remove" /
+  // "add" instead of a raw show/hide checkbox.
+  const isElementPresent = (slot: string, generatedFlag: boolean) =>
+    presentSlots ? presentSlots.has(slot) : generatedFlag;
+
+  // Adds an element to the campaign: raises its show* flag AND (when the HTML is
+  // hand-edited) re-inserts its slot. Lowering/raising the flag keeps the
+  // generated structure and the storefront gating in sync.
+  const addElement = (slot: string, updates: Partial<CampaignDesignValues>) => {
+    updateValues(updates);
+    if (presentSlots && onAddSlot) onAddSlot(slot);
+  };
+
+  const removeElement = (
+    slot: string,
+    updates: Partial<CampaignDesignValues>,
+  ) => {
+    updateValues(updates);
+    if (presentSlots && onRemoveSlot) onRemoveSlot(slot);
+  };
+
+  const iconPresent = isElementPresent("icon", values.showIcon);
+  const buttonPresent = isElementPresent("cta", values.showButton);
+  const closePresent = isElementPresent("close", values.showCloseButton);
+  // Add/remove is only offered in the full editor. Inside the visual inspector
+  // (no add/remove callbacks) each element panel just shows its settings.
+  const canManageElements = Boolean(onAddSlot || onRemoveSlot);
+
   const timerPresent = presentSlots
     ? presentSlots.has("timer") || presentSlots.has("timer-inline")
     : true;
@@ -158,6 +228,13 @@ export function DesignControls({
     campaignDesignTemplates.find(
       (template) => template.templateKey === values.templateKey,
     ) ?? campaignDesignTemplates[0];
+  const stickyLabel =
+    placement === "TOP_BAR"
+      ? "Stick to top while scrolling"
+      : placement === "BOTTOM_BAR"
+        ? "Stick to bottom while scrolling"
+        : "";
+  const showStickyToggle = Boolean(stickyLabel);
 
   const updateValue = <Key extends keyof CampaignDesignValues>(
     key: Key,
@@ -960,27 +1037,43 @@ export function DesignControls({
           <ProgressHiddenInputs values={values} />
         )}
 
-        <DesignPanel
-          title="Elements"
-          missingElements={missingElements([
-            ["icon", "icon"],
-            ["close", "close button"],
-          ])}
+        <ElementPanel
+          title="Icon"
+          present={iconPresent}
+          canManage={canManageElements}
+          emptyText="This campaign has no icon."
+          addLabel="Add icon"
+          removeLabel="Remove icon"
+          onAdd={() =>
+            addElement("icon", {
+              icon: values.icon !== "NONE" ? values.icon : "FIRE",
+              showIcon: true,
+            })
+          }
+          onRemove={() =>
+            removeElement("icon", {
+              icon: "NONE",
+              showIcon: false,
+              customIconUrl: "",
+            })
+          }
         >
           <div className="counterpulse-form-grid counterpulse-form-grid--wide">
             <DesignField label="Icon" error={errors.icon}>
               <select
                 name="icon"
-                value={values.icon}
+                value={values.icon === "NONE" ? "FIRE" : values.icon}
                 onChange={(event) =>
                   updateIcon(event.target.value as CampaignDesignValues["icon"])
                 }
               >
-                {designIconOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                {designIconOptions
+                  .filter((option) => option.value !== "NONE")
+                  .map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
               </select>
             </DesignField>
             {values.icon === "CUSTOM" ? (
@@ -1018,11 +1111,7 @@ export function DesignControls({
               type="hidden"
               value={values.icon === "CUSTOM" ? values.customIconUrl : ""}
             />
-            <input
-              name="showIcon"
-              type="hidden"
-              value={values.icon === "NONE" ? "false" : "true"}
-            />
+            <input name="showIcon" type="hidden" value="true" />
             <NumberField
               error={errors.iconSize}
               label="Icon size"
@@ -1039,6 +1128,37 @@ export function DesignControls({
               value={values.accentColor}
               onChange={(value) => updateColor("accentColor", value)}
             />
+          </div>
+        </ElementPanel>
+        {canManageElements && !iconPresent && (
+          <>
+            <input name="icon" type="hidden" value="NONE" />
+            <input name="showIcon" type="hidden" value="false" />
+            <input name="customIconUrl" type="hidden" value="" />
+            <input
+              name="iconSize"
+              type="hidden"
+              value={String(values.iconSize)}
+            />
+            <input
+              name="accentColor"
+              type="hidden"
+              value={values.accentColor}
+            />
+          </>
+        )}
+
+        <ElementPanel
+          title="Button"
+          present={buttonPresent}
+          canManage={canManageElements}
+          emptyText="This campaign has no call-to-action button."
+          addLabel="Add button"
+          removeLabel="Remove button"
+          onAdd={() => addElement("cta", { showButton: true })}
+          onRemove={() => removeElement("cta", { showButton: false })}
+        >
+          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
             <ColorField
               error={errors.buttonColor}
               label="Button"
@@ -1067,6 +1187,46 @@ export function DesignControls({
               value={values.buttonTextHoverColor}
               onChange={(value) => updateColor("buttonTextHoverColor", value)}
             />
+          </div>
+          <input name="showButton" type="hidden" value="true" />
+        </ElementPanel>
+        {canManageElements && !buttonPresent && (
+          <>
+            <input name="showButton" type="hidden" value="false" />
+            <input
+              name="buttonColor"
+              type="hidden"
+              value={values.buttonColor}
+            />
+            <input
+              name="buttonTextColor"
+              type="hidden"
+              value={values.buttonTextColor}
+            />
+            <input
+              name="buttonHoverColor"
+              type="hidden"
+              value={values.buttonHoverColor}
+            />
+            <input
+              name="buttonTextHoverColor"
+              type="hidden"
+              value={values.buttonTextHoverColor}
+            />
+          </>
+        )}
+
+        <ElementPanel
+          title="Close button"
+          present={closePresent}
+          canManage={canManageElements}
+          emptyText="Shoppers can’t dismiss this campaign."
+          addLabel="Add close button"
+          removeLabel="Remove close button"
+          onAdd={() => addElement("close", { showCloseButton: true })}
+          onRemove={() => removeElement("close", { showCloseButton: false })}
+        >
+          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
             <ColorField
               error={errors.closeButtonColor}
               label="Close icon"
@@ -1084,7 +1244,49 @@ export function DesignControls({
               onChange={(value) => updateNumber("closeButtonSize", value)}
             />
           </div>
-        </DesignPanel>
+          <DesignField
+            label="When a shopper closes it"
+            error={errors.dismissBehavior}
+          >
+            <select
+              name="dismissBehavior"
+              value={values.dismissBehavior}
+              onChange={(event) =>
+                updateValue(
+                  "dismissBehavior",
+                  event.target.value as CampaignDesignValues["dismissBehavior"],
+                )
+              }
+            >
+              {designDismissBehaviorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+          <input name="showCloseButton" type="hidden" value="true" />
+        </ElementPanel>
+        {canManageElements && !closePresent && (
+          <>
+            <input name="showCloseButton" type="hidden" value="false" />
+            <input
+              name="closeButtonColor"
+              type="hidden"
+              value={values.closeButtonColor}
+            />
+            <input
+              name="closeButtonSize"
+              type="hidden"
+              value={String(values.closeButtonSize)}
+            />
+            <input
+              name="dismissBehavior"
+              type="hidden"
+              value={values.dismissBehavior}
+            />
+          </>
+        )}
 
         {hasOffer ? (
           <OfferDesignPanel
@@ -1099,7 +1301,9 @@ export function DesignControls({
           <OfferDesignHiddenInputs values={values} />
         )}
 
-        <DesignPanel title="Behavior">
+        <DesignPanel title="Position">
+          {/* Show-on-mobile was removed: campaigns always render on mobile. */}
+          <input name="mobileEnabled" type="hidden" value="true" />
           <div className="counterpulse-toggle-grid">
             <input
               name="positionMode"
@@ -1124,29 +1328,19 @@ export function DesignControls({
               type="hidden"
               value={String(values.positionSticky)}
             />
+            {showStickyToggle && (
+              <ToggleField
+                checked={values.positionSticky}
+                label={stickyLabel}
+                name="positionStickyToggle"
+                onChange={(checked) => updateValue("positionSticky", checked)}
+              />
+            )}
             <ToggleField
               checked={values.fullWidth}
               label="Full width"
               name="fullWidth"
               onChange={updateFullWidth}
-            />
-            <ToggleField
-              checked={values.mobileEnabled}
-              label="Show on mobile"
-              name="mobileEnabled"
-              onChange={(checked) => updateValue("mobileEnabled", checked)}
-            />
-            <ToggleField
-              checked={values.showCloseButton}
-              label="Closable banner"
-              name="showCloseButton"
-              onChange={(checked) => updateValue("showCloseButton", checked)}
-            />
-            <ToggleField
-              checked={values.showButton}
-              label="Show button"
-              name="showButton"
-              onChange={(checked) => updateValue("showButton", checked)}
             />
           </div>
           {values.positionMode === "OVERLAY" ? (
@@ -1249,37 +1443,6 @@ export function DesignControls({
                 value={values.floatOffsetRight}
               />
             </>
-          )}
-          {values.showCloseButton && (
-            <DesignField
-              label="When a shopper closes it"
-              error={errors.dismissBehavior}
-            >
-              <select
-                name="dismissBehavior"
-                value={values.dismissBehavior}
-                onChange={(event) =>
-                  updateValue(
-                    "dismissBehavior",
-                    event.target
-                      .value as CampaignDesignValues["dismissBehavior"],
-                  )
-                }
-              >
-                {designDismissBehaviorOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </DesignField>
-          )}
-          {!values.showCloseButton && (
-            <input
-              name="dismissBehavior"
-              type="hidden"
-              value={values.dismissBehavior}
-            />
           )}
         </DesignPanel>
 
@@ -1395,4 +1558,3 @@ export function DesignControls({
     </DesignPanelFilterContext.Provider>
   );
 }
-

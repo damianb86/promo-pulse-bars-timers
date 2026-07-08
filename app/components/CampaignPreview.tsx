@@ -772,6 +772,9 @@ function PromoSurface({
           .toLowerCase()
           .replace("_", "-")}`,
         design.fullWidth ? "counterpulse-preview-promo--full-width" : "",
+        variant === "bar" && design.positionSticky
+          ? "counterpulse-preview-promo--sticky"
+          : "",
         `counterpulse-preview-promo--position-${design.positionMode.toLowerCase()}`,
         `counterpulse-preview-promo--enter-${design.entranceAnimation.toLowerCase()}`,
         `counterpulse-preview-promo--exit-${design.exitAnimation.toLowerCase()}`,
@@ -888,6 +891,7 @@ function fixStructureRootClasses(
   classValue: string | undefined,
   variant: "bar" | "block",
   placement: PreviewPlacement,
+  design: Pick<CampaignDesignValues, "positionSticky">,
 ) {
   // Only normalize the auto-generated default surface; render custom HTML as-is.
   if (!(classValue ?? "").includes("counterpulse-preview-promo")) {
@@ -907,6 +911,9 @@ function fixStructureRootClasses(
       .toLowerCase()
       .replace(/_/g, "-")}`,
   );
+  if (variant === "bar" && design.positionSticky) {
+    keep.push("counterpulse-preview-promo--sticky");
+  }
   return keep.join(" ");
 }
 
@@ -1293,7 +1300,7 @@ function StructurePromoSurface({
   };
 
   const rootClassName = [
-    fixStructureRootClasses(tree.attrs?.class, variant, placement),
+    fixStructureRootClasses(tree.attrs?.class, variant, placement, design),
     className ?? "",
   ]
     .filter(Boolean)

@@ -2076,6 +2076,11 @@ function VariantDrawer({
                 isProPlan={isProPlan}
                 mediaOptions={designMediaOptions}
                 device={isMobileSurface ? "mobile" : "desktop"}
+                placement={
+                  variant.placement.placementType ||
+                  baseViewModel.placements[0] ||
+                  undefined
+                }
                 values={activeVariantDesign}
                 onChange={(design) =>
                   onChange(

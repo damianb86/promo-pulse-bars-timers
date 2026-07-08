@@ -1290,10 +1290,15 @@
    Storefront-only helpers (not part of the in-app preview chrome).
    ========================================================================== */
 
-/* Sticky top bar on the storefront (the preview shows it inside a frame). */
-.counterpulse-preview-promo--sticky {
+.counterpulse-preview-promo--placement-top-bar.counterpulse-preview-promo--sticky {
   position: sticky;
   top: 0;
+  z-index: 50;
+}
+
+.counterpulse-preview-promo--placement-bottom-bar.counterpulse-preview-promo--sticky {
+  position: sticky;
+  bottom: 0;
   z-index: 50;
 }
 

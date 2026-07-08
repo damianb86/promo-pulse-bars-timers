@@ -154,6 +154,11 @@ export function enforceReadableAiColors<T extends Record<string, unknown>>(
   const buttonColor = readHex(result.buttonColor);
   if (buttonColor) fixContrast(result, "buttonTextColor", buttonColor, 4.5);
 
+  const buttonHoverColor = readHex(result.buttonHoverColor);
+  if (buttonHoverColor) {
+    fixContrast(result, "buttonTextHoverColor", buttonHoverColor, 4.5);
+  }
+
   return result as T;
 }
 

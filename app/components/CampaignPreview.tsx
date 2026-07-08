@@ -508,6 +508,8 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-accent": design.accentColor,
     "--cp-button": design.buttonColor,
     "--cp-button-text": design.buttonTextColor,
+    "--cp-button-hover": design.buttonHoverColor,
+    "--cp-button-text-hover": design.buttonTextHoverColor,
     "--cp-close": design.closeButtonColor,
     "--cp-font-size": `${design.fontSize}px`,
     "--cp-font-family": fontFamilies[design.fontFamily],

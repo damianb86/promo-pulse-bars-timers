@@ -36,6 +36,8 @@ const colorFields: Array<keyof CampaignDesignValues> = [
   "accentColor",
   "buttonColor",
   "buttonTextColor",
+  "buttonHoverColor",
+  "buttonTextHoverColor",
   "closeButtonColor",
   "borderColor",
   "titleColor",
@@ -461,6 +463,15 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
   ) {
     errors.buttonTextColor =
       "Button text color needs stronger contrast with button color.";
+  }
+
+  if (
+    isValidHexColor(values.buttonHoverColor) &&
+    isValidHexColor(values.buttonTextHoverColor) &&
+    !hasReadableContrast(values.buttonTextHoverColor, values.buttonHoverColor)
+  ) {
+    errors.buttonTextHoverColor =
+      "Button hover text color needs stronger contrast with button hover color.";
   }
 
   if (!designLayoutOptions.some((option) => option.value === values.layout)) {

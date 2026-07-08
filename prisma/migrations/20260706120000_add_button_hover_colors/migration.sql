@@ -1,0 +1,2 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "buttonHoverColor" TEXT NOT NULL DEFAULT '#FFFFFF';
+ALTER TABLE "CampaignDesign" ADD COLUMN "buttonTextHoverColor" TEXT NOT NULL DEFAULT '#111827';

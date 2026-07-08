@@ -1101,6 +1101,8 @@ const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
   "accentColor",
   "buttonColor",
   "buttonTextColor",
+  "buttonHoverColor",
+  "buttonTextHoverColor",
   "closeButtonColor",
   "showDiscountCode",
   "showCopyCodeButton",

@@ -1054,6 +1054,20 @@ export function DesignControls({
               onChange={(value) => updateColor("buttonTextColor", value)}
             />
             <ColorField
+              error={errors.buttonHoverColor}
+              label="Button (hover)"
+              name="buttonHoverColor"
+              value={values.buttonHoverColor}
+              onChange={(value) => updateColor("buttonHoverColor", value)}
+            />
+            <ColorField
+              error={errors.buttonTextHoverColor}
+              label="Button text (hover)"
+              name="buttonTextHoverColor"
+              value={values.buttonTextHoverColor}
+              onChange={(value) => updateColor("buttonTextHoverColor", value)}
+            />
+            <ColorField
               error={errors.closeButtonColor}
               label="Close icon"
               name="closeButtonColor"

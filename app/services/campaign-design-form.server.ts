@@ -92,6 +92,12 @@ export function parseCampaignDesignFormData(
     buttonTextColor:
       readString(formData, "buttonTextColor") ||
       defaultCampaignDesignValues.buttonTextColor,
+    buttonHoverColor:
+      readString(formData, "buttonHoverColor") ||
+      defaultCampaignDesignValues.buttonHoverColor,
+    buttonTextHoverColor:
+      readString(formData, "buttonTextHoverColor") ||
+      defaultCampaignDesignValues.buttonTextHoverColor,
     closeButtonColor:
       readString(formData, "closeButtonColor") ||
       defaultCampaignDesignValues.closeButtonColor,

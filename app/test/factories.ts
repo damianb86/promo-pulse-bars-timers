@@ -289,6 +289,8 @@ function createDesign(
     accentColor: "#2563EB",
     buttonColor: "#111827",
     buttonTextColor: "#FFFFFF",
+    buttonHoverColor: "#111827",
+    buttonTextHoverColor: "#FFFFFF",
     closeButtonColor: "#111827",
     fontSize: 14,
     borderRadius: 4,

@@ -11854,6 +11854,18 @@ s-page::part(page) {
   font-size: 0.9em;
   font-weight: 700;
   box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Hover colors fall back to the base fill/label when the merchant left them
+   equal, so there is no visible hover change until they are customized. */
+.counterpulse-preview-cta:hover,
+.counterpulse-preview-cta:focus,
+.counterpulse-preview-cta:active {
+  background: var(--cp-button-hover, var(--cp-button));
+  color: var(--cp-button-text-hover, var(--cp-button-text));
 }
 
 .counterpulse-preview-cta--offer {

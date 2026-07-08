@@ -236,6 +236,8 @@ model CampaignDesign {
   accentColor               String                   @default("#22C55E")
   buttonColor               String                   @default("#FFFFFF")
   buttonTextColor           String                   @default("#111827")
+  buttonHoverColor          String                   @default("#FFFFFF")
+  buttonTextHoverColor      String                   @default("#111827")
   closeButtonColor          String                   @default("#111827")
   fontSize                  Int                      @default(14)
   borderRadius              Int                      @default(0)

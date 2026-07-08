@@ -105,6 +105,8 @@ export type CampaignDesignValues = {
   accentColor: string;
   buttonColor: string;
   buttonTextColor: string;
+  buttonHoverColor: string;
+  buttonTextHoverColor: string;
   closeButtonColor: string;
   fontSize: number;
   borderRadius: number;
@@ -262,6 +264,10 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   accentColor: "#2563EB",
   buttonColor: "#111827",
   buttonTextColor: "#FFFFFF",
+  // Hover colors default to the base fill/label, so there is no visible hover
+  // change until the merchant sets them.
+  buttonHoverColor: "#111827",
+  buttonTextHoverColor: "#FFFFFF",
   closeButtonColor: "#111827",
   fontSize: 14,
   borderRadius: 4,
@@ -1420,6 +1426,7 @@ export function describeDesignSettingsForAi() {
     "Button & icon:",
     "- showButton (boolean): whether a CTA button is visible. Turn off for badges or label-only bars.",
     "- buttonColor (hex) + buttonTextColor (hex): the CTA button fill and its label.",
+    "- buttonHoverColor (hex) + buttonTextHoverColor (hex): the CTA fill/label on hover. Set them equal to buttonColor/buttonTextColor for no hover change.",
     `- showIcon (boolean) and icon: ${enumValues(designIconOptions)}. Only set an icon you can actually see in the image.`,
     '- customIconUrl (URL or "{{asset:key}}" placeholder): used only with icon CUSTOM. Prefer this setting for generated icon assets instead of placing an <img> in structureHtml.',
     "- showCloseButton (boolean) + closeButtonColor (hex): the dismiss control.",

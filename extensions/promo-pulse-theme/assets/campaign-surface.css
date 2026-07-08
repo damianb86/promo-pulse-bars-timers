@@ -1038,18 +1038,29 @@
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .counterpulse-preview-cta.pp-cta {
   font-size: 0.9em;
 }
 
-.counterpulse-preview-cta:hover,
-.counterpulse-preview-cta:focus,
-.counterpulse-preview-cta:active,
 .counterpulse-preview-cta:visited {
   background: var(--cp-button);
   color: var(--cp-button-text);
+  text-decoration: none;
+}
+
+/* Hover/focus/active use the dedicated hover colors, falling back to the base
+   fill/label when the merchant left them equal (no hover effect). The 0.15s
+   transition is defined on the base rule. */
+.counterpulse-preview-cta:hover,
+.counterpulse-preview-cta:focus,
+.counterpulse-preview-cta:active {
+  background: var(--cp-button-hover, var(--cp-button));
+  color: var(--cp-button-text-hover, var(--cp-button-text));
   text-decoration: none;
 }
 

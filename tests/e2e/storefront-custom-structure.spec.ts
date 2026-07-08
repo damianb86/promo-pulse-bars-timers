@@ -42,6 +42,13 @@ test("storefront renders custom structure elements and inline styles verbatim", 
   await expect(cta).toHaveClass(/counterpulse-preview-cta/);
   await expect(cta).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
+  // Hover colors from the design settings apply on the storefront: the button
+  // fill and label switch to their hover values while pointed at.
+  await expect(cta).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await cta.hover();
+  await expect(cta).toHaveCSS("background-color", "rgb(34, 197, 94)");
+  await expect(cta).toHaveCSS("color", "rgb(255, 255, 255)");
+
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
 });

@@ -2653,6 +2653,12 @@ function sanitizePartialDesign(
     ...(isHexColor(design.buttonTextColor)
       ? { buttonTextColor: design.buttonTextColor }
       : {}),
+    ...(isHexColor(design.buttonHoverColor)
+      ? { buttonHoverColor: design.buttonHoverColor }
+      : {}),
+    ...(isHexColor(design.buttonTextHoverColor)
+      ? { buttonTextHoverColor: design.buttonTextHoverColor }
+      : {}),
     ...(isHexColor(design.closeButtonColor)
       ? { closeButtonColor: design.closeButtonColor }
       : {}),
@@ -2897,6 +2903,8 @@ function omitPresetVisualOverrides(
   delete rest.accentColor;
   delete rest.buttonColor;
   delete rest.buttonTextColor;
+  delete rest.buttonHoverColor;
+  delete rest.buttonTextHoverColor;
   delete rest.closeButtonColor;
   delete rest.borderColor;
   delete rest.titleColor;

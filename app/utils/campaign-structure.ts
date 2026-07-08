@@ -1017,6 +1017,8 @@ export type StyleDesignInput = {
   accentColor?: string;
   buttonColor?: string;
   buttonTextColor?: string;
+  buttonHoverColor?: string;
+  buttonTextHoverColor?: string;
   closeButtonColor?: string;
   fontSize?: number;
   fontFamily?: string;
@@ -1138,6 +1140,8 @@ export function buildStructureCssVars(
     "--cp-accent": design.accentColor ?? "",
     "--cp-button": design.buttonColor ?? "",
     "--cp-button-text": design.buttonTextColor ?? "",
+    "--cp-button-hover": design.buttonHoverColor ?? "",
+    "--cp-button-text-hover": design.buttonTextHoverColor ?? "",
     "--cp-close": design.closeButtonColor ?? "",
     "--cp-font-size": px(design.fontSize, 15),
     "--cp-font-family":

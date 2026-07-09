@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseStorefrontCampaignContext,
   serializeDesign,
+  serializeOptimizedStorefrontCampaignsForEmbedding,
   serializeStorefrontCampaign,
   serializeStorefrontCampaigns,
   serializeStorefrontCampaignsForEmbedding,
@@ -1006,6 +1007,47 @@ describe("storefront campaign serialization", () => {
         textOverrides: { headline: "US sale" },
       }),
     ]);
+  });
+
+  it("serializes optimized embedded campaigns once with per-locale deltas", () => {
+    const [embedded] = serializeOptimizedStorefrontCampaignsForEmbedding(
+      [
+        buildCampaign({
+          translations: [
+            {
+              locale: "en",
+              headline: "Sale ends soon",
+              subheadline: "Save before midnight.",
+              ctaText: "Shop sale",
+              ctaUrl: "/collections/sale",
+            },
+            {
+              locale: "es",
+              headline: "La oferta termina pronto",
+              subheadline: "Ahorra antes de medianoche.",
+              ctaText: "Comprar oferta",
+              ctaUrl: "/collections/ofertas",
+            },
+          ],
+        }),
+      ],
+      baseContext({
+        locale: "en",
+        placement: "TOP_BAR",
+        placements: ["TOP_BAR"],
+      }),
+      ["en", "es"],
+    );
+
+    expect(embedded.texts.headline).toBe("Sale ends soon");
+    expect(embedded.textLocales).toEqual({
+      es: expect.objectContaining({
+        headline: "La oferta termina pronto",
+        ctaText: "Comprar oferta",
+        ctaUrl: "/collections/ofertas",
+      }),
+    });
+    expect(embedded.mobileDesign).toEqual(expect.any(Object));
   });
 
   it("parses comma-separated storefront context values", () => {

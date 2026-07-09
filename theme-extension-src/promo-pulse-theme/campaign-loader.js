@@ -124,83 +124,249 @@
   }
 
   function normalizeEmbeddedStorefrontPayload(raw, config) {
-    var payload;
-
-    if (
-      raw &&
-      typeof raw === "object" &&
-      (raw.__promoPulseBundle === true ||
-        raw.payloads ||
-        raw.__promoPulsePayloads)
-    ) {
-      return selectEmbeddedStorefrontPayload(raw, config);
-    }
-
     if (Array.isArray(raw)) {
-      payload = { campaigns: raw };
-    } else if (raw && typeof raw === "object") {
-      payload = Object.assign({}, raw);
-      if (!Array.isArray(payload.campaigns) && Array.isArray(payload.configs)) {
-        payload.campaigns = payload.configs;
-      }
-    } else {
-      return null;
+      return buildOptimizedEmbeddedPayload({ campaigns: raw }, config);
     }
 
-    if (!Array.isArray(payload.campaigns)) {
-      payload.campaigns = [];
+    if (raw && typeof raw === "object") {
+      return buildOptimizedEmbeddedPayload(raw, config);
     }
 
-    return payload;
+    return null;
   }
 
-  function selectEmbeddedStorefrontPayload(bundle, config) {
-    var payloads = bundle.payloads || bundle.__promoPulsePayloads || {};
+  function buildOptimizedEmbeddedPayload(bundle, config) {
     var locale =
       readStorefrontConfigValue(config, "locale") ||
       readStorefrontConfigValue(config, "defaultLocale") ||
       document.documentElement.lang ||
+      bundle.__promoPulseDefaultLocale ||
       "en";
     var device = readStorefrontConfigValue(config, "device") || detectDevice();
-    var defaultLocale = bundle.__promoPulseDefaultLocale || locale || "en";
-    var defaultDevice = bundle.__promoPulseDefaultDevice || "desktop";
-    var keys = [
-      locale + ":" + device,
-      defaultLocale + ":" + device,
-      locale + ":" + defaultDevice,
-      defaultLocale + ":" + defaultDevice,
-    ];
-    var selected = null;
-    var key;
-    var index;
+    var campaigns = Array.isArray(bundle.campaigns) ? bundle.campaigns : [];
 
-    for (index = 0; index < keys.length; index += 1) {
-      key = keys[index];
-      if (payloads[key]) {
-        selected = clonePlainObject(payloads[key]);
-        break;
+    return {
+      campaigns: campaigns.map(function (campaign) {
+        return resolveOptimizedCampaign(campaign, locale, device, config);
+      }),
+      settings: bundle.settings || null,
+      badges: bundle.badges === true,
+      context: bundle.context || {},
+      __promoPulseBundle: true,
+      __promoPulseSchemaVersion: 2,
+      __promoPulseGeneratedAt: bundle.__promoPulseGeneratedAt || "",
+      __promoPulseRequiresRuntimeFetch:
+        bundle.__promoPulseRequiresRuntimeFetch === true,
+    };
+  }
+
+  function resolveOptimizedCampaign(campaign, locale, device, config) {
+    var copy =
+      campaign && typeof campaign === "object" && !Array.isArray(campaign)
+        ? Object.assign({}, campaign)
+        : {};
+
+    copy.design = resolveOptimizedCampaignDesign(campaign, device);
+    copy.texts = resolveOptimizedCampaignTexts(campaign, locale);
+    copy.freeShipping = resolveOptimizedFreeShipping(campaign, config || {});
+    copy.deliveryCutoff = resolveOptimizedDeliveryCutoff(
+      campaign,
+      config || {},
+    );
+
+    delete copy.mobileDesign;
+    delete copy.textLocales;
+
+    return copy;
+  }
+
+  function resolveOptimizedCampaignDesign(campaign, device) {
+    if (
+      (device === "mobile" || device === "tablet") &&
+      campaign &&
+      campaign.mobileDesign &&
+      typeof campaign.mobileDesign === "object" &&
+      !Array.isArray(campaign.mobileDesign)
+    ) {
+      return campaign.mobileDesign;
+    }
+
+    return campaign && campaign.design ? campaign.design : {};
+  }
+
+  function resolveOptimizedCampaignTexts(campaign, locale) {
+    var base =
+      campaign &&
+      campaign.texts &&
+      typeof campaign.texts === "object" &&
+      !Array.isArray(campaign.texts)
+        ? campaign.texts
+        : {};
+    var override = findOptimizedTextOverride(campaign, locale);
+
+    return Object.assign({}, base, override);
+  }
+
+  function findOptimizedTextOverride(campaign, locale) {
+    var textLocales =
+      campaign &&
+      campaign.textLocales &&
+      typeof campaign.textLocales === "object" &&
+      !Array.isArray(campaign.textLocales)
+        ? campaign.textLocales
+        : null;
+    var normalizedLocale = normalizeLocale(locale);
+    var direct;
+    var language;
+    var key;
+
+    if (!textLocales) return {};
+
+    direct = textLocales[locale] || textLocales[normalizedLocale];
+    if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+      return direct;
+    }
+
+    language = normalizedLocale.split("-")[0];
+    for (key in textLocales) {
+      if (!Object.prototype.hasOwnProperty.call(textLocales, key)) continue;
+      if (
+        normalizeLocale(key) === normalizedLocale &&
+        textLocales[key] &&
+        typeof textLocales[key] === "object" &&
+        !Array.isArray(textLocales[key])
+      ) {
+        return textLocales[key];
+      }
+      if (
+        normalizeLocale(key) === language &&
+        textLocales[key] &&
+        typeof textLocales[key] === "object" &&
+        !Array.isArray(textLocales[key])
+      ) {
+        return textLocales[key];
       }
     }
 
-    if (!selected) {
-      key = Object.keys(payloads)[0];
-      selected = key ? clonePlainObject(payloads[key]) : { campaigns: [] };
+    return {};
+  }
+
+  function resolveOptimizedFreeShipping(campaign, config) {
+    var settings =
+      campaign &&
+      campaign.freeShipping &&
+      typeof campaign.freeShipping === "object" &&
+      !Array.isArray(campaign.freeShipping)
+        ? campaign.freeShipping
+        : null;
+    var rules = settings ? readPlainObject(settings.thresholdRules) : {};
+    var threshold;
+    var copy;
+
+    if (!settings) return settings;
+
+    copy = Object.assign({}, settings);
+    delete copy.thresholdRules;
+
+    if (Object.keys(rules).length === 0) return copy;
+
+    threshold = resolveFreeShippingThreshold(rules, config);
+    if (threshold !== null) {
+      copy.thresholdAmount = formatAmount(threshold);
     }
 
-    if (!Array.isArray(selected.campaigns)) {
-      selected.campaigns = [];
-    }
-    if (!selected.settings && bundle.settings) {
-      selected.settings = bundle.settings;
-    }
-    selected.context = bundle.context || selected.context || {};
-    selected.__promoPulseBundle = true;
-    selected.__promoPulseGeneratedAt = bundle.__promoPulseGeneratedAt || "";
-    selected.__promoPulseRequiresRuntimeFetch =
-      bundle.__promoPulseRequiresRuntimeFetch === true ||
-      selected.__promoPulseRequiresRuntimeFetch === true;
+    return copy;
+  }
 
-    return selected;
+  function resolveFreeShippingThreshold(rules, config) {
+    var market = readStorefrontConfigValue(config, "market") || detectMarket();
+    var country = readStorefrontConfigValue(config, "country");
+    var markets = readPlainObject(rules.markets);
+    var countries = readPlainObject(rules.countries);
+
+    return firstResolvedValue([
+      readThresholdRule(markets, market),
+      readThresholdRule(countries, country),
+      readThresholdRule(rules, market + ":" + country),
+      readThresholdRule(rules, market),
+      readThresholdRule(rules, country),
+      readNumericThreshold(rules.default),
+    ]);
+  }
+
+  function readThresholdRule(source, key) {
+    if (!key) return null;
+
+    return readNumericThreshold(readPlainObject(source)[key]);
+  }
+
+  function readNumericThreshold(value) {
+    var parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function resolveOptimizedDeliveryCutoff(campaign, config) {
+    var settings =
+      campaign &&
+      campaign.deliveryCutoff &&
+      typeof campaign.deliveryCutoff === "object" &&
+      !Array.isArray(campaign.deliveryCutoff)
+        ? campaign.deliveryCutoff
+        : null;
+    var rules = settings ? readPlainObject(settings.countryRules) : {};
+    var override;
+    var copy;
+
+    if (!settings) return settings;
+
+    copy = Object.assign({}, settings);
+    delete copy.countryRules;
+
+    if (Object.keys(rules).length === 0) return copy;
+
+    override = resolveDeliveryCutoffOverride(rules, config);
+    if (!override) return copy;
+
+    return Object.assign(copy, override);
+  }
+
+  function resolveDeliveryCutoffOverride(rules, config) {
+    var market = readStorefrontConfigValue(config, "market") || detectMarket();
+    var country = readStorefrontConfigValue(config, "country");
+    var markets = readPlainObject(rules.markets);
+    var countries = readPlainObject(rules.countries);
+
+    return firstResolvedValue([
+      readRuleObject(markets, market),
+      readRuleObject(countries, country),
+      readRuleObject(rules, market),
+      readRuleObject(rules, country),
+    ]);
+  }
+
+  function readRuleObject(source, key) {
+    var value;
+
+    if (!key) return null;
+
+    value = readPlainObject(source)[key];
+
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : null;
+  }
+
+  function firstResolvedValue(values) {
+    var index;
+
+    for (index = 0; index < values.length; index += 1) {
+      if (values[index] !== null && values[index] !== undefined) {
+        return values[index];
+      }
+    }
+
+    return null;
   }
 
   function revalidateEmbeddedStorefrontPayload(embedded, url, stored, options) {

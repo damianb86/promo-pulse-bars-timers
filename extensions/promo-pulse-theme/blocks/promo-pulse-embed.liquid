@@ -28,7 +28,7 @@
   </script>
   {% assign promo_pulse_inline_config = app.metafields.promo_pulse.storefront_payload.value %}
   <script>
-    window.PromoPulseCampaignConfigs = {% if promo_pulse_inline_config != blank %}{{ promo_pulse_inline_config | json }}{% else %}{"__promoPulseBundle":true,"__promoPulseRequiresRuntimeFetch":true,"context":{"shop":{{ shop.permanent_domain | json }}}}{% endif %};
+    window.PromoPulseCampaignConfigs = {% if promo_pulse_inline_config != blank %}{{ promo_pulse_inline_config | json }}{% else %}{"__promoPulseBundle":true,"__promoPulseSchemaVersion":2,"__promoPulseRequiresRuntimeFetch":true,"context":{"shop":{{ shop.permanent_domain | json }}},"campaigns":[]}{% endif %};
   </script>
   {{ 'campaign-surface-critical.css' | asset_url | stylesheet_tag }}
   <link

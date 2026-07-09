@@ -98,14 +98,16 @@ test("storefront embed renders from embedded campaign configs without API fetch"
   const embeddedPayload = await payloadResponse.json();
   const embeddedBundle = {
     __promoPulseBundle: true,
-    __promoPulseDefaultDevice: "desktop",
+    __promoPulseSchemaVersion: 2,
     __promoPulseDefaultLocale: "en",
     context: { shop: "demo-shop.myshopify.com" },
-    payloads: {
-      "en:desktop": embeddedPayload,
-    },
+    settings: embeddedPayload.settings,
+    badges: embeddedPayload.badges,
+    campaigns: embeddedPayload.campaigns,
   };
   let storefrontApiRequests = 0;
+
+  expect(embeddedBundle).not.toHaveProperty("payloads");
 
   await page.addInitScript((payload) => {
     (

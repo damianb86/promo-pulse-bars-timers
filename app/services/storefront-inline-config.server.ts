@@ -4,7 +4,7 @@ import { getPublishedCampaignsForShop } from "../models/campaign.server";
 import {
   ALL_FRONT_DEFAULT_PLACEMENTS_TOKEN,
   STOREFRONT_FRONT_PLACEMENTS,
-  serializeStorefrontCampaignsForEmbedding,
+  serializeOptimizedStorefrontCampaignsForEmbedding,
   type StorefrontCampaignContext,
   type StorefrontCampaignSource,
 } from "../utils/storefront-campaigns";
@@ -45,7 +45,6 @@ type MetafieldsSetResponse = {
   errors?: Array<{ message?: string }>;
 };
 
-const inlineDevices = ["desktop", "mobile", "tablet"] as const;
 const inlineConfigMetafieldType = "json";
 
 export async function syncStorefrontInlineConfig(
@@ -130,42 +129,33 @@ export async function buildStorefrontInlineConfig(
   const hasRuntimeOnlyCampaigns =
     inlineCampaigns.length !== planAllowedCampaigns.length;
   const locales = normalizeInlineLocales(settings);
-  const payloads = Object.fromEntries(
-    locales.flatMap((locale) =>
-      inlineDevices.map((device) => {
-        const context = buildInlineContext({
-          device,
-          locale,
-          settings,
-          shopDomain: shop.shopifyDomain,
-        });
-        const campaigns = serializeStorefrontCampaignsForEmbedding(
-          inlineCampaigns,
-          context,
-        );
-
-        return [
-          `${locale}:${device}`,
-          buildStorefrontPayload(campaigns, publicSettings, {
-            hasBadgeCampaigns:
-              hasStorefrontBadgeCampaigns(planAllowedCampaigns),
-          }),
-        ];
-      }),
-    ),
+  const context = buildInlineContext({
+    locale: settings.defaultLocale,
+    settings,
+    shopDomain: shop.shopifyDomain,
+  });
+  const campaigns = serializeOptimizedStorefrontCampaignsForEmbedding(
+    inlineCampaigns,
+    context,
+    locales,
   );
+  const payload = buildStorefrontPayload(campaigns, publicSettings, {
+    hasBadgeCampaigns: hasStorefrontBadgeCampaigns(planAllowedCampaigns),
+  });
 
-  return {
+  return compactInlineConfig({
     __promoPulseBundle: true,
+    __promoPulseSchemaVersion: 2,
     __promoPulseGeneratedAt: new Date().toISOString(),
     __promoPulseDefaultLocale: settings.defaultLocale,
-    __promoPulseDefaultDevice: "desktop",
     __promoPulseRequiresRuntimeFetch: hasRuntimeOnlyCampaigns,
     context: {
       shop: shop.shopifyDomain,
     },
-    payloads,
-  };
+    settings: payload.settings,
+    badges: payload.badges,
+    campaigns: payload.campaigns,
+  });
 }
 
 async function loadCurrentAppInstallationId(admin: ShopifyGraphqlClient) {
@@ -193,12 +183,10 @@ async function loadCurrentAppInstallationId(admin: ShopifyGraphqlClient) {
 }
 
 function buildInlineContext({
-  device,
   locale,
   settings,
   shopDomain,
 }: {
-  device: string;
   locale: string;
   settings: ShopSettingsValues;
   shopDomain: string;
@@ -214,7 +202,7 @@ function buildInlineContext({
       collectionIds: [],
       productTags: [],
       customerTags: [],
-      device,
+      device: "desktop",
       utmSource: "",
       cartSubtotal: null,
       currency: settings.defaultCurrency,
@@ -228,6 +216,48 @@ function buildInlineContext({
       behaviorProfile: null,
     },
     settings,
+  );
+}
+
+function compactInlineConfig<T extends Record<string, unknown>>(value: T): T {
+  return compactInlineValue(value) as T;
+}
+
+function compactInlineValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => compactInlineValue(item))
+      .filter((item) => !isEmptyInlineValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value).reduce<Record<string, unknown>>(
+      (output, [key, entry]) => {
+        const compacted = compactInlineValue(entry);
+
+        if (!isEmptyInlineValue(compacted)) {
+          output[key] = compacted;
+        }
+
+        return output;
+      },
+      {},
+    );
+  }
+
+  return value;
+}
+
+function isEmptyInlineValue(value: unknown) {
+  return (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0) ||
+    (Boolean(value) &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 0)
   );
 }
 

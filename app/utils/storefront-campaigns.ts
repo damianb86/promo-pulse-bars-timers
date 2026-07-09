@@ -124,11 +124,32 @@ export type StorefrontCampaignResponseItem = {
   timezone: string;
 };
 
-export type StorefrontEmbeddedCampaignResponseItem =
-  StorefrontCampaignResponseItem & {
-    targeting?: StorefrontEmbeddedCampaignTargeting;
-    marketRules?: StorefrontEmbeddedMarketRule[];
-  };
+type StorefrontEmbeddedFreeShipping = NonNullable<
+  StorefrontCampaignResponseItem["freeShipping"]
+> & {
+  thresholdRules?: Record<string, unknown>;
+};
+
+type StorefrontEmbeddedDeliveryCutoff = NonNullable<
+  StorefrontCampaignResponseItem["deliveryCutoff"]
+> & {
+  countryRules?: Record<string, unknown>;
+};
+
+export type StorefrontEmbeddedCampaignResponseItem = Omit<
+  StorefrontCampaignResponseItem,
+  "deliveryCutoff" | "freeShipping"
+> & {
+  freeShipping: StorefrontEmbeddedFreeShipping | null;
+  deliveryCutoff: StorefrontEmbeddedDeliveryCutoff | null;
+  targeting?: StorefrontEmbeddedCampaignTargeting;
+  marketRules?: StorefrontEmbeddedMarketRule[];
+  mobileDesign?: StorefrontCampaignResponseItem["design"];
+  textLocales?: Record<
+    string,
+    Partial<Record<CampaignTextField | "ctaUrl", string>>
+  >;
+};
 
 export type StorefrontEmbeddedCampaignTargeting = {
   countries?: string[];
@@ -329,6 +350,66 @@ export function serializeStorefrontCampaignsForEmbedding(
   });
 }
 
+export function serializeOptimizedStorefrontCampaignsForEmbedding(
+  campaigns: StorefrontCampaignSource[],
+  context: StorefrontCampaignContext,
+  locales: string[],
+): StorefrontEmbeddedCampaignResponseItem[] {
+  const defaultLocale = context.locale || locales[0] || "en";
+  const desktopContext = {
+    ...context,
+    device: "desktop",
+    locale: defaultLocale,
+  };
+  const perPlacementItems = campaigns
+    .flatMap((campaign) =>
+      getMatchingPlacements(campaign, desktopContext).map((placement) =>
+        serializeStorefrontCampaignForPlacement(
+          campaign,
+          desktopContext,
+          placement,
+        ),
+      ),
+    )
+    .filter(
+      (campaign): campaign is StorefrontCampaignResponseItem =>
+        campaign !== null,
+    );
+  const byId = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+
+  return dedupeByCampaignPlacements(perPlacementItems).map((campaign) => {
+    const source = byId.get(campaign.id);
+    const targeting = serializeEmbeddedTargeting(source?.targeting ?? null);
+    const marketRules = serializeEmbeddedMarketRules(
+      source?.marketCampaignRules ?? [],
+    );
+    const desktopDesign = source
+      ? serializeDesign(source.design, "desktop")
+      : campaign.design;
+    const mobileDesign = source ? serializeDesign(source.design, "mobile") : {};
+    const texts = source
+      ? serializeTexts(source, defaultLocale)
+      : campaign.texts;
+    const textLocales = source
+      ? serializeEmbeddedTextLocales(source, texts, locales, defaultLocale)
+      : null;
+
+    const optimizedCampaign: StorefrontEmbeddedCampaignResponseItem = {
+      ...campaign,
+      design: desktopDesign,
+      texts,
+      ...(sameJsonPayload(desktopDesign, mobileDesign) ? {} : { mobileDesign }),
+      ...(textLocales ? { textLocales } : {}),
+      ...(targeting ? { targeting } : {}),
+      ...(marketRules.length > 0 ? { marketRules } : {}),
+    };
+
+    addOptimizedContextRules(optimizedCampaign, source);
+
+    return optimizedCampaign;
+  });
+}
+
 function dedupeByCampaignPlacements(
   items: StorefrontCampaignResponseItem[],
 ): StorefrontCampaignResponseItem[] {
@@ -413,6 +494,83 @@ function serializeEmbeddedMarketRules(
       (rule): rule is StorefrontEmbeddedMarketRule =>
         Object.keys(rule).length > 0,
     );
+}
+
+function serializeEmbeddedTextLocales(
+  campaign: StorefrontCampaignSource,
+  defaultTexts: Record<CampaignTextField | "ctaUrl", string>,
+  locales: string[],
+  defaultLocale: string,
+) {
+  const normalizedDefaultLocale = normalizeStorefrontLocale(defaultLocale);
+  const textLocales = Array.from(new Set(locales))
+    .map((locale) => ({
+      locale,
+      normalizedLocale: normalizeStorefrontLocale(locale),
+    }))
+    .filter(
+      ({ normalizedLocale }) =>
+        normalizedLocale && normalizedLocale !== normalizedDefaultLocale,
+    )
+    .reduce<
+      Record<string, Partial<Record<CampaignTextField | "ctaUrl", string>>>
+    >((translations, { locale }) => {
+      const texts = serializeTexts(campaign, locale);
+      const delta = diffTextPayload(defaultTexts, texts);
+
+      if (Object.keys(delta).length > 0) {
+        translations[locale] = delta;
+      }
+
+      return translations;
+    }, {});
+
+  return Object.keys(textLocales).length > 0 ? textLocales : null;
+}
+
+function diffTextPayload(
+  base: Record<CampaignTextField | "ctaUrl", string>,
+  next: Record<CampaignTextField | "ctaUrl", string>,
+) {
+  return (Object.keys(next) as Array<CampaignTextField | "ctaUrl">).reduce<
+    Partial<Record<CampaignTextField | "ctaUrl", string>>
+  >((delta, key) => {
+    if (next[key] !== base[key]) {
+      delta[key] = next[key];
+    }
+
+    return delta;
+  }, {});
+}
+
+function sameJsonPayload(left: unknown, right: unknown) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function addOptimizedContextRules(
+  campaign: StorefrontEmbeddedCampaignResponseItem,
+  source: StorefrontCampaignSource | undefined,
+) {
+  const thresholdRules = jsonObjectOrNull(
+    source?.freeShippingSettings?.thresholdRules,
+  );
+  const countryRules = jsonObjectOrNull(
+    source?.deliveryCutoffSettings?.countryRules,
+  );
+
+  if (thresholdRules && campaign.freeShipping) {
+    campaign.freeShipping = {
+      ...campaign.freeShipping,
+      thresholdRules,
+    };
+  }
+
+  if (countryRules && campaign.deliveryCutoff) {
+    campaign.deliveryCutoff = {
+      ...campaign.deliveryCutoff,
+      countryRules,
+    };
+  }
 }
 
 export function shouldBypassStorefrontCache(
@@ -767,7 +925,7 @@ function serializeFreeShipping(
     context,
   );
 
-  return {
+  return compactObject({
     thresholdAmount: resolvedThresholdAmount.toFixed(2),
     baseThresholdAmount: settings.thresholdAmount.toString(),
     currencyCode: settings.currencyCode,
@@ -775,7 +933,7 @@ function serializeFreeShipping(
     emptyCartMessage: settings.emptyCartMessage ?? "",
     successMessage: settings.successMessage,
     progressStyle: settings.progressStyle,
-  };
+  });
 }
 
 function resolveFreeShippingThreshold(
@@ -803,7 +961,7 @@ function serializeDeliveryCutoff(
   if (!settings) return null;
   const resolvedSettings = resolveDeliveryCutoffSettings(settings, context);
 
-  return {
+  return compactObject({
     afterCutoffBehavior: resolvedSettings.afterCutoffBehavior,
     cutoffHour: resolvedSettings.cutoffHour,
     cutoffMinute: resolvedSettings.cutoffMinute,
@@ -812,7 +970,7 @@ function serializeDeliveryCutoff(
     maxDeliveryDays: resolvedSettings.maxDeliveryDays,
     workingDays: resolvedSettings.workingDays,
     holidays: resolvedSettings.holidays,
-  };
+  });
 }
 
 function resolveDeliveryCutoffSettings(

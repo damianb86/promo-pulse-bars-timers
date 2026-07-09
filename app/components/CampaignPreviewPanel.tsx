@@ -120,14 +120,12 @@ export function CampaignPreviewPanel({
               ))}
             </select>
           </label>
-          {toolbarAccessory ? (
-            <div className="counterpulse-preview-toolbar__accessory">
-              {toolbarAccessory}
-            </div>
-          ) : null}
         </div>
         <div className="counterpulse-preview-toolbar__center">
           <DevicePreviewToggle value={device} onChange={onDeviceChange} />
+        </div>
+        <div className="counterpulse-preview-toolbar__end">
+          {toolbarAccessory}
         </div>
       </div>
       <CampaignPreview

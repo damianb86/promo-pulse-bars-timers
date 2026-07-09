@@ -26,6 +26,15 @@ export function OfferDesignPanel({
   onNumberChange: (key: NumberDesignKey, value: string) => void;
   onColorChange: (key: ColorDesignKey, value: string) => void;
 }) {
+  const showCode = values.showDiscountCode;
+  const showCopyButton = values.showCopyCodeButton;
+  const showApplyButton = values.showApplyDiscountButton;
+  const visibleOfferPartCount = [
+    showCode,
+    showCopyButton,
+    showApplyButton,
+  ].filter(Boolean).length;
+
   return (
     <DesignPanel title="Offer code" missingElements={missingElements}>
       <div className="counterpulse-toggle-grid">
@@ -51,142 +60,238 @@ export function OfferDesignPanel({
         />
       </div>
 
-      <DesignGroup error={errors.offerCodeLayout} label="Layout">
-        <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
-          {designOfferCodeLayoutOptions.map((option) => (
-            <button
-              className={
-                values.offerCodeLayout === option.value ? "is-active" : ""
-              }
-              key={option.value}
-              type="button"
-              onClick={() => onValueChange("offerCodeLayout", option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+      {visibleOfferPartCount > 1 ? (
+        <DesignGroup error={errors.offerCodeLayout} label="Layout">
+          <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+            {designOfferCodeLayoutOptions.map((option) => (
+              <button
+                className={
+                  values.offerCodeLayout === option.value ? "is-active" : ""
+                }
+                key={option.value}
+                type="button"
+                onClick={() => onValueChange("offerCodeLayout", option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <input
+            name="offerCodeLayout"
+            type="hidden"
+            value={values.offerCodeLayout}
+          />
+        </DesignGroup>
+      ) : (
         <input
           name="offerCodeLayout"
           type="hidden"
           value={values.offerCodeLayout}
         />
-      </DesignGroup>
+      )}
 
       <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-        <DesignField label="Code label" error={errors.offerCodeLabel}>
+        {showCode ? (
+          <DesignField label="Code label" error={errors.offerCodeLabel}>
+            <input
+              maxLength={32}
+              name="offerCodeLabel"
+              value={values.offerCodeLabel}
+              onChange={(event) =>
+                onValueChange("offerCodeLabel", event.target.value)
+              }
+            />
+          </DesignField>
+        ) : (
           <input
-            maxLength={32}
             name="offerCodeLabel"
+            type="hidden"
             value={values.offerCodeLabel}
-            onChange={(event) =>
-              onValueChange("offerCodeLabel", event.target.value)
-            }
           />
-        </DesignField>
-        <DesignField label="Copy label" error={errors.copyCodeLabel}>
-          <input
-            maxLength={24}
-            name="copyCodeLabel"
-            value={values.copyCodeLabel}
-            onChange={(event) =>
-              onValueChange("copyCodeLabel", event.target.value)
-            }
-          />
-        </DesignField>
-        <DesignField label="Copied label" error={errors.copiedCodeLabel}>
-          <input
-            maxLength={24}
-            name="copiedCodeLabel"
-            value={values.copiedCodeLabel}
-            onChange={(event) =>
-              onValueChange("copiedCodeLabel", event.target.value)
-            }
-          />
-        </DesignField>
-        <DesignField label="Apply label" error={errors.applyDiscountLabel}>
-          <input
-            maxLength={28}
-            name="applyDiscountLabel"
-            value={values.applyDiscountLabel}
-            onChange={(event) =>
-              onValueChange("applyDiscountLabel", event.target.value)
-            }
-          />
-        </DesignField>
-        <DesignField
-          label="Applied message"
-          error={errors.appliedDiscountMessage}
-        >
-          <input
-            maxLength={80}
-            name="appliedDiscountMessage"
-            value={values.appliedDiscountMessage}
-            onChange={(event) =>
-              onValueChange("appliedDiscountMessage", event.target.value)
-            }
-          />
-        </DesignField>
+        )}
+        {showCopyButton ? (
+          <>
+            <DesignField label="Copy label" error={errors.copyCodeLabel}>
+              <input
+                maxLength={24}
+                name="copyCodeLabel"
+                value={values.copyCodeLabel}
+                onChange={(event) =>
+                  onValueChange("copyCodeLabel", event.target.value)
+                }
+              />
+            </DesignField>
+            <DesignField label="Copied label" error={errors.copiedCodeLabel}>
+              <input
+                maxLength={24}
+                name="copiedCodeLabel"
+                value={values.copiedCodeLabel}
+                onChange={(event) =>
+                  onValueChange("copiedCodeLabel", event.target.value)
+                }
+              />
+            </DesignField>
+          </>
+        ) : (
+          <>
+            <input
+              name="copyCodeLabel"
+              type="hidden"
+              value={values.copyCodeLabel}
+            />
+            <input
+              name="copiedCodeLabel"
+              type="hidden"
+              value={values.copiedCodeLabel}
+            />
+          </>
+        )}
+        {showApplyButton ? (
+          <>
+            <DesignField label="Apply label" error={errors.applyDiscountLabel}>
+              <input
+                maxLength={28}
+                name="applyDiscountLabel"
+                value={values.applyDiscountLabel}
+                onChange={(event) =>
+                  onValueChange("applyDiscountLabel", event.target.value)
+                }
+              />
+            </DesignField>
+            <DesignField
+              label="Applied message"
+              error={errors.appliedDiscountMessage}
+            >
+              <input
+                maxLength={80}
+                name="appliedDiscountMessage"
+                value={values.appliedDiscountMessage}
+                onChange={(event) =>
+                  onValueChange("appliedDiscountMessage", event.target.value)
+                }
+              />
+            </DesignField>
+          </>
+        ) : (
+          <>
+            <input
+              name="applyDiscountLabel"
+              type="hidden"
+              value={values.applyDiscountLabel}
+            />
+            <input
+              name="appliedDiscountMessage"
+              type="hidden"
+              value={values.appliedDiscountMessage}
+            />
+          </>
+        )}
       </div>
 
-      <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-        <ColorField
-          error={errors.offerCodeTextColor}
-          label="Code text"
-          name="offerCodeTextColor"
-          value={values.offerCodeTextColor}
-          onChange={(value) => onColorChange("offerCodeTextColor", value)}
-        />
-        <ColorField
-          error={errors.offerCodeBackgroundColor}
-          label="Code background"
-          name="offerCodeBackgroundColor"
-          value={values.offerCodeBackgroundColor}
-          onChange={(value) => onColorChange("offerCodeBackgroundColor", value)}
-        />
-        <ColorField
-          error={errors.offerCodeBorderColor}
-          label="Code border"
-          name="offerCodeBorderColor"
-          value={values.offerCodeBorderColor}
-          onChange={(value) => onColorChange("offerCodeBorderColor", value)}
-        />
-        <NumberField
-          error={errors.offerCodeFontSize}
-          label="Code text size"
-          max={24}
-          min={10}
-          name="offerCodeFontSize"
-          value={values.offerCodeFontSize}
-          onChange={(value) => onNumberChange("offerCodeFontSize", value)}
-        />
-        <NumberField
-          error={errors.offerCodeBorderRadius}
-          label="Code radius"
-          max={40}
-          min={0}
-          name="offerCodeBorderRadius"
-          value={values.offerCodeBorderRadius}
-          onChange={(value) => onNumberChange("offerCodeBorderRadius", value)}
-        />
-        <NumberField
-          error={errors.offerCodePaddingBlock}
-          label="Code vertical padding"
-          max={24}
-          min={2}
-          name="offerCodePaddingBlock"
-          value={values.offerCodePaddingBlock}
-          onChange={(value) => onNumberChange("offerCodePaddingBlock", value)}
-        />
-        <NumberField
-          error={errors.offerCodePaddingInline}
-          label="Code horizontal padding"
-          max={32}
-          min={4}
-          name="offerCodePaddingInline"
-          value={values.offerCodePaddingInline}
-          onChange={(value) => onNumberChange("offerCodePaddingInline", value)}
-        />
+      {showCode ? (
+        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+          <ColorField
+            error={errors.offerCodeTextColor}
+            label="Code text"
+            name="offerCodeTextColor"
+            value={values.offerCodeTextColor}
+            onChange={(value) => onColorChange("offerCodeTextColor", value)}
+          />
+          <ColorField
+            error={errors.offerCodeBackgroundColor}
+            label="Code background"
+            name="offerCodeBackgroundColor"
+            value={values.offerCodeBackgroundColor}
+            onChange={(value) =>
+              onColorChange("offerCodeBackgroundColor", value)
+            }
+          />
+          <ColorField
+            error={errors.offerCodeBorderColor}
+            label="Code border"
+            name="offerCodeBorderColor"
+            value={values.offerCodeBorderColor}
+            onChange={(value) => onColorChange("offerCodeBorderColor", value)}
+          />
+          <NumberField
+            error={errors.offerCodeFontSize}
+            label="Code text size"
+            max={24}
+            min={10}
+            name="offerCodeFontSize"
+            value={values.offerCodeFontSize}
+            onChange={(value) => onNumberChange("offerCodeFontSize", value)}
+          />
+          <NumberField
+            error={errors.offerCodeBorderRadius}
+            label="Code radius"
+            max={40}
+            min={0}
+            name="offerCodeBorderRadius"
+            value={values.offerCodeBorderRadius}
+            onChange={(value) => onNumberChange("offerCodeBorderRadius", value)}
+          />
+          <NumberField
+            error={errors.offerCodePaddingBlock}
+            label="Code vertical padding"
+            max={24}
+            min={2}
+            name="offerCodePaddingBlock"
+            value={values.offerCodePaddingBlock}
+            onChange={(value) => onNumberChange("offerCodePaddingBlock", value)}
+          />
+          <NumberField
+            error={errors.offerCodePaddingInline}
+            label="Code horizontal padding"
+            max={32}
+            min={4}
+            name="offerCodePaddingInline"
+            value={values.offerCodePaddingInline}
+            onChange={(value) =>
+              onNumberChange("offerCodePaddingInline", value)
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <input
+            name="offerCodeTextColor"
+            type="hidden"
+            value={values.offerCodeTextColor}
+          />
+          <input
+            name="offerCodeBackgroundColor"
+            type="hidden"
+            value={values.offerCodeBackgroundColor}
+          />
+          <input
+            name="offerCodeBorderColor"
+            type="hidden"
+            value={values.offerCodeBorderColor}
+          />
+          <input
+            name="offerCodeFontSize"
+            type="hidden"
+            value={values.offerCodeFontSize}
+          />
+          <input
+            name="offerCodeBorderRadius"
+            type="hidden"
+            value={values.offerCodeBorderRadius}
+          />
+          <input
+            name="offerCodePaddingBlock"
+            type="hidden"
+            value={values.offerCodePaddingBlock}
+          />
+          <input
+            name="offerCodePaddingInline"
+            type="hidden"
+            value={values.offerCodePaddingInline}
+          />
+        </>
+      )}
+      {visibleOfferPartCount > 1 ? (
         <NumberField
           error={errors.offerCodeGap}
           label="Offer gap"
@@ -196,140 +301,225 @@ export function OfferDesignPanel({
           value={values.offerCodeGap}
           onChange={(value) => onNumberChange("offerCodeGap", value)}
         />
-      </div>
+      ) : (
+        <input name="offerCodeGap" type="hidden" value={values.offerCodeGap} />
+      )}
 
-      <DesignGroup label="Copy button">
-        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-          <ColorField
-            error={errors.copyButtonBackgroundColor}
-            label="Background"
+      {showCopyButton ? (
+        <DesignGroup label="Copy button">
+          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+            <ColorField
+              error={errors.copyButtonBackgroundColor}
+              label="Background"
+              name="copyButtonBackgroundColor"
+              value={values.copyButtonBackgroundColor}
+              onChange={(value) =>
+                onColorChange("copyButtonBackgroundColor", value)
+              }
+            />
+            <ColorField
+              error={errors.copyButtonTextColor}
+              label="Text"
+              name="copyButtonTextColor"
+              value={values.copyButtonTextColor}
+              onChange={(value) => onColorChange("copyButtonTextColor", value)}
+            />
+            <ColorField
+              error={errors.copyButtonBorderColor}
+              label="Border"
+              name="copyButtonBorderColor"
+              value={values.copyButtonBorderColor}
+              onChange={(value) =>
+                onColorChange("copyButtonBorderColor", value)
+              }
+            />
+            <NumberField
+              error={errors.copyButtonFontSize}
+              label="Text size"
+              max={24}
+              min={10}
+              name="copyButtonFontSize"
+              value={values.copyButtonFontSize}
+              onChange={(value) => onNumberChange("copyButtonFontSize", value)}
+            />
+            <NumberField
+              error={errors.copyButtonBorderRadius}
+              label="Radius"
+              max={40}
+              min={0}
+              name="copyButtonBorderRadius"
+              value={values.copyButtonBorderRadius}
+              onChange={(value) =>
+                onNumberChange("copyButtonBorderRadius", value)
+              }
+            />
+          </div>
+        </DesignGroup>
+      ) : (
+        <>
+          <input
             name="copyButtonBackgroundColor"
+            type="hidden"
             value={values.copyButtonBackgroundColor}
-            onChange={(value) =>
-              onColorChange("copyButtonBackgroundColor", value)
-            }
           />
-          <ColorField
-            error={errors.copyButtonTextColor}
-            label="Text"
+          <input
             name="copyButtonTextColor"
+            type="hidden"
             value={values.copyButtonTextColor}
-            onChange={(value) => onColorChange("copyButtonTextColor", value)}
           />
-          <ColorField
-            error={errors.copyButtonBorderColor}
-            label="Border"
+          <input
             name="copyButtonBorderColor"
+            type="hidden"
             value={values.copyButtonBorderColor}
-            onChange={(value) => onColorChange("copyButtonBorderColor", value)}
           />
-          <NumberField
-            error={errors.copyButtonFontSize}
-            label="Text size"
-            max={24}
-            min={10}
+          <input
             name="copyButtonFontSize"
+            type="hidden"
             value={values.copyButtonFontSize}
-            onChange={(value) => onNumberChange("copyButtonFontSize", value)}
           />
-          <NumberField
-            error={errors.copyButtonBorderRadius}
-            label="Radius"
-            max={40}
-            min={0}
+          <input
             name="copyButtonBorderRadius"
+            type="hidden"
             value={values.copyButtonBorderRadius}
-            onChange={(value) => onNumberChange("copyButtonBorderRadius", value)}
           />
-        </div>
-      </DesignGroup>
+        </>
+      )}
 
-      <DesignGroup label="Apply button">
-        <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-          <ColorField
-            error={errors.applyButtonBackgroundColor}
-            label="Background"
+      {showApplyButton ? (
+        <DesignGroup label="Apply button">
+          <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+            <ColorField
+              error={errors.applyButtonBackgroundColor}
+              label="Background"
+              name="applyButtonBackgroundColor"
+              value={values.applyButtonBackgroundColor}
+              onChange={(value) =>
+                onColorChange("applyButtonBackgroundColor", value)
+              }
+            />
+            <ColorField
+              error={errors.applyButtonTextColor}
+              label="Text"
+              name="applyButtonTextColor"
+              value={values.applyButtonTextColor}
+              onChange={(value) => onColorChange("applyButtonTextColor", value)}
+            />
+            <ColorField
+              error={errors.applyButtonBorderColor}
+              label="Border"
+              name="applyButtonBorderColor"
+              value={values.applyButtonBorderColor}
+              onChange={(value) =>
+                onColorChange("applyButtonBorderColor", value)
+              }
+            />
+            <NumberField
+              error={errors.applyButtonFontSize}
+              label="Text size"
+              max={24}
+              min={10}
+              name="applyButtonFontSize"
+              value={values.applyButtonFontSize}
+              onChange={(value) => onNumberChange("applyButtonFontSize", value)}
+            />
+            <NumberField
+              error={errors.applyButtonBorderRadius}
+              label="Radius"
+              max={40}
+              min={0}
+              name="applyButtonBorderRadius"
+              value={values.applyButtonBorderRadius}
+              onChange={(value) =>
+                onNumberChange("applyButtonBorderRadius", value)
+              }
+            />
+          </div>
+        </DesignGroup>
+      ) : (
+        <>
+          <input
             name="applyButtonBackgroundColor"
+            type="hidden"
             value={values.applyButtonBackgroundColor}
-            onChange={(value) =>
-              onColorChange("applyButtonBackgroundColor", value)
-            }
           />
-          <ColorField
-            error={errors.applyButtonTextColor}
-            label="Text"
+          <input
             name="applyButtonTextColor"
+            type="hidden"
             value={values.applyButtonTextColor}
-            onChange={(value) => onColorChange("applyButtonTextColor", value)}
           />
-          <ColorField
-            error={errors.applyButtonBorderColor}
-            label="Border"
+          <input
             name="applyButtonBorderColor"
+            type="hidden"
             value={values.applyButtonBorderColor}
-            onChange={(value) => onColorChange("applyButtonBorderColor", value)}
           />
-          <NumberField
-            error={errors.applyButtonFontSize}
-            label="Text size"
-            max={24}
-            min={10}
+          <input
             name="applyButtonFontSize"
+            type="hidden"
             value={values.applyButtonFontSize}
-            onChange={(value) => onNumberChange("applyButtonFontSize", value)}
           />
-          <NumberField
-            error={errors.applyButtonBorderRadius}
-            label="Radius"
-            max={40}
-            min={0}
+          <input
             name="applyButtonBorderRadius"
+            type="hidden"
             value={values.applyButtonBorderRadius}
-            onChange={(value) =>
-              onNumberChange("applyButtonBorderRadius", value)
-            }
           />
-        </div>
-      </DesignGroup>
+        </>
+      )}
 
       <div className="counterpulse-form-grid counterpulse-form-grid--wide">
-        <DesignField label="After copy" error={errors.offerCopyBehavior}>
-          <select
+        {showCopyButton ? (
+          <DesignField label="After copy" error={errors.offerCopyBehavior}>
+            <select
+              name="offerCopyBehavior"
+              value={values.offerCopyBehavior}
+              onChange={(event) =>
+                onValueChange(
+                  "offerCopyBehavior",
+                  event.target
+                    .value as CampaignDesignValues["offerCopyBehavior"],
+                )
+              }
+            >
+              {designOfferCopyBehaviorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+        ) : (
+          <input
             name="offerCopyBehavior"
+            type="hidden"
             value={values.offerCopyBehavior}
-            onChange={(event) =>
-              onValueChange(
-                "offerCopyBehavior",
-                event.target.value as CampaignDesignValues["offerCopyBehavior"],
-              )
-            }
-          >
-            {designOfferCopyBehaviorOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </DesignField>
-        <DesignField label="After apply" error={errors.offerApplyBehavior}>
-          <select
+          />
+        )}
+        {showApplyButton ? (
+          <DesignField label="After apply" error={errors.offerApplyBehavior}>
+            <select
+              name="offerApplyBehavior"
+              value={values.offerApplyBehavior}
+              onChange={(event) =>
+                onValueChange(
+                  "offerApplyBehavior",
+                  event.target
+                    .value as CampaignDesignValues["offerApplyBehavior"],
+                )
+              }
+            >
+              {designOfferApplyBehaviorOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </DesignField>
+        ) : (
+          <input
             name="offerApplyBehavior"
+            type="hidden"
             value={values.offerApplyBehavior}
-            onChange={(event) =>
-              onValueChange(
-                "offerApplyBehavior",
-                event.target
-                  .value as CampaignDesignValues["offerApplyBehavior"],
-              )
-            }
-          >
-            {designOfferApplyBehaviorOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </DesignField>
+          />
+        )}
       </div>
     </DesignPanel>
   );
@@ -570,4 +760,3 @@ export function CustomCssInfoContent() {
     </div>
   );
 }
-

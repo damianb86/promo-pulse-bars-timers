@@ -10335,6 +10335,14 @@ s-page::part(page) {
   flex: 0 0 auto;
 }
 
+.counterpulse-preview-toolbar__end {
+  grid-column: 3;
+  display: inline-flex;
+  justify-content: flex-end;
+  justify-self: end;
+  min-width: 0;
+}
+
 .counterpulse-preview-toolbar__center {
   grid-column: 2;
   display: inline-flex;
@@ -12538,7 +12546,8 @@ s-page::part(page) {
   }
 
   .counterpulse-preview-toolbar__start,
-  .counterpulse-preview-toolbar__center {
+  .counterpulse-preview-toolbar__center,
+  .counterpulse-preview-toolbar__end {
     grid-column: auto;
   }
 

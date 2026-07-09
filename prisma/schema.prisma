@@ -316,6 +316,14 @@ model CampaignDesign {
   icon                      CampaignDesignIcon       @default(NONE)
   iconSize                  Int                      @default(20)
   customIconUrl             String                   @default("")
+  iconBadgeMode             DesignIconBadgeMode      @default(ICON)
+  iconBadgeText             String                   @default("FLASH SALE")
+  iconBadgeShowGlyph        Boolean                  @default(true)
+  iconBadgeBackgroundColor  String                   @default("#FCE7F3")
+  iconBadgeTextColor        String                   @default("#BE185D")
+  iconBadgeFontSize         Int                      @default(13)
+  iconBadgeBorderRadius     Int                      @default(999)
+  splitDividerEnabled       Boolean                  @default(true)
   showDiscountCode          Boolean                  @default(true)
   showCopyCodeButton        Boolean                  @default(true)
   showApplyDiscountButton   Boolean                  @default(true)
@@ -1268,6 +1276,11 @@ enum DesignOfferApplyBehavior {
   SHOW_APPLIED
   HIDE_OFFER
   CLOSE_CAMPAIGN
+}
+
+enum DesignIconBadgeMode {
+  ICON
+  BADGE
 }
 
 enum CampaignDesignIcon {

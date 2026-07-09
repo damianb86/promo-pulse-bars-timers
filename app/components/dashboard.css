@@ -10547,6 +10547,56 @@ s-page::part(page) {
   padding-inline: var(--cp-padding-inline);
 }
 
+/* Split layouts collapse to one centered column on mobile: drop the divider
+   and return the offer to the normal flow. */
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-message,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced_reverse
+  .counterpulse-preview-message {
+  align-items: center;
+  border-right: 0;
+  border-left: 0;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-offer,
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-balanced_reverse
+  .counterpulse-preview-offer {
+  grid-column: auto;
+  grid-row: auto;
+  justify-self: auto;
+}
+
+/* Action-left / Side-rail dividers are dropped on the collapsed mobile layout. */
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-cta_left
+  .counterpulse-preview-actions {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-cta_left
+  .counterpulse-preview-offer {
+  grid-column: auto;
+  grid-row: auto;
+  justify-self: auto;
+}
+
+.counterpulse-preview-shell--mobile
+  .counterpulse-preview-promo--layout-side_rail
+  .counterpulse-preview-timer {
+  flex-direction: row;
+  border-right: 0;
+  padding-right: 0;
+}
+
 .counterpulse-preview-shell--mobile .counterpulse-preview-promo--layout-inline {
   flex-direction: column;
   align-items: center;
@@ -11231,19 +11281,29 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-promo--layout-balanced {
-  width: min(100%, 620px);
-  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.72fr);
-  align-items: center;
+  width: min(100%, 660px);
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.82fr);
+  grid-template-rows: auto auto auto auto;
+  align-items: stretch;
   justify-items: stretch;
+  column-gap: 28px;
+  row-gap: 14px;
   text-align: left;
 }
 
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-message {
   grid-column: 1;
-  justify-content: flex-start;
+  grid-row: 1 / -1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
+  border-right: var(--cp-split-divider, 0px) solid
+    var(--cp-border-color, #e5e7eb);
+  padding-right: 26px;
 }
 
 .counterpulse-preview-promo--layout-balanced
@@ -11262,41 +11322,58 @@ s-page::part(page) {
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer {
   grid-column: 2;
   grid-row: 1;
-  justify-self: end;
+  justify-self: stretch;
   max-width: 100%;
   min-width: 0;
   flex-wrap: wrap;
 }
 
-.counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions {
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-offer {
   grid-column: 2;
   grid-row: 2;
-  justify-self: end;
-  justify-content: flex-end;
+  justify-self: stretch;
+}
+
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-actions {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: stretch;
+  justify-content: center;
 }
 
 .counterpulse-preview-promo--layout-balanced .counterpulse-preview-progress {
   grid-column: 1 / -1;
+  grid-row: 4;
   justify-self: stretch;
   width: 100%;
 }
 
-/* Split reversed: mirror of `balanced` — timer/action left, copy right. */
+/* Split reversed: mirror of `balanced` — timer/offer/action left, copy right. */
 .counterpulse-preview-promo--layout-balanced_reverse {
-  width: min(100%, 620px);
-  grid-template-columns: minmax(170px, 0.72fr) minmax(0, 1fr);
-  align-items: center;
+  width: min(100%, 660px);
+  grid-template-columns: minmax(210px, 0.82fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
+  align-items: stretch;
   justify-items: stretch;
+  column-gap: 28px;
+  row-gap: 14px;
   text-align: left;
 }
 
 .counterpulse-preview-promo--layout-balanced_reverse
   .counterpulse-preview-message {
   grid-column: 2;
-  justify-content: flex-start;
+  grid-row: 1 / -1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
+  border-left: var(--cp-split-divider, 0px) solid
+    var(--cp-border-color, #e5e7eb);
+  padding-left: 26px;
 }
 
 .counterpulse-preview-promo--layout-balanced_reverse
@@ -11316,25 +11393,47 @@ s-page::part(page) {
   .counterpulse-preview-timer {
   grid-column: 1;
   grid-row: 1;
-  justify-self: start;
+  justify-self: stretch;
   max-width: 100%;
   min-width: 0;
   flex-wrap: wrap;
 }
 
 .counterpulse-preview-promo--layout-balanced_reverse
-  .counterpulse-preview-actions {
+  .counterpulse-preview-offer {
   grid-column: 1;
   grid-row: 2;
-  justify-self: start;
-  justify-content: flex-start;
+  justify-self: stretch;
+}
+
+.counterpulse-preview-promo--layout-balanced_reverse
+  .counterpulse-preview-actions {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: stretch;
+  justify-content: center;
 }
 
 .counterpulse-preview-promo--layout-balanced_reverse
   .counterpulse-preview-progress {
   grid-column: 1 / -1;
+  grid-row: 4;
   justify-self: stretch;
   width: 100%;
+}
+
+/* 2x2 timer grid for boxes/grouped variants inside the split right column. */
+.counterpulse-preview-promo--layout-balanced .counterpulse-preview-timer--boxes,
+.counterpulse-preview-promo--layout-balanced
+  .counterpulse-preview-timer--grouped,
+.counterpulse-preview-promo--layout-balanced_reverse
+  .counterpulse-preview-timer--boxes,
+.counterpulse-preview-promo--layout-balanced_reverse
+  .counterpulse-preview-timer--grouped {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cp-timer-gap, 10px);
+  justify-items: stretch;
 }
 
 .counterpulse-preview-promo--layout-inline {
@@ -11418,7 +11517,12 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-promo--layout-cta_left {
-  grid-template-columns: auto minmax(0, 1fr);
+  width: min(100%, 680px);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 22px;
+  row-gap: 12px;
 }
 
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
@@ -11432,41 +11536,81 @@ s-page::part(page) {
   align-self: center;
 }
 
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
-  grid-column: 2;
+/* Action left — button pinned far left with a divider, then the message and
+   the timer share one left-aligned row. */
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: center;
+  justify-self: start;
+  justify-content: flex-start;
+  border-right: var(--cp-split-divider, 1px) solid
+    var(--cp-border-color, #e5e7eb);
+  padding-right: 22px;
 }
 
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer {
-  justify-self: end;
-  justify-content: flex-end;
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-start;
+  min-width: 0;
 }
 
 .counterpulse-preview-promo--layout-cta_left
   .counterpulse-preview-message-copy {
-  justify-items: end;
-  text-align: right;
+  justify-items: start;
+  text-align: left;
+}
+
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-offer {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: start;
 }
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
-  justify-self: end;
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: stretch;
+  width: 100%;
 }
 
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions {
-  grid-column: 1;
-  grid-row: 1 / span 3;
-  align-self: center;
-}
-
+/* Action top — centered stack with the button above the message. */
 .counterpulse-preview-promo--layout-cta_top {
-  width: min(100%, 460px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 520px);
   text-align: center;
 }
 
 .counterpulse-preview-promo--layout-cta_top .counterpulse-preview-actions {
   order: -1;
+  justify-content: center;
+}
+
+.counterpulse-preview-promo--layout-cta_top .counterpulse-preview-message {
+  justify-content: center;
+}
+
+.counterpulse-preview-promo--layout-cta_top
+  .counterpulse-preview-message-copy {
+  justify-items: center;
+  text-align: center;
+}
+
+.counterpulse-preview-promo--layout-cta_top .counterpulse-preview-timer {
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* Timer hero — countdown leads as a large centered hero, message beneath,
@@ -11491,7 +11635,14 @@ s-page::part(page) {
   text-align: center;
 }
 .counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-actions {
+  align-self: stretch;
   justify-content: center;
+}
+.counterpulse-preview-promo--layout-hero_timer
+  .counterpulse-preview-actions
+  .counterpulse-preview-cta {
+  flex: 1 1 auto;
+  text-align: center;
 }
 .counterpulse-preview-promo--layout-hero_timer .counterpulse-preview-progress {
   width: min(100%, 520px);
@@ -11511,8 +11662,11 @@ s-page::part(page) {
   grid-column: 1;
   grid-row: 1 / span 2;
   align-self: center;
+  flex-direction: column;
+  align-items: stretch;
   padding-right: max(12px, var(--cp-gap));
-  border-right: 1px solid rgba(128, 128, 128, 0.28);
+  border-right: var(--cp-split-divider, 1px) solid
+    var(--cp-border-color, #e5e7eb);
 }
 .counterpulse-preview-promo--layout-side_rail .counterpulse-preview-message {
   grid-column: 2;
@@ -11787,6 +11941,34 @@ s-page::part(page) {
   height: auto;
   max-width: 100%;
   max-height: 100%;
+}
+
+/* Icon/Badge element in badge mode: a pill with an optional leading glyph. */
+.counterpulse-preview-icon-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.42em 0.85em;
+  border-radius: var(--cp-badge-radius, 999px);
+  background: var(--cp-badge-bg, #fce7f3);
+  color: var(--cp-badge-text, #be185d);
+  font-size: var(--cp-badge-size, 13px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.counterpulse-preview-icon-badge .counterpulse-preview-icon {
+  width: 1.15em;
+  height: 1.15em;
+  color: inherit;
+}
+
+.counterpulse-preview-icon-badge-text {
+  display: inline-block;
 }
 
 @keyframes counterpulse-preview-fade-in {

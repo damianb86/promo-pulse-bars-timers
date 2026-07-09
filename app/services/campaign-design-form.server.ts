@@ -337,6 +337,29 @@ export function parseCampaignDesignFormData(
       defaultCampaignDesignValues.iconSize,
     ),
     customIconUrl: readString(formData, "customIconUrl").slice(0, 150_000),
+    iconBadgeMode:
+      readString(formData, "iconBadgeMode") === "BADGE" ? "BADGE" : "ICON",
+    iconBadgeText:
+      readString(formData, "iconBadgeText") ||
+      defaultCampaignDesignValues.iconBadgeText,
+    iconBadgeShowGlyph: readBoolean(formData, "iconBadgeShowGlyph"),
+    iconBadgeBackgroundColor:
+      readString(formData, "iconBadgeBackgroundColor") ||
+      defaultCampaignDesignValues.iconBadgeBackgroundColor,
+    iconBadgeTextColor:
+      readString(formData, "iconBadgeTextColor") ||
+      defaultCampaignDesignValues.iconBadgeTextColor,
+    iconBadgeFontSize: readInteger(
+      formData,
+      "iconBadgeFontSize",
+      defaultCampaignDesignValues.iconBadgeFontSize,
+    ),
+    iconBadgeBorderRadius: readInteger(
+      formData,
+      "iconBadgeBorderRadius",
+      defaultCampaignDesignValues.iconBadgeBorderRadius,
+    ),
+    splitDividerEnabled: readBoolean(formData, "splitDividerEnabled"),
     showDiscountCode: readBoolean(formData, "showDiscountCode"),
     showCopyCodeButton: readBoolean(formData, "showCopyCodeButton"),
     showApplyDiscountButton: readBoolean(formData, "showApplyDiscountButton"),

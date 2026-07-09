@@ -9,6 +9,7 @@ import {
   designBannerAnimationOptions,
   designFontFamilyOptions,
   designIconOptions,
+  designIconBadgeModeOptions,
   designLayoutOptions,
   designFloatPositionOptions,
   mobileDesignLayoutValues,
@@ -382,6 +383,28 @@ export function DesignControls({
             </PreviewSelectDropdown>
             <input name="layout" type="hidden" value={values.layout} />
           </DesignGroup>
+
+          {values.layout === "BALANCED" ||
+          values.layout === "BALANCED_REVERSE" ||
+          values.layout === "CTA_LEFT" ||
+          values.layout === "SIDE_RAIL" ? (
+            <DesignGroup label="Divider">
+              <ToggleField
+                checked={values.splitDividerEnabled}
+                label="Show divider line"
+                name="splitDividerEnabled"
+                onChange={(checked) =>
+                  updateValue("splitDividerEnabled", checked)
+                }
+              />
+            </DesignGroup>
+          ) : (
+            <input
+              name="splitDividerEnabled"
+              type="hidden"
+              value={String(values.splitDividerEnabled)}
+            />
+          )}
 
           <DesignGroup error={errors.templateKey} label="Preset">
             <PreviewSelectDropdown
@@ -1053,12 +1076,12 @@ export function DesignControls({
         )}
 
         <ElementPanel
-          title="Icon"
+          title="Icon / Badge"
           present={iconPresent}
           canManage={canManageElements}
-          emptyText="This campaign has no icon."
-          addLabel="Add icon"
-          removeLabel="Remove icon"
+          emptyText="This campaign has no icon or badge."
+          addLabel="Add icon / badge"
+          removeLabel="Remove icon / badge"
           onAdd={() =>
             addElement("icon", {
               icon: values.icon !== "NONE" ? values.icon : "FIRE",
@@ -1070,6 +1093,7 @@ export function DesignControls({
               icon: "NONE",
               showIcon: false,
               customIconUrl: "",
+              iconBadgeMode: "ICON",
             })
           }
         >
@@ -1091,6 +1115,27 @@ export function DesignControls({
                   ))}
               </select>
             </DesignField>
+            <DesignGroup label="Display as" error={errors.iconBadgeMode}>
+              <div className="counterpulse-segmented counterpulse-segmented--compact counterpulse-segmented--fit">
+                {designIconBadgeModeOptions.map((option) => (
+                  <button
+                    className={
+                      values.iconBadgeMode === option.value ? "is-active" : ""
+                    }
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateValue("iconBadgeMode", option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                name="iconBadgeMode"
+                type="hidden"
+                value={values.iconBadgeMode}
+              />
+            </DesignGroup>
             {values.icon === "CUSTOM" ? (
               <DesignGroup
                 label="Custom icon"
@@ -1144,6 +1189,101 @@ export function DesignControls({
               onChange={(value) => updateColor("accentColor", value)}
             />
           </div>
+          {values.iconBadgeMode === "BADGE" ? (
+            <DesignGroup label="Badge">
+              <div className="counterpulse-form-grid counterpulse-form-grid--wide">
+                <DesignField label="Badge text" error={errors.iconBadgeText}>
+                  <input
+                    maxLength={24}
+                    name="iconBadgeText"
+                    value={values.iconBadgeText}
+                    onChange={(event) =>
+                      updateValue("iconBadgeText", event.target.value)
+                    }
+                  />
+                </DesignField>
+                <ToggleField
+                  checked={values.iconBadgeShowGlyph}
+                  label="Show icon in badge"
+                  name="iconBadgeShowGlyph"
+                  onChange={(checked) =>
+                    updateValue("iconBadgeShowGlyph", checked)
+                  }
+                />
+                <ColorField
+                  error={errors.iconBadgeBackgroundColor}
+                  label="Badge background"
+                  name="iconBadgeBackgroundColor"
+                  value={values.iconBadgeBackgroundColor}
+                  onChange={(value) =>
+                    updateColor("iconBadgeBackgroundColor", value)
+                  }
+                />
+                <ColorField
+                  error={errors.iconBadgeTextColor}
+                  label="Badge text"
+                  name="iconBadgeTextColor"
+                  value={values.iconBadgeTextColor}
+                  onChange={(value) =>
+                    updateColor("iconBadgeTextColor", value)
+                  }
+                />
+                <NumberField
+                  error={errors.iconBadgeFontSize}
+                  label="Badge text size"
+                  max={20}
+                  min={10}
+                  name="iconBadgeFontSize"
+                  value={values.iconBadgeFontSize}
+                  onChange={(value) => updateNumber("iconBadgeFontSize", value)}
+                />
+                <NumberField
+                  error={errors.iconBadgeBorderRadius}
+                  label="Badge radius"
+                  max={999}
+                  min={0}
+                  name="iconBadgeBorderRadius"
+                  value={values.iconBadgeBorderRadius}
+                  onChange={(value) =>
+                    updateNumber("iconBadgeBorderRadius", value)
+                  }
+                />
+              </div>
+            </DesignGroup>
+          ) : (
+            <>
+              <input
+                name="iconBadgeText"
+                type="hidden"
+                value={values.iconBadgeText}
+              />
+              <input
+                name="iconBadgeShowGlyph"
+                type="hidden"
+                value={String(values.iconBadgeShowGlyph)}
+              />
+              <input
+                name="iconBadgeBackgroundColor"
+                type="hidden"
+                value={values.iconBadgeBackgroundColor}
+              />
+              <input
+                name="iconBadgeTextColor"
+                type="hidden"
+                value={values.iconBadgeTextColor}
+              />
+              <input
+                name="iconBadgeFontSize"
+                type="hidden"
+                value={String(values.iconBadgeFontSize)}
+              />
+              <input
+                name="iconBadgeBorderRadius"
+                type="hidden"
+                value={String(values.iconBadgeBorderRadius)}
+              />
+            </>
+          )}
         </ElementPanel>
         {canManageElements && !iconPresent && (
           <>
@@ -1159,6 +1299,37 @@ export function DesignControls({
               name="accentColor"
               type="hidden"
               value={values.accentColor}
+            />
+            <input name="iconBadgeMode" type="hidden" value="ICON" />
+            <input
+              name="iconBadgeText"
+              type="hidden"
+              value={values.iconBadgeText}
+            />
+            <input
+              name="iconBadgeShowGlyph"
+              type="hidden"
+              value={String(values.iconBadgeShowGlyph)}
+            />
+            <input
+              name="iconBadgeBackgroundColor"
+              type="hidden"
+              value={values.iconBadgeBackgroundColor}
+            />
+            <input
+              name="iconBadgeTextColor"
+              type="hidden"
+              value={values.iconBadgeTextColor}
+            />
+            <input
+              name="iconBadgeFontSize"
+              type="hidden"
+              value={String(values.iconBadgeFontSize)}
+            />
+            <input
+              name="iconBadgeBorderRadius"
+              type="hidden"
+              value={String(values.iconBadgeBorderRadius)}
             />
           </>
         )}

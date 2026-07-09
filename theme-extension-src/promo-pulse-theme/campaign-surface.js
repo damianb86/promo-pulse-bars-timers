@@ -126,6 +126,14 @@
     showDiscountCode: true,
     showCopyCodeButton: true,
     showApplyDiscountButton: true,
+    iconBadgeMode: "ICON",
+    iconBadgeText: "FLASH SALE",
+    iconBadgeShowGlyph: true,
+    iconBadgeBackgroundColor: "#FCE7F3",
+    iconBadgeTextColor: "#BE185D",
+    iconBadgeFontSize: 13,
+    iconBadgeBorderRadius: 999,
+    splitDividerEnabled: true,
     offerCodeLayout: "INLINE",
     offerCodeLabel: "Discount code",
     copyCodeLabel: "Copy code",
@@ -633,6 +641,11 @@
       "--cp-offer-apply-border": design.applyButtonBorderColor,
       "--cp-offer-apply-size": num(design.applyButtonFontSize, 13) + "px",
       "--cp-offer-apply-radius": num(design.applyButtonBorderRadius, 4) + "px",
+      "--cp-badge-bg": design.iconBadgeBackgroundColor,
+      "--cp-badge-text": design.iconBadgeTextColor,
+      "--cp-badge-size": num(design.iconBadgeFontSize, 13) + "px",
+      "--cp-badge-radius": num(design.iconBadgeBorderRadius, 999) + "px",
+      "--cp-split-divider": design.splitDividerEnabled === false ? "0px" : "1px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
       "--cp-tick-duration": num(design.timerTickDurationMs, 220) + "ms",
       "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
@@ -1209,8 +1222,7 @@
   }
 
   // Mirrors PreviewIcon() in CampaignPreview.tsx. Returns a node or null.
-  function buildIcon(design) {
-    if (design.icon === "NONE") return null;
+  function buildIconGlyph(design) {
     var span = el("span", "counterpulse-preview-icon");
     span.setAttribute("aria-hidden", "true");
     span.style.setProperty(
@@ -1229,6 +1241,29 @@
     if (!svg) return null;
     span.appendChild(svg);
     return span;
+  }
+
+  function buildIcon(design) {
+    // Badge mode: a pill with an optional leading glyph + text label.
+    if (design.iconBadgeMode === "BADGE") {
+      var text = String(design.iconBadgeText || "").trim();
+      var showGlyph = design.iconBadgeShowGlyph !== false && design.icon !== "NONE";
+      if (!text && !showGlyph) return null;
+      var badge = el("span", "counterpulse-preview-icon-badge");
+      if (showGlyph) {
+        var glyph = buildIconGlyph(design);
+        if (glyph) badge.appendChild(glyph);
+      }
+      if (text) {
+        var label = el("span", "counterpulse-preview-icon-badge-text");
+        label.textContent = text;
+        badge.appendChild(label);
+      }
+      return badge;
+    }
+
+    if (design.icon === "NONE") return null;
+    return buildIconGlyph(design);
   }
 
   // Mirrors OfferPreview() in CampaignPreview.tsx, but the action labels are

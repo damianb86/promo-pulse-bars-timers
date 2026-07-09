@@ -306,6 +306,7 @@ export type StructureSpecDesign = {
   entranceAnimation: string;
   exitAnimation: string;
   icon: string;
+  iconBadgeMode?: string;
   showButton: boolean;
   showCloseButton: boolean;
   showProgressBar: boolean;
@@ -348,7 +349,7 @@ export function deriveCampaignStructureSpec(
     exitAnimation: design.exitAnimation,
     badgeShape: badge?.badgeShape,
     badgePosition: badge?.badgePosition,
-    hasIcon: design.icon !== "NONE",
+    hasIcon: design.icon !== "NONE" || design.iconBadgeMode === "BADGE",
     hasInlineTimer: isInline && hasTimer,
     hasBlockTimer: !isInline && hasTimer,
     hasBody: !isInline,
@@ -1098,6 +1099,11 @@ export type StyleDesignInput = {
   applyButtonBorderColor?: string;
   applyButtonFontSize?: number;
   applyButtonBorderRadius?: number;
+  iconBadgeBackgroundColor?: string;
+  iconBadgeTextColor?: string;
+  iconBadgeFontSize?: number;
+  iconBadgeBorderRadius?: number;
+  splitDividerEnabled?: boolean;
   animationDurationMs?: number;
   timerTickDurationMs?: number;
   floatOffsetTop?: string;
@@ -1256,6 +1262,11 @@ export function buildStructureCssVars(
     "--cp-offer-apply-border": design.applyButtonBorderColor ?? "",
     "--cp-offer-apply-size": px(design.applyButtonFontSize, 13),
     "--cp-offer-apply-radius": px(design.applyButtonBorderRadius, 4),
+    "--cp-badge-bg": design.iconBadgeBackgroundColor ?? "",
+    "--cp-badge-text": design.iconBadgeTextColor ?? "",
+    "--cp-badge-size": px(design.iconBadgeFontSize, 13),
+    "--cp-badge-radius": px(design.iconBadgeBorderRadius, 999),
+    "--cp-split-divider": design.splitDividerEnabled === false ? "0px" : "1px",
     "--cp-motion-duration": `${
       typeof design.animationDurationMs === "number"
         ? design.animationDurationMs

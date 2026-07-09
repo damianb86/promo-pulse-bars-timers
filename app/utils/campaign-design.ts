@@ -55,6 +55,8 @@ const colorFields: Array<keyof CampaignDesignValues> = [
   "applyButtonBackgroundColor",
   "applyButtonTextColor",
   "applyButtonBorderColor",
+  "iconBadgeBackgroundColor",
+  "iconBadgeTextColor",
 ];
 
 export function isValidHexColor(value: string) {
@@ -888,6 +890,31 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     0,
     40,
     "Apply button radius",
+  );
+
+  if (values.iconBadgeMode !== "ICON" && values.iconBadgeMode !== "BADGE") {
+    errors.iconBadgeMode = "Choose a valid icon mode.";
+  }
+  if (values.iconBadgeMode === "BADGE") {
+    validateTextField(values, errors, "iconBadgeText", "Badge text", 24);
+  } else if (values.iconBadgeText.length > 24) {
+    errors.iconBadgeText = "Badge text must be 24 characters or fewer.";
+  }
+  validateIntegerRange(
+    values,
+    errors,
+    "iconBadgeFontSize",
+    10,
+    20,
+    "Badge text size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "iconBadgeBorderRadius",
+    0,
+    999,
+    "Badge radius",
   );
 
   if (

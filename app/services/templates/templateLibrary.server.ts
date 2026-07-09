@@ -1095,6 +1095,34 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       ]) ?? defaultCampaignDesignValues.icon,
     iconSize: readInteger(input.iconSize, defaultCampaignDesignValues.iconSize),
     customIconUrl: readString(input.customIconUrl),
+    iconBadgeMode:
+      readEnum(input.iconBadgeMode, ["ICON", "BADGE"]) ??
+      defaultCampaignDesignValues.iconBadgeMode,
+    iconBadgeText:
+      readString(input.iconBadgeText) ||
+      defaultCampaignDesignValues.iconBadgeText,
+    iconBadgeShowGlyph: readBoolean(
+      input.iconBadgeShowGlyph,
+      defaultCampaignDesignValues.iconBadgeShowGlyph,
+    ),
+    iconBadgeBackgroundColor:
+      readString(input.iconBadgeBackgroundColor) ||
+      defaultCampaignDesignValues.iconBadgeBackgroundColor,
+    iconBadgeTextColor:
+      readString(input.iconBadgeTextColor) ||
+      defaultCampaignDesignValues.iconBadgeTextColor,
+    iconBadgeFontSize: readInteger(
+      input.iconBadgeFontSize,
+      defaultCampaignDesignValues.iconBadgeFontSize,
+    ),
+    iconBadgeBorderRadius: readInteger(
+      input.iconBadgeBorderRadius,
+      defaultCampaignDesignValues.iconBadgeBorderRadius,
+    ),
+    splitDividerEnabled: readBoolean(
+      input.splitDividerEnabled,
+      defaultCampaignDesignValues.splitDividerEnabled,
+    ),
     showDiscountCode: readBoolean(
       input.showDiscountCode,
       defaultCampaignDesignValues.showDiscountCode,

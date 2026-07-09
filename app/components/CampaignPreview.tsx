@@ -564,6 +564,11 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-offer-apply-border": design.applyButtonBorderColor,
     "--cp-offer-apply-size": `${design.applyButtonFontSize}px`,
     "--cp-offer-apply-radius": `${design.applyButtonBorderRadius}px`,
+    "--cp-badge-bg": design.iconBadgeBackgroundColor,
+    "--cp-badge-text": design.iconBadgeTextColor,
+    "--cp-badge-size": `${design.iconBadgeFontSize}px`,
+    "--cp-badge-radius": `${design.iconBadgeBorderRadius}px`,
+    "--cp-split-divider": design.splitDividerEnabled ? "1px" : "0px",
     "--cp-motion-duration": `${design.animationDurationMs}ms`,
     "--cp-tick-duration": `${design.timerTickDurationMs}ms`,
   } as CSSProperties;
@@ -1741,14 +1746,7 @@ function TimerDisplay({
   );
 }
 
-function PreviewIcon({
-  design,
-  className = "",
-  style,
-  ...rootProps
-}: { design: CampaignDesignValues } & SlotRootProps) {
-  if (design.icon === "NONE") return null;
-
+function PreviewIconGlyph({ design }: { design: CampaignDesignValues }) {
   const iconStyle = {
     "--cp-icon-size": `${clampNumber(design.iconSize, 12, 64, 20)}px`,
   } as CSSProperties;
@@ -1756,11 +1754,8 @@ function PreviewIcon({
   if (design.icon === "CUSTOM" && design.customIconUrl) {
     return (
       <span
-        {...rootProps}
-        className={["counterpulse-preview-icon", className]
-          .filter(Boolean)
-          .join(" ")}
-        style={{ ...iconStyle, ...(style ?? {}) }}
+        className="counterpulse-preview-icon"
+        style={iconStyle}
         aria-hidden="true"
       >
         <img alt="" src={design.customIconUrl} />
@@ -1769,14 +1764,61 @@ function PreviewIcon({
   }
   return (
     <span
+      className="counterpulse-preview-icon"
+      style={iconStyle}
+      aria-hidden="true"
+    >
+      <PreviewIconSvg icon={design.icon} />
+    </span>
+  );
+}
+
+function PreviewIcon({
+  design,
+  className = "",
+  style,
+  ...rootProps
+}: { design: CampaignDesignValues } & SlotRootProps) {
+  // Badge mode: a pill with an optional leading glyph + text label.
+  if (design.iconBadgeMode === "BADGE") {
+    const text = (design.iconBadgeText ?? "").trim();
+    const showGlyph = design.iconBadgeShowGlyph !== false && design.icon !== "NONE";
+    if (!text && !showGlyph) return null;
+    return (
+      <span
+        {...rootProps}
+        className={["counterpulse-preview-icon-badge", className]
+          .filter(Boolean)
+          .join(" ")}
+        style={style}
+      >
+        {showGlyph ? <PreviewIconGlyph design={design} /> : null}
+        {text ? (
+          <span className="counterpulse-preview-icon-badge-text">{text}</span>
+        ) : null}
+      </span>
+    );
+  }
+
+  if (design.icon === "NONE") return null;
+
+  return (
+    <span
       {...rootProps}
       className={["counterpulse-preview-icon", className]
         .filter(Boolean)
         .join(" ")}
-      style={{ ...iconStyle, ...(style ?? {}) }}
+      style={{
+        "--cp-icon-size": `${clampNumber(design.iconSize, 12, 64, 20)}px`,
+        ...(style ?? {}),
+      } as CSSProperties}
       aria-hidden="true"
     >
-      <PreviewIconSvg icon={design.icon} />
+      {design.icon === "CUSTOM" && design.customIconUrl ? (
+        <img alt="" src={design.customIconUrl} />
+      ) : (
+        <PreviewIconSvg icon={design.icon} />
+      )}
     </span>
   );
 }

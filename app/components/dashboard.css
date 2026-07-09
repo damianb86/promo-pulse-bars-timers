@@ -8744,8 +8744,7 @@ s-page::part(page) {
 }
 
 .counterpulse-design-editor__controls,
-.counterpulse-design-controls,
-.counterpulse-design-editor__preview {
+.counterpulse-design-controls {
   display: grid;
   gap: 14px;
 }
@@ -12350,10 +12349,6 @@ s-page::part(page) {
 
   .counterpulse-design-editor {
     grid-template-columns: 1fr;
-  }
-
-  .counterpulse-design-editor__preview {
-    position: static;
   }
 
   .counterpulse-create-side-panel,

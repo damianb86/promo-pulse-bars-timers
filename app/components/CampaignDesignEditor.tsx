@@ -2,9 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppAlert, InfoModal } from "./Notifications";
 
 import { DesignControls } from "./DesignControls";
-import { InspectorOverlay } from "./campaign-inspector/InspectorOverlay";
-import { ComponentInspectorModal } from "./campaign-inspector/ComponentInspectorModal";
-import { resolveInspectorComponent } from "./campaign-inspector/component-registry";
 import {
   CampaignPreviewPanel,
   type PreviewPlacement,
@@ -24,12 +21,9 @@ import {
   buildCampaignStructureTree,
   buildStructureCss,
   deriveCampaignStructureSpec,
-  getNodeAtPath,
   getNodeSlot,
   htmlToTree,
   removeNodeBySlot,
-  setNodeAttrAtPath,
-  setNodeStyleAtPath,
   treeToHtml,
   type StructureNode,
 } from "../utils/campaign-structure";
@@ -179,14 +173,11 @@ export function CampaignDesignEditor({
   // mobile" is on.
   const [htmlModalOpen, setHtmlModalOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [inspectEnabled, setInspectEnabled] = useState(true);
-  const [inspectedPath, setInspectedPath] = useState<string | null>(null);
-  const previewHostRef = useRef<HTMLDivElement | null>(null);
   const [cssModalOpen, setCssModalOpen] = useState(false);
   const desktopSurface = useStructureSurface(
     viewModel,
     design,
-    primaryPlacement,
+    placement,
     {
       edited: initialStructureEdited,
       html: initialStructureHtml,
@@ -197,7 +188,7 @@ export function CampaignDesignEditor({
   const mobileSurface = useStructureSurface(
     viewModel,
     previewMobileDesign,
-    primaryPlacement,
+    placement,
     {
       edited: initialMobileStructureEdited,
       html: initialMobileStructureHtml,
@@ -327,15 +318,6 @@ export function CampaignDesignEditor({
     onProgressStyleChange,
     onResetStructure: activeSurface.reset,
   };
-
-  // Resolve the inspected node + its component descriptor for the modal.
-  const inspectedNode =
-    inspectedPath != null && activeSurface.displayedTree
-      ? getNodeAtPath(activeSurface.displayedTree, inspectedPath)
-      : null;
-  const inspectedComponent = inspectedNode
-    ? resolveInspectorComponent(inspectedNode)
-    : null;
 
   return (
     <s-section heading="Design & Preview">
@@ -485,10 +467,7 @@ export function CampaignDesignEditor({
           <DesignControls {...designControlsProps} />
         </div>
 
-        <div
-          className="counterpulse-design-editor__preview-host"
-          ref={previewHostRef}
-        >
+        <div className="counterpulse-design-editor__preview-host">
           <CampaignPreviewPanel
             actualPlacements={actualPlacements}
             ariaLabel="Design live campaign preview"
@@ -506,57 +485,12 @@ export function CampaignDesignEditor({
             structureTree={desktopSurface.displayedTree}
             structureCss={desktopSurface.displayedCss}
             customMessages={customMessages}
-            inspect={inspectEnabled}
-            toolbarAccessory={
-              <label className="counterpulse-inspector-toggle">
-                <input
-                  checked={inspectEnabled}
-                  type="checkbox"
-                  onChange={(event) => setInspectEnabled(event.target.checked)}
-                />
-                <span>Inspect</span>
-              </label>
-            }
             viewModel={previewViewModel}
             onDeviceChange={updatePreviewDevice}
             onPlacementChange={selectPreviewPlacement}
           />
-          <InspectorOverlay
-            containerRef={previewHostRef}
-            enabled={inspectEnabled}
-            onSelect={setInspectedPath}
-          />
         </div>
       </div>
-
-      {inspectedComponent && (
-        <ComponentInspectorModal
-          component={inspectedComponent}
-          isRoot={inspectedPath === ""}
-          nodeStyle={inspectedNode?.attrs?.style}
-          isImage={inspectedNode?.tag === "img"}
-          imageSrc={inspectedNode?.attrs?.src ?? ""}
-          imageAlt={inspectedNode?.attrs?.alt ?? ""}
-          renderPanel={(panelTitle) => (
-            <DesignControls
-              {...designControlsProps}
-              presentSlots={null}
-              panelFilter={new Set([panelTitle])}
-            />
-          )}
-          onApplyCommon={(declarations) => {
-            if (inspectedPath != null) {
-              activeSurface.updateNodeStyle(inspectedPath, declarations);
-            }
-          }}
-          onChangeAttr={(name, value) => {
-            if (inspectedPath != null) {
-              activeSurface.updateNodeAttr(inspectedPath, name, value);
-            }
-          }}
-          onClose={() => setInspectedPath(null)}
-        />
-      )}
     </s-section>
   );
 }
@@ -875,8 +809,6 @@ type StructureSurface = {
   changeCss: (value: string) => void;
   addSlot: (slot: string) => void;
   removeSlot: (slot: string) => void;
-  updateNodeStyle: (path: string, declarations: Record<string, string>) => void;
-  updateNodeAttr: (path: string, name: string, value: string) => void;
 };
 
 // Manages one structural-HTML override surface (desktop or mobile): the live
@@ -987,7 +919,7 @@ function useStructureSurface(
   );
 
   // The parsed tree of whatever is currently shown (edited override OR generated
-  // from settings). Always present, for the visual inspector.
+  // from settings), used by the shared preview surface.
   const displayedTree = useMemo(
     () => htmlToTree(displayedHtml),
     [displayedHtml],
@@ -1007,31 +939,6 @@ function useStructureSurface(
     walk(tree);
     return slots;
   }, [edited, tree]);
-
-  // Applies inline-style declarations to a node (by AST path) — the inspector's
-  // common properties. Editing a generated structure turns it into an override.
-  const updateNodeStyle = (
-    path: string,
-    declarations: Record<string, string>,
-  ) => {
-    const current = htmlToTree(displayedHtml);
-    if (!current) return;
-    const next = setNodeStyleAtPath(current, path, declarations);
-    setHtml(treeToHtml(next));
-    setCss((value) => (edited ? value : generatedCss));
-    setEdited(true);
-  };
-
-  // Sets an attribute on a node (by AST path) — e.g. the inspector editing an
-  // image src. Turns a generated structure into an override.
-  const updateNodeAttr = (path: string, name: string, value: string) => {
-    const current = htmlToTree(displayedHtml);
-    if (!current) return;
-    const next = setNodeAttrAtPath(current, path, name, value);
-    setHtml(treeToHtml(next));
-    setCss((value2) => (edited ? value2 : generatedCss));
-    setEdited(true);
-  };
 
   // Inserts a missing slot element into the edited HTML so its settings card
   // works again. Appends it to the surface root.
@@ -1071,8 +978,6 @@ function useStructureSurface(
     changeCss,
     addSlot,
     removeSlot,
-    updateNodeStyle,
-    updateNodeAttr,
   };
 }
 

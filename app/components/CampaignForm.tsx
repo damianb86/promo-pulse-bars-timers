@@ -68,7 +68,10 @@ import {
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
   } from "../types/localization";
-import { buildCampaignViewModel } from "../utils/campaign-view-model";
+import {
+  buildCampaignViewModel,
+  type CampaignViewModel,
+} from "../utils/campaign-view-model";
 import {
   buildCampaignStructureTree,
   buildStructureCss,
@@ -155,6 +158,7 @@ type CampaignFormProps = {
   mode: "create" | "edit";
   previewDevice?: PreviewDevice;
   previewPlacement?: PreviewPlacement;
+  previewViewModel?: CampaignViewModel;
   showBuilderTabs?: boolean;
   showPreview?: boolean;
   showTopbar?: boolean;
@@ -209,6 +213,7 @@ export function CampaignForm({
   mode,
   previewDevice: controlledPreviewDevice,
   previewPlacement: controlledPreviewPlacement,
+  previewViewModel: controlledPreviewViewModel,
   showBuilderTabs = true,
   showPreview = true,
   showTopbar = true,
@@ -576,7 +581,7 @@ export function CampaignForm({
       });
     }
   };
-  const previewViewModel = useMemo(
+  const computedPreviewViewModel = useMemo(
     () =>
       buildCampaignViewModel({
         name: formValues.name || "Campaign preview",
@@ -642,6 +647,8 @@ export function CampaignForm({
       usesFreeShippingSettings,
     ],
   );
+  const previewViewModel =
+    controlledPreviewViewModel ?? computedPreviewViewModel;
   const generatedStructureTree = useMemo(
     () =>
       buildCampaignStructureTree(
@@ -3837,18 +3844,6 @@ export function CampaignForm({
                   viewModel={previewViewModel}
                   onDeviceChange={updatePreviewDevice}
                   onPlacementChange={selectCampaignPreviewPlacement}
-                  meta={
-                    <dl className="counterpulse-preview-meta">
-                      <div>
-                        <dt>Campaign type</dt>
-                        <dd>{activeCampaignTypeLabel}</dd>
-                      </div>
-                      <div>
-                        <dt>Placement</dt>
-                        <dd>{activePlacementLabel}</dd>
-                      </div>
-                    </dl>
-                  }
                 />
               </aside>
             )}

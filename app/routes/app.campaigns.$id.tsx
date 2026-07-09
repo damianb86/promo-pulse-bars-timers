@@ -2202,6 +2202,7 @@ export default function EditCampaignPage() {
                   mode="edit"
                   previewDevice={sharedPreviewDevice}
                   previewPlacement={sharedPreviewPlacement}
+                  previewViewModel={draftPreviewViewModel}
                   showTopbar={false}
                   syncExternalValues
                   targetingOptions={targetingOptions}

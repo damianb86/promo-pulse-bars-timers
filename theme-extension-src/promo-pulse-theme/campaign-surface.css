@@ -1889,6 +1889,7 @@
 .counterpulse-preview-promo--layout-mobile_compact_bar {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -1907,21 +1908,43 @@
   text-align: left;
 }
 .counterpulse-preview-promo--layout-mobile_compact_bar
-  .counterpulse-preview-timer,
+  .counterpulse-preview-timer {
+  flex: 0 0 auto;
+}
 .counterpulse-preview-promo--layout-mobile_compact_bar
   .counterpulse-preview-actions {
-  flex: none;
+  flex: 1 1 100%;
+  justify-content: center;
+}
+/* The full offer widget cannot sit inline in a narrow compact bar: give it its
+   own full-width row and stack the code chip and buttons vertically. */
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-mobile_compact_bar .pp-discount-offer {
+  flex: 1 1 100%;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-offer-actions,
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .counterpulse-preview-offer-compact-code,
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .pp-discount-offer__actions,
+.counterpulse-preview-promo--layout-mobile_compact_bar
+  .pp-discount-offer__compact-code {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 @media (max-width: 420px) {
   .counterpulse-preview-promo--layout-mobile_compact_bar {
-    flex-wrap: wrap;
     justify-content: center;
     text-align: center;
-  }
-  .counterpulse-preview-promo--layout-mobile_compact_bar
-    .counterpulse-preview-actions {
-    width: 100%;
   }
 }
 
@@ -2305,7 +2328,20 @@
 }
 
 .pp-unique-code__value {
+  min-width: 11ch;
   max-width: 180px;
+  text-align: center;
+}
+
+.pp-unique-code__placeholder {
+  opacity: 0.74;
+}
+
+.pp-discount-offer--loading .pp-code,
+.pp-discount-offer--loading .pp-cta--offer {
+  cursor: default;
+  opacity: 0.64;
+  pointer-events: none;
 }
 
 .pp-unique-code__loading,

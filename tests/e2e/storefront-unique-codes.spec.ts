@@ -79,6 +79,54 @@ test("storefront unique codes are visitor-scoped and track actions", async ({
   expectNoFailedRequests(page);
 });
 
+test("storefront unique code offer reserves controls while assignment loads", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("unique-discount");
+  await setStorefrontIdentity(page, "slow-visitor", "slow-session");
+
+  let releaseAssignment!: () => void;
+  const assignmentCanContinue = new Promise<void>((resolve) => {
+    releaseAssignment = resolve;
+  });
+
+  await page.route("**/unique-code/assign", async (route) => {
+    await assignmentCanContinue;
+    await route.continue();
+  });
+
+  await page.goto("/__test/storefront");
+
+  const widget = page.locator(".pp-unique-code").first();
+  await expect(widget).toHaveAttribute("aria-busy", "true");
+  await expect(widget.locator(".pp-discount-code__value")).toContainText(
+    /Loading/,
+  );
+  await expect(
+    widget.getByRole("button", { name: /Copy code loading discount code/i }),
+  ).toBeDisabled();
+  await expect(widget.locator(".pp-cta--offer")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+
+  releaseAssignment();
+
+  await expect(widget).not.toHaveAttribute("aria-busy", "true");
+  await expect(widget.locator(".pp-unique-code__value")).toHaveText(/^E2E-/);
+  await expect(
+    widget.getByRole("button", { name: /Copy code E2E-/i }),
+  ).toBeEnabled();
+  await expect(widget.locator(".pp-cta--offer")).toHaveAttribute(
+    "href",
+    /\/discount\/E2E-/,
+  );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("storefront unique code widget shows expired text when no code is available", async ({
   page,
   resetDb,

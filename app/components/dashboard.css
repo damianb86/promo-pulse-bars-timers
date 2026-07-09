@@ -11510,37 +11510,43 @@ s-page::part(page) {
 
 .counterpulse-preview-promo--layout-cta_right,
 .counterpulse-preview-promo--layout-cta_left {
-  width: min(100%, 520px);
+  width: min(100%, 640px);
   grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   justify-items: stretch;
+  column-gap: 22px;
   text-align: left;
 }
 
 .counterpulse-preview-promo--layout-cta_left {
-  width: min(100%, 680px);
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  align-items: center;
-  column-gap: 22px;
-  row-gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
+/* Action right — CTA button on the right rail; message, timer and offer stack
+   in the left column. */
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-message,
-.counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer {
+.counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer,
+.counterpulse-preview-promo--layout-cta_right .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-cta_right .counterpulse-preview-progress {
   grid-column: 1;
+  justify-self: start;
+}
+
+.counterpulse-preview-promo--layout-cta_right .counterpulse-preview-timer {
+  flex-wrap: wrap;
 }
 
 .counterpulse-preview-promo--layout-cta_right .counterpulse-preview-actions {
   grid-column: 2;
-  grid-row: 1 / span 3;
+  grid-row: 1 / span 4;
   align-self: center;
 }
 
-/* Action left — button pinned far left with a divider, then the message and
-   the timer share one left-aligned row. */
+/* Action left — CTA button on the left rail with a divider; message, timer and
+   offer stack in the right column. */
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-actions {
   grid-column: 1;
-  grid-row: 1 / -1;
+  grid-row: 1 / span 4;
   align-self: center;
   justify-self: start;
   justify-content: flex-start;
@@ -11549,9 +11555,15 @@ s-page::part(page) {
   padding-right: 22px;
 }
 
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message {
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message,
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer,
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-offer,
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
   grid-column: 2;
-  grid-row: 1;
+  justify-self: start;
+}
+
+.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message {
   justify-content: flex-start;
   min-width: 0;
 }
@@ -11563,22 +11575,10 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer {
-  grid-column: 3;
-  grid-row: 1;
-  justify-self: end;
-  min-width: 0;
   flex-wrap: wrap;
 }
 
-.counterpulse-preview-promo--layout-cta_left .counterpulse-preview-offer {
-  grid-column: 2 / -1;
-  grid-row: 2;
-  justify-self: start;
-}
-
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
-  grid-column: 2 / -1;
-  grid-row: 2;
   justify-self: stretch;
   width: 100%;
 }
@@ -11683,9 +11683,14 @@ s-page::part(page) {
   grid-row: 2;
   justify-content: flex-start;
 }
+.counterpulse-preview-promo--layout-side_rail .counterpulse-preview-offer {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: start;
+}
 .counterpulse-preview-promo--layout-side_rail .counterpulse-preview-progress {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 4;
   width: 100%;
 }
 
@@ -11737,6 +11742,11 @@ s-page::part(page) {
   justify-self: end;
   justify-content: flex-end;
   align-self: center;
+}
+.counterpulse-preview-promo--layout-spread .counterpulse-preview-offer {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  justify-self: start;
 }
 .counterpulse-preview-promo--layout-spread .counterpulse-preview-progress {
   grid-column: 1 / -1;

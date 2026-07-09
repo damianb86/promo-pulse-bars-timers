@@ -1856,3 +1856,313 @@
   font-weight: 700;
   font-size: 12px;
 }
+
+/* -------------------------------------------------------------------------
+   Discount offer widget (unique/shared code)
+
+   The functional offer widget is built by discount-code.js with pp-* classes
+   and injected as the surface's offer slot. These styles were historically
+   only in promo-pulse.css, which is NOT part of the theme:build pipeline and
+   drifted from the surface (e.g. new --cp-offer-copy-*/--cp-offer-apply-*
+   vars). They live here so the offer buttons always ship and stay in sync
+   with the surface stylesheet. Variables are the same ones applyStyle() sets
+   on the surface root, so the widget inherits the merchant's configuration.
+   ------------------------------------------------------------------------- */
+.pp-cta {
+  flex: 0 0 auto;
+  border-radius: max(4px, var(--cp-radius, 0));
+  padding: 6px 10px;
+  background: var(--cp-button, #ffffff);
+  color: var(--cp-button-text, #111827);
+  font: inherit;
+  font-size: 0.92em;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease,
+    background-color 160ms ease;
+}
+
+.pp-cta--offer {
+  border: 1px solid var(--cp-offer-apply-border, var(--cp-button, #111827));
+  border-radius: var(--cp-offer-apply-radius, max(4px, var(--cp-radius, 0)));
+  background: var(--cp-offer-apply-bg, var(--cp-button, #ffffff));
+  color: var(--cp-offer-apply-text, var(--cp-button-text, #111827));
+  font-size: var(--cp-offer-apply-size, 0.9em);
+  white-space: nowrap;
+}
+
+.pp-discount-offer {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cp-offer-gap, 6px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.pp-discount-offer--layout-stacked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  justify-items: stretch;
+  gap: max(6px, var(--cp-offer-gap, 6px));
+}
+
+.pp-discount-offer--layout-compact {
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto;
+  gap: 0;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--cp-offer-code-border, #d1d5db);
+  border-radius: var(--cp-offer-code-radius, 4px);
+  background: var(--cp-offer-code-bg, #ffffff);
+  color: var(--cp-offer-code-text, #111827);
+}
+
+.pp-discount-offer--hidden {
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+.pp-discount-code {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.65));
+}
+
+.pp-discount-offer__main,
+.pp-discount-offer__actions,
+.pp-discount-offer__compact-code {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.pp-discount-offer__main {
+  justify-content: center;
+}
+
+.pp-discount-offer__actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: max(4px, calc(var(--cp-offer-gap, 6px) * 0.75));
+}
+
+.pp-discount-offer__actions > * {
+  width: 100%;
+}
+
+.pp-discount-offer__compact-code {
+  gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.5));
+}
+
+.pp-discount-offer--layout-stacked .pp-discount-code {
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.pp-discount-offer--layout-stacked .pp-discount-code__value {
+  width: 100%;
+  max-width: none;
+  text-align: center;
+}
+
+.pp-discount-code__label {
+  min-width: 0;
+  color: var(--cp-subheading-color, var(--cp-text, #ffffff));
+  font: inherit;
+  font-size: max(10px, calc(var(--cp-offer-code-size, 13px) * 0.78));
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.86;
+}
+
+.pp-discount-code__value {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  border: 1px solid var(--cp-offer-code-border, #d1d5db);
+  border-radius: var(--cp-offer-code-radius, 4px);
+  padding: var(--cp-offer-code-padding-block, 5px)
+    var(--cp-offer-code-padding-inline, 8px);
+  background: var(--cp-offer-code-bg, #ffffff);
+  color: var(--cp-offer-code-text, #111827);
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: var(--cp-offer-code-size, 13px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.pp-code {
+  flex: 0 0 auto;
+  border: 1px solid var(--cp-offer-copy-border, var(--cp-button, #ffffff));
+  border-radius: var(--cp-offer-copy-radius, max(4px, var(--cp-radius, 0)));
+  padding: 6px 10px;
+  background: var(--cp-offer-copy-bg, var(--cp-button, #ffffff));
+  color: var(--cp-offer-copy-text, var(--cp-button-text, #111827));
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--cp-offer-copy-size, 0.86em);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.pp-discount-offer--layout-compact .pp-discount-code {
+  padding: var(--cp-offer-code-padding-block, 5px)
+    var(--cp-offer-code-padding-inline, 8px);
+}
+
+.pp-discount-offer--layout-compact .pp-discount-code__value {
+  max-width: 160px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.pp-discount-offer--layout-compact .pp-code {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  border-width: 0 0 0 1px;
+  border-color: var(--cp-offer-code-border, #d1d5db);
+  border-radius: 0;
+  padding: 0 var(--cp-offer-code-padding-inline, 8px);
+  background: transparent;
+  color: var(--cp-offer-code-text, #111827);
+}
+
+.pp-discount-offer--layout-compact .pp-code:only-child {
+  border-left: 0;
+}
+
+.pp-discount-offer--layout-compact > .pp-cta--offer {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  border-left: 1px solid var(--cp-offer-code-border, #d1d5db);
+  border-radius: 0;
+}
+
+.pp-discount-offer--layout-compact > .pp-cta--offer:only-child {
+  border-left: 0;
+}
+
+.pp-code:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.16);
+}
+
+.pp-code:active,
+.pp-cta:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.pp-code--copied,
+.pp-cta--applied {
+  animation: pp-button-click-pop 420ms ease;
+}
+
+.pp-code--copied {
+  background: var(--cp-accent, #22c55e);
+  border-color: var(--cp-accent, #22c55e);
+  color: var(--cp-offer-copy-text, var(--cp-button-text, #111827));
+}
+
+.pp-unique-code:not(.pp-discount-offer) {
+  display: inline-flex;
+}
+
+.pp-unique-code__value {
+  max-width: 180px;
+}
+
+.pp-unique-code__loading,
+.pp-unique-code__timer,
+.pp-unique-code__expired {
+  color: inherit;
+  font-size: 0.86em;
+  font-weight: 700;
+  opacity: 0.88;
+}
+
+.pp-unique-code__timer {
+  grid-column: 1 / -1;
+  justify-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-discount-offer--layout-compact > .pp-unique-code__loading,
+.pp-discount-offer--layout-compact > .pp-unique-code__expired,
+.pp-discount-offer--layout-compact > .pp-unique-code__timer {
+  padding: var(--cp-offer-code-padding-block, 5px)
+    var(--cp-offer-code-padding-inline, 8px);
+}
+
+.pp-cta:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.16);
+  color: var(--cp-offer-apply-text, var(--cp-button-text, #111827));
+  text-decoration: none;
+}
+
+.pp-cta--applied {
+  filter: brightness(0.94);
+}
+
+.pp-discount-applied {
+  justify-items: center;
+}
+
+.pp-discount-applied-message {
+  color: var(--cp-title-color, var(--cp-text, #ffffff));
+  font: inherit;
+  font-size: var(--cp-title-size, 18px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pp-cta:focus-visible,
+.pp-code:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+@keyframes pp-button-click-pop {
+  0% {
+    transform: scale(0.96);
+  }
+  55% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

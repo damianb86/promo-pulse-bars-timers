@@ -24,6 +24,8 @@ import {
 } from "../components/CampaignDesignEditor";
 import { CampaignEditorLayout } from "../components/CampaignEditorLayout";
 import { CampaignForm } from "../components/CampaignForm";
+import type { PreviewPlacement } from "../components/CampaignPreviewPanel";
+import type { PreviewDevice } from "../components/DevicePreviewToggle";
 import { DiscountSettingsEditor } from "../components/DiscountSettingsEditor";
 import {
   EmailTimerEditor,
@@ -248,6 +250,7 @@ import {
   formatPlacementSelectionLabel,
   formatUnifiedCampaignTypeLabel,
 } from "../utils/campaign-editor-labels";
+import { toPreviewPlacement } from "../components/campaign-form/fields";
 
 type LoaderData = {
   id: string;
@@ -1769,6 +1772,13 @@ export default function EditCampaignPage() {
   const [draftMobileDesignValues, setDraftMobileDesignValues] = useState(
     activeMobileDesignValues,
   );
+  const [sharedPreviewDevice, setSharedPreviewDevice] =
+    useState<PreviewDevice>("desktop");
+  const [sharedPreviewPlacementOverride, setSharedPreviewPlacementOverride] =
+    useState<{
+      key: string;
+      placement: PreviewPlacement;
+    } | null>(null);
   const [
     experimentAutoWinnerSaveBarState,
     setExperimentAutoWinnerSaveBarState,
@@ -1814,6 +1824,21 @@ export default function EditCampaignPage() {
     experimentAutoWinnerSaveBarState.dirty ||
     behaviorTargetingSaveBarState.dirty ||
     structureDirty;
+  const sharedPreviewPlacementKey = draftCampaignValues.placementTypes.join("|");
+  const sharedDefaultPreviewPlacement = toPreviewPlacement(
+    draftCampaignValues.placementType,
+    draftCampaignValues.type,
+  );
+  const sharedPreviewPlacement =
+    sharedPreviewPlacementOverride?.key === sharedPreviewPlacementKey
+      ? sharedPreviewPlacementOverride.placement
+      : sharedDefaultPreviewPlacement;
+  const updateSharedPreviewPlacement = (placement: PreviewPlacement) => {
+    setSharedPreviewPlacementOverride({
+      key: sharedPreviewPlacementKey,
+      placement,
+    });
+  };
   // Structural HTML override → tree. Prefer the live Design-editor payload when
   // present so the Campaign tab preview stays identical before saving too.
   const savedStructureTree = useMemo(
@@ -2175,6 +2200,8 @@ export default function EditCampaignPage() {
                     lockedFeatures.multiLanguage ? undefined : translationValues
                   }
                   mode="edit"
+                  previewDevice={sharedPreviewDevice}
+                  previewPlacement={sharedPreviewPlacement}
                   showTopbar={false}
                   syncExternalValues
                   targetingOptions={targetingOptions}
@@ -2182,6 +2209,8 @@ export default function EditCampaignPage() {
                   errors={actionData?.errors}
                   onDesignChange={setDraftDesignValues}
                   onMobileDesignChange={setDraftMobileDesignValues}
+                  onPreviewDeviceChange={setSharedPreviewDevice}
+                  onPreviewPlacementChange={updateSharedPreviewPlacement}
                   onValuesChange={updateCampaignDraftValues}
                 />
               ),
@@ -2327,6 +2356,8 @@ export default function EditCampaignPage() {
                     }}
                     listenForSaveEvents={false}
                     mode="edit"
+                    previewDevice={sharedPreviewDevice}
+                    previewPlacement={sharedPreviewPlacement}
                     showBuilderTabs={false}
                     showPreview={false}
                     showTopbar={false}
@@ -2336,6 +2367,8 @@ export default function EditCampaignPage() {
                     errors={actionData?.errors}
                     onDesignChange={setDraftDesignValues}
                     onMobileDesignChange={setDraftMobileDesignValues}
+                    onPreviewDeviceChange={setSharedPreviewDevice}
+                    onPreviewPlacementChange={updateSharedPreviewPlacement}
                     onValuesChange={updateTargetingDraftValues}
                   />
                   <BehaviorTargetingEditor
@@ -2389,8 +2422,12 @@ export default function EditCampaignPage() {
                       ? draftCampaignValues.freeShippingProgressStyle
                       : undefined
                   }
+                  previewDevice={sharedPreviewDevice}
+                  previewPlacement={sharedPreviewPlacement}
                   onChange={setDraftDesignValues}
                   onMobileChange={setDraftMobileDesignValues}
+                  onPreviewDeviceChange={setSharedPreviewDevice}
+                  onPreviewPlacementChange={updateSharedPreviewPlacement}
                   onProgressStyleChange={updateDraftProgressStyle}
                   viewModel={draftPreviewViewModel}
                   structureEdited={structureEdited}

@@ -45,8 +45,12 @@ type CampaignDesignEditorProps = {
   // Custom-message snippets so the preview can fill data-cp-slot="custom-<id>".
   customMessages?: CustomMessage[];
   progressStyle?: FreeShippingProgressStyleValue;
+  previewDevice?: PreviewDevice;
+  previewPlacement?: PreviewPlacement;
   onChange: (design: CampaignDesignValues) => void;
   onMobileChange: (design: CampaignDesignValues) => void;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  onPreviewPlacementChange?: (placement: PreviewPlacement) => void;
   onProgressStyleChange?: (value: FreeShippingProgressStyleValue) => void;
   viewModel: CampaignViewModel;
   structureEdited?: boolean;
@@ -85,8 +89,12 @@ export function CampaignDesignEditor({
   mobileDesign,
   customMessages = [],
   progressStyle,
+  previewDevice,
+  previewPlacement,
   onChange,
   onMobileChange,
+  onPreviewDeviceChange,
+  onPreviewPlacementChange,
   onProgressStyleChange,
   viewModel,
   structureEdited: initialStructureEdited = false,
@@ -111,17 +119,23 @@ export function CampaignDesignEditor({
       ),
     [viewModel.placements, viewModel.type],
   );
-  const [device, setDevice] = useState<PreviewDevice>("desktop");
-  const [placementOverride, setPlacementOverride] = useState<{
+  const [localDevice, setLocalDevice] = useState<PreviewDevice>("desktop");
+  const [localPlacementOverride, setLocalPlacementOverride] = useState<{
     key: string;
     placement: PreviewPlacement;
   } | null>(null);
   const actualPlacementKey = actualPlacements.join("|");
   const primaryPlacement = actualPlacements[0] ?? "PRODUCT_PAGE";
+  const device = previewDevice ?? localDevice;
   const placement =
-    placementOverride?.key === actualPlacementKey
-      ? placementOverride.placement
-      : primaryPlacement;
+    previewPlacement ??
+    (localPlacementOverride?.key === actualPlacementKey
+      ? localPlacementOverride.placement
+      : primaryPlacement);
+  const updatePreviewDevice = (nextDevice: PreviewDevice) => {
+    if (onPreviewDeviceChange) onPreviewDeviceChange(nextDevice);
+    else setLocalDevice(nextDevice);
+  };
   const sharedMobileDesign = useMemo(
     () => deriveMobileDesignFromDesktop(design),
     [design],
@@ -258,10 +272,14 @@ export function CampaignDesignEditor({
     }
   };
   const selectPreviewPlacement = (nextPlacement: PreviewPlacement) => {
-    setPlacementOverride({
-      key: actualPlacementKey,
-      placement: nextPlacement,
-    });
+    if (onPreviewPlacementChange) {
+      onPreviewPlacementChange(nextPlacement);
+    } else {
+      setLocalPlacementOverride({
+        key: actualPlacementKey,
+        placement: nextPlacement,
+      });
+    }
   };
   const closeErrorModal = () => {
     const targetField = designErrorSummary?.field;
@@ -429,7 +447,10 @@ export function CampaignDesignEditor({
             <h3>Responsive design</h3>
             <div className="counterpulse-design-card__body">
               {design.separateMobileDesign ? (
-                <DevicePreviewToggle value={device} onChange={setDevice} />
+                <DevicePreviewToggle
+                  value={device}
+                  onChange={updatePreviewDevice}
+                />
               ) : null}
               <div className="counterpulse-responsive-design-switch">
                 <div>
@@ -497,7 +518,7 @@ export function CampaignDesignEditor({
               </label>
             }
             viewModel={previewViewModel}
-            onDeviceChange={setDevice}
+            onDeviceChange={updatePreviewDevice}
             onPlacementChange={selectPreviewPlacement}
           />
           <InspectorOverlay

@@ -153,6 +153,8 @@ type CampaignFormProps = {
   messageTranslationErrors?: CampaignTranslationFormErrors;
   messageTranslations?: CampaignTranslationsByLocale;
   mode: "create" | "edit";
+  previewDevice?: PreviewDevice;
+  previewPlacement?: PreviewPlacement;
   showBuilderTabs?: boolean;
   showPreview?: boolean;
   showTopbar?: boolean;
@@ -161,6 +163,8 @@ type CampaignFormProps = {
   topbarActions?: ReactNode;
   onDesignChange?: (values: CampaignDesignValues) => void;
   onMobileDesignChange?: (values: CampaignDesignValues) => void;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  onPreviewPlacementChange?: (placement: PreviewPlacement) => void;
   onValuesChange?: (values: CampaignFormValues) => void;
 };
 
@@ -203,6 +207,8 @@ export function CampaignForm({
   messageTranslationErrors,
   messageTranslations,
   mode,
+  previewDevice: controlledPreviewDevice,
+  previewPlacement: controlledPreviewPlacement,
   showBuilderTabs = true,
   showPreview = true,
   showTopbar = true,
@@ -211,6 +217,8 @@ export function CampaignForm({
   topbarActions,
   onDesignChange,
   onMobileDesignChange,
+  onPreviewDeviceChange,
+  onPreviewPlacementChange,
   onValuesChange,
 }: CampaignFormProps) {
   const navigation = useNavigation();
@@ -258,7 +266,8 @@ export function CampaignForm({
       ? initialTab
       : visibleBuilderTabs[0].key,
   );
-  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop");
+  const [localPreviewDevice, setLocalPreviewDevice] =
+    useState<PreviewDevice>("desktop");
   const [
     campaignPreviewPlacementOverride,
     setCampaignPreviewPlacementOverride,
@@ -266,6 +275,11 @@ export function CampaignForm({
     key: string;
     placement: PreviewPlacement;
   } | null>(null);
+  const previewDevice = controlledPreviewDevice ?? localPreviewDevice;
+  const updatePreviewDevice = (nextDevice: PreviewDevice) => {
+    if (onPreviewDeviceChange) onPreviewDeviceChange(nextDevice);
+    else setLocalPreviewDevice(nextDevice);
+  };
   const [formValues, setFormValues] = useState(() => values);
   const [localMessageTranslations, setLocalMessageTranslations] = useState(
     () => messageTranslations,
@@ -548,14 +562,19 @@ export function CampaignForm({
     formValues.type,
   );
   const campaignPreviewPlacement =
-    campaignPreviewPlacementOverride?.key === campaignPreviewPlacementKey
+    controlledPreviewPlacement ??
+    (campaignPreviewPlacementOverride?.key === campaignPreviewPlacementKey
       ? campaignPreviewPlacementOverride.placement
-      : defaultCampaignPreviewPlacement;
+      : defaultCampaignPreviewPlacement);
   const selectCampaignPreviewPlacement = (nextPlacement: PreviewPlacement) => {
-    setCampaignPreviewPlacementOverride({
-      key: campaignPreviewPlacementKey,
-      placement: nextPlacement,
-    });
+    if (onPreviewPlacementChange) {
+      onPreviewPlacementChange(nextPlacement);
+    } else {
+      setCampaignPreviewPlacementOverride({
+        key: campaignPreviewPlacementKey,
+        placement: nextPlacement,
+      });
+    }
   };
   const previewViewModel = useMemo(
     () =>
@@ -3816,7 +3835,7 @@ export function CampaignForm({
                   mobileStructureCss={previewMobileStructureCss}
                   customMessages={customMessages}
                   viewModel={previewViewModel}
-                  onDeviceChange={setPreviewDevice}
+                  onDeviceChange={updatePreviewDevice}
                   onPlacementChange={selectCampaignPreviewPlacement}
                   meta={
                     <dl className="counterpulse-preview-meta">
@@ -3845,12 +3864,16 @@ export function CampaignForm({
               isProPlan={isProPlan}
               lockedCustomCssReason={lockedCustomCssReason}
               mobileDesign={effectiveMobileDesign}
+              previewDevice={previewDevice}
+              previewPlacement={campaignPreviewPlacement}
               viewModel={previewViewModel}
               onChange={updateDesignValues}
               onMobileChange={(next) => {
                 if (onMobileDesignChange) onMobileDesignChange(next);
                 else setLocalMobileDesignValues(next);
               }}
+              onPreviewDeviceChange={updatePreviewDevice}
+              onPreviewPlacementChange={selectCampaignPreviewPlacement}
               // Seed the Design editor with the live structural edit (so they
               // survive switching tabs) falling back to the AI-applied structure,
               // so its preview always matches the Campaign-tab preview.
@@ -3884,4 +3907,3 @@ export function CampaignForm({
     </>
   );
 }
-

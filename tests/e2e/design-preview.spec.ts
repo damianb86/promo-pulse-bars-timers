@@ -626,6 +626,68 @@ test("placement preview only lists selected campaign placements and CSS referenc
   expectNoFailedRequests(page);
 });
 
+test("campaign and design tabs share the same preview toolbar state", async ({
+  page,
+  resetDb,
+  loginAsDemoShop,
+}) => {
+  await resetDb("countdown");
+  await loginAsDemoShop("/app/campaigns");
+
+  await page.getByRole("link", { name: "E2E Flash Sale Countdown" }).click();
+  await page.getByRole("tab", { name: "Campaign" }).click();
+  await page.getByRole("tab", { name: "Placement" }).click();
+  await selectOnlyCampaignPlacement(page, "PRODUCT_PAGE");
+  await page.getByRole("button", { name: /^Cart drawer\b/ }).click();
+
+  const campaignPreview = page.locator(".counterpulse-campaign-preview-panel");
+  const campaignToolbar = campaignPreview.locator(
+    ".counterpulse-preview-toolbar",
+  );
+  await expect(campaignToolbar).toBeVisible();
+  await campaignToolbar
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Mobile" })
+    .click();
+  await campaignToolbar
+    .getByLabel("Placement preview")
+    .selectOption("PRODUCT_PAGE");
+  await expect(
+    campaignToolbar.getByRole("button", { name: "Mobile" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(campaignToolbar.getByLabel("Placement preview")).toHaveValue(
+    "PRODUCT_PAGE",
+  );
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  const designPreview = page.locator(".counterpulse-design-editor__preview");
+  const designToolbar = designPreview.locator(".counterpulse-preview-toolbar");
+  await expect(designToolbar).toBeVisible();
+  await expect(
+    designToolbar.getByRole("button", { name: "Mobile" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(designToolbar.getByLabel("Placement preview")).toHaveValue(
+    "PRODUCT_PAGE",
+  );
+
+  await designToolbar
+    .getByLabel("Preview device")
+    .getByRole("button", { name: "Desktop" })
+    .click();
+  await designToolbar.getByLabel("Placement preview").selectOption("CART_DRAWER");
+
+  await page.getByRole("tab", { name: "Campaign" }).click();
+  await expect(
+    campaignToolbar.getByRole("button", { name: "Desktop" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(campaignToolbar.getByLabel("Placement preview")).toHaveValue(
+    "CART_DRAWER",
+  );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
 test("top and bottom bar placement defaults to full width without rounded corners", async ({
   page,
   resetDb,

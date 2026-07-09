@@ -234,6 +234,8 @@ function buildDiscountOfferViewModel(
 
   if (!discountSync) return null;
 
+  if (discountSync.showCodeOnStorefront === false) return null;
+
   if (discountSync.method === "UNIQUE_CODE") {
     return {
       method: "UNIQUE_CODE",
@@ -242,8 +244,6 @@ function buildDiscountOfferViewModel(
       canApply: discountSync.uniqueCodeAutoApply !== false,
     };
   }
-
-  if (discountSync.showCodeOnStorefront === false) return null;
 
   const code = discountSync.discountCode?.trim() ?? "";
 

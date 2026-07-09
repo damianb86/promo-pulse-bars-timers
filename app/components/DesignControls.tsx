@@ -338,7 +338,6 @@ export function DesignControls({
   const selectTemplate = (template: CampaignDesignTemplate) => {
     onChange(applyCampaignDesignTemplate(template.templateKey, values));
     setOpenTemplateDropdown(null);
-    onResetStructure?.();
   };
 
   return (
@@ -453,7 +452,7 @@ export function DesignControls({
               </div>
               <p className="counterpulse-design-note">
                 {structureEdited
-                  ? "Custom HTML/CSS is in use. Changing the layout or preset above resets it."
+                  ? "Custom HTML/CSS is in use. Changing the layout above resets it; presets only update visual settings."
                   : "Structure & styles are generated from the design settings."}
               </p>
             </DesignGroup>

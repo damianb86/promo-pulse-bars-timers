@@ -298,6 +298,30 @@ describe("storefront campaign serialization", () => {
     expect(JSON.stringify(serialized)).not.toContain("77");
   });
 
+  it("keeps disabled unique code widgets out of the storefront payload", () => {
+    const campaign = buildCampaign({
+      discountSync: {
+        method: "UNIQUE_CODE",
+        discountCode: null,
+        shopifyDiscountId: null,
+        showCodeOnStorefront: false,
+        uniqueCodeAutoApply: true,
+        uniqueCodeExpiresMinutes: 45,
+        uniqueCodeReassignExpired: true,
+        uniqueCodePrefix: "VIP",
+        value: "77",
+      },
+    });
+    const serialized = serializeStorefrontCampaign(campaign, baseContext());
+
+    expect(serialized?.discount).toEqual({
+      method: "UNIQUE_CODE",
+    });
+    expect(JSON.stringify(serialized)).not.toContain("uniqueCode");
+    expect(JSON.stringify(serialized)).not.toContain("uniqueCodePrefix");
+    expect(JSON.stringify(serialized)).not.toContain("77");
+  });
+
   it("keeps hidden discount codes out of the storefront payload", () => {
     const campaign = buildCampaign({
       discountSync: {

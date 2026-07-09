@@ -1088,6 +1088,16 @@ export type StyleDesignInput = {
   offerCodePaddingBlock?: number;
   offerCodePaddingInline?: number;
   offerCodeGap?: number;
+  copyButtonBackgroundColor?: string;
+  copyButtonTextColor?: string;
+  copyButtonBorderColor?: string;
+  copyButtonFontSize?: number;
+  copyButtonBorderRadius?: number;
+  applyButtonBackgroundColor?: string;
+  applyButtonTextColor?: string;
+  applyButtonBorderColor?: string;
+  applyButtonFontSize?: number;
+  applyButtonBorderRadius?: number;
   animationDurationMs?: number;
   timerTickDurationMs?: number;
   floatOffsetTop?: string;
@@ -1236,6 +1246,16 @@ export function buildStructureCssVars(
     "--cp-offer-code-padding-block": px(design.offerCodePaddingBlock, 6),
     "--cp-offer-code-padding-inline": px(design.offerCodePaddingInline, 10),
     "--cp-offer-gap": px(design.offerCodeGap, 8),
+    "--cp-offer-copy-bg": design.copyButtonBackgroundColor ?? "",
+    "--cp-offer-copy-text": design.copyButtonTextColor ?? "",
+    "--cp-offer-copy-border": design.copyButtonBorderColor ?? "",
+    "--cp-offer-copy-size": px(design.copyButtonFontSize, 13),
+    "--cp-offer-copy-radius": px(design.copyButtonBorderRadius, 4),
+    "--cp-offer-apply-bg": design.applyButtonBackgroundColor ?? "",
+    "--cp-offer-apply-text": design.applyButtonTextColor ?? "",
+    "--cp-offer-apply-border": design.applyButtonBorderColor ?? "",
+    "--cp-offer-apply-size": px(design.applyButtonFontSize, 13),
+    "--cp-offer-apply-radius": px(design.applyButtonBorderRadius, 4),
     "--cp-motion-duration": `${
       typeof design.animationDurationMs === "number"
         ? design.animationDurationMs

@@ -1012,11 +1012,6 @@ export const action = async ({
       };
     }
 
-    if (!enabled) {
-      await clearDiscountSyncForShop(id, shop.id);
-      return redirectAfterInlineConfigSync();
-    }
-
     if (hasDiscountSettingsErrors(parsed.errors)) {
       return {
         uniqueCodeErrors: { form: Object.values(parsed.errors).join(" ") },
@@ -1053,6 +1048,7 @@ export const action = async ({
             ? null
             : String(parsed.minimumSubtotal),
         appliesOncePerCustomer: true,
+        showCodeOnStorefront: enabled,
         uniqueCodePrefix: parsed.values.uniqueCodePrefix,
         uniqueCodeExpiresMinutes: parsed.uniqueCodeExpiresMinutes,
         uniqueCodeAutoApply: parsed.values.uniqueCodeAutoApply,
@@ -1089,7 +1085,12 @@ export const action = async ({
 
       return {
         uniqueCodeNotice: `Generated ${result.codes.length} unique codes.`,
-        uniqueCodeValues: parsed.values,
+        uniqueCodeValues: enabled
+          ? parsed.values
+          : {
+              ...parsed.values,
+              mode: "NONE",
+            },
       };
     } catch (error) {
       console.error("Failed to generate unique codes", error);

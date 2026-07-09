@@ -390,6 +390,44 @@ export function parseCampaignDesignFormData(
       "offerCodeGap",
       defaultCampaignDesignValues.offerCodeGap,
     ),
+    copyButtonBackgroundColor:
+      readString(formData, "copyButtonBackgroundColor") ||
+      defaultCampaignDesignValues.copyButtonBackgroundColor,
+    copyButtonTextColor:
+      readString(formData, "copyButtonTextColor") ||
+      defaultCampaignDesignValues.copyButtonTextColor,
+    copyButtonBorderColor:
+      readString(formData, "copyButtonBorderColor") ||
+      defaultCampaignDesignValues.copyButtonBorderColor,
+    copyButtonFontSize: readInteger(
+      formData,
+      "copyButtonFontSize",
+      defaultCampaignDesignValues.copyButtonFontSize,
+    ),
+    copyButtonBorderRadius: readInteger(
+      formData,
+      "copyButtonBorderRadius",
+      defaultCampaignDesignValues.copyButtonBorderRadius,
+    ),
+    applyButtonBackgroundColor:
+      readString(formData, "applyButtonBackgroundColor") ||
+      defaultCampaignDesignValues.applyButtonBackgroundColor,
+    applyButtonTextColor:
+      readString(formData, "applyButtonTextColor") ||
+      defaultCampaignDesignValues.applyButtonTextColor,
+    applyButtonBorderColor:
+      readString(formData, "applyButtonBorderColor") ||
+      defaultCampaignDesignValues.applyButtonBorderColor,
+    applyButtonFontSize: readInteger(
+      formData,
+      "applyButtonFontSize",
+      defaultCampaignDesignValues.applyButtonFontSize,
+    ),
+    applyButtonBorderRadius: readInteger(
+      formData,
+      "applyButtonBorderRadius",
+      defaultCampaignDesignValues.applyButtonBorderRadius,
+    ),
     offerCopyBehavior: readOfferCopyBehavior(formData),
     offerApplyBehavior: readOfferApplyBehavior(formData),
   };

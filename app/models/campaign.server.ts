@@ -766,6 +766,16 @@ export function toCampaignDesignWriteData(
     offerCodePaddingBlock: input.offerCodePaddingBlock,
     offerCodePaddingInline: input.offerCodePaddingInline,
     offerCodeGap: input.offerCodeGap,
+    copyButtonBackgroundColor: input.copyButtonBackgroundColor,
+    copyButtonTextColor: input.copyButtonTextColor,
+    copyButtonBorderColor: input.copyButtonBorderColor,
+    copyButtonFontSize: input.copyButtonFontSize,
+    copyButtonBorderRadius: input.copyButtonBorderRadius,
+    applyButtonBackgroundColor: input.applyButtonBackgroundColor,
+    applyButtonTextColor: input.applyButtonTextColor,
+    applyButtonBorderColor: input.applyButtonBorderColor,
+    applyButtonFontSize: input.applyButtonFontSize,
+    applyButtonBorderRadius: input.applyButtonBorderRadius,
     offerCopyBehavior: input.offerCopyBehavior,
     offerApplyBehavior: input.offerApplyBehavior,
     mobileDesign: toCampaignDesignJson(mobileInput),
@@ -1313,6 +1323,20 @@ export async function duplicateCampaign(id: string, shopId: string) {
                 offerCodePaddingBlock: campaign.design.offerCodePaddingBlock,
                 offerCodePaddingInline: campaign.design.offerCodePaddingInline,
                 offerCodeGap: campaign.design.offerCodeGap,
+                copyButtonBackgroundColor:
+                  campaign.design.copyButtonBackgroundColor,
+                copyButtonTextColor: campaign.design.copyButtonTextColor,
+                copyButtonBorderColor: campaign.design.copyButtonBorderColor,
+                copyButtonFontSize: campaign.design.copyButtonFontSize,
+                copyButtonBorderRadius:
+                  campaign.design.copyButtonBorderRadius,
+                applyButtonBackgroundColor:
+                  campaign.design.applyButtonBackgroundColor,
+                applyButtonTextColor: campaign.design.applyButtonTextColor,
+                applyButtonBorderColor: campaign.design.applyButtonBorderColor,
+                applyButtonFontSize: campaign.design.applyButtonFontSize,
+                applyButtonBorderRadius:
+                  campaign.design.applyButtonBorderRadius,
                 offerCopyBehavior: campaign.design.offerCopyBehavior,
                 offerApplyBehavior: campaign.design.offerApplyBehavior,
                 ...(campaign.design.mobileDesign

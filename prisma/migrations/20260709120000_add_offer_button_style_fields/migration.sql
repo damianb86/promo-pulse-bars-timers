@@ -1,0 +1,10 @@
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyButtonBackgroundColor" TEXT NOT NULL DEFAULT '#111827';
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyButtonTextColor" TEXT NOT NULL DEFAULT '#FFFFFF';
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyButtonBorderColor" TEXT NOT NULL DEFAULT '#111827';
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyButtonFontSize" INTEGER NOT NULL DEFAULT 13;
+ALTER TABLE "CampaignDesign" ADD COLUMN "copyButtonBorderRadius" INTEGER NOT NULL DEFAULT 4;
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyButtonBackgroundColor" TEXT NOT NULL DEFAULT '#111827';
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyButtonTextColor" TEXT NOT NULL DEFAULT '#FFFFFF';
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyButtonBorderColor" TEXT NOT NULL DEFAULT '#111827';
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyButtonFontSize" INTEGER NOT NULL DEFAULT 13;
+ALTER TABLE "CampaignDesign" ADD COLUMN "applyButtonBorderRadius" INTEGER NOT NULL DEFAULT 4;

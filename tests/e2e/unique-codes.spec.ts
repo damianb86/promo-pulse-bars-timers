@@ -75,6 +75,33 @@ test("unique codes can be generated and assigned per visitor", async ({
   await expect(preview).toContainText("STG2-A1B2C3");
   await expect(preview).toContainText("Copy code");
   await expect(preview).toContainText("Apply discount");
+  const designEditor = page.getByRole("tabpanel", { name: "Design" });
+  const offerPreview = preview.locator(".counterpulse-preview-offer").first();
+
+  await expect(offerPreview).toHaveClass(/counterpulse-preview-offer--inline/);
+  await expect(
+    offerPreview.locator("> .counterpulse-preview-offer-main"),
+  ).toHaveCount(0);
+  await designEditor
+    .getByRole("button", { name: "Stacked", exact: true })
+    .click();
+  await expect(offerPreview).toHaveClass(/counterpulse-preview-offer--stacked/);
+  await expect(
+    offerPreview.locator("> .counterpulse-preview-offer-main"),
+  ).toHaveCount(1);
+  await expect(
+    offerPreview.locator("> .counterpulse-preview-offer-actions"),
+  ).toHaveCount(1);
+  await designEditor
+    .getByRole("button", { name: "Compact", exact: true })
+    .click();
+  await expect(offerPreview).toHaveClass(/counterpulse-preview-offer--compact/);
+  await expect(
+    offerPreview.locator("> .counterpulse-preview-offer-compact-code"),
+  ).toHaveCount(1);
+  await expect(
+    offerPreview.locator("> .counterpulse-preview-cta--offer"),
+  ).toHaveCount(1);
 
   await publishCurrentCampaign(page);
 
@@ -132,6 +159,71 @@ test("unique codes can be generated and assigned per visitor", async ({
   await expect(page.locator(".pp-unique-code__value").first()).toHaveText(
     codeB,
   );
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("unique code pools can be generated while storefront unique codes stay disabled", async ({
+  createCampaignViaUI,
+  loginAsDemoShop,
+  page,
+  resetDb,
+}) => {
+  await resetDb("pro");
+  await loginAsDemoShop();
+  const campaignId = await createCampaignViaUI({
+    name: "E2E Unique Codes Disabled Generation",
+    status: "ACTIVE",
+    headline: "Codes prepared",
+    subheadline: "Storefront offer stays off.",
+  });
+
+  await page.goto(`/app/campaigns/${campaignId}`);
+  await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Unique codes" }).click();
+  const uniqueCodesForm = page.locator(
+    'form:has(input[name="_action"][value="generateUniqueCodes"])',
+  );
+  const enableUniqueCodes =
+    uniqueCodesForm.getByLabel("Enable unique codes");
+
+  await expect(enableUniqueCodes).not.toBeChecked();
+  await uniqueCodesForm.getByLabel("Discount title").fill("OFF unique codes");
+  await uniqueCodesForm.getByLabel("Prefix").fill("OFF");
+  await uniqueCodesForm.getByLabel("Discount type").selectOption("PERCENTAGE");
+  await uniqueCodesForm.getByLabel("Discount value").fill("12");
+  await uniqueCodesForm.getByLabel("Total codes to generate").fill("2");
+
+  await uniqueCodesForm.getByRole("button", { name: "Generate codes" }).click();
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes(`/app/campaigns/${campaignId}`) &&
+        response.request().method() === "POST",
+    ),
+    confirmAction(page, "Generate codes"),
+  ]);
+
+  await expect(page.getByText("Generated 2 unique codes.")).toBeVisible();
+  await expect(enableUniqueCodes).not.toBeChecked();
+  await expect(
+    page.getByRole("row", { name: /OFF Percentage 12 Active 2/ }),
+  ).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("tab", { name: "Offers" }).click();
+  await page.getByRole("tab", { name: "Unique codes" }).click();
+  await expect(
+    uniqueCodesForm.getByLabel("Enable unique codes"),
+  ).not.toBeChecked();
+  await expect(uniqueCodesForm.getByLabel("Discount title")).toHaveValue(
+    "OFF unique codes",
+  );
+  await expect(uniqueCodesForm.getByLabel("Prefix")).toHaveValue("OFF");
+  await expect(
+    page.getByRole("row", { name: /OFF Percentage 12 Active 2/ }),
+  ).toBeVisible();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

@@ -18,6 +18,8 @@ test("storefront embed renders countdown and records CTA click", async ({
     "data-value",
     /\d{2} Hrs \d{2} Mins \d{2} Secs/,
   );
+  await expect(page.locator("#pp-top-bars")).toHaveCSS("position", "sticky");
+  await expect(bar).toHaveCSS("position", "relative");
 
   await page
     .locator(".counterpulse-preview-cta")
@@ -81,6 +83,29 @@ test("storefront embed handles unavailable browser storage", async ({
 
   await expect(page.locator(".pp-bar").first()).toContainText("Sale ends soon");
   await expect(page.locator(".pp-bar")).toHaveCount(1);
+
+  expectNoConsoleErrors(page);
+  expectNoFailedRequests(page);
+});
+
+test("storefront close button plays the configured exit animation", async ({
+  page,
+  resetDb,
+}) => {
+  await resetDb("countdown");
+  await page.goto("/__test/storefront");
+
+  const bar = page.locator(".pp-bar").first();
+  await expect(bar).toContainText("Sale ends soon");
+
+  await bar.getByRole("button", { name: "Close promotion" }).click();
+
+  await expect(bar).toHaveClass(/pp-bar--closing/);
+  await expect(bar).toHaveCSS(
+    "animation-name",
+    /counterpulse-preview-(critical-)?fade-out/,
+  );
+  await expect(page.locator(".pp-bar")).toHaveCount(0);
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

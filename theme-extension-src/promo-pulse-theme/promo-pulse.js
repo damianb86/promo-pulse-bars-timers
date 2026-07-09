@@ -572,7 +572,16 @@
     }
 
     rootEl.appendChild(badgeEl);
+    if (
+      (campaign.placement === "TOP_BAR" ||
+        campaign.placement === "BOTTOM_BAR") &&
+      design.positionMode !== "OVERLAY" &&
+      design.positionSticky
+    ) {
+      rootEl.dataset.ppStickyZIndex = String(readStickyZIndex(design));
+    }
     container.appendChild(rootEl);
+    syncStickyContainer(container);
     renderedCampaigns[renderKey] = {
       element: rootEl,
       scopeKey: currentRenderScope || renderKey,
@@ -965,9 +974,7 @@
     if (!container || !container.classList) return;
     if (!container.classList.contains("pp-container")) return;
 
-    stickyBars = container.querySelectorAll(
-      ".counterpulse-preview-promo--sticky",
-    );
+    stickyBars = container.querySelectorAll("[data-pp-sticky-z-index]");
     Array.prototype.forEach.call(stickyBars, function (bar) {
       var value = Number(bar.dataset.ppStickyZIndex);
       if (!Number.isFinite(value)) {

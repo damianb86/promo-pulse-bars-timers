@@ -89,7 +89,7 @@ test("design changes update live preview and persist", async ({
   await editor.getByRole("button", { name: "Preset options" }).click();
   await editor.getByRole("option", { name: /^Dawn\b/ }).click();
   await expect(layoutInput).toHaveValue("CTA_RIGHT");
-  await expect(timerSizeInput).toHaveValue("32");
+  await expect(timerSizeInput).toHaveValue("58");
 
   await editor.getByRole("button", { name: "Layout options" }).click();
   await editor.getByRole("option", { name: /^Wide stacked\b/ }).click();
@@ -184,16 +184,14 @@ test("design changes update live preview and persist", async ({
   await expect(preview).toHaveClass(/counterpulse-preview-promo--enter-slide/);
   await expect(preview).toHaveClass(/counterpulse-preview-promo--exit-pop/);
 
-  await editor.getByLabel("Show on mobile").uncheck();
-  await expect(
-    editor.locator(".counterpulse-preview-disabled-state"),
-  ).toContainText("Not shown on mobile");
   await expect(
     page.locator(
       ".counterpulse-design-editor__preview .counterpulse-preview-promo",
     ),
-  ).toHaveCount(0);
-  await editor.getByLabel("Show on mobile").check();
+  ).toHaveCount(1);
+  await expect(editor.locator('input[name="mobileEnabled"]')).toHaveValue(
+    "true",
+  );
   await expect(preview).toContainText("Sale ends soon");
 
   await Promise.all([
@@ -262,6 +260,9 @@ test("design changes update live preview and persist", async ({
   await expect(
     reloadedEditor.locator('select[name="timerTickAnimation"]'),
   ).toHaveValue("PULSE");
+  await expect(reloadedEditor.locator('input[name="mobileEnabled"]')).toHaveValue(
+    "true",
+  );
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);
@@ -300,6 +301,14 @@ test("structure slot styles apply to hydrated timer in design and campaign previ
     ".counterpulse-design-editor__preview .counterpulse-preview-timer",
   );
   await expect(designTimer).toHaveCSS("display", "none");
+
+  await editor.getByRole("button", { name: "Preset options" }).click();
+  await editor.getByRole("option", { name: /^Dawn\b/ }).click();
+  await expect(designTimer).toHaveCSS("display", "none");
+
+  await editor.getByRole("button", { name: "View / edit HTML" }).click();
+  await expect(htmlTextarea).toHaveValue(/style="max-width: 150px;/);
+  await htmlDialog.getByRole("button", { name: "Done" }).click();
 
   await page.getByRole("tab", { name: "Campaign" }).click();
   const campaignTimer = page.locator(

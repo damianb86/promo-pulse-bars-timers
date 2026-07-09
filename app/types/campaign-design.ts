@@ -205,6 +205,16 @@ export type CampaignDesignValues = {
   offerCodePaddingBlock: number;
   offerCodePaddingInline: number;
   offerCodeGap: number;
+  copyButtonBackgroundColor: string;
+  copyButtonTextColor: string;
+  copyButtonBorderColor: string;
+  copyButtonFontSize: number;
+  copyButtonBorderRadius: number;
+  applyButtonBackgroundColor: string;
+  applyButtonTextColor: string;
+  applyButtonBorderColor: string;
+  applyButtonFontSize: number;
+  applyButtonBorderRadius: number;
   offerCopyBehavior: DesignOfferCopyBehaviorValue;
   offerApplyBehavior: DesignOfferApplyBehaviorValue;
 };
@@ -365,6 +375,16 @@ export const defaultCampaignDesignValues: CampaignDesignValues = {
   offerCodePaddingBlock: 5,
   offerCodePaddingInline: 8,
   offerCodeGap: 6,
+  copyButtonBackgroundColor: "#111827",
+  copyButtonTextColor: "#FFFFFF",
+  copyButtonBorderColor: "#111827",
+  copyButtonFontSize: 13,
+  copyButtonBorderRadius: 4,
+  applyButtonBackgroundColor: "#111827",
+  applyButtonTextColor: "#FFFFFF",
+  applyButtonBorderColor: "#111827",
+  applyButtonFontSize: 13,
+  applyButtonBorderRadius: 4,
   offerCopyBehavior: "FEEDBACK",
   offerApplyBehavior: "SHOW_APPLIED",
 };
@@ -373,7 +393,20 @@ const campaignDesignTemplateMeta = {
   dawn: {
     label: "Dawn",
     description:
-      "Bright gradient preset for upbeat launches, fresh offers, and positive sitewide announcements.",
+      "Dark dawn countdown preset with a red timer hero and matching CTA.",
+    bestFor:
+      "Timer-led sale bars, urgent hero countdowns, and clean storefront promos that need high contrast without a noisy retail palette.",
+    visualCode:
+      "Deep indigo-to-smoke surface, pale lavender copy, oversized red-orange colon timer, soft rounded card, and matching red CTA.",
+    emphasizes:
+      "Countdown visibility, premium dark contrast, and one clear red action.",
+    avoids:
+      "Long dense copy, delivery notices, or cheerful pastel launches.",
+  },
+  "electric-horizon": {
+    label: "Electric Horizon",
+    description:
+      "Bright aqua-violet gradient preset for upbeat launches and fresh offers.",
     bestFor:
       "Optimistic sale bars, product launches, seasonal refreshes, and campaigns that should feel energetic without being aggressive.",
     visualCode:
@@ -382,6 +415,80 @@ const campaignDesignTemplateMeta = {
       "Color, freshness, and a clear timer/CTA contrast against a cheerful surface.",
     avoids:
       "Very serious operational notices, luxury dark campaigns, or long dense copy.",
+  },
+  "neon-pulse": {
+    label: "Neon Pulse",
+    description:
+      "Electric neon preset with a black surface, cyan-magenta glow, and sharp CTA contrast.",
+    bestFor:
+      "Night drops, gaming or tech launches, high-energy flash sales, and campaigns that should feel futuristic.",
+    visualCode:
+      "Near-black background, cyan and pink accents, bright timer, luminous CTA, and high-contrast modern sale energy.",
+    emphasizes: "Glow, speed, urgency, and a digital premium feel.",
+    avoids:
+      "Quiet luxury, operational notices, conservative B2B stores, or soft seasonal messaging.",
+  },
+  "vivid-burst": {
+    label: "Vivid Burst",
+    description:
+      "Bold vibrant preset with saturated blue, orange, and yellow accents.",
+    bestFor:
+      "Big sitewide promos, colorful brands, energetic launches, and broad announcements that should feel optimistic.",
+    visualCode:
+      "Vivid blue-to-purple gradient, orange CTA, warm timer accent, and bright approachable contrast.",
+    emphasizes:
+      "Momentum, color, approachability, and a strong action without going dark.",
+    avoids:
+      "Luxury dark offers, minimal stores, serious delivery notices, or tiny product badges.",
+  },
+  "bubble-pop": {
+    label: "Bubble Pop",
+    description:
+      "Playful bubble-gum preset with pink gradients, soft corners, and sweet contrast.",
+    bestFor:
+      "Beauty, fashion, gifts, creator drops, Valentine-like promos, and friendly short copy.",
+    visualCode:
+      "Pink-to-lilac gradient, berry CTA, white card-like timer treatment, rounded bubble feel.",
+    emphasizes: "Playfulness, softness, and a clear cheerful conversion path.",
+    avoids:
+      "Serious urgency, B2B operational copy, black-friday severity, or long technical details.",
+  },
+  "black-volt": {
+    label: "Black Volt",
+    description:
+      "Black and yellow impact preset for high-visibility sale bars.",
+    bestFor:
+      "Discount events, limited stock pushes, strong retail campaigns, and moments that need instant attention.",
+    visualCode:
+      "Matte black surface, electric yellow timer and CTA, crisp white copy, and hard retail contrast.",
+    emphasizes: "Visibility, urgency, discount energy, and strong scanning.",
+    avoids:
+      "Soft lifestyle brands, subtle announcements, pastel campaigns, or calm operational messaging.",
+  },
+  "ocean-depth": {
+    label: "Ocean Depth",
+    description:
+      "Dark ocean preset with deep blue gradients and aqua highlights.",
+    bestFor:
+      "Premium tech, wellness, travel, marine, and calm-but-urgent countdowns.",
+    visualCode:
+      "Deep navy-to-teal surface, aqua timer/accent, cool light text, and a composed dark mood.",
+    emphasizes:
+      "Depth, calm urgency, contrast, and a more mature premium feel.",
+    avoids:
+      "Playful pastel promos, loud red flash sales, holiday gifting, or casual cartoon brands.",
+  },
+  "crimson-moon": {
+    label: "Crimson Moon",
+    description:
+      "Red moon preset with dark burgundy gradients and a hot crimson timer.",
+    bestFor:
+      "Late-night offers, dramatic launches, limited drops, and campaigns that need serious urgency.",
+    visualCode:
+      "Burgundy-to-black gradient, crimson timer/CTA, pale rose copy, and dramatic rounded card contrast.",
+    emphasizes: "Drama, scarcity, deadline pressure, and dark event energy.",
+    avoids:
+      "Free-shipping reassurance, delivery cutoff messages, playful bubble-gum brands, or calm support notices.",
   },
   "fifty-shades": {
     label: "50 Shades",
@@ -545,6 +652,43 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     ...campaignDesignTemplateMeta.dawn,
     templateKey: "dawn",
     backgroundType: "GRADIENT",
+    backgroundColor: "#2A263D",
+    gradientStartColor: "#27233A",
+    gradientEndColor: "#4B4863",
+    gradientAngle: 115,
+    textColor: "#DAD7E8",
+    closeButtonColor: "#DAD7E8",
+    titleColor: "#E4E1EF",
+    subheadingColor: "#B9B5C8",
+    timerColor: "#FF3B26",
+    legendColor: "#B9B5C8",
+    accentColor: "#FF3B26",
+    buttonColor: "#D93420",
+    buttonTextColor: "#FFFFFF",
+    borderSize: 0,
+    borderRadius: 14,
+    fontSize: 16,
+    titleFontSize: 34,
+    subheadingFontSize: 22,
+    timerFontSize: 58,
+    legendFontSize: 17,
+    timerFormat: "COLON",
+    timerStyle: "PLAIN",
+    timerShowLabels: true,
+    timerShowSeconds: true,
+    timerHideZeroDays: true,
+    paddingBlock: 42,
+    paddingInline: 34,
+    contentGap: 16,
+    timerSurfaceColor: "#2A263D",
+    timerSurfaceBorderColor: "#2A263D",
+    timerSurfaceBorderSize: 0,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["electric-horizon"],
+    templateKey: "electric-horizon",
+    backgroundType: "GRADIENT",
     backgroundColor: "#EAFBFF",
     gradientStartColor: "#45E4D9",
     gradientEndColor: "#B975F4",
@@ -567,6 +711,162 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     timerSurfaceColor: "#173A7A",
     timerSurfaceBorderColor: "#FFFFFF",
     timerSurfaceRadius: 8,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["neon-pulse"],
+    templateKey: "neon-pulse",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#080A1F",
+    gradientStartColor: "#070A1A",
+    gradientEndColor: "#3B0764",
+    gradientAngle: 135,
+    textColor: "#F8FAFC",
+    closeButtonColor: "#F8FAFC",
+    titleColor: "#F8FAFC",
+    subheadingColor: "#A5F3FC",
+    timerColor: "#22D3EE",
+    legendColor: "#F0ABFC",
+    accentColor: "#F0ABFC",
+    buttonColor: "#BE185D",
+    buttonTextColor: "#FFFFFF",
+    borderColor: "#22D3EE",
+    borderSize: 1,
+    borderRadius: 10,
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#111827",
+    timerSurfaceBorderColor: "#22D3EE",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 12,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["vivid-burst"],
+    templateKey: "vivid-burst",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#2563EB",
+    gradientStartColor: "#2563EB",
+    gradientEndColor: "#7C3AED",
+    gradientAngle: 120,
+    textColor: "#FFFFFF",
+    closeButtonColor: "#FFFFFF",
+    titleColor: "#FFFFFF",
+    subheadingColor: "#DBEAFE",
+    timerColor: "#FDE047",
+    legendColor: "#DBEAFE",
+    accentColor: "#F97316",
+    buttonColor: "#C2410C",
+    buttonTextColor: "#FFFFFF",
+    borderSize: 0,
+    borderRadius: 12,
+    timerStyle: "BOXES",
+    timerSurfaceColor: "#1E1B4B",
+    timerSurfaceBorderColor: "#FDE047",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 10,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["bubble-pop"],
+    templateKey: "bubble-pop",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#FCE7F3",
+    gradientStartColor: "#F9A8D4",
+    gradientEndColor: "#C4B5FD",
+    gradientAngle: 135,
+    textColor: "#831843",
+    closeButtonColor: "#831843",
+    titleColor: "#831843",
+    subheadingColor: "#9D174D",
+    timerColor: "#BE185D",
+    legendColor: "#831843",
+    accentColor: "#DB2777",
+    buttonColor: "#BE185D",
+    buttonTextColor: "#FFFFFF",
+    borderColor: "#FBCFE8",
+    borderSize: 1,
+    borderRadius: 18,
+    timerStyle: "BOXES",
+    timerSurfaceColor: "#FFFFFF",
+    timerSurfaceBorderColor: "#F9A8D4",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 14,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["black-volt"],
+    templateKey: "black-volt",
+    backgroundColor: "#0A0A0A",
+    textColor: "#FFFFFF",
+    closeButtonColor: "#FFFFFF",
+    titleColor: "#FFFFFF",
+    subheadingColor: "#E5E7EB",
+    timerColor: "#FACC15",
+    legendColor: "#FDE68A",
+    accentColor: "#FACC15",
+    buttonColor: "#FACC15",
+    buttonTextColor: "#111827",
+    borderColor: "#FACC15",
+    borderSize: 1,
+    borderRadius: 8,
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#18181B",
+    timerSurfaceBorderColor: "#FACC15",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 10,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["ocean-depth"],
+    templateKey: "ocean-depth",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#082F49",
+    gradientStartColor: "#082F49",
+    gradientEndColor: "#0F766E",
+    gradientAngle: 135,
+    textColor: "#ECFEFF",
+    closeButtonColor: "#ECFEFF",
+    titleColor: "#ECFEFF",
+    subheadingColor: "#A5F3FC",
+    timerColor: "#67E8F9",
+    legendColor: "#BAE6FD",
+    accentColor: "#22D3EE",
+    buttonColor: "#22D3EE",
+    buttonTextColor: "#082F49",
+    borderSize: 0,
+    borderRadius: 12,
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#0C4A6E",
+    timerSurfaceBorderColor: "#67E8F9",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 12,
+  },
+  {
+    ...defaultCampaignDesignValues,
+    ...campaignDesignTemplateMeta["crimson-moon"],
+    templateKey: "crimson-moon",
+    backgroundType: "GRADIENT",
+    backgroundColor: "#450A0A",
+    gradientStartColor: "#1F0A12",
+    gradientEndColor: "#7F1D1D",
+    gradientAngle: 135,
+    textColor: "#FFF1F2",
+    closeButtonColor: "#FFF1F2",
+    titleColor: "#FFF1F2",
+    subheadingColor: "#FECDD3",
+    timerColor: "#FB7185",
+    legendColor: "#FDA4AF",
+    accentColor: "#FB7185",
+    buttonColor: "#E11D48",
+    buttonTextColor: "#FFFFFF",
+    borderColor: "#BE123C",
+    borderSize: 1,
+    borderRadius: 14,
+    timerStyle: "GROUPED",
+    timerSurfaceColor: "#450A0A",
+    timerSurfaceBorderColor: "#FB7185",
+    timerSurfaceBorderSize: 1,
+    timerSurfaceRadius: 12,
   },
   {
     ...defaultCampaignDesignValues,
@@ -669,6 +969,7 @@ export const campaignDesignTemplates: CampaignDesignTemplate[] = [
     subheadingColor: "#FEE2E2",
     timerColor: "#FDE047",
     legendColor: "#FECACA",
+    timerStyle: "GROUPED",
     borderSize: 0,
     borderRadius: 6,
     timerSurfaceColor: "#450A0A",

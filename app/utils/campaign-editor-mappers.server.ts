@@ -1115,6 +1115,7 @@ export function toDiscountSettingsValues(
     uniqueCodeReassignExpired?: boolean | null;
     uniqueCodeStartsAt?: Date | string | null;
     uniqueCodeEndsAt?: Date | string | null;
+    showCodeOnStorefront?: boolean | null;
   } | null,
 ): DiscountSettingsValues {
   if (!settings) return defaultDiscountSettingsValues;
@@ -1122,7 +1123,8 @@ export function toDiscountSettingsValues(
   if (settings.method === "UNIQUE_CODE") {
     return {
       ...defaultDiscountSettingsValues,
-      mode: "UNIQUE_CODES",
+      mode:
+        settings.showCodeOnStorefront === false ? "NONE" : "UNIQUE_CODES",
       existingCodeOrId: "",
       discountCode: "",
       shopifyDiscountId: "",
@@ -1249,4 +1251,3 @@ export function toDeliveryCutoffSettingsValues(
 export function stringifyJsonSetting(value: unknown, fallback: string) {
   return value ? JSON.stringify(value, null, 2) : fallback;
 }
-

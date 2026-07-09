@@ -181,10 +181,13 @@
     wrapper.appendChild(loading);
 
     if (hasAppliedDiscount(campaign)) {
-      loading.textContent = getAppliedDiscountMessage(design);
-      window.setTimeout(function () {
-        renderPostApplyState(wrapper, campaign);
-      }, 0);
+      var behavior = getOfferApplyBehavior(design);
+      renderAppliedDiscountState(wrapper, campaign);
+      if (behavior === "HIDE_OFFER" || behavior === "CLOSE_CAMPAIGN") {
+        window.setTimeout(function () {
+          renderPostApplyState(wrapper, campaign);
+        }, 0);
+      }
       return wrapper;
     }
 
@@ -299,6 +302,7 @@
 
   function renderDiscountCodeContent(wrapper, campaign, options) {
     var design = getOfferDesign(campaign);
+    var layout = getOfferCodeLayout(design);
     var code = String(options.code || "");
     var codeGroup;
     var label;
@@ -322,7 +326,6 @@
       if (options.valueTestId) value.dataset.testid = options.valueTestId;
       value.textContent = code;
       codeGroup.appendChild(value);
-      wrapper.appendChild(codeGroup);
     }
 
     if (design.showCopyCodeButton !== false) {
@@ -339,7 +342,6 @@
         window.PromoPulseCopyCode(code, campaign);
         handleOfferCopyBehavior(wrapper, campaign, copyButton);
       });
-      wrapper.appendChild(copyButton);
     }
 
     if (
@@ -362,8 +364,50 @@
           renderPostApplyState(wrapper, campaign);
         }, 80);
       });
-      wrapper.appendChild(applyLink);
     }
+
+    appendOfferLayout(wrapper, layout, codeGroup, copyButton, applyLink);
+  }
+
+  function appendOfferLayout(wrapper, layout, codeGroup, copyButton, applyLink) {
+    var main;
+    var actions;
+    var compactCode;
+
+    if (layout === "stacked") {
+      if (codeGroup) {
+        main = document.createElement("span");
+        main.className = "pp-discount-offer__main";
+        main.appendChild(codeGroup);
+        wrapper.appendChild(main);
+      }
+
+      if (copyButton || applyLink) {
+        actions = document.createElement("span");
+        actions.className = "pp-discount-offer__actions";
+        if (copyButton) actions.appendChild(copyButton);
+        if (applyLink) actions.appendChild(applyLink);
+        wrapper.appendChild(actions);
+      }
+      return;
+    }
+
+    if (layout === "compact") {
+      if (codeGroup || copyButton) {
+        compactCode = document.createElement("span");
+        compactCode.className = "pp-discount-offer__compact-code";
+        if (codeGroup) compactCode.appendChild(codeGroup);
+        if (copyButton) compactCode.appendChild(copyButton);
+        wrapper.appendChild(compactCode);
+      }
+
+      if (applyLink) wrapper.appendChild(applyLink);
+      return;
+    }
+
+    if (codeGroup) wrapper.appendChild(codeGroup);
+    if (copyButton) wrapper.appendChild(copyButton);
+    if (applyLink) wrapper.appendChild(applyLink);
   }
 
   function startUniqueCodeCountdown(wrapper, timer, campaign, config, payload) {
@@ -440,10 +484,19 @@
   function renderAppliedDiscountPlaceholder(campaign) {
     var design = getOfferDesign(campaign);
     var wrapper = createOfferWrapper(design, "pp-discount-offer--applied");
+    var behavior = getOfferApplyBehavior(design);
 
-    window.setTimeout(function () {
-      renderPostApplyState(wrapper, campaign);
-    }, 0);
+    // Paint the applied confirmation synchronously so the offer renders with
+    // content on the first frame instead of flashing an empty placeholder.
+    renderAppliedDiscountState(wrapper, campaign);
+
+    // HIDE_OFFER / CLOSE_CAMPAIGN need the surface attached to the DOM to find
+    // the campaign container, so only those defer to the next tick.
+    if (behavior === "HIDE_OFFER" || behavior === "CLOSE_CAMPAIGN") {
+      window.setTimeout(function () {
+        renderPostApplyState(wrapper, campaign);
+      }, 0);
+    }
 
     return wrapper;
   }

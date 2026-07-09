@@ -977,9 +977,7 @@
     if (!container || !container.classList) return;
     if (!container.classList.contains("pp-container")) return;
 
-    stickyBars = container.querySelectorAll(
-      ".counterpulse-preview-promo--sticky",
-    );
+    stickyBars = container.querySelectorAll("[data-pp-sticky-z-index]");
     Array.prototype.forEach.call(stickyBars, function (bar) {
       var value = Number(bar.dataset.ppStickyZIndex);
       if (!Number.isFinite(value)) {

@@ -46,6 +46,25 @@ describe("buildCampaignViewModel", () => {
     expect(viewModel.ctaText).toBe("Shop now");
   });
 
+  it("hides unique code offers when storefront code visibility is disabled", () => {
+    const viewModel = buildCampaignViewModel({
+      name: "Prepared unique codes",
+      type: "COUNTDOWN_BAR",
+      placements: [{ placementType: "TOP_BAR", enabled: true }],
+      translations: [],
+      design: null,
+      discountSync: {
+        method: "UNIQUE_CODE",
+        uniqueCodePrefix: "VIP",
+        uniqueCodeAutoApply: true,
+        showCodeOnStorefront: false,
+      },
+    });
+
+    expect(viewModel.discountCode).toBe("");
+    expect(viewModel.offer).toBeNull();
+  });
+
   it("preserves modern design, timer, and placement settings for storefront rendering", () => {
     const viewModel = buildCampaignViewModel({
       name: "Top bar countdown",

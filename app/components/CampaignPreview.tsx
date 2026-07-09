@@ -554,6 +554,16 @@ function buildPreviewStyle(design: CampaignDesignValues) {
     "--cp-offer-code-padding-block": `${design.offerCodePaddingBlock}px`,
     "--cp-offer-code-padding-inline": `${design.offerCodePaddingInline}px`,
     "--cp-offer-gap": `${design.offerCodeGap}px`,
+    "--cp-offer-copy-bg": design.copyButtonBackgroundColor,
+    "--cp-offer-copy-text": design.copyButtonTextColor,
+    "--cp-offer-copy-border": design.copyButtonBorderColor,
+    "--cp-offer-copy-size": `${design.copyButtonFontSize}px`,
+    "--cp-offer-copy-radius": `${design.copyButtonBorderRadius}px`,
+    "--cp-offer-apply-bg": design.applyButtonBackgroundColor,
+    "--cp-offer-apply-text": design.applyButtonTextColor,
+    "--cp-offer-apply-border": design.applyButtonBorderColor,
+    "--cp-offer-apply-size": `${design.applyButtonFontSize}px`,
+    "--cp-offer-apply-radius": `${design.applyButtonBorderRadius}px`,
     "--cp-motion-duration": `${design.animationDurationMs}ms`,
     "--cp-tick-duration": `${design.timerTickDurationMs}ms`,
   } as CSSProperties;
@@ -1493,6 +1503,63 @@ function OfferPreview({
 
   if (!offer || !isOfferVisible(viewModel, design)) return null;
 
+  const codeNode = design.showDiscountCode ? (
+    <span className="counterpulse-preview-code-wrap">
+      {design.offerCodeLabel ? (
+        <span className="counterpulse-preview-offer-label">
+          {design.offerCodeLabel}
+        </span>
+      ) : null}
+      <span className="counterpulse-preview-code">{offer.code}</span>
+    </span>
+  ) : null;
+  const copyNode = design.showCopyCodeButton ? (
+    <span className="counterpulse-preview-code-action">
+      {design.copyCodeLabel}
+    </span>
+  ) : null;
+  const applyNode =
+    design.showApplyDiscountButton && offer.canApply ? (
+      <span className="counterpulse-preview-cta counterpulse-preview-cta--offer">
+        {design.applyDiscountLabel}
+      </span>
+    ) : null;
+  let content = (
+    <>
+      {codeNode}
+      {copyNode}
+      {applyNode}
+    </>
+  );
+
+  if (design.offerCodeLayout === "STACKED") {
+    content = (
+      <>
+        {codeNode ? (
+          <span className="counterpulse-preview-offer-main">{codeNode}</span>
+        ) : null}
+        {copyNode || applyNode ? (
+          <span className="counterpulse-preview-offer-actions">
+            {copyNode}
+            {applyNode}
+          </span>
+        ) : null}
+      </>
+    );
+  } else if (design.offerCodeLayout === "COMPACT") {
+    content = (
+      <>
+        {codeNode || copyNode ? (
+          <span className="counterpulse-preview-offer-compact-code">
+            {codeNode}
+            {copyNode}
+          </span>
+        ) : null}
+        {applyNode}
+      </>
+    );
+  }
+
   return (
     <span
       {...rootProps}
@@ -1505,26 +1572,7 @@ function OfferPreview({
         .join(" ")}
       style={style}
     >
-      {design.showDiscountCode ? (
-        <span className="counterpulse-preview-code-wrap">
-          {design.offerCodeLabel ? (
-            <span className="counterpulse-preview-offer-label">
-              {design.offerCodeLabel}
-            </span>
-          ) : null}
-          <span className="counterpulse-preview-code">{offer.code}</span>
-        </span>
-      ) : null}
-      {design.showCopyCodeButton ? (
-        <span className="counterpulse-preview-code-action">
-          {design.copyCodeLabel}
-        </span>
-      ) : null}
-      {design.showApplyDiscountButton && offer.canApply ? (
-        <span className="counterpulse-preview-cta counterpulse-preview-cta--offer">
-          {design.applyDiscountLabel}
-        </span>
-      ) : null}
+      {content}
     </span>
   );
 }

@@ -3174,17 +3174,14 @@ s-page::part(page) {
 }
 
 .counterpulse-inspector-toggle {
-  position: absolute;
-  z-index: 7;
-  top: 8px;
-  right: 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  min-height: 34px;
+  padding: 6px 10px;
   border: 1px solid #dfe3e8;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 7px;
+  background: #ffffff;
   font-size: 12px;
   font-weight: 650;
   color: #374151;
@@ -10320,23 +10317,35 @@ s-page::part(page) {
 .counterpulse-campaign-preview-panel .counterpulse-preview-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
+  align-items: center;
 }
 
-.counterpulse-design-editor__preview
-  .counterpulse-preview-toolbar
-  .counterpulse-segmented,
-.counterpulse-campaign-preview-panel
-  .counterpulse-preview-toolbar
-  .counterpulse-segmented {
+.counterpulse-preview-toolbar__start {
+  grid-column: 1;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  justify-self: start;
+}
+
+.counterpulse-preview-toolbar__accessory {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.counterpulse-preview-toolbar__center {
   grid-column: 2;
+  display: inline-flex;
+  justify-content: center;
   justify-self: center;
 }
 
 .counterpulse-design-editor__preview .counterpulse-preview-placement-field,
 .counterpulse-campaign-preview-panel .counterpulse-preview-placement-field {
-  grid-column: 3;
-  justify-self: end;
+  flex: 0 1 auto;
 }
 
 .counterpulse-segmented {
@@ -10349,7 +10358,24 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-placement-field {
-  width: min(220px, 100%);
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+}
+
+.counterpulse-preview-placement-field > span {
+  color: #6d7175;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.counterpulse-preview-placement-field > select {
+  width: min(180px, 42vw);
 }
 
 .counterpulse-segmented button {
@@ -11084,6 +11110,25 @@ s-page::part(page) {
     ease-out both;
 }
 
+.pp-bar--closing {
+  pointer-events: none;
+}
+
+.pp-bar--closing.counterpulse-preview-promo--exit-fade {
+  animation: counterpulse-preview-fade-out var(--cp-motion-duration, 220ms)
+    ease-in both;
+}
+
+.pp-bar--closing.counterpulse-preview-promo--exit-slide {
+  animation: counterpulse-preview-slide-out var(--cp-motion-duration, 220ms)
+    ease-in both;
+}
+
+.pp-bar--closing.counterpulse-preview-promo--exit-pop {
+  animation: counterpulse-preview-pop-out var(--cp-motion-duration, 220ms)
+    ease-in both;
+}
+
 .counterpulse-preview-promo--bar {
   width: calc(100% - 96px);
   /* Keep horizontal auto-centering but honor the top/bottom margin controls. */
@@ -11768,6 +11813,37 @@ s-page::part(page) {
   }
 }
 
+@keyframes counterpulse-preview-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes counterpulse-preview-slide-out {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -14px;
+  }
+}
+
+@keyframes counterpulse-preview-pop-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
 @keyframes counterpulse-preview-timer-fade {
   from {
     opacity: 0.42;
@@ -11827,12 +11903,50 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-offer--stacked {
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
+  justify-items: stretch;
+  gap: max(6px, var(--cp-offer-gap, 6px));
 }
 
 .counterpulse-preview-offer--compact {
-  gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.6));
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto;
+  gap: 0;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--cp-offer-code-border);
+  border-radius: var(--cp-offer-code-radius);
+  background: var(--cp-offer-code-bg);
+  color: var(--cp-offer-code-text);
+}
+
+.counterpulse-preview-offer-main,
+.counterpulse-preview-offer-actions,
+.counterpulse-preview-offer-compact-code {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.counterpulse-preview-offer-main {
+  justify-content: center;
+}
+
+.counterpulse-preview-offer-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: max(4px, calc(var(--cp-offer-gap, 6px) * 0.75));
+}
+
+.counterpulse-preview-offer-actions > * {
+  width: 100%;
+}
+
+.counterpulse-preview-offer-compact-code {
+  gap: max(3px, calc(var(--cp-offer-gap, 6px) * 0.5));
 }
 
 .counterpulse-preview-code-wrap {
@@ -11845,7 +11959,14 @@ s-page::part(page) {
 
 .counterpulse-preview-offer--stacked .counterpulse-preview-code-wrap {
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  width: 100%;
+}
+
+.counterpulse-preview-offer--stacked .counterpulse-preview-code {
+  width: 100%;
+  max-width: none;
+  text-align: center;
 }
 
 .counterpulse-preview-offer-label {
@@ -11881,20 +12002,66 @@ s-page::part(page) {
 }
 
 .counterpulse-preview-cta--offer {
+  border: 1px solid var(--cp-offer-apply-border, var(--cp-button));
+  border-radius: var(--cp-offer-apply-radius, max(4px, var(--cp-radius)));
+  background: var(--cp-offer-apply-bg, var(--cp-button));
+  color: var(--cp-offer-apply-text, var(--cp-button-text));
+  font-size: var(--cp-offer-apply-size, 0.9em);
   white-space: nowrap;
 }
 
 .counterpulse-preview-code-action {
   flex: 0 0 auto;
-  border: 1px solid var(--cp-button);
-  border-radius: max(4px, var(--cp-radius));
+  border: 1px solid var(--cp-offer-copy-border, var(--cp-button));
+  border-radius: var(--cp-offer-copy-radius, max(4px, var(--cp-radius)));
   padding: 6px 10px;
-  background: var(--cp-button);
-  color: var(--cp-button-text);
-  font-size: 0.86em;
+  background: var(--cp-offer-copy-bg, var(--cp-button));
+  color: var(--cp-offer-copy-text, var(--cp-button-text));
+  font-size: var(--cp-offer-copy-size, 0.86em);
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.counterpulse-preview-offer--compact .counterpulse-preview-code-wrap {
+  padding: var(--cp-offer-code-padding-block)
+    var(--cp-offer-code-padding-inline);
+}
+
+.counterpulse-preview-offer--compact .counterpulse-preview-code {
+  max-width: 160px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.counterpulse-preview-offer--compact .counterpulse-preview-code-action {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  border-width: 0 0 0 1px;
+  border-color: var(--cp-offer-code-border);
+  border-radius: 0;
+  padding: 0 var(--cp-offer-code-padding-inline);
+  background: transparent;
+  color: var(--cp-offer-code-text);
+}
+
+.counterpulse-preview-offer--compact
+  .counterpulse-preview-code-action:only-child {
+  border-left: 0;
+}
+
+.counterpulse-preview-offer--compact .counterpulse-preview-cta--offer {
+  align-self: stretch;
+  border-left: 1px solid var(--cp-offer-code-border);
+  border-radius: 0;
+}
+
+.counterpulse-preview-offer--compact
+  > .counterpulse-preview-cta--offer:only-child {
+  border-left: 0;
 }
 
 .counterpulse-preview-code {
@@ -12351,16 +12518,19 @@ s-page::part(page) {
   }
 
   .counterpulse-preview-toolbar {
-    flex-direction: column;
     align-items: stretch;
   }
 
-  .counterpulse-preview-toolbar .counterpulse-segmented {
-    align-self: center;
+  .counterpulse-preview-toolbar__start {
+    justify-content: center;
+  }
+
+  .counterpulse-preview-toolbar__center {
+    justify-self: center;
   }
 
   .counterpulse-preview-placement-field {
-    width: 100%;
+    justify-content: center;
   }
 
   .counterpulse-timer-label-grid {
@@ -12372,16 +12542,9 @@ s-page::part(page) {
     grid-template-columns: 1fr;
   }
 
-  .counterpulse-design-editor__preview
-    .counterpulse-preview-toolbar
-    .counterpulse-segmented,
-  .counterpulse-campaign-preview-panel
-    .counterpulse-preview-toolbar
-    .counterpulse-segmented,
-  .counterpulse-design-editor__preview .counterpulse-preview-placement-field,
-  .counterpulse-campaign-preview-panel .counterpulse-preview-placement-field {
+  .counterpulse-preview-toolbar__start,
+  .counterpulse-preview-toolbar__center {
     grid-column: auto;
-    justify-self: stretch;
   }
 
   .counterpulse-create-actions {

@@ -486,6 +486,16 @@ export function CampaignDesignEditor({
             structureCss={desktopSurface.displayedCss}
             customMessages={customMessages}
             inspect={inspectEnabled}
+            toolbarAccessory={
+              <label className="counterpulse-inspector-toggle">
+                <input
+                  checked={inspectEnabled}
+                  type="checkbox"
+                  onChange={(event) => setInspectEnabled(event.target.checked)}
+                />
+                <span>Inspect</span>
+              </label>
+            }
             viewModel={previewViewModel}
             onDeviceChange={setDevice}
             onPlacementChange={selectPreviewPlacement}
@@ -495,14 +505,6 @@ export function CampaignDesignEditor({
             enabled={inspectEnabled}
             onSelect={setInspectedPath}
           />
-          <label className="counterpulse-inspector-toggle">
-            <input
-              checked={inspectEnabled}
-              type="checkbox"
-              onChange={(event) => setInspectEnabled(event.target.checked)}
-            />
-            <span>Inspect</span>
-          </label>
         </div>
       </div>
 
@@ -1137,6 +1139,16 @@ const designErrorFieldOrder: Array<keyof CampaignDesignErrors> = [
   "offerCodePaddingBlock",
   "offerCodePaddingInline",
   "offerCodeGap",
+  "copyButtonBackgroundColor",
+  "copyButtonTextColor",
+  "copyButtonBorderColor",
+  "copyButtonFontSize",
+  "copyButtonBorderRadius",
+  "applyButtonBackgroundColor",
+  "applyButtonTextColor",
+  "applyButtonBorderColor",
+  "applyButtonFontSize",
+  "applyButtonBorderRadius",
   "offerCopyBehavior",
   "offerApplyBehavior",
   "positionMode",

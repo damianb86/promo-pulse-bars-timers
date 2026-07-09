@@ -44,6 +44,7 @@ type CampaignPreviewPanelProps = {
   mobileStructureCss?: string;
   customMessages?: CustomMessage[];
   inspect?: boolean;
+  toolbarAccessory?: ReactNode;
   onDeviceChange: (device: PreviewDevice) => void;
   onPlacementChange: (placement: PreviewPlacement) => void;
 };
@@ -64,6 +65,7 @@ export function CampaignPreviewPanel({
   mobileStructureCss = "",
   customMessages = [],
   inspect = false,
+  toolbarAccessory,
   onDeviceChange,
   onPlacementChange,
 }: CampaignPreviewPanelProps) {
@@ -102,22 +104,31 @@ export function CampaignPreviewPanel({
       role={ariaLabel ? "region" : undefined}
     >
       <div className="counterpulse-preview-toolbar">
-        <DevicePreviewToggle value={device} onChange={onDeviceChange} />
-        <label className="counterpulse-form-field counterpulse-preview-placement-field">
-          <span>Placement preview</span>
-          <select
-            value={selectedPlacement}
-            onChange={(event) =>
-              onPlacementChange(event.target.value as PreviewPlacement)
-            }
-          >
-            {availablePlacementOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="counterpulse-preview-toolbar__start">
+          <label className="counterpulse-form-field counterpulse-preview-placement-field">
+            <span>Placement preview</span>
+            <select
+              value={selectedPlacement}
+              onChange={(event) =>
+                onPlacementChange(event.target.value as PreviewPlacement)
+              }
+            >
+              {availablePlacementOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {toolbarAccessory ? (
+            <div className="counterpulse-preview-toolbar__accessory">
+              {toolbarAccessory}
+            </div>
+          ) : null}
+        </div>
+        <div className="counterpulse-preview-toolbar__center">
+          <DevicePreviewToggle value={device} onChange={onDeviceChange} />
+        </div>
       </div>
       <CampaignPreview
         design={resolvedDesign}

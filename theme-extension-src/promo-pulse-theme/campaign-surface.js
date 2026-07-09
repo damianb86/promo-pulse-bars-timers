@@ -140,6 +140,16 @@
     offerCodePaddingBlock: 5,
     offerCodePaddingInline: 8,
     offerCodeGap: 6,
+    copyButtonBackgroundColor: "#111827",
+    copyButtonTextColor: "#FFFFFF",
+    copyButtonBorderColor: "#111827",
+    copyButtonFontSize: 13,
+    copyButtonBorderRadius: 4,
+    applyButtonBackgroundColor: "#111827",
+    applyButtonTextColor: "#FFFFFF",
+    applyButtonBorderColor: "#111827",
+    applyButtonFontSize: 13,
+    applyButtonBorderRadius: 4,
     offerCopyBehavior: "FEEDBACK",
     offerApplyBehavior: "SHOW_APPLIED",
   };
@@ -613,6 +623,16 @@
       "--cp-offer-code-padding-inline":
         num(design.offerCodePaddingInline, 8) + "px",
       "--cp-offer-gap": num(design.offerCodeGap, 6) + "px",
+      "--cp-offer-copy-bg": design.copyButtonBackgroundColor,
+      "--cp-offer-copy-text": design.copyButtonTextColor,
+      "--cp-offer-copy-border": design.copyButtonBorderColor,
+      "--cp-offer-copy-size": num(design.copyButtonFontSize, 13) + "px",
+      "--cp-offer-copy-radius": num(design.copyButtonBorderRadius, 4) + "px",
+      "--cp-offer-apply-bg": design.applyButtonBackgroundColor,
+      "--cp-offer-apply-text": design.applyButtonTextColor,
+      "--cp-offer-apply-border": design.applyButtonBorderColor,
+      "--cp-offer-apply-size": num(design.applyButtonFontSize, 13) + "px",
+      "--cp-offer-apply-radius": num(design.applyButtonBorderRadius, 4) + "px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
       "--cp-tick-duration": num(design.timerTickDurationMs, 220) + "ms",
       "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
@@ -1226,9 +1246,13 @@
       "counterpulse-preview-offer counterpulse-preview-offer--" +
         lower(design.offerCodeLayout),
     );
+    var layout = lower(design.offerCodeLayout);
+    var codeWrap = null;
+    var copy = null;
+    var apply = null;
 
     if (showCode) {
-      var codeWrap = el("span", "counterpulse-preview-code-wrap");
+      codeWrap = el("span", "counterpulse-preview-code-wrap");
       if (design.offerCodeLabel) {
         var label = el("span", "counterpulse-preview-offer-label");
         label.textContent = design.offerCodeLabel;
@@ -1237,22 +1261,20 @@
       var code = el("span", "counterpulse-preview-code");
       code.textContent = offer.code;
       codeWrap.appendChild(code);
-      wrap.appendChild(codeWrap);
     }
 
     if (showCopy) {
-      var copy = el("span", "counterpulse-preview-code-action");
+      copy = el("span", "counterpulse-preview-code-action");
       copy.textContent = design.copyCodeLabel;
       copy.setAttribute("role", "button");
       copy.setAttribute("tabindex", "0");
       bindActivate(copy, function () {
         if (typeof handlers.onCopy === "function") handlers.onCopy(copy);
       });
-      wrap.appendChild(copy);
     }
 
     if (showApply) {
-      var apply = el(
+      apply = el(
         "span",
         "counterpulse-preview-cta counterpulse-preview-cta--offer",
       );
@@ -1262,7 +1284,35 @@
       bindActivate(apply, function () {
         if (typeof handlers.onApply === "function") handlers.onApply(apply);
       });
-      wrap.appendChild(apply);
+    }
+
+    if (layout === "stacked") {
+      if (codeWrap) {
+        var main = el("span", "counterpulse-preview-offer-main");
+        main.appendChild(codeWrap);
+        wrap.appendChild(main);
+      }
+      if (copy || apply) {
+        var actions = el("span", "counterpulse-preview-offer-actions");
+        if (copy) actions.appendChild(copy);
+        if (apply) actions.appendChild(apply);
+        wrap.appendChild(actions);
+      }
+    } else if (layout === "compact") {
+      if (codeWrap || copy) {
+        var compactCode = el(
+          "span",
+          "counterpulse-preview-offer-compact-code",
+        );
+        if (codeWrap) compactCode.appendChild(codeWrap);
+        if (copy) compactCode.appendChild(copy);
+        wrap.appendChild(compactCode);
+      }
+      if (apply) wrap.appendChild(apply);
+    } else {
+      if (codeWrap) wrap.appendChild(codeWrap);
+      if (copy) wrap.appendChild(copy);
+      if (apply) wrap.appendChild(apply);
     }
 
     return wrap;
@@ -1326,6 +1376,7 @@
     if (typeof onClose === "function") {
       span.setAttribute("role", "button");
       span.setAttribute("tabindex", "0");
+      span.setAttribute("aria-label", "Close promotion");
       span.removeAttribute("aria-hidden");
       bindActivate(span, function () {
         onClose(span);

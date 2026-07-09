@@ -185,18 +185,19 @@ describe("campaign design validation", () => {
     const values = applyCampaignDesignTemplate("flash-sale", {
       ...defaultCampaignDesignValues,
       layout: "CTA_LEFT",
+      timerFontSize: 72,
       customCss: ".banner { letter-spacing: 0; }",
     });
 
     expect(values.templateKey).toBe("flash-sale");
     expect(values.layout).toBe("CTA_LEFT");
     expect(values.backgroundColor).toBe("#7F1D1D");
-    expect(values.timerFontSize).toBe(32);
+    expect(values.timerFontSize).toBe(38);
     expect(values.timerStyle).toBe("GROUPED");
     expect(values.customCss).toBe(".banner { letter-spacing: 0; }");
   });
 
-  it("reconciles preset visuals with the selected layout defaults", () => {
+  it("keeps the selected layout structure when applying a preset", () => {
     const values = applyCampaignDesignTemplate("love", {
       ...defaultCampaignDesignValues,
       layout: "STACKED_WIDE",
@@ -207,11 +208,13 @@ describe("campaign design validation", () => {
     expect(values.templateKey).toBe("love");
     expect(values.layout).toBe("STACKED_WIDE");
     expect(values.backgroundType).toBe("GRADIENT");
-    expect(values.titleFontSize).toBe(24);
-    expect(values.timerFontSize).toBe(36);
-    expect(values.timerFormat).toBe("UNITS");
-    expect(values.timerShowLabels).toBe(true);
-    expect(values.contentMaxWidth).toBe(1040);
+    expect(values.titleFontSize).toBe(14);
+    expect(values.timerFontSize).toBe(14);
+    expect(values.timerFormat).toBe("COLON");
+    expect(values.timerShowLabels).toBe(false);
+    expect(values.contentMaxWidth).toBe(
+      defaultCampaignDesignValues.contentMaxWidth,
+    );
   });
 
   it("gates and sanitizes custom CSS", () => {

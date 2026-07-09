@@ -49,6 +49,12 @@ const colorFields: Array<keyof CampaignDesignValues> = [
   "offerCodeTextColor",
   "offerCodeBackgroundColor",
   "offerCodeBorderColor",
+  "copyButtonBackgroundColor",
+  "copyButtonTextColor",
+  "copyButtonBorderColor",
+  "applyButtonBackgroundColor",
+  "applyButtonTextColor",
+  "applyButtonBorderColor",
 ];
 
 export function isValidHexColor(value: string) {
@@ -116,14 +122,14 @@ export function applyCampaignDesignTemplate(
   const templateValues = toTemplateDesignValues(template);
   const layout = currentValues.layout;
 
-  return applyCampaignLayoutDefaults({
+  return {
     ...currentValues,
     ...templateValues,
     templateKey: template.templateKey,
     customCss: currentValues.customCss,
     layout,
     separateMobileDesign: currentValues.separateMobileDesign,
-  });
+  };
 }
 
 function toTemplateDesignValues(
@@ -851,6 +857,38 @@ export function validateCampaignDesignValues(values: CampaignDesignValues) {
     "Offer horizontal padding",
   );
   validateIntegerRange(values, errors, "offerCodeGap", 0, 24, "Offer gap");
+  validateIntegerRange(
+    values,
+    errors,
+    "copyButtonFontSize",
+    10,
+    24,
+    "Copy button font size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "copyButtonBorderRadius",
+    0,
+    40,
+    "Copy button radius",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "applyButtonFontSize",
+    10,
+    24,
+    "Apply button font size",
+  );
+  validateIntegerRange(
+    values,
+    errors,
+    "applyButtonBorderRadius",
+    0,
+    40,
+    "Apply button radius",
+  );
 
   if (
     isValidHexColor(values.offerCodeTextColor) &&

@@ -1107,14 +1107,32 @@ function campaignShowsDiscountCode(discountSync: DiscountSync | null) {
   );
 }
 
-function serializeDiscount(discountSync: DiscountSync | null) {
+type StorefrontDiscountPayload = {
+  method: DiscountSync["method"];
+  discountCode?: string | null;
+  uniqueCode?: {
+    endpoint: string;
+    autoApply: boolean;
+    expiresMinutes: number | null;
+  } | null;
+};
+
+function serializeDiscount(
+  discountSync: DiscountSync | null,
+): StorefrontDiscountPayload | null {
   if (!discountSync) return null;
 
   const showCodeOnStorefront = campaignShowsDiscountCode(discountSync);
 
+  if (!showCodeOnStorefront) {
+    return {
+      method: discountSync.method,
+    };
+  }
+
   return compactObject({
     method: discountSync.method,
-    discountCode: showCodeOnStorefront ? discountSync.discountCode : null,
+    discountCode: discountSync.discountCode,
     uniqueCode:
       discountSync.method === "UNIQUE_CODE"
         ? {
@@ -1123,7 +1141,7 @@ function serializeDiscount(discountSync: DiscountSync | null) {
             expiresMinutes: discountSync.uniqueCodeExpiresMinutes,
           }
         : null,
-  });
+  }) as StorefrontDiscountPayload;
 }
 
 function compactObject<T extends Record<string, unknown>>(value: T) {

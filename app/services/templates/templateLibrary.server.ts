@@ -1154,6 +1154,40 @@ function readTemplateDesign(value: Prisma.JsonValue) {
       input.offerCodeGap,
       defaultCampaignDesignValues.offerCodeGap,
     ),
+    copyButtonBackgroundColor:
+      readString(input.copyButtonBackgroundColor) ||
+      defaultCampaignDesignValues.copyButtonBackgroundColor,
+    copyButtonTextColor:
+      readString(input.copyButtonTextColor) ||
+      defaultCampaignDesignValues.copyButtonTextColor,
+    copyButtonBorderColor:
+      readString(input.copyButtonBorderColor) ||
+      defaultCampaignDesignValues.copyButtonBorderColor,
+    copyButtonFontSize: readInteger(
+      input.copyButtonFontSize,
+      defaultCampaignDesignValues.copyButtonFontSize,
+    ),
+    copyButtonBorderRadius: readInteger(
+      input.copyButtonBorderRadius,
+      defaultCampaignDesignValues.copyButtonBorderRadius,
+    ),
+    applyButtonBackgroundColor:
+      readString(input.applyButtonBackgroundColor) ||
+      defaultCampaignDesignValues.applyButtonBackgroundColor,
+    applyButtonTextColor:
+      readString(input.applyButtonTextColor) ||
+      defaultCampaignDesignValues.applyButtonTextColor,
+    applyButtonBorderColor:
+      readString(input.applyButtonBorderColor) ||
+      defaultCampaignDesignValues.applyButtonBorderColor,
+    applyButtonFontSize: readInteger(
+      input.applyButtonFontSize,
+      defaultCampaignDesignValues.applyButtonFontSize,
+    ),
+    applyButtonBorderRadius: readInteger(
+      input.applyButtonBorderRadius,
+      defaultCampaignDesignValues.applyButtonBorderRadius,
+    ),
     offerCopyBehavior:
       readEnum(input.offerCopyBehavior, [
         "FEEDBACK",

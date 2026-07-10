@@ -1445,11 +1445,35 @@
       window.PromoPulseClearRequestCache("cart");
     });
 
+    // Cart-mutating requests (add/change/update/clear) are not cached but do
+    // invalidate the cached cart snapshot and notify listeners so live surfaces
+    // (e.g. the cart drawer free-shipping goal) re-read the current cart without
+    // a page refresh. Debounced to coalesce bursts and let the theme's own
+    // /cart.js settle first.
+    var cartMutationTimer = 0;
+    function notifyCartMutation() {
+      window.PromoPulseClearRequestCache("cart");
+      if (window.PromoPulseCartState) {
+        window.PromoPulseCartState.updatedAt = 0;
+      }
+      window.clearTimeout(cartMutationTimer);
+      cartMutationTimer = window.setTimeout(function () {
+        document.dispatchEvent(new CustomEvent("promo-pulse:cart-changed"));
+      }, 120);
+    }
+
     window.fetch = function (input, init) {
       var request = normalizeRequest(input, init);
       var pauseKey = pauseKeyFor(request.url);
       var cacheKey;
       var cached;
+
+      if (request.cartMutation) {
+        return nativeFetch(input, init).then(function (response) {
+          if (response && response.ok) notifyCartMutation();
+          return response;
+        });
+      }
 
       if (!request.watch) {
         return nativeFetch(input, init);
@@ -1539,12 +1563,17 @@
       path.indexOf("/apps/promo-pulse/") === 0 ||
       path.indexOf("/api/storefront/") === 0;
     var isCart = path === "/cart.js";
+    var upperMethod = String(method).toUpperCase();
+    var isCartMutation =
+      upperMethod !== "GET" &&
+      /\/cart\/(add|change|update|clear)(\.js)?$/.test(path);
 
     return {
       kind: isCart ? "cart" : "proxy",
-      method: String(method).toUpperCase(),
+      method: upperMethod,
       url: url.toString(),
       watch: isProxy || isCart,
+      cartMutation: isCartMutation,
     };
   }
 

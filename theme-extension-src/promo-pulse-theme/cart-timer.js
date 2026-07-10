@@ -20,6 +20,11 @@
   var drawerMinimumRequestGapMs = 2000;
   var drawerCampaigns = [];
   var drawerCampaignsLoaded = false;
+  // Signature of the last drawer render (campaign + cart state). Lets us skip
+  // re-injecting identical content when the theme mutates the drawer for
+  // unrelated reasons — otherwise the MutationObserver and our render feed each
+  // other in a loop that reflows the campaign every couple of seconds.
+  var drawerRenderedSignature = "";
   var proxyPauseMs = 60000;
   var cartPauseMs = 30000;
 
@@ -249,9 +254,27 @@
           return;
         }
 
+        // Skip re-rendering when nothing changed and our widget is still mounted
+        // in the current drawer. Only a real cart change (which forces the
+        // render) or a wiped/moved widget gets past this guard, which is what
+        // stops the mutation-observer feedback loop.
+        var signature = buildDrawerSignature(campaign, config);
+        var mountedSlot = document.getElementById(
+          "promo-pulse-cart-drawer-slot",
+        );
+        var stillMounted =
+          mountedSlot &&
+          target.contains(mountedSlot) &&
+          mountedSlot.querySelector(".counterpulse-preview-promo");
+
+        if (!force && stillMounted && signature === drawerRenderedSignature) {
+          return;
+        }
+
         drawerInternalUpdate = true;
         slot = ensureDrawerSlot(target);
         renderCartCampaigns(slot, list, config, true);
+        drawerRenderedSignature = signature;
         updateDebug(
           embed,
           "CART_DRAWER renderizado en selector compatible. Campañas: " +
@@ -1113,6 +1136,19 @@
     }
 
     return null;
+  }
+
+  function buildDrawerSignature(campaign, config) {
+    var ts = calculateTimerState(campaign, new Date(), config);
+    return [
+      campaign.id,
+      campaign.variantId || "",
+      config.cartSubtotal,
+      config.cartToken || "",
+      config.cartItemCount,
+      config.cartHasDiscount ? "1" : "0",
+      ts.isExpired ? "1" : "0",
+    ].join("|");
   }
 
   function ensureDrawerSlot(target) {

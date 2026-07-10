@@ -29,14 +29,14 @@ export function buildStorefrontPayload(
     (groups, campaign) => {
       // A campaign is emitted once but can target several placements; index its
       // id under every placement it renders in.
-      const descriptors =
-        Array.isArray(campaign.placements) && campaign.placements.length > 0
-          ? campaign.placements
-          : [{ placement: campaign.placement }];
+      const descriptors = Array.isArray(campaign.placements)
+        ? campaign.placements
+        : [];
 
       for (const descriptor of descriptors) {
-        const placement =
-          (descriptor as { placement?: string }).placement || "UNKNOWN";
+        const placement = (descriptor as { placement?: string }).placement;
+
+        if (!placement) continue;
 
         groups[placement] ??= [];
         if (!groups[placement].includes(campaign.id)) {
@@ -127,6 +127,7 @@ function isEmptyStorefrontValue(value: unknown) {
     value === null ||
     value === undefined ||
     value === "" ||
+    (Array.isArray(value) && value.length === 0) ||
     (isPlainObject(value) && Object.keys(value).length === 0)
   );
 }

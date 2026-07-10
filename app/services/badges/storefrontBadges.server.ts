@@ -561,7 +561,7 @@ function toSimpleStorefrontBadge(
     campaignId: campaign.id,
     text: campaign.badge?.badgeText || campaign.texts.badgeText,
     priority: 0,
-    placement: campaign.placement,
+    placement: campaign.placements?.[0]?.placement ?? "",
     design: campaign.design,
     timer: campaign.timer,
     badge: compactBadgePayload({

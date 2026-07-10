@@ -17,9 +17,7 @@ describe("checkout campaign view model", () => {
         goal: "FREE_SHIPPING",
         freeShipping: {
           thresholdAmount: "100.00",
-          baseThresholdAmount: "100.00",
           currencyCode: "USD",
-          includeDiscountedSubtotal: true,
           emptyCartMessage: "",
           successMessage: "Free shipping unlocked",
           progressStyle: "BAR",
@@ -54,9 +52,7 @@ describe("checkout campaign view model", () => {
         goal: "FREE_SHIPPING",
         freeShipping: {
           thresholdAmount: "100.00",
-          baseThresholdAmount: "100.00",
           currencyCode: "USD",
-          includeDiscountedSubtotal: true,
           emptyCartMessage: "",
           successMessage: "Free shipping unlocked",
           progressStyle: "BAR",
@@ -172,9 +168,7 @@ describe("checkout campaign view model", () => {
           goal: "FREE_SHIPPING",
           freeShipping: {
             thresholdAmount: "100.00",
-            baseThresholdAmount: "100.00",
             currencyCode: "USD",
-            includeDiscountedSubtotal: true,
             emptyCartMessage: "",
             successMessage: "Free shipping unlocked",
             progressStyle: "BAR",

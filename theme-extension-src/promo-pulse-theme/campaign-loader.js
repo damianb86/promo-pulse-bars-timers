@@ -181,6 +181,9 @@
   }
 
   function resolveOptimizedCampaignDesign(campaign, device) {
+    var design = campaign && campaign.design ? campaign.design : {};
+    var mobileDesign;
+
     if (
       (device === "mobile" || device === "tablet") &&
       campaign &&
@@ -188,10 +191,16 @@
       typeof campaign.mobileDesign === "object" &&
       !Array.isArray(campaign.mobileDesign)
     ) {
-      return campaign.mobileDesign;
+      mobileDesign = Object.assign({}, campaign.mobileDesign);
+
+      if (!mobileDesign.structure && design && design.structure) {
+        mobileDesign.structure = design.structure;
+      }
+
+      return mobileDesign;
     }
 
-    return campaign && campaign.design ? campaign.design : {};
+    return design;
   }
 
   function resolveOptimizedCampaignTexts(campaign, locale) {
@@ -766,7 +775,11 @@
       })
       .filter(Boolean)
       .filter(function (campaign) {
-        return campaignMatchesEmbeddedTargeting(campaign, config || {});
+        return campaignMatchesEmbeddedTargeting(
+          campaign,
+          config || {},
+          requestedPlacements,
+        );
       });
     campaigns = expandCampaignPlacements(campaigns);
 
@@ -808,16 +821,11 @@
           ? campaign.placements
           : null;
 
-      if (!placements) {
-        expanded.push(campaign);
-        return;
-      }
+      if (!placements) return;
 
       placements.forEach(function (descriptor) {
         var placement = String(
-          (descriptor && (descriptor.placement || descriptor.placementType)) ||
-            campaign.placement ||
-            "",
+          descriptor && (descriptor.placement || descriptor.placementType),
         ).toUpperCase();
         var copy;
 
@@ -862,12 +870,16 @@
     return true;
   }
 
-  function campaignMatchesEmbeddedTargeting(campaign, config) {
+  function campaignMatchesEmbeddedTargeting(
+    campaign,
+    config,
+    requestedPlacements,
+  ) {
     var targeting =
       (campaign && campaign.targeting) ||
       (campaign && campaign.__promoPulseTargeting) ||
       null;
-    var path = window.location.pathname || "/";
+    var paths = getTargetingPathCandidates(requestedPlacements);
     var productId = readStorefrontConfigValue(config, "productId");
     var collectionIds = readStorefrontConfigList(config, "collectionIds");
     var productTags = readStorefrontConfigList(config, "productTags");
@@ -893,7 +905,7 @@
     if (
       matchesPathContains(
         readTargetingList(targeting.excludedUrlContains),
-        path,
+        paths,
       )
     ) {
       return false;
@@ -933,7 +945,7 @@
       ) &&
       matchesOptionalPathContains(
         readTargetingList(targeting.urlContains),
-        path,
+        paths,
       ) &&
       matchesOptionalExactList(
         readTargetingList(targeting.utmSources),
@@ -947,6 +959,24 @@
       ) &&
       campaignMatchesBehaviorRules(targeting.behaviorRules)
     );
+  }
+
+  function getTargetingPathCandidates(requestedPlacements) {
+    var paths = [window.location.pathname || "/"];
+    var placements = Array.isArray(requestedPlacements)
+      ? requestedPlacements
+      : [];
+
+    if (
+      placements.some(function (placement) {
+        return placement === "CART_DRAWER" || placement === "CART_PAGE";
+      }) &&
+      paths.indexOf("/cart") === -1
+    ) {
+      paths.push("/cart");
+    }
+
+    return paths;
   }
 
   function applyEmbeddedMarketRules(campaign, config) {
@@ -1815,27 +1845,33 @@
     });
   }
 
-  function matchesOptionalPathContains(allowedValues, path) {
+  function matchesOptionalPathContains(allowedValues, paths) {
     if (!allowedValues.length) return true;
 
-    return matchesPathContains(allowedValues, path);
+    return matchesPathContains(allowedValues, paths);
   }
 
-  function matchesPathContains(allowedValues, path) {
-    var normalizedPath;
+  function matchesPathContains(allowedValues, paths) {
+    var pathCandidates = Array.isArray(paths) ? paths : [paths];
 
-    if (!allowedValues.length || !path) return false;
+    if (!allowedValues.length || !pathCandidates.length) return false;
 
-    normalizedPath = normalizePathTarget(path);
+    return pathCandidates.some(function (path) {
+      var normalizedPath;
 
-    return allowedValues.some(function (allowedValue) {
-      var normalizedTarget = normalizePathTarget(allowedValue);
+      if (!path) return false;
 
-      if (normalizedTarget.indexOf("page:") === 0) {
-        return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
-      }
+      normalizedPath = normalizePathTarget(path);
 
-      return normalizedPath.indexOf(normalizedTarget) !== -1;
+      return allowedValues.some(function (allowedValue) {
+        var normalizedTarget = normalizePathTarget(allowedValue);
+
+        if (normalizedTarget.indexOf("page:") === 0) {
+          return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
+        }
+
+        return normalizedPath.indexOf(normalizedTarget) !== -1;
+      });
     });
   }
 

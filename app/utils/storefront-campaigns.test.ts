@@ -407,7 +407,7 @@ describe("storefront campaign serialization", () => {
 
     // The same campaign must not appear twice in the JSON.
     expect(serialized.map((item) => item.id)).toEqual(["multi"]);
-    expect(serialized[0]?.placement).toBe("TOP_BAR");
+    expect(serialized[0]).not.toHaveProperty("placement");
     expect(serialized[0]?.placements?.map((p) => p.placement)).toEqual([
       "TOP_BAR",
       "BOTTOM_BAR",
@@ -908,6 +908,39 @@ describe("storefront campaign serialization", () => {
         baseContext({ path: "/blogs/news/launch" }),
       ).map((campaign) => campaign.id),
     ).toEqual(["blog-only", "not-cart"]);
+  });
+
+  it("treats cart placements as cart URL targets while rendering from another page", () => {
+    const cartDrawerCampaign = buildCampaign({
+      id: "cart-drawer-goal",
+      placements: [{ placementType: "CART_DRAWER", enabled: true }],
+      targeting: { urlContains: ["/cart"] },
+    });
+    const topBarCampaign = buildCampaign({
+      id: "top-bar-cart-url",
+      placements: [{ placementType: "TOP_BAR", enabled: true }],
+      targeting: { urlContains: ["/cart"] },
+    });
+
+    expect(
+      serializeStorefrontCampaigns(
+        [cartDrawerCampaign, topBarCampaign],
+        baseContext({
+          path: "/products/hoodie",
+          placement: "CART_DRAWER",
+        }),
+      ).map((campaign) => campaign.id),
+    ).toEqual(["cart-drawer-goal"]);
+
+    expect(
+      serializeStorefrontCampaigns(
+        [cartDrawerCampaign, topBarCampaign],
+        baseContext({
+          path: "/products/hoodie",
+          placement: "TOP_BAR",
+        }),
+      ).map((campaign) => campaign.id),
+    ).toEqual([]);
   });
 
   it("applies behavior targeting only when the visitor profile matches", () => {

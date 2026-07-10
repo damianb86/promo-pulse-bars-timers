@@ -99,14 +99,12 @@ export type StorefrontCampaignResponseItem = {
   id: string;
   type: string;
   goal: string;
-  placement: string;
+  placement?: string;
   placementSelector?: string;
   placementStyle?: string;
-  // Every placement this campaign renders in. The campaign payload is emitted
-  // once (not duplicated per placement); the storefront expands this list back
-  // into one render target per descriptor. `placement`/`placementSelector`/
-  // `placementStyle` above mirror the first (primary) descriptor for callers
-  // that only need one.
+  // Public storefront payloads emit the campaign once and list every render
+  // target here. The storefront expands this list into per-placement render
+  // units before any renderer consumes the campaign.
   placements?: StorefrontCampaignPlacementDescriptor[];
   design: ReturnType<typeof serializeDesign>;
   timer: ReturnType<typeof serializeTimer>;
@@ -386,7 +384,13 @@ export function serializeOptimizedStorefrontCampaignsForEmbedding(
     const desktopDesign = source
       ? serializeDesign(source.design, "desktop")
       : campaign.design;
-    const mobileDesign = source ? serializeDesign(source.design, "mobile") : {};
+    const mobileDesign = source
+      ? serializeDesign(source.design, "mobile")
+      : {};
+    const optimizedMobileDesign = removeDuplicateMobileStructure(
+      desktopDesign,
+      mobileDesign,
+    );
     const texts = source
       ? serializeTexts(source, defaultLocale)
       : campaign.texts;
@@ -398,7 +402,9 @@ export function serializeOptimizedStorefrontCampaignsForEmbedding(
       ...campaign,
       design: desktopDesign,
       texts,
-      ...(sameJsonPayload(desktopDesign, mobileDesign) ? {} : { mobileDesign }),
+      ...(sameJsonPayload(desktopDesign, mobileDesign)
+        ? {}
+        : { mobileDesign: optimizedMobileDesign }),
       ...(textLocales ? { textLocales } : {}),
       ...(targeting ? { targeting } : {}),
       ...(marketRules.length > 0 ? { marketRules } : {}),
@@ -410,6 +416,23 @@ export function serializeOptimizedStorefrontCampaignsForEmbedding(
   });
 }
 
+function removeDuplicateMobileStructure(
+  desktopDesign: StorefrontCampaignResponseItem["design"],
+  mobileDesign: StorefrontCampaignResponseItem["design"],
+) {
+  const desktopStructure = desktopDesign.structure;
+  const mobileStructure = mobileDesign.structure;
+
+  if (!desktopStructure || !sameJsonPayload(desktopStructure, mobileStructure)) {
+    return mobileDesign;
+  }
+
+  const { structure: _structure, ...mobileWithoutDuplicateStructure } =
+    mobileDesign;
+
+  return mobileWithoutDuplicateStructure;
+}
+
 function dedupeByCampaignPlacements(
   items: StorefrontCampaignResponseItem[],
 ): StorefrontCampaignResponseItem[] {
@@ -417,14 +440,23 @@ function dedupeByCampaignPlacements(
 
   for (const item of items) {
     const descriptor: StorefrontCampaignPlacementDescriptor = {
-      placement: item.placement,
+      placement: item.placement ?? "",
       placementSelector: item.placementSelector ?? "",
       placementStyle: item.placementStyle ?? "",
     };
     const existing = byId.get(item.id);
 
+    if (!descriptor.placement) continue;
+
     if (!existing) {
-      byId.set(item.id, { ...item, placements: [descriptor] });
+      const {
+        placement: _placement,
+        placementSelector: _placementSelector,
+        placementStyle: _placementStyle,
+        ...campaign
+      } = item;
+
+      byId.set(item.id, { ...campaign, placements: [descriptor] });
       continue;
     }
 
@@ -465,7 +497,7 @@ function serializeEmbeddedTargeting(
     devices: jsonStringList(targeting.devices),
     excludeProductIds: jsonStringList(targeting.excludeProductIds),
     excludeCollectionIds: jsonStringList(targeting.excludeCollectionIds),
-    behaviorRules: jsonObjectOrNull(targeting.behaviorRules),
+    behaviorRules: jsonBehaviorRulesOrNull(targeting.behaviorRules),
   });
 
   return Object.keys(payload).length > 0
@@ -494,6 +526,13 @@ function serializeEmbeddedMarketRules(
       (rule): rule is StorefrontEmbeddedMarketRule =>
         Object.keys(rule).length > 0,
     );
+}
+
+function jsonBehaviorRulesOrNull(value: unknown) {
+  const rules = jsonObjectOrNull(value);
+  const segments = Array.isArray(rules?.segments) ? rules.segments : [];
+
+  return rules?.enabled === true && segments.length > 0 ? rules : null;
 }
 
 function serializeEmbeddedTextLocales(
@@ -620,6 +659,8 @@ function isTargetingEligible(
   targeting: CampaignTargeting | null,
   context: StorefrontCampaignContext,
 ) {
+  const pathCandidates = getTargetingPathCandidates(context);
+
   if (!targeting) return true;
 
   if (
@@ -643,7 +684,7 @@ function isTargetingEligible(
         (targeting as CampaignTargeting & { excludedUrlContains?: unknown })
           .excludedUrlContains,
       ),
-      context.path,
+      pathCandidates,
     )
   ) {
     return false;
@@ -680,7 +721,7 @@ function isTargetingEligible(
     ) &&
     matchesOptionalPathContains(
       jsonStringList(targeting.urlContains),
-      context.path,
+      pathCandidates,
     ) &&
     matchesOptionalExactList(
       jsonStringList(targeting.utmSources),
@@ -927,9 +968,7 @@ function serializeFreeShipping(
 
   return compactObject({
     thresholdAmount: resolvedThresholdAmount.toFixed(2),
-    baseThresholdAmount: settings.thresholdAmount.toString(),
     currencyCode: settings.currencyCode,
-    includeDiscountedSubtotal: settings.includeDiscountedSubtotal,
     emptyCartMessage: settings.emptyCartMessage ?? "",
     successMessage: settings.successMessage,
     progressStyle: settings.progressStyle,
@@ -1336,10 +1375,13 @@ function applyPlacementOverride(
   campaign: StorefrontCampaignResponseItem,
   override: Record<string, unknown>,
 ) {
+  const currentDescriptor = campaign.placements?.[0];
   const nextDescriptor: StorefrontCampaignPlacementDescriptor = {
-    placement: campaign.placement,
-    placementSelector: campaign.placementSelector ?? "",
-    placementStyle: campaign.placementStyle ?? "",
+    placement: campaign.placement ?? currentDescriptor?.placement ?? "",
+    placementSelector:
+      campaign.placementSelector ?? currentDescriptor?.placementSelector ?? "",
+    placementStyle:
+      campaign.placementStyle ?? currentDescriptor?.placementStyle ?? "",
   };
 
   if (typeof override.placement === "string") {
@@ -1554,26 +1596,56 @@ function matchesOptionalIntersection(
   return matchesAny(allowedValues, actualValues);
 }
 
-function matchesOptionalPathContains(allowedValues: string[], path: string) {
+function matchesOptionalPathContains(
+  allowedValues: string[],
+  path: string | string[],
+) {
   if (allowedValues.length === 0) return true;
 
   return matchesPathContains(allowedValues, path);
 }
 
-function matchesPathContains(allowedValues: string[], path: string) {
-  if (allowedValues.length === 0 || !path) return false;
+function matchesPathContains(allowedValues: string[], paths: string | string[]) {
+  const pathCandidates = Array.isArray(paths) ? paths : [paths];
 
-  const normalizedPath = normalizePathTarget(path);
+  if (allowedValues.length === 0 || pathCandidates.length === 0) return false;
 
-  return allowedValues.some((allowedValue) => {
-    const normalizedTarget = normalizePathTarget(allowedValue);
+  return pathCandidates.some((path) => {
+    if (!path) return false;
 
-    if (normalizedTarget.startsWith("page:")) {
-      return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
-    }
+    const normalizedPath = normalizePathTarget(path);
 
-    return normalizedPath.includes(normalizedTarget);
+    return allowedValues.some((allowedValue) => {
+      const normalizedTarget = normalizePathTarget(allowedValue);
+
+      if (normalizedTarget.startsWith("page:")) {
+        return matchesStorefrontPageTarget(normalizedTarget, normalizedPath);
+      }
+
+      return normalizedPath.includes(normalizedTarget);
+    });
   });
+}
+
+function getTargetingPathCandidates(context: StorefrontCampaignContext) {
+  const paths = [context.path || "/"];
+  const placements =
+    (context.placements ?? []).length > 0
+      ? (context.placements ?? [])
+      : context.placement
+        ? [context.placement]
+        : [];
+
+  if (
+    placements.some(
+      (placement) => placement === "CART_DRAWER" || placement === "CART_PAGE",
+    ) &&
+    !paths.includes("/cart")
+  ) {
+    paths.push("/cart");
+  }
+
+  return paths;
 }
 
 function normalizePathTarget(value: string) {

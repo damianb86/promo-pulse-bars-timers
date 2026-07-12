@@ -1087,7 +1087,12 @@
       return calculateRecurringWeeklyTimer(timer, now, campaign.timezone);
     }
 
-    return buildTimerState(now, parseDate(campaign.endsAt));
+    // FIXED_DATE counts down to the dedicated countdown target when set,
+    // otherwise to the campaign end date (backward compatible).
+    return buildTimerState(
+      now,
+      parseDate(timer.countdownTo || campaign.endsAt),
+    );
   }
 
   function calculateEvergreenTimer(campaign, now) {

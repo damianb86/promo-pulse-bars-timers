@@ -535,7 +535,10 @@ export const action = async ({
   }
 
   const targeting = buildCampaignTargetingValues(parsed.values);
-  const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
+  const timerSettings = {
+    ...buildCampaignTimerSettingsValues(parsed.values),
+    countdownTo: parsed.countdownTo,
+  };
   const cartRescueSettings = buildCampaignCartRescueSettingsValues(
     parsed.values,
   );
@@ -669,6 +672,7 @@ export const action = async ({
         create: {
           mode: timerSettings.mode,
           durationMinutes: timerSettings.durationMinutes,
+          countdownTo: timerSettings.countdownTo,
           recurringDays: timerSettings.recurringDays,
           resetBehavior: timerSettings.resetBehavior,
           expiredBehavior: timerSettings.expiredBehavior,

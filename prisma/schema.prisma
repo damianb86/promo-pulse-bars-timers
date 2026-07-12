@@ -367,6 +367,7 @@ model TimerSettings {
   campaignId      String               @id
   mode            TimerMode
   durationMinutes Int?
+  countdownTo     DateTime?
   recurringDays   Json
   resetBehavior   TimerResetBehavior   @default(NEVER)
   expiredBehavior TimerExpiredBehavior @default(UNPUBLISH_TIMER)

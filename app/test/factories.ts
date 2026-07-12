@@ -427,6 +427,7 @@ function createTimerSettings(
     campaignId,
     mode: TimerMode.FIXED_DATE,
     durationMinutes: null,
+    countdownTo: null,
     recurringDays: [],
     resetBehavior: TimerResetBehavior.NEVER,
     expiredBehavior: TimerExpiredBehavior.UNPUBLISH_TIMER,

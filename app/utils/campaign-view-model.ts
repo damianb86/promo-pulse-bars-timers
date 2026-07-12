@@ -40,6 +40,7 @@ export type CampaignViewModelInput = {
   timerSettings?: {
     mode: string;
     durationMinutes?: number | null;
+    countdownTo?: Date | string | null;
     expiredBehavior?: string | null;
     recurringDays?: unknown;
     resetBehavior?: string | null;
@@ -279,7 +280,10 @@ function buildTimerViewModel(
   }
 
   const timerMode = toTimerMode(campaign.timerSettings?.mode);
-  const endsAt = toIsoDate(campaign.endsAt);
+  // The countdown target is the dedicated countdownTo when set, otherwise the
+  // campaign end date (backward compatible).
+  const countdownTo = toIsoDate(campaign.timerSettings?.countdownTo ?? null);
+  const endsAt = countdownTo ?? toIsoDate(campaign.endsAt);
 
   if (!timerMode && !endsAt) return null;
 

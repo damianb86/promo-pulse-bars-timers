@@ -933,6 +933,9 @@ function serializeTimer(timerSettings: TimerSettings | null) {
   return compactObject({
     mode: timerSettings.mode,
     durationMinutes: timerSettings.durationMinutes,
+    countdownTo: timerSettings.countdownTo
+      ? timerSettings.countdownTo.toISOString()
+      : null,
     recurringDays: timerSettings.recurringDays,
     resetBehavior: timerSettings.resetBehavior,
     expiredBehavior: timerSettings.expiredBehavior,

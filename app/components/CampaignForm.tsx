@@ -1880,11 +1880,14 @@ export function CampaignForm({
                         </FormField>
 
                         {formValues.timerMode === "FIXED_DATE" ? (
-                          <FormField label="End date" error={errors.endsAt}>
+                          <FormField
+                            label="Countdown to date/time"
+                            error={errors.countdownTo}
+                          >
                             <input
                               type="datetime-local"
-                              value={formValues.endsAt}
-                              onChange={updateField("endsAt")}
+                              value={formValues.countdownTo}
+                              onChange={updateField("countdownTo")}
                             />
                           </FormField>
                         ) : formValues.timerMode === "EVERGREEN_SESSION" ? (
@@ -3676,24 +3679,49 @@ export function CampaignForm({
                     )}
 
                     {formValues.timerMode === "FIXED_DATE" ? (
-                      <FormField
-                        label="End date"
-                        error={errors.endsAt}
-                        fullWidth
-                      >
-                        <input
-                          type="datetime-local"
-                          name="endsAt"
-                          value={formValues.endsAt}
-                          onChange={updateField("endsAt")}
-                        />
-                      </FormField>
+                      <>
+                        {/* Dedicated countdown target — the date the timer
+                            counts down to, independent of the campaign's
+                            visibility start/end. Defaults to the End date when
+                            left empty. */}
+                        <FormField
+                          label="Countdown to date/time"
+                          error={errors.countdownTo}
+                          fullWidth
+                        >
+                          <input
+                            type="datetime-local"
+                            name="countdownTo"
+                            value={formValues.countdownTo}
+                            onChange={updateField("countdownTo")}
+                          />
+                        </FormField>
+                        <FormField
+                          label="End date"
+                          error={errors.endsAt}
+                          fullWidth
+                        >
+                          <input
+                            type="datetime-local"
+                            name="endsAt"
+                            value={formValues.endsAt}
+                            onChange={updateField("endsAt")}
+                          />
+                        </FormField>
+                      </>
                     ) : (
-                      <input
-                        name="endsAt"
-                        type="hidden"
-                        value={formValues.endsAt}
-                      />
+                      <>
+                        <input
+                          name="countdownTo"
+                          type="hidden"
+                          value={formValues.countdownTo}
+                        />
+                        <input
+                          name="endsAt"
+                          type="hidden"
+                          value={formValues.endsAt}
+                        />
+                      </>
                     )}
 
                     <FormField

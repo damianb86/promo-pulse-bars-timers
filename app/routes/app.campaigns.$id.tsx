@@ -452,6 +452,10 @@ export const loader = async ({
       name: campaign.name,
       startsAt: toDateTimeLocalValue(campaign.startsAt, campaign.timezone),
       endsAt: toDateTimeLocalValue(campaign.endsAt, campaign.timezone),
+      countdownTo: toDateTimeLocalValue(
+        campaign.timerSettings?.countdownTo ?? null,
+        campaign.timezone,
+      ),
       timezone: campaign.timezone,
       status: toCampaignStatus(campaign.status),
       placementType: placement
@@ -1523,7 +1527,10 @@ export const action = async ({
   }
 
   const targeting = buildCampaignTargetingValues(parsed.values);
-  const timerSettings = buildCampaignTimerSettingsValues(parsed.values);
+  const timerSettings = {
+    ...buildCampaignTimerSettingsValues(parsed.values),
+    countdownTo: parsed.countdownTo,
+  };
   const cartRescueSettings = buildCampaignCartRescueSettingsValues(
     parsed.values,
   );
@@ -1947,6 +1954,7 @@ export default function EditCampaignPage() {
       timer: {
         ...buildCampaignTimerSettingsValues(draftCampaignValues),
         endsAt: draftCampaignValues.endsAt || null,
+        countdownTo: draftCampaignValues.countdownTo || null,
       },
       freeShipping: hasFreeShippingGoal
         ? buildDraftFreeShippingPreview(draftCampaignValues)

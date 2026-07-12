@@ -77,6 +77,7 @@ export type CampaignFormValues = {
   name: string;
   startsAt: string;
   endsAt: string;
+  countdownTo: string;
   timezone: string;
   status: EditableCampaignStatusValue;
   placementType: PlacementTypeValue;
@@ -149,6 +150,7 @@ export const defaultCampaignFormValues: CampaignFormValues = {
   name: "",
   startsAt: "",
   endsAt: "",
+  countdownTo: "",
   timezone: "UTC",
   status: "DRAFT",
   placementType: "TOP_BAR",

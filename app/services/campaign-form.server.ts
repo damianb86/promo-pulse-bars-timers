@@ -40,6 +40,7 @@ export type ParsedCampaignForm = {
   errors: CampaignFormErrors;
   startsAt: Date | null;
   endsAt: Date | null;
+  countdownTo: Date | null;
 };
 
 const campaignGoals = new Set(
@@ -122,6 +123,7 @@ export function parseCampaignFormData(
     name: readString(formData, "name"),
     startsAt: readString(formData, "startsAt"),
     endsAt: readString(formData, "endsAt"),
+    countdownTo: readString(formData, "countdownTo"),
     timezone: readString(formData, "timezone") || "UTC",
     status: readOption(
       formData,
@@ -320,6 +322,15 @@ export function parseCampaignFormData(
   const endsAt = parseOptionalDate(
     values.endsAt,
     "endsAt",
+    errors,
+    values.timezone,
+  );
+  // Dedicated countdown target for FIXED_DATE timers, independent of the
+  // campaign's visibility start/end. Falls back to endsAt on the storefront
+  // when not set.
+  const countdownTo = parseOptionalDate(
+    values.countdownTo,
+    "countdownTo",
     errors,
     values.timezone,
   );
@@ -535,6 +546,7 @@ export function parseCampaignFormData(
     errors,
     startsAt,
     endsAt,
+    countdownTo,
   };
 }
 

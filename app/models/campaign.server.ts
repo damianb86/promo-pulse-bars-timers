@@ -83,6 +83,7 @@ type CampaignBasicsInput = {
   timerSettings: {
     mode: TimerMode;
     durationMinutes: number | null;
+    countdownTo: Date | null;
     recurringDays: Prisma.InputJsonValue;
     resetBehavior: TimerResetBehavior;
     expiredBehavior: TimerExpiredBehavior;
@@ -337,6 +338,7 @@ export async function updateCampaignBasicsForShop(
         campaignId: id,
         mode: input.timerSettings.mode,
         durationMinutes: input.timerSettings.durationMinutes,
+        countdownTo: input.timerSettings.countdownTo,
         recurringDays: input.timerSettings.recurringDays,
         resetBehavior: input.timerSettings.resetBehavior,
         expiredBehavior: input.timerSettings.expiredBehavior,
@@ -344,6 +346,7 @@ export async function updateCampaignBasicsForShop(
       update: {
         mode: input.timerSettings.mode,
         durationMinutes: input.timerSettings.durationMinutes,
+        countdownTo: input.timerSettings.countdownTo,
         recurringDays: input.timerSettings.recurringDays,
         resetBehavior: input.timerSettings.resetBehavior,
         expiredBehavior: input.timerSettings.expiredBehavior,

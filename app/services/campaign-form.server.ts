@@ -1,3 +1,4 @@
+import { parseDateTimeLocalInZone } from "../lib/timezone";
 import { validateActivationCandidate } from "./campaign-rules";
 import {
   campaignGoalOptions,
@@ -308,8 +309,20 @@ export function parseCampaignFormData(
   };
 
   const errors: CampaignFormErrors = {};
-  const startsAt = parseOptionalDate(values.startsAt, "startsAt", errors);
-  const endsAt = parseOptionalDate(values.endsAt, "endsAt", errors);
+  // datetime-local values are wall-clock times interpreted in the campaign's
+  // configured timezone (seeded from Settings), not the server's zone.
+  const startsAt = parseOptionalDate(
+    values.startsAt,
+    "startsAt",
+    errors,
+    values.timezone,
+  );
+  const endsAt = parseOptionalDate(
+    values.endsAt,
+    "endsAt",
+    errors,
+    values.timezone,
+  );
 
   if (values.name.trim().length === 0) {
     errors.name = "Campaign name is required.";
@@ -606,12 +619,13 @@ function parseOptionalDate(
   value: string,
   key: keyof CampaignFormValues,
   errors: CampaignFormErrors,
+  timezone: string,
 ) {
   if (!value) return null;
 
-  const date = new Date(value);
+  const date = parseDateTimeLocalInZone(value, timezone);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     errors[key] = "Enter a valid date and time.";
     return null;
   }

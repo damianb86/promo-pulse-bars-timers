@@ -8,6 +8,7 @@ import {
   type DiscountValueTypeValue,
 } from "../types/discount";
 import { normalizeUniqueCodePrefix } from "./unique-discount-codes.server";
+import { parseDateTimeLocalInZone } from "../lib/timezone";
 
 export type ParsedDiscountSettingsForm = {
   values: DiscountSettingsValues;
@@ -28,6 +29,9 @@ const discountValueTypes = new Set<string>(
 
 export function parseDiscountSettingsFormData(
   formData: FormData,
+  // Timezone the merchant's datetime-local start/end are entered in (the
+  // campaign's configured zone, seeded from Settings). Defaults to UTC.
+  timezone: string = "UTC",
 ): ParsedDiscountSettingsForm {
   const values: DiscountSettingsValues = {
     mode: readDiscountMode(formData),
@@ -60,8 +64,13 @@ export function parseDiscountSettingsFormData(
   const uniqueCodeExpiresMinutes = values.uniqueCodeExpiresMinutes
     ? Number(values.uniqueCodeExpiresMinutes)
     : null;
-  const startsAt = parseOptionalDate(values.startsAt, "startsAt", errors);
-  const endsAt = parseOptionalDate(values.endsAt, "endsAt", errors);
+  const startsAt = parseOptionalDate(
+    values.startsAt,
+    "startsAt",
+    errors,
+    timezone,
+  );
+  const endsAt = parseOptionalDate(values.endsAt, "endsAt", errors, timezone);
 
   if (values.mode === "LINK_EXISTING" && !values.existingCodeOrId) {
     errors.existingCodeOrId = "Enter or select a Shopify discount code or ID.";
@@ -181,12 +190,13 @@ function parseOptionalDate(
   value: string,
   key: keyof DiscountSettingsValues,
   errors: DiscountSettingsErrors,
+  timezone: string,
 ) {
   if (!value) return null;
 
-  const date = new Date(value);
+  const date = parseDateTimeLocalInZone(value, timezone);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     errors[key] = "Enter a valid date and time.";
     return null;
   }

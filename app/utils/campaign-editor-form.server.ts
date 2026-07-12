@@ -1,4 +1,5 @@
 import type {} from "react-router";
+import { formatDateTimeLocalInZone } from "../lib/timezone";
 import {
   AdvancedDiscountRuleStatus,
   AdvancedDiscountRuleType,
@@ -79,17 +80,11 @@ export function shouldClearDiscountSyncForCampaignType(values: CampaignFormValue
   );
 }
 
-export function toDateTimeLocalValue(date: Date | string | null) {
-  if (!date) return "";
-  const parsedDate = typeof date === "string" ? new Date(date) : date;
-
-  if (Number.isNaN(parsedDate.getTime())) return "";
-
-  const localDate = new Date(
-    parsedDate.getTime() - parsedDate.getTimezoneOffset() * 60000,
-  );
-
-  return localDate.toISOString().slice(0, 16);
+export function toDateTimeLocalValue(
+  date: Date | string | null,
+  timezone: string = "UTC",
+) {
+  return formatDateTimeLocalInZone(date, timezone);
 }
 
 export function toCampaignTimerFormValues(

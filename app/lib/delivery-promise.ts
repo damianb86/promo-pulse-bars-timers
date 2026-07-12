@@ -1,3 +1,5 @@
+import { getZonedParts, safeTimezone, zonedTimeToUtc } from "./timezone";
+
 export type AfterCutoffBehavior =
   | "SHOW_NEXT_WINDOW"
   | "SHOW_AFTER_CUTOFF_MESSAGE"
@@ -284,77 +286,6 @@ function addDays(date: LocalDate, days: number): LocalDate {
   };
 }
 
-function getZonedParts(date: Date, timezone: string) {
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    hour: "2-digit",
-    hourCycle: "h23",
-    minute: "2-digit",
-    month: "2-digit",
-    second: "2-digit",
-    timeZone: timezone,
-    weekday: "short",
-    year: "numeric",
-  });
-  const values: Record<string, string> = {};
-  const weekdays: Record<string, number> = {
-    Fri: 5,
-    Mon: 1,
-    Sat: 6,
-    Sun: 7,
-    Thu: 4,
-    Tue: 2,
-    Wed: 3,
-  };
-
-  formatter.formatToParts(date).forEach((part) => {
-    values[part.type] = part.value;
-  });
-
-  return {
-    day: Number(values.day),
-    hour: Number(values.hour),
-    isoWeekday: weekdays[values.weekday] ?? 1,
-    minute: Number(values.minute),
-    month: Number(values.month),
-    second: Number(values.second),
-    year: Number(values.year),
-  };
-}
-
-function zonedTimeToUtc(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-  timezone: string,
-) {
-  const localTimestamp = Date.UTC(year, month - 1, day, hour, minute, 0);
-  let utcTimestamp = localTimestamp;
-
-  for (let index = 0; index < 3; index += 1) {
-    utcTimestamp =
-      localTimestamp -
-      (getZonedTimestamp(new Date(utcTimestamp), timezone) - utcTimestamp);
-  }
-
-  return new Date(utcTimestamp);
-}
-
-function getZonedTimestamp(date: Date, timezone: string) {
-  const parts = getZonedParts(date, timezone);
-
-  return Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-}
-
 function toLocalDate(parts: {
   year: number;
   month: number;
@@ -375,15 +306,6 @@ function toDisplayDate(date: LocalDate) {
 
 function formatDateKey(date: LocalDate) {
   return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
-}
-
-function safeTimezone(timezone: string) {
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: timezone });
-    return timezone;
-  } catch {
-    return "UTC";
-  }
 }
 
 function normalizeAfterCutoffBehavior(

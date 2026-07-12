@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { formatDateTimeLocalInZone } from "../lib/timezone";
 import { useActionData, useLoaderData } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -191,6 +192,7 @@ export const loader = async ({
           startsAt: "",
           endsAt: toDateTimeLocalValue(
             new Date(Date.now() + 24 * 60 * 60 * 1000),
+            settings.defaultTimezone,
           ),
           timezone: settings.defaultTimezone,
         },
@@ -1382,10 +1384,8 @@ function normalizeShopifyDiscountReference(value: string) {
     : trimmed.toUpperCase();
 }
 
-function toDateTimeLocalValue(date: Date) {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-
-  return localDate.toISOString().slice(0, 16);
+function toDateTimeLocalValue(date: Date, timezone: string) {
+  return formatDateTimeLocalInZone(date, timezone);
 }
 
 async function loadTargetingOptions(

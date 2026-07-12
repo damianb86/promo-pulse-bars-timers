@@ -1117,6 +1117,7 @@ export function toDiscountSettingsValues(
     uniqueCodeEndsAt?: Date | string | null;
     showCodeOnStorefront?: boolean | null;
   } | null,
+  timezone: string = "UTC",
 ): DiscountSettingsValues {
   if (!settings) return defaultDiscountSettingsValues;
 
@@ -1132,8 +1133,11 @@ export function toDiscountSettingsValues(
       title: settings.title ?? "",
       valueType: toDiscountValueType(settings.valueType),
       value: settings.value?.toString() ?? defaultDiscountSettingsValues.value,
-      startsAt: toDateTimeLocalValue(settings.uniqueCodeStartsAt ?? null),
-      endsAt: toDateTimeLocalValue(settings.uniqueCodeEndsAt ?? null),
+      startsAt: toDateTimeLocalValue(
+        settings.uniqueCodeStartsAt ?? null,
+        timezone,
+      ),
+      endsAt: toDateTimeLocalValue(settings.uniqueCodeEndsAt ?? null, timezone),
       minimumSubtotal: settings.minimumSubtotal?.toString() ?? "",
       appliesOncePerCustomer: settings.appliesOncePerCustomer ?? false,
       uniqueCodePrefix:

@@ -450,8 +450,8 @@ export const loader = async ({
       goal: toCampaignGoal(campaign.goal, campaign.type),
       type: toCampaignType(campaign.type),
       name: campaign.name,
-      startsAt: toDateTimeLocalValue(campaign.startsAt),
-      endsAt: toDateTimeLocalValue(campaign.endsAt),
+      startsAt: toDateTimeLocalValue(campaign.startsAt, campaign.timezone),
+      endsAt: toDateTimeLocalValue(campaign.endsAt, campaign.timezone),
       timezone: campaign.timezone,
       status: toCampaignStatus(campaign.status),
       placementType: placement
@@ -543,7 +543,10 @@ export const loader = async ({
     }),
     discountApiError: discountListResult.error,
     discountOptions: discountListResult.discounts,
-    discountValues: toDiscountSettingsValues(campaign.discountSync),
+    discountValues: toDiscountSettingsValues(
+      campaign.discountSync,
+      campaign.timezone,
+    ),
     behaviorTargetingValues: normalizeBehaviorTargetingRules(
       campaign.targeting?.behaviorRules,
     ),
@@ -813,7 +816,11 @@ export const action = async ({
   }
 
   if (intent === "saveDiscount") {
-    const parsed = parseDiscountSettingsFormData(formData);
+    const campaignForTimezone = await getCampaignForShop(id, shop.id);
+    const parsed = parseDiscountSettingsFormData(
+      formData,
+      campaignForTimezone?.timezone || "UTC",
+    );
 
     if (parsed.values.mode !== "NONE") {
       const discountGate = canUseFeature(shop, "discount_sync");
@@ -1001,7 +1008,11 @@ export const action = async ({
   if (intent === "generateUniqueCodes") {
     formData.set("mode", "UNIQUE_CODES");
 
-    const parsed = parseDiscountSettingsFormData(formData);
+    const campaignForTimezone = await getCampaignForShop(id, shop.id);
+    const parsed = parseDiscountSettingsFormData(
+      formData,
+      campaignForTimezone?.timezone || "UTC",
+    );
     const totalCodesToGenerate = parseTotalCodesToGenerate(formData);
     const enabled = isFormCheckboxChecked(formData, "enableUniqueCodes");
     const uniqueCodeGate = canUseFeature(shop, "unique_discount_codes");

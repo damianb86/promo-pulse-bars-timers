@@ -253,7 +253,7 @@ export async function updateCampaignBasicsForShop(
     input.placementTypes ?? [input.placementType],
   );
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.campaign.update({
       where: { id },
       data: {
@@ -459,6 +459,12 @@ export async function updateCampaignBasicsForShop(
       include: campaignDetailsInclude,
     });
   });
+
+  // Schedule (startsAt/endsAt) and other operational fields feed the storefront
+  // snapshot; drop the cache so edits take effect without waiting for the TTL.
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return result;
 }
 
 export async function updateLowStockSettingsForShop(
@@ -522,7 +528,7 @@ export async function updateDiscountSyncForShop(
 ) {
   await assertCampaignBelongsToShop(id, shopId);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (input.syncStartEnd) {
       await tx.campaign.update({
         where: { id },
@@ -576,6 +582,12 @@ export async function updateDiscountSyncForShop(
       },
     });
   });
+
+  // The discount schedule may have changed the campaign's active window
+  // (startsAt/endsAt); drop the cached storefront snapshot so it takes effect.
+  await invalidateStorefrontCacheForShopId(shopId);
+
+  return result;
 }
 
 export async function updateDeliveryCutoffSettingsForShop(
@@ -1656,8 +1668,13 @@ function hydratePublishedCampaignSnapshot(
     ...snapshot,
     createdAt: readDate(snapshot.createdAt) ?? campaign.createdAt,
     updatedAt: readDate(snapshot.updatedAt) ?? campaign.updatedAt,
-    startsAt: readDate(snapshot.startsAt),
-    endsAt: readDate(snapshot.endsAt),
+    // Scheduling window is operational state (like `status` below): it decides
+    // the live active window and must reflect the saved record, not the frozen
+    // publish snapshot. Otherwise editing the schedule — or syncing it from the
+    // discount (Offers → Schedule and limits) — would not take effect until the
+    // campaign is republished.
+    startsAt: campaign.startsAt,
+    endsAt: campaign.endsAt,
     lastSavedAt: readDate(snapshot.lastSavedAt) ?? campaign.lastSavedAt,
     publishedAt: readDate(snapshot.publishedAt) ?? campaign.publishedAt,
     placements: readArray(snapshot.placements, campaign.placements),

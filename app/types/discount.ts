@@ -47,7 +47,9 @@ export const defaultDiscountSettingsValues: DiscountSettingsValues = {
   existingCodeOrId: "",
   discountCode: "",
   shopifyDiscountId: "",
-  syncStartEnd: false,
+  // On by default so a discount's Schedule and limits (start/end) drives when
+  // the campaign — and its code — starts/stops showing on the storefront.
+  syncStartEnd: true,
   title: "",
   valueType: "PERCENTAGE",
   value: "10",

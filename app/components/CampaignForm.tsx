@@ -870,7 +870,9 @@ export function CampaignForm({
     setFormValues((currentValues) => ({
       ...currentValues,
       timerMode,
-      startsAt: timerMode === "FIXED_DATE" ? currentValues.startsAt : "",
+      // Start date controls when the campaign begins showing and is independent
+      // of the timer mode, so it is preserved across mode changes. End date is
+      // the fixed-date countdown target, so it only applies to FIXED_DATE.
       endsAt: timerMode === "FIXED_DATE" ? currentValues.endsAt : "",
       timerExpiredBehavior:
         timerMode === "FIXED_DATE"
@@ -1864,6 +1866,17 @@ export function CampaignForm({
                               </option>
                             ))}
                           </select>
+                        </FormField>
+
+                        <FormField
+                          label="Start date"
+                          error={errors.startsAt}
+                        >
+                          <input
+                            type="datetime-local"
+                            value={formValues.startsAt}
+                            onChange={updateField("startsAt")}
+                          />
                         </FormField>
 
                         {formValues.timerMode === "FIXED_DATE" ? (
@@ -3601,91 +3614,86 @@ export function CampaignForm({
                       </>
                     )}
 
-                    {formValues.timerMode === "FIXED_DATE" ? (
-                      <>
-                        <div className="counterpulse-schedule-card__group counterpulse-schedule-start-options">
-                          <label className="counterpulse-radio counterpulse-radio--stacked">
-                            <input
-                              aria-label="Right now"
-                              checked={!formValues.startsAt}
-                              name="timerStartsMode"
-                              type="radio"
-                              value="NOW"
-                              onChange={() => selectTimerStart("NOW")}
-                            />
-                            <span>
-                              <strong>Right now</strong>
-                            </span>
-                          </label>
-                          <label
-                            className={[
-                              "counterpulse-radio counterpulse-radio--stacked",
-                              schedulingLocked ? "is-disabled" : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            <input
-                              aria-label="Schedule to start later"
-                              checked={Boolean(formValues.startsAt)}
-                              disabled={Boolean(schedulingLocked)}
-                              name="timerStartsMode"
-                              type="radio"
-                              value="SCHEDULED"
-                              onChange={() => selectTimerStart("SCHEDULED")}
-                            />
-                            <span>
-                              <strong>Schedule to start later</strong>
-                              {schedulingLocked && (
-                                <UpgradeText reason={schedulingLocked} />
-                              )}
-                            </span>
-                          </label>
-                        </div>
-
-                        {formValues.startsAt ? (
-                          <FormField
-                            label="Start date/time"
-                            error={errors.startsAt}
-                            fullWidth
-                          >
-                            <input
-                              type="datetime-local"
-                              name="startsAt"
-                              value={formValues.startsAt}
-                              onChange={updateField("startsAt")}
-                            />
-                          </FormField>
-                        ) : (
-                          <input name="startsAt" type="hidden" value="" />
-                        )}
-
-                        <FormField
-                          label="End date"
-                          error={errors.endsAt}
-                          fullWidth
-                        >
-                          <input
-                            type="datetime-local"
-                            name="endsAt"
-                            value={formValues.endsAt}
-                            onChange={updateField("endsAt")}
-                          />
-                        </FormField>
-                      </>
-                    ) : (
-                      <>
+                    {/* Start date — when the campaign begins showing. Applies to
+                        every timer mode and is auto-filled from the discount
+                        schedule (Offers → Schedule and limits) when date sync is
+                        on. */}
+                    <div className="counterpulse-schedule-card__group counterpulse-schedule-start-options">
+                      <label className="counterpulse-radio counterpulse-radio--stacked">
                         <input
+                          aria-label="Show right now"
+                          checked={!formValues.startsAt}
+                          name="timerStartsMode"
+                          type="radio"
+                          value="NOW"
+                          onChange={() => selectTimerStart("NOW")}
+                        />
+                        <span>
+                          <strong>Show right now</strong>
+                        </span>
+                      </label>
+                      <label
+                        className={[
+                          "counterpulse-radio counterpulse-radio--stacked",
+                          schedulingLocked ? "is-disabled" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <input
+                          aria-label="Schedule a start date"
+                          checked={Boolean(formValues.startsAt)}
+                          disabled={Boolean(schedulingLocked)}
+                          name="timerStartsMode"
+                          type="radio"
+                          value="SCHEDULED"
+                          onChange={() => selectTimerStart("SCHEDULED")}
+                        />
+                        <span>
+                          <strong>Schedule a start date</strong>
+                          {schedulingLocked && (
+                            <UpgradeText reason={schedulingLocked} />
+                          )}
+                        </span>
+                      </label>
+                    </div>
+
+                    {formValues.startsAt ? (
+                      <FormField
+                        label="Start date/time"
+                        error={errors.startsAt}
+                        fullWidth
+                      >
+                        <input
+                          type="datetime-local"
                           name="startsAt"
-                          type="hidden"
                           value={formValues.startsAt}
+                          onChange={updateField("startsAt")}
                         />
+                      </FormField>
+                    ) : (
+                      <input name="startsAt" type="hidden" value="" />
+                    )}
+
+                    {formValues.timerMode === "FIXED_DATE" ? (
+                      <FormField
+                        label="End date"
+                        error={errors.endsAt}
+                        fullWidth
+                      >
                         <input
+                          type="datetime-local"
                           name="endsAt"
-                          type="hidden"
                           value={formValues.endsAt}
+                          onChange={updateField("endsAt")}
                         />
-                      </>
+                      </FormField>
+                    ) : (
+                      <input
+                        name="endsAt"
+                        type="hidden"
+                        value={formValues.endsAt}
+                      />
                     )}
 
                     <FormField

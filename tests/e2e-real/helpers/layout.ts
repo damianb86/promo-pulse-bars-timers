@@ -153,6 +153,40 @@ export async function expectPublishedDesignApplied(
   }
 }
 
+/**
+ * Reads the rendered surface profile of a promo element: the class list, the
+ * `--cp-*` CSS custom properties the theme extension applies inline, and a few
+ * resolved computed styles. Used by the design-fidelity spec to prove that the
+ * campaign design saved in the backend is faithfully applied on the storefront.
+ */
+export async function readSurfaceProfile(locator: Locator, vars: string[]) {
+  return locator.evaluate(
+    (element, keys) => {
+      const target = element as HTMLElement;
+      const computed = getComputedStyle(target);
+      const cssVars: Record<string, string> = {};
+
+      for (const key of keys as string[]) {
+        cssVars[key] = target.style.getPropertyValue(key).trim();
+      }
+
+      return {
+        className: target.className,
+        cssVars,
+        backgroundImage: computed.backgroundImage,
+        justifyItems: computed.justifyItems,
+        textAlign: computed.textAlign,
+        borderTopLeftRadius: computed.borderTopLeftRadius,
+      };
+    },
+    vars,
+  );
+}
+
+export function normalizeCssColor(hex: string) {
+  return hexToRgb(hex);
+}
+
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "");
   const red = Number.parseInt(normalized.slice(0, 2), 16);

@@ -61,6 +61,14 @@ type PlacementCampaignOptions = {
     fullWidth?: boolean;
     layout?: DesignLayout;
   };
+  /**
+   * Raw CampaignDesign column overrides merged on top of the fixture defaults.
+   * Lets a spec exercise the full design surface (gradients, alignment, timer
+   * format, close button, custom CSS, sticky/overlay position, ...) that the
+   * curated `design` option does not expose. Keys must match Prisma
+   * CampaignDesign create fields.
+   */
+  designExtras?: Record<string, unknown>;
   deliveryCutoff?: Partial<{
     afterCutoffBehavior:
       | "HIDE"
@@ -74,6 +82,12 @@ type PlacementCampaignOptions = {
     processingDays: number;
   }>;
   discountCode?: string;
+  /**
+   * Whether the linked discount code is exposed on the storefront. Defaults to
+   * true. Set false to verify the code is gated out of the payload and DOM while
+   * the campaign itself still renders.
+   */
+  discountShowCode?: boolean;
   experiment?: {
     name?: string;
     primaryMetric?: ExperimentPrimaryMetric;
@@ -203,7 +217,12 @@ export async function createPublishedPlacementCampaign(
             },
           }
         : {}),
-      design: { create: designDataForFixture(design, options.design) },
+      design: {
+        create: {
+          ...designDataForFixture(design, options.design),
+          ...(options.designExtras ?? {}),
+        },
+      },
       timerSettings: {
         create: {
           mode:
@@ -305,7 +324,7 @@ export async function createPublishedPlacementCampaign(
               create: {
                 method: DiscountSyncMethod.CODE,
                 discountCode: options.discountCode,
-                showCodeOnStorefront: true,
+                showCodeOnStorefront: options.discountShowCode ?? true,
                 syncStartEnd: false,
                 title: `${options.headline} discount`,
                 valueType: DiscountCodeValueType.PERCENTAGE,

@@ -85,6 +85,9 @@ export default defineConfig({
         "**/17.campaign-types-targeting-schedule.spec.ts",
         "**/21.checkout-discount-order-attribution.spec.ts",
         "**/22.behavior-targeting-segments.spec.ts",
+        "**/25.design-fidelity-storefront.spec.ts",
+        "**/26.offer-code-visibility.spec.ts",
+        "**/27.payload-dom-text-parity.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],

@@ -693,6 +693,10 @@
       cta: showCta ? ctaLabel : "",
       ctaUrl: ctaUrl || "",
       progress: progress,
+      className:
+        "pp-cart-card" +
+        (isDrawer ? " pp-cart-card--drawer" : "") +
+        (isFullWidth ? " pp-cart-card--full-width" : ""),
       dataTestId: isDrawer ? "cart-drawer-widget" : "cart-timer-widget",
       onClose: function () {
         if (design.dismissBehavior === "HIDE_PERMANENTLY") {
@@ -704,7 +708,10 @@
 
     card.dataset.campaignId = campaign.id;
     if (config.compactMode) {
-      card.classList.add("counterpulse-preview-promo--compact");
+      card.classList.add(
+        "counterpulse-preview-promo--compact",
+        "pp-cart-card--compact",
+      );
     }
     if (isDrawer) {
       card.classList.add("counterpulse-preview-promo--drawer");
@@ -863,6 +870,13 @@
       state.unlocked,
     );
     progress.style.setProperty("--cp-progress", state.progress + "%");
+    var indicator = progress.querySelector("[role='progressbar']");
+    if (indicator) {
+      indicator.setAttribute(
+        "aria-valuenow",
+        String(Math.round(state.progress)),
+      );
+    }
     if (fill) {
       fill.style.width = Math.max(0, state.progress) + "%";
     }
@@ -1018,7 +1032,10 @@
 
     // FIXED_DATE counts down to the dedicated countdown target when set,
     // otherwise to the campaign end date.
-    return buildTimerState(now, parseDate(timer.countdownTo || campaign.endsAt));
+    return buildTimerState(
+      now,
+      parseDate(timer.countdownTo || campaign.endsAt),
+    );
   }
 
   function calculateCartReserveTimer(campaign, now, config) {

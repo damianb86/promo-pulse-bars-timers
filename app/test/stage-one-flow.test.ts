@@ -60,6 +60,9 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn(),
     update: vi.fn(),
   },
+  experimentVariant: {
+    findFirst: vi.fn(),
+  },
   analyticsEvent: {
     count: vi.fn(),
     findFirst: vi.fn(),
@@ -126,6 +129,9 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     });
     prismaMock.shopSettings.findUnique.mockResolvedValue(null);
     prismaMock.campaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prismaMock.experimentVariant.findFirst.mockResolvedValue({
+      id: "variant-1",
+    });
     prismaMock.campaign.findMany.mockResolvedValue([]);
     prismaMock.campaign.update.mockImplementation(async ({ data }) => ({
       id: "campaign-1",
@@ -254,7 +260,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
       id: "campaign-1",
       type: CampaignType.COUNTDOWN_BAR,
       goal: CampaignGoal.FLASH_SALE,
-      placement: PlacementType.TOP_BAR,
+      placements: [{ placement: PlacementType.TOP_BAR }],
       design: {
         templateKey: "flash-sale",
         showIcon: true,
@@ -355,7 +361,7 @@ describe("Promo Pulse Stage 1 critical flow", () => {
     expect(eligibleBody.campaigns).toHaveLength(1);
     expect(eligibleBody.campaigns[0]).toMatchObject({
       id: activeCampaign.id,
-      placement: PlacementType.TOP_BAR,
+      placements: [{ placement: PlacementType.TOP_BAR }],
       texts: {
         headline: "La oferta termina pronto",
         ctaText: "Comprar oferta",

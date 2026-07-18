@@ -282,6 +282,7 @@
           ? texts.ctaText || ""
           : "",
       ctaUrl: texts.ctaUrl || "",
+      className: "pp-low-stock",
       dataTestId: "low-stock-widget",
       onClose: function () {
         card.remove();

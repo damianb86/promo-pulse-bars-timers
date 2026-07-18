@@ -67,7 +67,7 @@ import {
   type CampaignTranslationFormErrors,
   type CampaignTranslationsByLocale,
   type StorefrontLocale,
-  } from "../types/localization";
+} from "../types/localization";
 import {
   buildCampaignViewModel,
   type CampaignViewModel,
@@ -93,8 +93,72 @@ import {
   serializeCustomMessages,
   type CustomMessage,
 } from "../utils/custom-messages";
-import { AiApplyValuesEventDetail, BuilderTabKey, CampaignTypeChoice, ResourceChip, ResourceFieldName, ShopifyResourcePickerType, TextListFieldName, UrlEligibilityMode, UrlPageTargetingToken, UrlTargetingFieldName, campaignGoalSetupPresets, campaignTypeChoiceOptions, campaignTypeSetupPresets, cartTimerResetBehaviorOptions, deliveryWeekdayOptions, timerExpiredBehaviorOptions, timerModeOptions, builderTabs } from "./campaign-form/constants";
-import { BuilderPanel, CampaignInfoContent, CampaignMessageHiddenInputs, CampaignTypeIcon, CartRescueReasonIcon, CopyIcon, CountrySelectorField, FieldError, FormField, FormGroup, GoalIcon, MessageVariablesInfo, ResourcePickerField, ReviewSummary, buildReviewSections, TagSelectorField, TargetingRadioOption, UpgradeText, UrlPageTargetingPicker, applySetupPreset, buildCampaignErrorSummary, buildCampaignTypeDefaultTranslations, buildResourceChips, formatPlacementSelectionLabel, getCampaignTypeChoiceKey, getIncompatiblePlacementWarning, getInitialUrlEligibilityMode, getShopifyBridge, getUrlEligibilityModeFromValues, getVisibleFreeShippingDiscountCode, isFreeShippingCodeReference, isSelectableResourceId, manualUrlTargetingItems, manualUrlTargetingText, mergeUrlTargetingValue, normalizeSelectableResourceId, placementInitial, resolveCampaignTranslationValues, selectedUrlPageTargetingTokens, shortResourceId, toDateTimeLocalInputValue, toPreviewPlacement, toggleUrlPageTargetingToken, getTranslationValuesSignature } from "./campaign-form/fields";
+import {
+  AiApplyValuesEventDetail,
+  BuilderTabKey,
+  CampaignTypeChoice,
+  ResourceChip,
+  ResourceFieldName,
+  ShopifyResourcePickerType,
+  TextListFieldName,
+  UrlEligibilityMode,
+  UrlPageTargetingToken,
+  UrlTargetingFieldName,
+  campaignGoalSetupPresets,
+  campaignTypeChoiceOptions,
+  campaignTypeSetupPresets,
+  cartTimerResetBehaviorOptions,
+  deliveryWeekdayOptions,
+  timerExpiredBehaviorOptions,
+  timerModeOptions,
+  builderTabs,
+} from "./campaign-form/constants";
+import {
+  BuilderPanel,
+  CampaignInfoContent,
+  CampaignMessageHiddenInputs,
+  CampaignTypeIcon,
+  CartRescueReasonIcon,
+  CopyIcon,
+  CountrySelectorField,
+  FieldError,
+  FormField,
+  FormGroup,
+  GoalIcon,
+  MessageVariablesInfo,
+  ResourcePickerField,
+  ReviewSummary,
+  buildReviewSections,
+  TagSelectorField,
+  TargetingRadioOption,
+  UpgradeText,
+  UrlPageTargetingPicker,
+  applySetupPreset,
+  buildCampaignErrorSummary,
+  buildCampaignTypeDefaultTranslations,
+  buildResourceChips,
+  formatPlacementSelectionLabel,
+  getCampaignTypeChoiceKey,
+  getIncompatiblePlacementWarning,
+  getInitialUrlEligibilityMode,
+  getShopifyBridge,
+  getUrlEligibilityModeFromValues,
+  getVisibleFreeShippingDiscountCode,
+  isFreeShippingCodeReference,
+  isSelectableResourceId,
+  manualUrlTargetingItems,
+  manualUrlTargetingText,
+  mergeUrlTargetingValue,
+  normalizeSelectableResourceId,
+  placementInitial,
+  resolveCampaignTranslationValues,
+  selectedUrlPageTargetingTokens,
+  shortResourceId,
+  toDateTimeLocalInputValue,
+  toPreviewPlacement,
+  toggleUrlPageTargetingToken,
+  getTranslationValuesSignature,
+} from "./campaign-form/fields";
 
 type CampaignFormProps = {
   campaignId?: string;
@@ -1868,10 +1932,7 @@ export function CampaignForm({
                           </select>
                         </FormField>
 
-                        <FormField
-                          label="Start date"
-                          error={errors.startsAt}
-                        >
+                        <FormField label="Start date" error={errors.startsAt}>
                           <input
                             type="datetime-local"
                             value={formValues.startsAt}
@@ -1881,7 +1942,7 @@ export function CampaignForm({
 
                         {formValues.timerMode === "FIXED_DATE" ? (
                           <FormField
-                            label="Countdown to date/time"
+                            label="End date"
                             error={errors.countdownTo}
                           >
                             <input
@@ -3823,10 +3884,7 @@ export function CampaignForm({
                 </p>
 
                 {errorSummaryMessages.length > 0 && (
-                  <div
-                    className="counterpulse-review-issues"
-                    role="alert"
-                  >
+                  <div className="counterpulse-review-issues" role="alert">
                     <strong>Resolve before publishing</strong>
                     <ul>
                       {errorSummaryMessages.map((message) => (

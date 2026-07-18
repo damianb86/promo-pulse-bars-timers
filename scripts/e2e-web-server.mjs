@@ -4,13 +4,9 @@ import fs from "node:fs";
 const envFile = readEnvFile(".env");
 const appEnv = process.env.APP_ENV || envFile.APP_ENV || "development";
 const nodeEnv = process.env.NODE_ENV || envFile.NODE_ENV || "development";
-const databaseUrl =
-  process.env.DATABASE_URL ||
-  (appEnv === "development" || nodeEnv === "development"
-    ? process.env.DEVELOPMENT_DATABASE_URL ||
-      envFile.DEVELOPMENT_DATABASE_URL ||
-      "file:./dev.sqlite"
-    : envFile.DATABASE_URL);
+// Test resets delete every application row. Keep them on an explicitly named
+// E2E database and never fall back to a developer or production connection.
+const databaseUrl = process.env.E2E_DATABASE_URL || "file:./e2e.sqlite";
 const env = {
   ...process.env,
   ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),

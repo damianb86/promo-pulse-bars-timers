@@ -3307,6 +3307,18 @@ function ExperimentLifecycleActions({
         )}
         {!isCompleted && (
           <>
+            {experiment.autoWinnerEnabled ? (
+              <button
+                className="counterpulse-button-secondary counterpulse-experiment-control-button"
+                name="_action"
+                title="Declare a winner only when the configured sample, runtime, and confidence thresholds are met."
+                type="submit"
+                value="detectExperimentWinner"
+              >
+                <span aria-hidden="true">✧</span>
+                Auto declare winner
+              </button>
+            ) : null}
             <button
               className="counterpulse-button-secondary counterpulse-experiment-control-button"
               name="_action"

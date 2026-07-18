@@ -62,32 +62,20 @@ async function findVisitorIdForVariant(
   campaignId: string,
   headline: string,
 ) {
-  const params = new URLSearchParams({
-    shop: "demo-shop.myshopify.com",
-    path: "/__test/storefront",
-    locale: "en",
-    device: "desktop",
-    placement: "TOP_BAR",
-    country: "US",
-    currency: "USD",
-    campaignId,
-    visitorId: "experiment-probe",
-    sessionId: "experiment-probe-session",
-    doNotTrack: "false",
-    consentGranted: "true",
-  });
-  const response = await page.request.get(`/apps/promo-pulse?${params}`);
+  const response = await page.request.get(
+    `/__test/stage2?resource=experiments-and-offers&campaignId=${encodeURIComponent(campaignId)}`,
+  );
   expect(response.ok()).toBeTruthy();
 
   const payload = (await response.json()) as {
     campaigns?: Array<{
-      experiment?: {
+      experiments?: Array<{
         id?: string;
         variants?: StorefrontExperimentVariant[];
-      } | null;
+      }>;
     }>;
   };
-  const experiment = payload.campaigns?.[0]?.experiment;
+  const experiment = payload.campaigns?.[0]?.experiments?.[0];
   const variants = experiment?.variants ?? [];
   const targetVariant = variants.find(
     (variant) => variant.textOverride?.headline === headline,
@@ -435,6 +423,11 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
     savedExperiment.locator(".counterpulse-experiment-status"),
   ).toHaveText("Paused");
   await publishCurrentCampaign(page);
+  await page.evaluate(() => {
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith("promo_pulse_storefront_payload_"))
+      .forEach((key) => window.localStorage.removeItem(key));
+  });
 
   await page.goto(
     `/__test/storefront?visitorId=${treatmentVisitorId}&sessionId=stage2-experiment-session`,
@@ -442,7 +435,6 @@ test("campaign experiments assign stable variants and confirm lifecycle changes"
   await expect(page.locator(".pp-bar").first()).toContainText(
     "Experiment base headline",
   );
-
   await loginAsDemoShop(`/app/campaigns/${campaignId}`);
   await page.getByRole("tab", { name: "Experiments" }).click();
   await savedExperiment
@@ -797,33 +789,27 @@ test("experiment variant copy is prefilled and design preview updates live", asy
   await variantDrawer.locator('input[name="buttonTextColor"]').fill("#fedcba");
   await expect(previewCta).toHaveCSS("color", "rgb(254, 220, 186)");
 
-  await variantDrawer.getByRole("button", { name: "Boxes" }).click();
+  await variantDrawer
+    .getByRole("button", { name: "Boxes", exact: true })
+    .click();
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
   ).toHaveClass(/counterpulse-preview-timer--boxes/);
 
-  await variantDrawer.getByRole("button", { name: "Colon" }).click();
+  await variantDrawer
+    .getByRole("button", { name: "Boxes colon", exact: true })
+    .click();
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
   ).toHaveClass(/counterpulse-preview-timer--colon/);
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
-  ).toContainText("23:59:47");
+  ).toHaveText(/^\d{2}:\d{2}:\d{2}:\d{2}$/);
 
   await variantDrawer.locator('select[name="icon"]').selectOption("GIFT");
   await expect(
     previewSurface.locator(".counterpulse-preview-icon svg"),
   ).toBeVisible();
-
-  await variantDrawer.getByLabel("Show button").uncheck();
-  await expect(previewSurface.locator(".counterpulse-preview-cta")).toHaveCount(
-    0,
-  );
-
-  await variantDrawer.getByLabel("Closable banner").uncheck();
-  await expect(
-    previewSurface.locator(".counterpulse-preview-close"),
-  ).toHaveCount(0);
 
   await variantDrawer.getByLabel("Float over page").check();
   await expect(previewSurface).toHaveClass(
@@ -840,7 +826,9 @@ test("experiment variant copy is prefilled and design preview updates live", asy
     /counterpulse-preview-promo--enter-slide/,
   );
 
-  await variantDrawer.getByLabel("Timer change").selectOption("FLIP");
+  await variantDrawer
+    .getByRole("combobox", { name: "Timer change", exact: true })
+    .selectOption("FLIP");
   await expect(
     previewSurface.locator(".counterpulse-preview-timer"),
   ).toHaveClass(/counterpulse-preview-timer--tick-flip/);

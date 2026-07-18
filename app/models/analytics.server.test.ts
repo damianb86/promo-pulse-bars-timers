@@ -79,6 +79,20 @@ describe("analytics endpoint validation", () => {
       }),
     });
   });
+
+  it("requires experiment and variant identifiers as an inseparable pair", () => {
+    expect(
+      validateAnalyticsEventPayload({
+        shop: "example.myshopify.com",
+        campaignId: "campaign-1",
+        experimentId: "experiment-1",
+        eventType: AnalyticsEventType.CLICK,
+      }),
+    ).toEqual({
+      ok: false,
+      errors: ["experimentId and variantId must be provided together."],
+    });
+  });
 });
 
 describe("analytics aggregation helpers", () => {

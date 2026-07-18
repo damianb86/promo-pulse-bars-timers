@@ -15,8 +15,9 @@ test("storefront events are saved and visible in analytics admin", async ({
   await expect(page.locator(".pp-bar").first()).toContainText("Sale ends soon");
 
   await page
-    .locator(".pp-cta:not(.pp-cta--offer)")
+    .locator(".pp-bar")
     .first()
+    .getByRole("link", { name: "Shop sale" })
     .evaluate((element) => {
       element.addEventListener("click", (event) => event.preventDefault(), {
         once: true,

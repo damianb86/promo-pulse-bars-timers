@@ -51,7 +51,12 @@ export function buildStorefrontPayload(
   const settingsPayload = compactSettingsPayload(settings);
 
   return {
-    ...(compactCampaigns.length > 0 ? { campaigns: compactCampaigns } : {}),
+    // Keep a completely empty response compact, but make the campaign list
+    // explicit whenever the response also carries storefront settings. That
+    // gives consumers a stable envelope without adding bytes to `{}` responses.
+    ...(compactCampaigns.length > 0 || settingsPayload
+      ? { campaigns: compactCampaigns }
+      : {}),
     // `placements` only indexes campaigns by placement; it carries IDs (not the
     // full objects, which already live in `campaigns`) to keep the payload small.
     ...(Object.keys(placements).length > 0 ? { placements } : {}),

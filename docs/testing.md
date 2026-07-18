@@ -9,6 +9,10 @@ login, a dev store, or a real Admin session.
 ```bash
 npm run test:unit
 npm run test:e2e
+npm run test:e2e:smoke
+npm run test:e2e:experiments
+npm run test:e2e:offers
+npm run test:unit:experiments-offers
 npm run test
 ```
 
@@ -37,7 +41,7 @@ Playwright starts the app through `npm run test:e2e:web`. That script sets:
 E2E_TEST_MODE=true
 NODE_ENV=development
 DATABASE_URL=file:./e2e.sqlite
-PROMO_PULSE_DEV_PLAN=PRO
+PROMO_PULSE_DEV_PLAN=AGENCY
 PORT=31338
 ```
 
@@ -48,6 +52,10 @@ The Playwright web server does not reuse an already-running local server. This
 prevents stale `react-router dev` or `shopify app dev` processes from running
 the suite with old code or without `E2E_TEST_MODE=true`. The default E2E port is
 `31338`; override it with `E2E_PORT=...` if that port is busy.
+
+The harness never inherits `DATABASE_URL` or `DEVELOPMENT_DATABASE_URL` because
+the reset route deletes every application row. Set `E2E_DATABASE_URL` only for
+an intentionally dedicated test database.
 
 The demo shop is `demo-shop.myshopify.com`. `/__test/login` sets a local test
 cookie and `authenticateAdmin()` returns a mock admin session only in E2E mode.
@@ -65,6 +73,7 @@ development.
 - `/__test/storefront-product`
 - `/__test/storefront-cart`
 - `/__test/analytics-summary`
+- `/__test/stage2?resource=experiments-and-offers`
 
 The fake storefront routes load the same theme assets through
 `/__test/theme-asset/:asset` and call the local app proxy route
@@ -88,6 +97,9 @@ The Playwright suite covers:
 - shop Settings persistence;
 - Billing plan cards and local billing placeholder behavior;
 - analytics events visible in the admin page.
+
+See the [experiments and offers traceability matrix](testing/experiments-and-offers-e2e.md)
+for focused suites, backend assertions, and the real-Shopify boundary.
 
 Fixtures in `tests/e2e/fixtures.ts` reset the database, log in as the demo shop,
 create campaigns through the UI, and capture console/request failures. Expected

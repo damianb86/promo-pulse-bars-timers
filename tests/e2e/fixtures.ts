@@ -69,6 +69,12 @@ export const test = base.extend<E2EFixtures>({
         return;
       }
       if (
+        new URL(url).pathname === "/apps/promo-pulse" &&
+        failureText === "net::ERR_ABORTED"
+      ) {
+        return;
+      }
+      if (
         new URL(url).pathname.endsWith(".data") &&
         failureText === "net::ERR_ABORTED"
       ) {

@@ -136,6 +136,19 @@ export function validateAnalyticsEventPayload(
     errors.push("revenueAmount must be a non-negative number.");
   }
 
+  const experimentId = readNullableText(
+    input.experimentId,
+    maxStringLengths.experimentId,
+  );
+  const variantId = readNullableText(
+    input.variantId,
+    maxStringLengths.variantId,
+  );
+
+  if (Boolean(experimentId) !== Boolean(variantId)) {
+    errors.push("experimentId and variantId must be provided together.");
+  }
+
   if (errors.length > 0 || !eventType) {
     return { ok: false, errors };
   }
@@ -145,11 +158,8 @@ export function validateAnalyticsEventPayload(
     payload: {
       shop,
       campaignId,
-      experimentId: readNullableText(
-        input.experimentId,
-        maxStringLengths.experimentId,
-      ),
-      variantId: readNullableText(input.variantId, maxStringLengths.variantId),
+      experimentId,
+      variantId,
       visitorId: readNullableText(input.visitorId, maxStringLengths.visitorId),
       eventType,
       placementType,
@@ -212,6 +222,13 @@ export async function recordAnalyticsEvent(
   if (!campaign) {
     throw new AnalyticsIngestionError("Campaign was not found.", 404);
   }
+
+  await validateExperimentAttribution({
+    shopId: shop.id,
+    campaignId: campaign.id,
+    experimentId: payload.experimentId,
+    variantId: payload.variantId,
+  });
 
   const existingEvent = await findExistingDedupableEvent({
     shopId: shop.id,
@@ -280,6 +297,44 @@ export async function recordAnalyticsEvent(
     attributionTouchId: attributionTouch.id,
     attributionConversionId: conversion?.id,
   };
+}
+
+async function validateExperimentAttribution({
+  shopId,
+  campaignId,
+  experimentId,
+  variantId,
+}: {
+  shopId: string;
+  campaignId: string;
+  experimentId: string | null;
+  variantId: string | null;
+}) {
+  if (!experimentId && !variantId) return;
+
+  if (!experimentId || !variantId) {
+    throw new AnalyticsIngestionError(
+      "experimentId and variantId must be provided together.",
+      400,
+    );
+  }
+
+  const attributionVariant = await prisma.experimentVariant.findFirst({
+    where: {
+      id: variantId,
+      experimentId,
+      campaignId,
+      experiment: { shopId },
+    },
+    select: { id: true },
+  });
+
+  if (!attributionVariant) {
+    throw new AnalyticsIngestionError(
+      "Experiment attribution does not belong to this campaign.",
+      400,
+    );
+  }
 }
 
 async function findExistingDedupableEvent({

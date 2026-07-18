@@ -645,7 +645,8 @@
       "--cp-badge-text": design.iconBadgeTextColor,
       "--cp-badge-size": num(design.iconBadgeFontSize, 13) + "px",
       "--cp-badge-radius": num(design.iconBadgeBorderRadius, 999) + "px",
-      "--cp-split-divider": design.splitDividerEnabled === false ? "0px" : "1px",
+      "--cp-split-divider":
+        design.splitDividerEnabled === false ? "0px" : "1px",
       "--cp-motion-duration": num(design.animationDurationMs, 220) + "ms",
       "--cp-tick-duration": num(design.timerTickDurationMs, 220) + "ms",
       "--cp-float-top": cssLength(design.floatOffsetTop, "0"),
@@ -1247,7 +1248,8 @@
     // Badge mode: a pill with an optional leading glyph + text label.
     if (design.iconBadgeMode === "BADGE") {
       var text = String(design.iconBadgeText || "").trim();
-      var showGlyph = design.iconBadgeShowGlyph !== false && design.icon !== "NONE";
+      var showGlyph =
+        design.iconBadgeShowGlyph !== false && design.icon !== "NONE";
       if (!text && !showGlyph) return null;
       var badge = el("span", "counterpulse-preview-icon-badge");
       if (showGlyph) {
@@ -1335,10 +1337,7 @@
       }
     } else if (layout === "compact") {
       if (codeWrap || copy) {
-        var compactCode = el(
-          "span",
-          "counterpulse-preview-offer-compact-code",
-        );
+        var compactCode = el("span", "counterpulse-preview-offer-compact-code");
         if (codeWrap) compactCode.appendChild(codeWrap);
         if (copy) compactCode.appendChild(copy);
         wrap.appendChild(compactCode);
@@ -1457,7 +1456,12 @@
     if (pct == null) return null;
     pct = Math.round(pct);
 
-    var style = lower(design.progressBarStyle || "BAR");
+    var requestedStyle =
+      (spec.progress && spec.progress.style) ||
+      design.progressBarStyle ||
+      "BAR";
+    var publicStyle = lower(requestedStyle);
+    var style = publicStyle === "circular" ? "circle" : publicStyle;
     var effect = lower(design.progressEffect || "NONE");
     var unlocked = spec.progress && spec.progress.unlocked;
     var wrap = el(
@@ -1465,6 +1469,8 @@
       [
         "counterpulse-preview-progress",
         "counterpulse-preview-progress--" + style,
+        "pp-cart-progress",
+        "pp-cart-progress--" + publicStyle,
         "counterpulse-preview-progress--effect-" + effect,
         unlocked ? "counterpulse-preview-progress--unlocked" : "",
       ]
@@ -1472,11 +1478,13 @@
         .join(" "),
     );
     applyProgressVars(wrap, design, pct);
+    var indicator;
 
     if (style === "steps") {
       var steps = clampNumber(design.progressSteps, 2, 12, 4);
       var filled = Math.round((pct / 100) * steps);
       var track = el("span", "counterpulse-preview-progress-steps");
+      indicator = track;
       for (var i = 0; i < steps; i += 1) {
         var step = document.createElement("span");
         if (i < filled) step.className = "is-filled";
@@ -1485,6 +1493,7 @@
       wrap.appendChild(track);
     } else if (style === "circle") {
       var circle = el("span", "counterpulse-preview-progress-circle");
+      indicator = circle;
       circle.style.setProperty("--cp-progress-deg", (pct / 100) * 360 + "deg");
       var inner = document.createElement("span");
       if (design.progressShowLabel) inner.textContent = pct + "%";
@@ -1492,6 +1501,7 @@
       wrap.appendChild(circle);
     } else {
       var barTrack = document.createElement("span");
+      indicator = barTrack;
       var fill = document.createElement("span");
       fill.style.width = pct + "%";
       barTrack.appendChild(fill);
@@ -1503,6 +1513,10 @@
       label.textContent = pct + "%";
       wrap.appendChild(label);
     }
+    indicator.setAttribute("role", "progressbar");
+    indicator.setAttribute("aria-valuemin", "0");
+    indicator.setAttribute("aria-valuemax", "100");
+    indicator.setAttribute("aria-valuenow", String(pct));
     return wrap;
   }
 
@@ -1613,10 +1627,10 @@
     section.setAttribute("data-cp-uid", scopeId);
 
     // Message block
-    var message = el("div", "counterpulse-preview-message");
+    var message = el("div", "counterpulse-preview-message pp-message");
     var icon = buildIcon(design);
     if (icon) message.appendChild(icon);
-    var copy = el("div", "counterpulse-preview-message-copy");
+    var copy = el("div", "counterpulse-preview-message-copy pp-message-copy");
     var strong = document.createElement("strong");
     setRichText(strong, interpolateMessage(spec.headline || "", spec));
     copy.appendChild(strong);

@@ -578,15 +578,17 @@ function TemplateCard({ template }: { template: TemplateRow }) {
         <div className="counterpulse-template-card__meta">
           <span>{formatCampaignOption(template.type)}</span>
           <span>{formatCampaignOption(template.placementType)}</span>
+          {template.countryCode && (
+            <span>
+              {template.countryCode} / {template.locale}
+            </span>
+          )}
         </div>
 
         {template.behaviorSegments.length > 0 && (
           <div className="counterpulse-template-card__tags">
             {template.behaviorSegments.map((segment) => (
-              <span
-                className="counterpulse-template-card__tag"
-                key={segment}
-              >
+              <span className="counterpulse-template-card__tag" key={segment}>
                 {segment}
               </span>
             ))}

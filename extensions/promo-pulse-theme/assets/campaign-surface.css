@@ -706,22 +706,23 @@
 .counterpulse-preview-promo--layout-cta_left .pp-discount-offer,
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {
   grid-column: 2;
-  justify-self: start;
+  justify-self: end;
 }
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-message {
-  justify-content: flex-start;
+  justify-content: flex-end;
   min-width: 0;
 }
 
 .counterpulse-preview-promo--layout-cta_left
   .counterpulse-preview-message-copy {
-  justify-items: start;
-  text-align: left;
+  justify-items: end;
+  text-align: right;
 }
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-timer {
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .counterpulse-preview-promo--layout-cta_left .counterpulse-preview-progress {

@@ -2421,7 +2421,7 @@ function flashSaleDesign() {
     accentColor: "#FDE047",
     buttonColor: "#FFFFFF",
     buttonTextColor: "#7F1D1D",
-    buttonHoverColor: "#22C55E",
+    buttonHoverColor: "#15803D",
     buttonTextHoverColor: "#FFFFFF",
     closeButtonColor: "#FFFFFF",
     fontSize: 15,

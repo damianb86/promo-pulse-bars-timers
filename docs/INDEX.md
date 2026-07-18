@@ -41,6 +41,7 @@ Use this file after the root `AGENTS.md`. Select the narrowest matching task, re
 - [Campaign capability matrix](campaign-types/capability-matrix.md)
 - [Glossary](glossary.md)
 - [Generated identifiers](generated/domain-identifiers.md)
+- [Experiments and offers E2E matrix](testing/experiments-and-offers-e2e.md)
 
 ## Procedures and decisions
 

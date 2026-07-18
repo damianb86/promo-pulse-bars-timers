@@ -384,9 +384,7 @@ export function serializeOptimizedStorefrontCampaignsForEmbedding(
     const desktopDesign = source
       ? serializeDesign(source.design, "desktop")
       : campaign.design;
-    const mobileDesign = source
-      ? serializeDesign(source.design, "mobile")
-      : {};
+    const mobileDesign = source ? serializeDesign(source.design, "mobile") : {};
     const optimizedMobileDesign = removeDuplicateMobileStructure(
       desktopDesign,
       mobileDesign,
@@ -423,12 +421,15 @@ function removeDuplicateMobileStructure(
   const desktopStructure = desktopDesign.structure;
   const mobileStructure = mobileDesign.structure;
 
-  if (!desktopStructure || !sameJsonPayload(desktopStructure, mobileStructure)) {
+  if (
+    !desktopStructure ||
+    !sameJsonPayload(desktopStructure, mobileStructure)
+  ) {
     return mobileDesign;
   }
 
-  const { structure: _structure, ...mobileWithoutDuplicateStructure } =
-    mobileDesign;
+  const mobileWithoutDuplicateStructure = { ...mobileDesign };
+  delete mobileWithoutDuplicateStructure.structure;
 
   return mobileWithoutDuplicateStructure;
 }
@@ -449,12 +450,10 @@ function dedupeByCampaignPlacements(
     if (!descriptor.placement) continue;
 
     if (!existing) {
-      const {
-        placement: _placement,
-        placementSelector: _placementSelector,
-        placementStyle: _placementStyle,
-        ...campaign
-      } = item;
+      const campaign = { ...item };
+      delete campaign.placement;
+      delete campaign.placementSelector;
+      delete campaign.placementStyle;
 
       byId.set(item.id, { ...campaign, placements: [descriptor] });
       continue;
@@ -1608,7 +1607,10 @@ function matchesOptionalPathContains(
   return matchesPathContains(allowedValues, path);
 }
 
-function matchesPathContains(allowedValues: string[], paths: string | string[]) {
+function matchesPathContains(
+  allowedValues: string[],
+  paths: string | string[],
+) {
   const pathCandidates = Array.isArray(paths) ? paths : [paths];
 
   if (allowedValues.length === 0 || pathCandidates.length === 0) return false;

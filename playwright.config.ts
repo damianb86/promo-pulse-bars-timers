@@ -6,13 +6,10 @@ const baseURL = process.env.E2E_BASE_URL || `http://localhost:${port}`;
 const envFile = readEnvFile(".env");
 const appEnv = process.env.APP_ENV || envFile.APP_ENV || "development";
 const nodeEnv = process.env.NODE_ENV || envFile.NODE_ENV || "development";
-const databaseUrl =
-  process.env.DATABASE_URL ||
-  (appEnv === "development" || nodeEnv === "development"
-    ? process.env.DEVELOPMENT_DATABASE_URL ||
-      envFile.DEVELOPMENT_DATABASE_URL ||
-      "file:./dev.sqlite"
-    : envFile.DATABASE_URL);
+// The reset endpoint intentionally truncates the whole test database. Never
+// inherit DATABASE_URL or DEVELOPMENT_DATABASE_URL here: an E2E run must opt in
+// to a dedicated database, or use the isolated SQLite default.
+const databaseUrl = process.env.E2E_DATABASE_URL || "file:./e2e.sqlite";
 
 export default defineConfig({
   testDir: "./tests/e2e",

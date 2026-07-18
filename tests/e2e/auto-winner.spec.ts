@@ -2,6 +2,7 @@ import {
   expect,
   expectNoConsoleErrors,
   expectNoFailedRequests,
+  publishCurrentCampaign,
   test,
 } from "./fixtures";
 
@@ -69,6 +70,48 @@ test("experiment results can auto-detect and apply a winning variant", async ({
   await expect(page.getByLabel("Existing discount code or ID")).toHaveValue(
     "CONTROL10",
   );
+
+  await publishCurrentCampaign(page);
+  const publishedAuditResponse = await page.request.get(
+    "/__test/stage2?resource=experiments-and-offers",
+  );
+  const publishedAudit = (await publishedAuditResponse.json()) as {
+    campaigns: Array<{
+      publishedSnapshot: {
+        translations: Array<{ locale: string; headline: string | null }>;
+      } | null;
+    }>;
+  };
+  expect(
+    publishedAudit.campaigns[0].publishedSnapshot?.translations.find(
+      (translation) => translation.locale === "en",
+    )?.headline,
+  ).toBe("Winning headline");
+  await page.goto(
+    "/__test/storefront?visitorId=winner-fresh-visitor&sessionId=winner-fresh-session",
+  );
+  const storefrontSurface = page.locator(".pp-bar").first();
+  await expect(storefrontSurface).toContainText("Winning headline");
+  await expect(storefrontSurface).toContainText("Winning treatment copy.");
+
+  const auditResponse = await page.request.get(
+    "/__test/stage2?resource=experiments-and-offers",
+  );
+  expect(auditResponse.ok()).toBe(true);
+  const audit = (await auditResponse.json()) as {
+    campaigns: Array<{
+      experiments: Array<{
+        status: string;
+        winnerAppliedAt: string | null;
+        winnerVariantId: string | null;
+      }>;
+    }>;
+  };
+  expect(audit.campaigns[0].experiments[0]).toMatchObject({
+    status: "COMPLETED",
+    winnerVariantId: "e2e-auto-winner-treatment",
+  });
+  expect(audit.campaigns[0].experiments[0].winnerAppliedAt).toBeTruthy();
 
   expectNoConsoleErrors(page);
   expectNoFailedRequests(page);

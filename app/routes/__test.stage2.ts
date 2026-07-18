@@ -1,17 +1,26 @@
 import { EmailTimerExpiredBehavior } from "@prisma/client";
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import prisma from "../db.server";
 import { expireVisitorCode } from "../services/discounts/uniqueCodes.server";
-import { requireE2ETestMode } from "../services/e2e-test.server";
+import {
+  E2E_DEMO_SHOP_DOMAIN,
+  requireE2ETestMode,
+} from "../services/e2e-test.server";
 import { normalizeShopDomain } from "../utils/storefront-campaigns";
 
 type Stage2TestBody = Record<string, unknown>;
 
-export const loader = async () => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   requireE2ETestMode();
 
-  return json({ error: "Use POST for Stage 2 test mutations." }, 405);
+  const url = new URL(request.url);
+
+  if (url.searchParams.get("resource") !== "experiments-and-offers") {
+    return json({ error: "Unsupported Stage 2 test resource." }, 400);
+  }
+
+  return readExperimentsAndOffersState(url.searchParams.get("campaignId"));
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -64,6 +73,107 @@ async function expireEmailTimer(body: Stage2TestBody) {
   });
 
   return json({ ok: true, expired: result.count }, result.count ? 200 : 404);
+}
+
+async function readExperimentsAndOffersState(campaignId: string | null) {
+  const shop = await prisma.shop.findUnique({
+    where: { shopifyDomain: E2E_DEMO_SHOP_DOMAIN },
+    select: { id: true },
+  });
+
+  if (!shop) {
+    return json({ campaigns: [] }, 200);
+  }
+
+  const campaigns = await prisma.campaign.findMany({
+    where: {
+      shopId: shop.id,
+      ...(campaignId ? { id: campaignId } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      publishedAt: true,
+      publishedSnapshot: true,
+      translations: {
+        orderBy: { locale: "asc" },
+        select: {
+          locale: true,
+          headline: true,
+          subheadline: true,
+          ctaText: true,
+          ctaUrl: true,
+        },
+      },
+      discountSync: true,
+      experiments: {
+        orderBy: { createdAt: "asc" },
+        include: { variants: { orderBy: { createdAt: "asc" } } },
+      },
+      advancedDiscountRules: { orderBy: { createdAt: "asc" } },
+      discountCodePools: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          codes: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              code: true,
+              status: true,
+              visitorId: true,
+              sessionId: true,
+              assignedAt: true,
+              expiresAt: true,
+              usedAt: true,
+            },
+          },
+        },
+      },
+      attributionTouches: {
+        orderBy: { occurredAt: "asc" },
+        select: {
+          id: true,
+          experimentId: true,
+          variantId: true,
+          visitorId: true,
+          sessionId: true,
+          eventType: true,
+          placementType: true,
+          occurredAt: true,
+        },
+      },
+      conversions: {
+        orderBy: { occurredAt: "asc" },
+        select: {
+          id: true,
+          experimentId: true,
+          variantId: true,
+          visitorId: true,
+          sessionId: true,
+          orderId: true,
+          revenueAmount: true,
+          currencyCode: true,
+          occurredAt: true,
+        },
+      },
+      analyticsEvents: {
+        orderBy: { occurredAt: "asc" },
+        select: {
+          id: true,
+          eventType: true,
+          placementType: true,
+          sessionId: true,
+          cartToken: true,
+          orderId: true,
+          occurredAt: true,
+        },
+      },
+    },
+  });
+
+  return json({ campaigns }, 200);
 }
 
 async function readJsonBody(request: Request): Promise<Stage2TestBody> {

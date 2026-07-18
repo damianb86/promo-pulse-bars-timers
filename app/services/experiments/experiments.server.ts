@@ -391,6 +391,7 @@ export async function updateExperimentAutoWinner({
   });
 
   await markCampaignSaved(experiment.campaignId, shopId);
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return updatedExperiment;
 }
@@ -441,6 +442,7 @@ export async function startExperiment({
   });
 
   await markCampaignSaved(experiment.campaignId, shopId);
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return updatedExperiment;
 }
@@ -469,6 +471,7 @@ export async function pauseExperiment({
   });
 
   await markCampaignSaved(experiment.campaignId, shopId);
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return updatedExperiment;
 }
@@ -494,6 +497,7 @@ export async function stopExperiment({
   });
 
   await markCampaignSaved(experiment.campaignId, shopId);
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return updatedExperiment;
 }
@@ -673,6 +677,7 @@ export async function declareWinningVariant({
   });
 
   await markCampaignSaved(updatedExperiment.campaignId, shopId);
+  await invalidateStorefrontCacheForShopId(shopId);
 
   return updatedExperiment;
 }

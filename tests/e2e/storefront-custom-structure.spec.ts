@@ -46,7 +46,7 @@ test("storefront renders custom structure elements and inline styles verbatim", 
   // fill and label switch to their hover values while pointed at.
   await expect(cta).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await cta.hover();
-  await expect(cta).toHaveCSS("background-color", "rgb(34, 197, 94)");
+  await expect(cta).toHaveCSS("background-color", "rgb(21, 128, 61)");
   await expect(cta).toHaveCSS("color", "rgb(255, 255, 255)");
 
   expectNoConsoleErrors(page);

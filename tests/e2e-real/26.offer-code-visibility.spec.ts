@@ -132,7 +132,7 @@ test.describe("real offer and discount-code visibility", () => {
     const shopId = await findRealE2EShopId();
     test.skip(!shopId, "Install/open Promo Pulse once so the shop exists locally.");
 
-    const prefix = `${DISCOUNT_CODE_PREFIX}UNIQ`;
+    const prefix = `${DISCOUNT_CODE_PREFIX}U${Date.now().toString(36).toUpperCase()}`;
     const headline = placementHeadline("Unique code contract");
     const campaign = await createPublishedPlacementCampaign(shopId, {
       headline,

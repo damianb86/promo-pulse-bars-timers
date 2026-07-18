@@ -150,11 +150,18 @@ test.describe("real storefront design fidelity", () => {
     });
 
     // The merchant custom CSS must be injected verbatim as a scoped <style>.
-    const injectedCss = await bar
-      .locator("style")
-      .filter({ hasText: marker })
-      .count();
-    expect(injectedCss, "custom CSS should be injected as a <style>").toBeGreaterThan(0);
+    // (Query <style> text via evaluate: Playwright's hasText ignores <style>
+    // element content.)
+    const hasInjectedCss = await bar.evaluate(
+      (el, needle) =>
+        Array.from(el.querySelectorAll("style")).some((style) =>
+          (style.textContent || "").includes(needle),
+        ),
+      marker,
+    );
+    expect(hasInjectedCss, "custom CSS should be injected as a <style>").toBe(
+      true,
+    );
 
     const closeColor = await readSurfaceProfile(bar, ["--cp-close"]);
     expect(closeColor.cssVars["--cp-close"]).toBe("#FFEE00");

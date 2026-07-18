@@ -179,12 +179,18 @@
   font-size: var(--cp-title-size);
   font-weight: 800;
   line-height: 1.08;
+  /* Break pathologically long unbroken strings (e.g. a pasted long URL) so the
+     headline can never push the storefront into horizontal overflow. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .counterpulse-preview-message-copy > span:not(.counterpulse-preview-timer) {
   color: var(--cp-subheading-color);
   font-size: var(--cp-subheading-size);
   line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .counterpulse-preview-timer {

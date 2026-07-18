@@ -142,7 +142,12 @@ export async function newStorefrontVisitor(browser: Browser, path = "/") {
 }
 
 export function realE2ECacheBustPath(label: string) {
-  return `/?utm_source=real_e2e_${encodeURIComponent(label)}_${Date.now()}`;
+  // `utm_*` params are stripped by Shopify's storefront cache key, so they do
+  // NOT bust the full-page cache on a real store. Add a non-utm `ppcb` param
+  // (kept alongside utm_source for targeting specs that assert on utm) so each
+  // navigation renders a fresh page reflecting the current campaign metafield.
+  const token = `${encodeURIComponent(label)}_${Date.now()}`;
+  return `/?utm_source=real_e2e_${token}&ppcb=${token}`;
 }
 
 export async function expectStorefrontEmbedOrSkip(page: Page, testInfo: TestInfo) {

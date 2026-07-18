@@ -1675,11 +1675,13 @@
     if (progress) section.appendChild(progress);
 
     // Merchant custom CSS (already plan-gated + sanitized on save). Injected as a
-    // <style> within the surface; a defensive strip prevents </style> breakout.
+    // <style> within the surface. A defensive strip removes every `<` (never
+    // valid in CSS) so no tag - </style>, <script>, ... - can survive, even if a
+    // future code path were to inject this via innerHTML instead of textContent.
     if (typeof design.customCss === "string" && design.customCss.trim()) {
       var styleNode = document.createElement("style");
       styleNode.textContent = scopeCustomCss(
-        design.customCss.replace(/<\/?\s*style/gi, ""),
+        design.customCss.replace(/</g, ""),
         '[data-cp-uid="' + scopeId + '"]',
       );
       section.appendChild(styleNode);

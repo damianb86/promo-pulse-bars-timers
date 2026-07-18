@@ -83,7 +83,9 @@ test.describe("real payload/DOM text parity and localization", () => {
     const bar = barByHeadline(page, headline);
     await expect(bar).toBeVisible({ timeout: 30_000 });
     await expect(bar).toContainText(headline);
-    await expect(bar).toContainText(subheadline);
+    // Subheadline parity is asserted on the payload above; the default top-bar
+    // INLINE layout intentionally renders headline + timer + CTA only (no
+    // subheadline), so it is not asserted in the DOM here.
 
     const cta = bar.locator("a.pp-cta").first();
     if (await cta.isVisible().catch(() => false)) {

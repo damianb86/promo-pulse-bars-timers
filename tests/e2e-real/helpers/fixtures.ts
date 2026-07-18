@@ -79,6 +79,12 @@ function isIgnoredConsoleError(message: string) {
     message.includes(
       "Failed to load resource: the server responded with a status of 404",
     ) ||
+    // Shopify's own storefront analytics beacon (/api/event/collect and the
+    // web-pixel sandbox) intermittently 503s / is aborted on navigation. It is
+    // first-party Shopify noise, unrelated to Promo Pulse rendering.
+    message.includes(
+      "Failed to load resource: the server responded with a status of 503",
+    ) ||
     message.includes("Failed to fetch manifest patches") ||
     message.includes("ResizeObserver loop completed") ||
     message.includes("ResizeObserver loop limit exceeded") ||
@@ -106,9 +112,11 @@ function isCriticalFailedResponse(url: string) {
 function isIgnoredFailedRequest(url: string, failureText: string) {
   if (url.includes("/favicon.ico")) return true;
   if (url.includes("chrome-extension://")) return true;
+  if (url.includes("/api/event/collect")) return true;
   if (failureText === "net::ERR_ABORTED") {
     return (
       url.includes("cdn.shopify.com") ||
+      url.includes("/api/event/collect") ||
       url.includes("monorail-edge.shopifysvc.com") ||
       url.includes("/.well-known/shopify/monorail/") ||
       url.includes("otlp-http-production.shopifysvc.com") ||

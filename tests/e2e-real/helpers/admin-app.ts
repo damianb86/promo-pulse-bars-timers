@@ -10,6 +10,7 @@ import {
   type AppScope,
 } from "./auth";
 import { E2E_PREFIX, getConfig, uniqueName } from "./env";
+import { syncStorefrontInlineConfigForShopId } from "./inline-config";
 
 type CampaignOptions = Partial<{
   ctaText: string;
@@ -436,7 +437,7 @@ async function clickTabById(app: AppScope, id: string) {
 export async function pauseAllPrefixedCampaigns(page: Page) {
   void page;
 
-  await prisma.campaign.updateMany({
+  const result = await prisma.campaign.updateMany({
     where: {
       name: { startsWith: E2E_PREFIX },
       status: "ACTIVE",
@@ -445,6 +446,16 @@ export async function pauseAllPrefixedCampaigns(page: Page) {
       status: "PAUSED",
     },
   });
+
+  // Refresh the storefront inline-config metafield so paused fixtures stop
+  // rendering on the deployed theme (no-op without an Admin API token).
+  if (result.count > 0) {
+    const shop = await prisma.shop.findUnique({
+      where: { shopifyDomain: getConfig().shopDomain },
+      select: { id: true },
+    });
+    if (shop) await syncStorefrontInlineConfigForShopId(shop.id);
+  }
 }
 
 async function campaignListAction(

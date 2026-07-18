@@ -33,6 +33,7 @@ import {
 import prisma from "../../../app/db.server";
 import { publishCampaignForShop } from "../../../app/models/campaign.server";
 import { DISCOUNT_CODE_PREFIX, E2E_PREFIX, getConfig, uniqueName } from "./env";
+import { syncStorefrontInlineConfigForShopId } from "./inline-config";
 
 export type PlacementFixtureDesign = {
   backgroundColor: string;
@@ -88,6 +89,13 @@ type PlacementCampaignOptions = {
    * the campaign itself still renders.
    */
   discountShowCode?: boolean;
+  /**
+   * Skip the per-campaign storefront inline-config metafield sync. Use when
+   * creating many campaigns in a batch and syncing once afterwards (call
+   * `syncStorefrontInlineConfigForShopId` yourself) to avoid N slow Admin API
+   * round-trips.
+   */
+  skipInlineConfigSync?: boolean;
   experiment?: {
     name?: string;
     primaryMetric?: ExperimentPrimaryMetric;
@@ -418,6 +426,12 @@ export async function createPublishedPlacementCampaign(
   }
 
   const published = await publishCampaignForShop(campaign.id, shopId);
+
+  // Push the refreshed inline-config metafield so the deployed storefront theme
+  // (which renders from window.PromoPulseCampaignConfigs) reflects this campaign.
+  if (!options.skipInlineConfigSync) {
+    await syncStorefrontInlineConfigForShopId(shopId);
+  }
 
   return {
     design,

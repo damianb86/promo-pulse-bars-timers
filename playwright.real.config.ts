@@ -88,6 +88,7 @@ export default defineConfig({
         "**/25.design-fidelity-storefront.spec.ts",
         "**/26.offer-code-visibility.spec.ts",
         "**/27.payload-dom-text-parity.spec.ts",
+        "**/28.render-edge-cases.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],

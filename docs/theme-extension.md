@@ -8,7 +8,6 @@ bars without requiring manual Liquid edits.
 
 - `extensions/promo-pulse-theme/blocks/promo-pulse-embed.liquid`
 - `extensions/promo-pulse-theme/blocks/product-timer.liquid`
-- `extensions/promo-pulse-theme/blocks/product-badge.liquid`
 - `extensions/promo-pulse-theme/blocks/cart-timer.liquid`
 - `theme-extension-src/promo-pulse-theme/promo-pulse.js`
 - `theme-extension-src/promo-pulse-theme/product-timer.js`
@@ -105,24 +104,23 @@ Exact Theme Editor names:
 - App Embed: `Promo Pulse embed`
 - Product page app block: `Promo Pulse product timer`
 - Cart page app block: `Promo Pulse cart timer`
-- Product badge app block: `Promo Pulse badge`
 
 Campaign placement mapping:
 
-| Campaign type        | Placement                           | What to add in Theme Editor                                                         |
-| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| `COUNTDOWN_BAR`      | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
-| `PRODUCT_TIMER`      | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
-| `CART_TIMER`         | `CART_PAGE`                         | Add `Promo Pulse cart timer` to the cart template.                                  |
-| `CART_TIMER`         | `CART_DRAWER`                       | Enable `Promo Pulse embed`. No block is needed; JavaScript inserts into the drawer. |
-| `FREE_SHIPPING_GOAL` | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
-| `FREE_SHIPPING_GOAL` | `CART_PAGE`                         | Add `Promo Pulse cart timer` to the cart template.                                  |
-| `FREE_SHIPPING_GOAL` | `CART_DRAWER`                       | Enable `Promo Pulse embed`. No block is needed.                                     |
-| `FREE_SHIPPING_GOAL` | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
-| `DELIVERY_CUTOFF`    | `TOP_BAR` or `BOTTOM_BAR`           | Enable `Promo Pulse embed`. No block is needed.                                     |
-| `DELIVERY_CUTOFF`    | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
-| `LOW_STOCK`          | `PRODUCT_PAGE`                      | Add `Promo Pulse product timer` to a product template.                              |
-| `PRODUCT_BADGE`      | `PRODUCT_PAGE` or `COLLECTION_CARD` | Add `Promo Pulse badge` where the theme exposes product context.                    |
+| Campaign type        | Placement                                 | What to add in Theme Editor                                                                              |
+| -------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `COUNTDOWN_BAR`      | `TOP_BAR` or `BOTTOM_BAR`                 | Enable `Promo Pulse embed`. No block is needed.                                                          |
+| `PRODUCT_TIMER`      | `PRODUCT_PAGE`                            | Add `Promo Pulse product timer` to a product template.                                                   |
+| `CART_TIMER`         | `CART_PAGE`                               | Add `Promo Pulse cart timer` to the cart template.                                                       |
+| `CART_TIMER`         | `CART_DRAWER`                             | Enable `Promo Pulse embed`. No block is needed; JavaScript inserts into the drawer.                      |
+| `FREE_SHIPPING_GOAL` | `TOP_BAR` or `BOTTOM_BAR`                 | Enable `Promo Pulse embed`. No block is needed.                                                          |
+| `FREE_SHIPPING_GOAL` | `CART_PAGE`                               | Add `Promo Pulse cart timer` to the cart template.                                                       |
+| `FREE_SHIPPING_GOAL` | `CART_DRAWER`                             | Enable `Promo Pulse embed`. No block is needed.                                                          |
+| `FREE_SHIPPING_GOAL` | `PRODUCT_PAGE`                            | Add `Promo Pulse product timer` to a product template.                                                   |
+| `DELIVERY_CUTOFF`    | `TOP_BAR` or `BOTTOM_BAR`                 | Enable `Promo Pulse embed`. No block is needed.                                                          |
+| `DELIVERY_CUTOFF`    | `PRODUCT_PAGE`                            | Add `Promo Pulse product timer` to a product template.                                                   |
+| `LOW_STOCK`          | `PRODUCT_PAGE`                            | Add `Promo Pulse product timer` to a product template.                                                   |
+| `PRODUCT_BADGE`      | `PRODUCT_PAGE_BADGE` or `COLLECTION_CARD` | Enable `Promo Pulse embed`; the badge runtime discovers product media/cards and injects eligible badges. |
 
 Yes: cart drawer rendering is intentionally automatic through the App Embed.
 The merchant should not add a drawer block manually. The runtime tries default
@@ -263,26 +261,19 @@ blank, the block renders nothing.
 
 No manual Liquid edits are required.
 
-## Product Badge Block
+## Product badges
 
-The extension provides `Promo Pulse badge`, an app block for product and
-collection templates. It requests:
+There is no separate product badge app block. The enabled `Promo Pulse embed`
+loads `product-badge.js`, which automatically discovers product-page media and
+collection/search product cards, creates badge slots, and queries the dedicated
+`/apps/promo-pulse/api/storefront/badges` endpoint for
+`PRODUCT_PAGE_BADGE` or `COLLECTION_CARD`. Custom shop selectors can refine the
+mount targets when theme discovery is insufficient.
 
-```text
-/apps/promo-pulse?placement=COLLECTION_CARD
-```
-
-by default, and can be switched to `PRODUCT_PAGE` in the block settings. The
-block supports:
-
-- `Auto eligible` or `Specific campaign` selection.
-- `badgeText` from BadgeSettings, then localized campaign text fallback.
-- `badgeShape`: `PILL`, `ROUNDED`, or `SQUARE`.
-- `badgePosition`: `TOP_LEFT`, `TOP_RIGHT`, `BOTTOM_LEFT`, or `BOTTOM_RIGHT`.
-
-Promo Pulse does not automatically rewrite every collection grid in Etapa 1.
-Merchants should add the app block where the theme safely supports app blocks,
-usually near a product image/card area or on the product template.
+The runtime uses `badgeText` from `BadgeSettings` with localized campaign text
+fallback, the configured shape/position, and optional timer data. A theme whose
+product markup cannot be discovered needs selector configuration; the runtime
+does not require merchants to add nonexistent Liquid blocks.
 
 ## Cart Page Block
 
